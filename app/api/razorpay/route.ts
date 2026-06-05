@@ -14,7 +14,7 @@ const razorpay = new Razorpay({
 export async function POST(req: Request) {
   try {
     // Failsafe runtime sanity check to ensure Vercel is reading the keys on the server side
-    if (!process.env.RAZORPAY_KEY_SECRET || !process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
+    if (!keyId || !keySecret) {
       console.error("CRITICAL: Production Environment Keys are missing from Vercel!");
       return NextResponse.json(
         { error: "Server Configuration Error: Missing API credentials on the host." }, 
