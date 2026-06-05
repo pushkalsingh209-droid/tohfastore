@@ -2,30 +2,41 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 
+// Safely pull the keys, leaving a safe dummy fallback ONLY to satisfy the strict build compiler
+const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_SxwQ97wTcfG6mL";
+const keySecret = process.env.RAZORPAY_KEY_SECRET || "3G24l3ggEdBGcr55atghkyZH";
+
 const razorpay = new Razorpay({
-  key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_SxwQ97wTcfG6mL",
-  key_secret: process.env.RAZORPAY_KEY_SECRET || "3G24l3ggEdBGcr55atghkyZH",
+  key_id: keyId,
+  key_secret: keySecret,
 });
 
 export async function POST(req: Request) {
   try {
-    const { items, totalAmount } = await req.json();
+    // Failsafe runtime sanity check to ensure Vercel is reading the keys on the server side
+    if (!process.env.RAZORPAY_KEY_SECRET || !process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
+      console.error("CRITICAL: Production Environment Keys are missing from Vercel!");
+      return NextResponse.json(
+        { error: "Server Configuration Error: Missing API credentials on the host." }, 
+        { status: 500 }
+      );
+    }
 
-    // Map a clean representation of the items array to fit within Razorpay text restrictions
+    const { items, totalAmount } = await req.json();
+    const rawAmount = parseFloat(totalAmount);
+
     const simplifiedItems = items.map((i: any) => ({
       id: i.id,
       name: i.name,
       price: i.price,
       quantity: i.quantity
     }));
-    
-    const rawAmount = parseFloat(totalAmount);
+
     const options = {
-      amount: Math.round(rawAmount * 100),
+      amount: Math.round(rawAmount * 100), // Enforce precise integer type in Paise
       currency: "INR",
       receipt: `receipt_tohfa_${Date.now()}`,
       notes: {
-        // We compress the array here so the webhook route can read it later
         items: JSON.stringify(simplifiedItems), 
       }
     };
@@ -33,6 +44,7 @@ export async function POST(req: Request) {
     const order = await razorpay.orders.create(options);
     return NextResponse.json({ orderId: order.id, amount: order.amount });
   } catch (err: any) {
+    console.error("Razorpay order generation crash exception:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
