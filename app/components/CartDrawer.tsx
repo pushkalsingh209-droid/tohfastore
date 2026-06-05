@@ -80,13 +80,13 @@ export default function CartDrawer() {
                     entity: {
                       notes: {
                         items: JSON.stringify(
-  cart.map((i: { id: string; name: string; price: number; quantity: number }) => ({
-    id: i.id,
-    name: i.name,
-    price: i.price,
-    quantity: i.quantity
-  }))
-)
+                          cart.map((i: { id: string; name: string; price: number; quantity: number }) => ({
+                            id: i.id,
+                            name: i.name,
+                            price: i.price,
+                            quantity: i.quantity
+                          }))
+                        )
                       }
                     }
                   }
@@ -102,8 +102,8 @@ export default function CartDrawer() {
         },
         prefill: {
           name: "Pushkal Singh",
-          email: "customer@example.com",
-          contact: "9999999999",
+          email: "contact@tohfaonline.com",
+          contact: "9711137682",
         },
         theme: {
           color: "#b45309",

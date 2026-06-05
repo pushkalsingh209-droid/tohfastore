@@ -10,7 +10,7 @@ export function middleware(request: NextRequest) {
   if (pathname.startsWith('/admin')) {
     // Get the password from the URL parameters (e.g., /admin?pass=your_password)
     const urlPassword = request.nextUrl.searchParams.get('pass');
-    const correctPassword = process.env.ADMIN_PASSWORD || "YourBrassPassword123";
+    const correctPassword = process.env.ADMIN_PASSWORD || "Brass123";
 
     // 3. If the password is missing or wrong, prompt them with standard HTTP Basic Auth
     if (!urlPassword || urlPassword !== correctPassword) {

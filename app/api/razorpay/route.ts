@@ -18,9 +18,10 @@ export async function POST(req: Request) {
       price: i.price,
       quantity: i.quantity
     }));
-
+    
+    const rawAmount = parseFloat(totalAmount);
     const options = {
-      amount: Math.round(totalAmount * 100),
+      amount: Math.round(rawAmount * 100),
       currency: "INR",
       receipt: `receipt_tohfa_${Date.now()}`,
       notes: {
