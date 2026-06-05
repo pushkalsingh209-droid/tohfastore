@@ -79,7 +79,14 @@ export default function CartDrawer() {
                   order: {
                     entity: {
                       notes: {
-                        items: JSON.stringify(cart.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })))
+                        items: JSON.stringify(
+  cart.map((i: { id: string; name: string; price: number; quantity: number }) => ({
+    id: i.id,
+    name: i.name,
+    price: i.price,
+    quantity: i.quantity
+  }))
+)
                       }
                     }
                   }
