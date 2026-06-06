@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 
 // Safely pull the keys, leaving a safe dummy fallback ONLY to satisfy the strict build compiler
-const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_live_SyMLK9s5WiUJn1";
-const keySecret = process.env.RAZORPAY_KEY_SECRET || "b7T7OI3TFN5gXm0P4PxiLfuM";
+const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
 const razorpay = new Razorpay({
   key_id: keyId,
