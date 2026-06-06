@@ -3,10 +3,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 
-// Fallback hardcoded values prevent runtime initialisation crashes if Vercel environmental nodes lag
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gxlervcazzddqcoagewy.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_yfpUfp0RTaHs6nL3VEcnZQ_H_u-KA7C";
-
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const transporter = nodemailer.createTransport({
@@ -27,21 +25,28 @@ export async function POST(req: Request) {
       const paymentId = paymentEntity.id;
       const totalAmount = paymentEntity.amount / 100;
       
+      // Capture custom customer data filled out in the drawer inputs
       const customerEmail = paymentEntity.email || "customer@example.com";
       const customerPhone = paymentEntity.contact || "9999999999";
 
-      // Dynamically extract the products array no matter how it was packed
       let orderItems = [];
+      let customerName = "Premium Customer";
+      
       try {
-        const rawNotes = body.payload.order?.entity?.notes?.items || body.payload.payment?.entity?.notes?.items;
+        const rawNotes = body.payload.order?.entity?.notes || body.payload.payment?.entity?.notes;
         if (rawNotes) {
-          orderItems = typeof rawNotes === "string" ? JSON.parse(rawNotes) : rawNotes;
+          if (rawNotes.items) {
+            orderItems = typeof rawNotes.items === "string" ? JSON.parse(rawNotes.items) : rawNotes.items;
+          }
+          if (rawNotes.customer_name) {
+            customerName = rawNotes.customer_name;
+          }
         }
       } catch (parseError) {
-        console.error("Notes items parsing fault fallback execution:", parseError);
+        console.error("Notes items parsing error fallback tracking route execution:", parseError);
       }
 
-      // 1. Direct database logging call script
+      // 1. Log directly to Supabase orders table with the updated details
       const { error: dbError } = await supabase
         .from("orders")
         .insert([
@@ -49,17 +54,14 @@ export async function POST(req: Request) {
             order_id: orderId,
             payment_id: paymentId,
             amount: totalAmount,
-            customer_details: { email: customerEmail, contact: customerPhone, name: "Pushkal Singh" },
+            customer_details: { email: customerEmail, contact: customerPhone, name: customerName },
             items: orderItems,
           }
         ]);
 
-      if (dbError) {
-        console.error("Supabase Database error log details:", dbError);
-        throw new Error(`Supabase Exception: ${dbError.message}`);
-      }
+      if (dbError) throw new Error(`Supabase Exception: ${dbError.message}`);
 
-      // 2. Dispatch Confirmation Email
+      // 2. Format HTML Notification Email Alert Rows
       const itemRowsHtml = orderItems.map((item: any) => `
         <tr>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.name}</td>
@@ -77,9 +79,9 @@ export async function POST(req: Request) {
             <h2 style="color: #b45309; border-bottom: 2px solid #b45309; padding-bottom: 10px;">Tohfa Order Dispatch Request</h2>
             <p>A new purchase has cleared successfully via the Razorpay Gateway network layer.</p>
             <h3 style="color: #444;">Customer Overview</h3>
-            <p style="font-size: 14px; margin: 4px 0;"><strong>Customer Name:</strong> Pushkal Singh</p>
-            <p style="font-size: 14px; margin: 4px 0;"><strong>Email:</strong> ${customerEmail}</p>
-            <p style="font-size: 14px; margin: 4px 0;"><strong>Contact:</strong> ${customerPhone}</p>
+            <p style="font-size: 14px; margin: 4px 0;"><strong>Customer Name:</strong> ${customerName}</p>
+            <p style="font-size: 14px; margin: 4px 0;"><strong>Email Address:</strong> ${customerEmail}</p>
+            <p style="font-size: 14px; margin: 4px 0;"><strong>WhatsApp/Mobile:</strong> ${customerPhone}</p>
             <p style="font-size: 14px; margin: 4px 0;"><strong>Transaction Token:</strong> ${paymentId}</p>
             <h3 style="color: #444; margin-top: 20px;">Artifacts Inventory Breakdown</h3>
             <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
@@ -101,14 +103,13 @@ export async function POST(req: Request) {
 
       try {
         await transporter.sendMail(mailOptions);
-      } catch (mailError) {
-        console.error("SMTP Delivery issue noted (bypassing crash):", mailError);
+      } catch (e) {
+        console.error("Mail dispatch skip:", e);
       }
     }
 
     return NextResponse.json({ status: "webhook_acknowledged" });
   } catch (err: any) {
-    console.error("Webhook processing failure cascade:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
