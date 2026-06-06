@@ -4,22 +4,17 @@ import { useCart } from "@/app/context/CartContext";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-interface CartItem {
-  id: string | number;
-  name: string;
-  price: number;
-  quantity: number;
-  image_url?: string;
-}
-
 export default function CartDrawer() {
   const { cart, isOpen, setIsOpen, removeFromCart, cartTotal } = useCart();
   const [loading, setLoading] = useState(false);
   
-  // New States to capture client verification inputs securely
+  // Customer identity data capture states
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  
+  // Specialized inline validation alert messages state
+  const [validationError, setValidationError] = useState("");
 
   const router = useRouter();
 
@@ -40,11 +35,22 @@ export default function CartDrawer() {
   };
 
   const handleRazorpayPayment = async (e: React.FormEvent) => {
-    e.preventDefault(); // Stop page refreshes
-    
-    // Validation Check: Prevent checking out without contact entries
-    if (!customerName.trim() || !customerPhone.trim() || !customerEmail.trim()) {
-      alert("Please complete your name, email, and mobile/WhatsApp number fields before paying.");
+    e.preventDefault(); 
+    setValidationError(""); // Reset active error nodes
+
+    // 1. Sanitize the string input to extract raw digits exclusively
+    const cleanPhone = customerPhone.replace(/\D/g, "");
+
+    // 2. Enforce standard Indian mobile/WhatsApp structural matching metrics (Exactly 10 digits)
+    const phoneRegex = /^[6-9]\d{9}$/;
+
+    if (!customerName.trim() || !customerEmail.trim()) {
+      setValidationError("Please fill in your name and email address cleanly.");
+      return;
+    }
+
+    if (!phoneRegex.test(cleanPhone)) {
+      setValidationError("Please enter a valid 10-digit Indian Mobile or WhatsApp number (e.g. 9876543210).");
       return;
     }
 
@@ -57,7 +63,7 @@ export default function CartDrawer() {
         return;
       }
 
-      // 1. Fetch Order ID from Serverless Next.js Node API
+      // Fetch Order ID from Next.js serverless route
       const res = await fetch("/api/razorpay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -72,7 +78,6 @@ export default function CartDrawer() {
         return;
       }
 
-      // 2. Open Native Overlays, passing client parameters directly
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_placeholder_build_key", 
         amount: data.amount,
@@ -82,7 +87,7 @@ export default function CartDrawer() {
         order_id: data.orderId,
         handler: async function (response: any) {
           try {
-            // Direct Backup Method fires webhook data package directly down server pathways
+            // Direct Backup Method ensures instantaneous logging to database pipelines
             await fetch("/api/razorpay-webhook", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -95,19 +100,14 @@ export default function CartDrawer() {
                       id: response.razorpay_payment_id,
                       amount: data.amount,
                       email: customerEmail,
-                      contact: customerPhone
+                      contact: cleanPhone // Pass perfectly clean digits array forward
                     }
                   },
                   order: {
                     entity: {
                       notes: {
-                        items: JSON.stringify(cart.map((i: CartItem) => ({ 
-                          id: i.id, 
-                          name: i.name, 
-                          price: i.price, 
-                          quantity: i.quantity 
-                        }))),
-                        customer_name: customerName // Append custom name parameters to notes queue
+                        items: JSON.stringify(cart.map((i: any) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity }))),
+                        customer_name: customerName 
                       }
                     }
                   }
@@ -115,7 +115,7 @@ export default function CartDrawer() {
               }),
             });
           } catch (e) {
-            console.error("Direct logging execution tracking block issue:", e);
+            console.error("Direct backend log pipeline tracing bottleneck:", e);
           } finally {
             setIsOpen(false);
             router.push("/success");
@@ -124,7 +124,7 @@ export default function CartDrawer() {
         prefill: {
           name: customerName,
           email: customerEmail,
-          contact: customerPhone,
+          contact: cleanPhone,
         },
         theme: {
           color: "#b45309",
@@ -152,14 +152,12 @@ export default function CartDrawer() {
             <button onClick={() => setIsOpen(false)} className="text-stone-400 hover:text-stone-600 text-sm font-medium">✕ Close</button>
           </div>
 
-          {/* Cart Items List Container Block */}
           <div className="flex-grow overflow-y-auto p-6 space-y-4">
             {cart.length === 0 ? (
               <p className="text-stone-400 text-sm font-light text-center py-12">Your shopping bag is empty.</p>
             ) : (
               <>
-                {/* Product rows mapping block */}
-                <div className="space-y-4 max-h-[40vh] overflow-y-auto border-b pb-4">
+                <div className="space-y-4 max-h-[35vh] overflow-y-auto border-b pb-4">
                   {cart.map((item: any) => (
                     <div key={item.id} className="flex items-center gap-4 pb-2">
                       <img src={item.image_url} alt={item.name} className="w-12 h-12 rounded object-cover border bg-stone-50" />
@@ -173,20 +171,37 @@ export default function CartDrawer() {
                   ))}
                 </div>
 
-                {/* Secure Customer Contact Capture Section Form */}
+                {/* Secure Contact Input Forms Layer */}
                 <form id="checkout-contact-form" onSubmit={handleRazorpayPayment} className="space-y-3 pt-2">
                   <h3 className="text-xs font-serif font-bold text-stone-900 uppercase tracking-wider mb-1">Delivery & Contact Fields</h3>
+                  
+                  {/* Inline Error UI Warning Block */}
+                  {validationError && (
+                    <div className="p-3 text-[11px] font-medium bg-rose-50 border border-rose-100 text-rose-800 rounded">
+                      ⚠️ {validationError}
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-[10px] uppercase tracking-wide text-stone-500 mb-1">Full Name</label>
                     <input type="text" required value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="e.g., Pushkal Singh" className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700" />
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-wide text-stone-500 mb-1">Email Address</label>
-                    <input type="email" required value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="e.g., pushkal@example.com" className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700" />
+                    <input type="email" required value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="e.g., pushkalsingh209@gmail.com" className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700" />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 mb-1">Mobile / WhatsApp Number</label>
-                    <input type="tel" required value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="e.g., +91 99999 99999" className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700" />
+                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 mb-1">WhatsApp / Mobile Number</label>
+                    <input 
+                      type="tel" 
+                      required 
+                      maxLength={10}
+                      value={customerPhone} 
+                      onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ""))} // Auto-strip non-digits instantly
+                      placeholder="e.g., 9999999999" 
+                      className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700 font-mono tracking-wide" 
+                    />
+                    <span className="text-[9px] text-stone-400 block mt-1">Enter 10-digit number without country code or spaces.</span>
                   </div>
                 </form>
               </>
