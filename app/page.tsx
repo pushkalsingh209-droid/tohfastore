@@ -51,6 +51,28 @@ export default function StorefrontHome() {
             <a href="/" className="hover:text-amber-700 transition font-semibold text-stone-900">Storefront Home</a>
             <a href="/about" className="hover:text-amber-700 transition">About Our Heritage</a>
           </div>
+
+          <div>
+            <h3 className="text-xs uppercase tracking-wider text-stone-400 font-bold mb-1">Electronic Mail Service</h3>
+            <a href="mailto:pushkalsingh209@gmail.com" className="text-amber-800 font-mono font-medium hover:underline text-sm">
+              pushkalsingh209@gmail.com
+            </a>
+          </div>
+
+          <div>
+            <h3 className="text-xs uppercase tracking-wider text-stone-400 font-bold mb-1">Mobile / WhatsApp Communication Node</h3>
+            <p className="text-stone-900 font-medium font-mono text-sm">+91 6302672351</p>
+            <p>
+            <a 
+              href="https://wa.me/916302672351" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs uppercase tracking-wider font-semibold px-6 py-3.5 rounded transition shadow-sm text-center"
+            >
+              Chat on WhatsApp
+            </a>
+            </p>
+          </div>
         </nav>
 
         {/* Hero Banner */}
