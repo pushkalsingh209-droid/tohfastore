@@ -79,7 +79,7 @@ export default function CartDrawer() {
       }
 
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_placeholder_build_key", 
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_SxwQ97wTcfG6mL", 
         amount: data.amount,
         currency: "INR",
         name: "TOHFA",
