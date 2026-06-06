@@ -2,9 +2,17 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 
-// Safely pull the keys, leaving a safe dummy fallback ONLY to satisfy the strict build compiler
-const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-const keySecret = process.env.RAZORPAY_KEY_SECRET;
+// Interface definition to explicitly type incoming shopping bag artifacts
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+// 1. Safe Build Fallback architecture to satisfy the isolated Vercel static compiler
+const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_build_placeholder";
+const keySecret = process.env.RAZORPAY_KEY_SECRET || "build_secret_placeholder";
 
 const razorpay = new Razorpay({
   key_id: keyId,
@@ -13,27 +21,38 @@ const razorpay = new Razorpay({
 
 export async function POST(req: Request) {
   try {
-    // Failsafe runtime sanity check to ensure Vercel is reading the keys on the server side
-    if (!keyId || !keySecret) {
-      console.error("CRITICAL: Production Environment Keys are missing from Vercel!");
+    // 2. Strict Runtime Security Gate: Blocks invalid configurations if keys drop out
+    if (
+      !process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 
+      !process.env.RAZORPAY_KEY_SECRET ||
+      process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID === "rzp_test_build_placeholder"
+    ) {
+      console.error("CRITICAL RUNTIME ERROR: Server is missing valid Razorpay configuration keys inside Vercel Dashboard!");
       return NextResponse.json(
-        { error: "Server Configuration Error: Missing API credentials on the host." }, 
+        { error: "Payment gateway misconfiguration. Please contact store administration." },
         { status: 500 }
       );
     }
 
+    // Parse payload fields securely out of the client request stream
     const { items, totalAmount } = await req.json();
-    const rawAmount = parseFloat(totalAmount);
 
-    const simplifiedItems = items.map((i: any) => ({
+    // Sanitize mathematical total parameters to guard against corrupt zero inputs
+    const rawAmount = parseFloat(totalAmount);
+    if (isNaN(rawAmount) || rawAmount <= 0) {
+      return NextResponse.json({ error: "Invalid total transactional calculation." }, { status: 400 });
+    }
+
+    // 3. Robust Type-Safe Item Map Transformation Layer
+    const simplifiedItems = items.map((i: CartItem) => ({
       id: i.id,
       name: i.name,
-      price: i.price,
       quantity: i.quantity
     }));
 
+    // Compile formal option configurations to fulfill standard Razorpay API schemas
     const options = {
-      amount: Math.round(rawAmount * 100), // Enforce precise integer type in Paise
+      amount: Math.round(rawAmount * 100), // Enforce precise integer type in Paise (INR x 100)
       currency: "INR",
       receipt: `receipt_tohfa_${Date.now()}`,
       notes: {
@@ -41,10 +60,21 @@ export async function POST(req: Request) {
       }
     };
 
+    // Instantiate unique order metadata node block via the secure remote gateway
     const order = await razorpay.orders.create(options);
+    
+    // Pass structural tokens back to client interceptor drawers cleanly
     return NextResponse.json({ orderId: order.id, amount: order.amount });
-  } catch (err: any) {
-    console.error("Razorpay order generation crash exception:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+
+  } catch (err: unknown) {
+    // 4. Type Narrowing Guard: Resolves the 'unknown catch variable' validation block safely
+    const errorMessage = err instanceof Error ? err.message : "An unhandled execution crash occurred";
+    
+    console.error("Razorpay order generation process exception:", err);
+    
+    return NextResponse.json(
+      { error: errorMessage }, 
+      { status: 500 }
+    );
   }
 }
