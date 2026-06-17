@@ -72,7 +72,7 @@ export async function POST(req: Request) {
 
       const mailOptions = {
         from: `"Tohfa Storefront Alerts" <${process.env.SMTP_USER}>`,
-        to: process.env.NOTIFICATION_EMAIL || "pushkalsingh209@gmail.com",
+        to: process.env.NOTIFICATION_EMAIL || "@gmail.com",
         subject: `🚨 New Luxury Brass Order Received! | ₹${totalAmount.toLocaleString("en-IN")}`,
         html: `
           <div style="font-family: serif; color: #292524; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e7e5e4; border-radius: 8px; background-color: #faf9f6;">

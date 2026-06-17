@@ -35,10 +35,10 @@ export default function ContactUsPage() {
                 Email Support
               </span>
               <a 
-                href="mailto:pushkalsingh209@gmail.com" 
+                href="mailto:contact@tohfaonline.com" 
                 className="text-amber-800 font-mono text-xs md:text-sm font-medium hover:underline break-all"
               >
-                pushkalsingh209@gmail.com
+                contact@tohfaonline.com
               </a>
             </div>
 
@@ -94,10 +94,10 @@ export default function ContactUsPage() {
                 Electronic Mail Service
               </h3>
               <a 
-                href="mailto:pushkalsingh209@gmail.com" 
+                href="mailto:contact@tohfaonline.com" 
                 className="text-amber-800 font-mono font-medium hover:underline text-xs sm:text-sm break-all"
               >
-                pushkalsingh209@gmail.com
+                contact@tohfaonline.com
               </a>
             </div>
 

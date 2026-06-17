@@ -44,10 +44,10 @@ export default function CheckoutSuccessPage() {
                 Email Support
               </span>
               <a 
-                href="mailto:pushkalsingh209@gmail.com" 
+                href="mailto:contact@tohfaonline.com" 
                 className="text-amber-800 font-mono text-xs md:text-sm font-medium hover:underline break-all"
               >
-                pushkalsingh209@gmail.com
+                contact@tohfaonline.com
               </a>
             </div>
 
@@ -133,10 +133,10 @@ export default function CheckoutSuccessPage() {
                 Electronic Mail Service
               </h3>
               <a 
-                href="mailto:pushkalsingh209@gmail.com" 
+                href="mailto:contact@tohfaonline.com" 
                 className="inline-block text-amber-800 font-mono font-medium hover:underline text-xs sm:text-sm break-all px-2"
               >
-                pushkalsingh209@gmail.com
+                contact@tohfaonline.com
               </a>
             </div>
 

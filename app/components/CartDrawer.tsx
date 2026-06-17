@@ -188,7 +188,7 @@ export default function CartDrawer() {
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-wide text-stone-500 mb-1">Email Address</label>
-                    <input type="email" required value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="e.g., pushkalsingh209@gmail.com" className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700" />
+                    <input type="email" required value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="e.g., contact@tohfaonline.com" className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700" />
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-wide text-stone-500 mb-1">WhatsApp / Mobile Number</label>

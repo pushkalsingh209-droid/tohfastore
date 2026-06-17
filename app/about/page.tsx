@@ -80,11 +80,11 @@ export default function AboutUsPage() {
               
               {/* Explicit Email Placement Link Block */}
               <a 
-                href="mailto:pushkalsingh209@gmail.com"
+                href="mailto:contact@tohfaonline.com"
                 className="w-full sm:w-auto bg-stone-900 hover:bg-stone-800 text-stone-200 text-xs font-mono px-5 py-3.5 rounded border border-stone-800 transition shadow-sm text-center tracking-wide flex items-center justify-center gap-1.5 break-all active:scale-[0.99]"
               >
                 <span className="uppercase font-sans font-semibold tracking-wider text-[10px] text-stone-400">Email:</span> 
-                pushkalsingh209@gmail.com
+                contact@tohfaonline.com
               </a>
             </div>
           </div>
