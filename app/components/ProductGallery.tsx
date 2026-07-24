@@ -7,7 +7,7 @@ interface ProductGalleryProps {
   productName: string;
   active: boolean;
   zoomable?: boolean;
-  size?: "card" | "detail";
+  size?: "card" | "detail" | "frame";
 }
 
 const SLIDE_INTERVAL_MS = 2600;
@@ -120,7 +120,7 @@ export default function ProductGallery({
   }, [phase, active, hasMultiple]);
 
   const heightClass =
-    size === "detail" ? "h-80 sm:h-96 md:h-[28rem]" : "h-72";
+    size === "detail" ? "h-80 sm:h-96 md:h-[28rem]" : size === "frame" ? "h-full" : "h-72";
 
   function handleMouseEnter() {
     if (zoomable) setIsZooming(true);
@@ -170,11 +170,11 @@ export default function ProductGallery({
 
   if (gallery.length === 0) {
     return (
-      <div className={`w-full ${heightClass} bg-stone-100 relative overflow-hidden`}>
+      <div className={`w-full ${heightClass} bg-white relative overflow-hidden`}>
         <img
           src="https://images.unsplash.com/photo-1614362705324-8da11fd16754?auto=format&fit=crop&w=500&q=80"
           alt={productName}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
         />
       </div>
     );
@@ -207,16 +207,16 @@ export default function ProductGallery({
     const backIndex = (currentIndex + 1) % gallery.length;
     return (
       <div
-        className={`w-full ${heightClass} bg-stone-100 relative overflow-hidden flip-perspective`}
+        className={`w-full ${heightClass} bg-white relative overflow-hidden flip-perspective`}
         {...zoomHandlers}
       >
         <div className="gallery-zoom-image w-full h-full" style={zoomWrapperStyle}>
           <div className={`flip-card-inner ${isFlipped ? "is-flipped" : ""}`}>
             <div className="flip-face">
-              <img src={gallery[currentIndex]} alt={productName} className="w-full h-full object-cover" />
+              <img src={gallery[currentIndex]} alt={productName} className="w-full h-full object-contain" />
             </div>
             <div className="flip-face flip-face-back">
-              <img src={gallery[backIndex]} alt={productName} className="w-full h-full object-cover" />
+              <img src={gallery[backIndex]} alt={productName} className="w-full h-full object-contain" />
             </div>
           </div>
         </div>
@@ -228,7 +228,7 @@ export default function ProductGallery({
   const incomingIndex = (currentIndex + 1) % gallery.length;
   return (
     <div
-      className={`w-full ${heightClass} bg-stone-100 relative overflow-hidden`}
+      className={`w-full ${heightClass} bg-white relative overflow-hidden`}
       {...zoomHandlers}
     >
       <div className="gallery-zoom-image w-full h-full" style={zoomWrapperStyle}>

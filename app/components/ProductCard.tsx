@@ -6,6 +6,7 @@ import { useCart } from "@/app/context/CartContext";
 import ProductGallery from "@/app/components/ProductGallery";
 import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink } from "@/app/utils/whatsapp";
+import TempleCardFrame from "@/app/components/TempleCardFrame";
 
 const DOUBLE_TAP_WINDOW_MS = 350;
 
@@ -49,7 +50,8 @@ export default function ProductCard({ product }: { product: any }) {
   }
 
   return (
-    <div className="bg-white border border-stone-200 rounded-lg overflow-hidden group shadow-sm hover:shadow-md transition duration-300">
+    <TempleCardFrame>
+    <div className="bg-white rounded-lg overflow-hidden group shadow-sm hover:shadow-md transition duration-300">
       <Link
         href={`/product/${product.id}`}
         className="block relative touch-manipulation"
@@ -116,5 +118,6 @@ export default function ProductCard({ product }: { product: any }) {
         </Link>
       </div>
     </div>
+    </TempleCardFrame>
   );
 }
