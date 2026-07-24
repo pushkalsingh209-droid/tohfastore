@@ -41,7 +41,7 @@ export default function StorefrontHome() {
       {/* MAIN LAYOUT WRAPPER CONTROLLER NODE */}
       <div>
         {/* BRAND SUB-HEADER NAVIGATION BAR */}
-       <nav className="bg-white border-b border-stone-200 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-50">
+       <nav className="bg-white border-b border-stone-200 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-30">
   <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     
     {/* LEFT SIDE: BRAND LOGO & CORE ROUTE LINKS */}
