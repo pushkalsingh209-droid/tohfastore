@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { useCart } from "@/app/context/CartContext";
+import ProductCard from "@/app/components/ProductCard";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gxlervcazzddqcoagewy.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_yfpUfp0RTaHs6nL3VEcnZQ_H_u-KA7C";
@@ -12,7 +12,6 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export default function StorefrontHome() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { addToCart } = useCart();
 
   useEffect(() => {
     async function loadCatalog() {
@@ -146,39 +145,7 @@ export default function StorefrontHome() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {products.map((product) => (
-                <div key={product.id} className="bg-white border border-stone-200 rounded-lg overflow-hidden group shadow-sm hover:shadow-md transition duration-300">
-                  <div className="h-72 w-full bg-stone-100 relative overflow-hidden">
-                    <img 
-                      src={product.image_url || "https://images.unsplash.com/photo-1614362705324-8da11fd16754?auto=format&fit=crop&w=500&q=80"} 
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                    />
-                  </div>
-                  <div className="p-6">
-                    <h3 className="font-serif text-lg text-stone-900 mb-1 group-hover:text-amber-700 transition">
-                      {product.name}
-                    </h3>
-                    <p className="text-stone-500 text-xs line-clamp-2 mb-4 font-light">
-                      {product.description}
-                    </p>
-                    <div className="flex items-center justify-between pt-3 border-t border-stone-100">
-                      <div className="flex flex-col">
-                        <span className="text-amber-700 font-bold font-mono text-lg">
-                          ₹{Number(product.price).toLocaleString("en-IN")}
-                        </span>
-                        <span className="text-[10px] text-stone-400 uppercase font-medium">
-                          Stock: {product.inventory} units
-                        </span>
-                      </div>
-                      <button 
-                        onClick={() => addToCart(product)}
-                        className="bg-stone-900 hover:bg-amber-700 text-white text-xs uppercase tracking-wider px-5 py-2.5 rounded font-medium transition duration-200 shadow-sm active:scale-95"
-                      >
-                        Add To Cart
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           )}

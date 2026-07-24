@@ -18,7 +18,8 @@ export default function AdminDashboard() {
     price: "",
     description: "",
     imageUrl: "",
-    inventory: "5"
+    inventory: "5",
+    additionalImages: [] as string[]
   });
   
   const [status, setStatus] = useState("");
@@ -54,42 +55,57 @@ export default function AdminDashboard() {
     setStatus(editingProductId ? "Updating brass item records..." : "Publishing item to Supabase storage...");
     setIsSubmitting(true);
 
+    const basePayload = {
+      name: formData.name,
+      price: parseFloat(formData.price),
+      description: formData.description,
+      image_url: formData.imageUrl,
+      inventory: parseInt(formData.inventory),
+    };
+    const galleryImages = formData.additionalImages.map((url) => url.trim()).filter(Boolean);
+    const isMissingImagesColumn = (error: any) =>
+      error?.code === "42703" || /column .*images.* does not exist/i.test(error?.message || "");
+
     try {
+      let gallerySaved = true;
+
       if (editingProductId) {
         // ACTION A: Update Existing Product Data Row
-        const { error } = await supabase
+        let { error } = await supabase
           .from("products")
-          .update({
-            name: formData.name,
-            price: parseFloat(formData.price),
-            description: formData.description,
-            image_url: formData.imageUrl,
-            inventory: parseInt(formData.inventory),
-          })
+          .update({ ...basePayload, images: galleryImages })
           .eq("id", editingProductId);
 
+        if (error && isMissingImagesColumn(error)) {
+          gallerySaved = false;
+          ({ error } = await supabase.from("products").update(basePayload).eq("id", editingProductId));
+        }
+
         if (error) throw error;
-        setStatus("Success! Your modifications have been updated live across the storefront.");
+        setStatus(
+          gallerySaved
+            ? "Success! Your modifications have been updated live across the storefront."
+            : "Saved without gallery photos — the \"images\" column doesn't exist yet in Supabase. Run the migration, then re-save to add extra photos."
+        );
         setEditingProductId(null);
       } else {
         // ACTION B: Create Brand New Row Entry
-        const { error } = await supabase
-          .from("products")
-          .insert([
-            {
-              name: formData.name,
-              price: parseFloat(formData.price),
-              description: formData.description,
-              image_url: formData.imageUrl,
-              inventory: parseInt(formData.inventory),
-            }
-          ]);
+        let { error } = await supabase.from("products").insert([{ ...basePayload, images: galleryImages }]);
+
+        if (error && isMissingImagesColumn(error)) {
+          gallerySaved = false;
+          ({ error } = await supabase.from("products").insert([basePayload]));
+        }
 
         if (error) throw error;
-        setStatus("Success! The premium brass product is live on your storefront catalog.");
+        setStatus(
+          gallerySaved
+            ? "Success! The premium brass product is live on your storefront catalog."
+            : "Saved without gallery photos — the \"images\" column doesn't exist yet in Supabase. Run the migration, then re-save to add extra photos."
+        );
       }
 
-      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5" });
+      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", additionalImages: [] });
       fetchData(); // Sync live view structures
     } catch (err: any) {
       setStatus(`Database Exception: ${err.message || "Pipeline connection failed."}`);
@@ -106,9 +122,27 @@ export default function AdminDashboard() {
       price: product.price.toString(),
       description: product.description,
       imageUrl: product.image_url,
-      inventory: product.inventory.toString()
+      inventory: product.inventory.toString(),
+      additionalImages: Array.isArray(product.images) ? product.images : []
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Repeatable additional-image-URL row helpers
+  const handleAddImageRow = () => {
+    setFormData(prev => ({ ...prev, additionalImages: [...prev.additionalImages, ""] }));
+  };
+  const handleImageRowChange = (index: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      additionalImages: prev.additionalImages.map((v, i) => (i === index ? value : v))
+    }));
+  };
+  const handleRemoveImageRow = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      additionalImages: prev.additionalImages.filter((_, i) => i !== index)
+    }));
   };
 
   // Fast inline adjust function for stock adjustments (+ / - keys)
@@ -131,7 +165,7 @@ export default function AdminDashboard() {
 
   const handleCancelEdit = () => {
     setEditingProductId(null);
-    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5" });
+    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", additionalImages: [] });
     setStatus("");
   };
 
@@ -186,8 +220,44 @@ export default function AdminDashboard() {
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">Public Image Link</label>
+              <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">Public Image Link (Cover Photo)</label>
               <input type="url" required disabled={isSubmitting} placeholder="https://gxlervcazzddqcoagewy.supabase.co/storage/v1/object/public/..." value={formData.imageUrl} onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+                Additional Gallery Photos <span className="text-stone-400 font-normal normal-case">(optional — shown in the flip/slideshow preview)</span>
+              </label>
+              <div className="space-y-2">
+                {formData.additionalImages.map((url, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <input
+                      type="url"
+                      disabled={isSubmitting}
+                      placeholder="https://... additional product photo"
+                      value={url}
+                      onChange={(e) => handleImageRowChange(idx, e.target.value)}
+                      className="flex-grow px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+                    />
+                    <button
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={() => handleRemoveImageRow(idx)}
+                      className="px-3 rounded border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 text-xs font-semibold uppercase transition"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleAddImageRow}
+                className="mt-2 px-4 py-2 text-xs uppercase tracking-wider font-semibold border border-amber-300 text-amber-700 rounded hover:bg-amber-50 transition"
+              >
+                + Add Image
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

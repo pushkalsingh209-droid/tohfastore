@@ -61,6 +61,30 @@ export async function POST(req: Request) {
 
       if (dbError) throw new Error(`Supabase Exception: ${dbError.message}`);
 
+      // 1b. Deduct purchased quantities from live stock so sold-out items stop
+      // accepting further orders. Best-effort: a failure here must not block
+      // order confirmation or the notification email below.
+      try {
+        const itemIds = orderItems.map((item: any) => item.id).filter(Boolean);
+        if (itemIds.length > 0) {
+          const { data: currentProducts, error: stockFetchError } = await supabase
+            .from("products")
+            .select("id, inventory")
+            .in("id", itemIds);
+
+          if (stockFetchError) throw stockFetchError;
+
+          for (const item of orderItems) {
+            const current = currentProducts?.find((p: any) => p.id === item.id);
+            if (!current) continue;
+            const newInventory = Math.max(0, Number(current.inventory) - Number(item.quantity || 0));
+            await supabase.from("products").update({ inventory: newInventory }).eq("id", item.id);
+          }
+        }
+      } catch (stockError) {
+        console.error("Stock deduction after sale failed:", stockError);
+      }
+
       // 2. Format HTML Notification Email Alert Rows
       const itemRowsHtml = orderItems.map((item: any) => `
         <tr>

@@ -20,7 +20,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Returns true if the item was added, false if it's out of stock or the
+  // cart already holds as many units as are available.
   const addToCart = (product: any) => {
+    const existing = cart.find((item) => item.id === product.id);
+    const currentQty = existing ? existing.quantity : 0;
+    const maxStock = Number(product.inventory) || 0;
+
+    if (maxStock <= 0 || currentQty >= maxStock) {
+      return false;
+    }
+
     setCart((prev) => {
       const exists = prev.find((item) => item.id === product.id);
       let updated;
@@ -35,6 +45,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return updated;
     });
     setIsOpen(true); // Automatically open sliding panel view drawer layout on add
+    return true;
   };
 
   const removeFromCart = (id: string) => {
