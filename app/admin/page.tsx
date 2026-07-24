@@ -63,8 +63,14 @@ export default function AdminDashboard() {
       inventory: parseInt(formData.inventory),
     };
     const galleryImages = formData.additionalImages.map((url) => url.trim()).filter(Boolean);
-    const isMissingImagesColumn = (error: any) =>
-      error?.code === "42703" || /column .*images.* does not exist/i.test(error?.message || "");
+    const isMissingImagesColumn = (error: any) => {
+      const msg = error?.message || "";
+      return (
+        error?.code === "42703" || // raw Postgres: undefined column
+        error?.code === "PGRST204" || // PostgREST: column missing from schema cache
+        (/images/i.test(msg) && /(schema cache|does not exist|could not find)/i.test(msg))
+      );
+    };
 
     try {
       let gallerySaved = true;
