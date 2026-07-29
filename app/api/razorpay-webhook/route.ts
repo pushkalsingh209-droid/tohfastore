@@ -1,19 +1,10 @@
 // app/api/razorpay-webhook/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import nodemailer from "nodemailer";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gxlervcazzddqcoagewy.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_yfpUfp0RTaHs6nL3VEcnZQ_H_u-KA7C";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
 
 export async function POST(req: Request) {
   try {
@@ -63,7 +54,7 @@ export async function POST(req: Request) {
 
       // 1b. Deduct purchased quantities from live stock so sold-out items stop
       // accepting further orders. Best-effort: a failure here must not block
-      // order confirmation or the notification email below.
+      // order confirmation or the WhatsApp alert below.
       try {
         const itemIds = orderItems.map((item: any) => item.id).filter(Boolean);
         if (itemIds.length > 0) {
@@ -85,50 +76,67 @@ export async function POST(req: Request) {
         console.error("Stock deduction after sale failed:", stockError);
       }
 
-      // 2. Format HTML Notification Email Alert Rows
-      const itemRowsHtml = orderItems.map((item: any) => `
-        <tr>
-          <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.name}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price.toLocaleString("en-IN")}</td>
-        </tr>
-      `).join("");
-
-      const mailOptions = {
-        from: `"Tohfa Storefront Alerts" <${process.env.SMTP_USER}>`,
-        to: process.env.NOTIFICATION_EMAIL || "@gmail.com",
-        subject: `🚨 New Luxury Brass Order Received! | ₹${totalAmount.toLocaleString("en-IN")}`,
-        html: `
-          <div style="font-family: serif; color: #292524; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e7e5e4; border-radius: 8px; background-color: #faf9f6;">
-            <h2 style="color: #b45309; border-bottom: 2px solid #b45309; padding-bottom: 10px;">Tohfa Order Dispatch Request</h2>
-            <p>A new purchase has cleared successfully via the Razorpay Gateway network layer.</p>
-            <h3 style="color: #444;">Customer Overview</h3>
-            <p style="font-size: 14px; margin: 4px 0;"><strong>Customer Name:</strong> ${customerName}</p>
-            <p style="font-size: 14px; margin: 4px 0;"><strong>Email Address:</strong> ${customerEmail}</p>
-            <p style="font-size: 14px; margin: 4px 0;"><strong>WhatsApp/Mobile:</strong> ${customerPhone}</p>
-            <p style="font-size: 14px; margin: 4px 0;"><strong>Transaction Token:</strong> ${paymentId}</p>
-            <h3 style="color: #444; margin-top: 20px;">Artifacts Inventory Breakdown</h3>
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-              <thead>
-                <tr style="background-color: #f5f5f4; text-align: left;">
-                  <th style="padding: 8px; border-bottom: 2px solid #d6d3d1;">Item Title</th>
-                  <th style="padding: 8px; border-bottom: 2px solid #d6d3d1; text-align: center;">Qty</th>
-                  <th style="padding: 8px; border-bottom: 2px solid #d6d3d1; text-align: right;">Unit Valuation</th>
-                </tr>
-              </thead>
-              <tbody>${itemRowsHtml}</tbody>
-            </table>
-            <div style="margin-top: 25px; text-align: right; font-size: 16px; font-weight: bold; color: #b45309;">
-              Total Earnings Settled: ₹${totalAmount.toLocaleString("en-IN")}
-            </div>
-          </div>
-        `,
-      };
-
+      // 2. Best-effort WhatsApp alerts (Green API) -- one to the store's own
+      // WhatsApp number, one to the customer's WhatsApp number entered at
+      // checkout. Silently no-ops until GREEN_API_URL / GREEN_API_ID_INSTANCE
+      // / GREEN_API_TOKEN_INSTANCE are set, so a missing/failed send never
+      // blocks order confirmation. Note: the free Green API "Developer"
+      // instance only supports a handful of distinct chats per month, so
+      // customer-side delivery may stop working past that quota.
       try {
-        await transporter.sendMail(mailOptions);
-      } catch (e) {
-        console.error("Mail dispatch skip:", e);
+        const greenApiUrl = process.env.GREEN_API_URL;
+        const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
+        const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
+        const businessWhatsappNumber = process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351";
+
+        if (greenApiUrl && greenApiIdInstance && greenApiTokenInstance) {
+          const itemsSummary = orderItems
+            .map((item: any) => `${item.name} x${item.quantity}`)
+            .join(", ");
+
+          const businessMessage = [
+            "New Tohfa order received!",
+            `Order ID: ${orderId}`,
+            `Customer: ${customerName}`,
+            `Phone: ${customerPhone}`,
+            `Email: ${customerEmail}`,
+            `Amount: ₹${totalAmount.toLocaleString("en-IN")}`,
+            `Items: ${itemsSummary || "N/A"}`,
+          ].join("\n");
+
+          const customerMessage = [
+            `Hi ${customerName}, thank you for your Tohfa order!`,
+            `Order ID: ${orderId}`,
+            `Amount: ₹${totalAmount.toLocaleString("en-IN")}`,
+            `Items: ${itemsSummary || "N/A"}`,
+            "We'll reach out here on WhatsApp with delivery updates.",
+          ].join("\n");
+
+          const customerChatId = customerPhone.startsWith("91")
+            ? `${customerPhone}@c.us`
+            : `91${customerPhone}@c.us`;
+
+          const sendWhatsappMessage = async (chatId: string, message: string) => {
+            const res = await fetch(
+              `${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chatId, message }),
+              }
+            );
+            if (!res.ok) {
+              console.error("WhatsApp (Green API) send failed:", chatId, await res.text());
+            }
+          };
+
+          await Promise.all([
+            sendWhatsappMessage(`${businessWhatsappNumber}@c.us`, businessMessage),
+            sendWhatsappMessage(customerChatId, customerMessage),
+          ]);
+        }
+      } catch (waError) {
+        console.error("WhatsApp dispatch skip:", waError);
       }
     }
 

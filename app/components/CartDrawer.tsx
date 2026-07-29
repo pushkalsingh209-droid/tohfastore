@@ -174,7 +174,11 @@ export default function CartDrawer() {
                 {/* Secure Contact Input Forms Layer */}
                 <form id="checkout-contact-form" onSubmit={handleRazorpayPayment} className="space-y-3 pt-2">
                   <h3 className="text-xs font-serif font-bold text-stone-900 uppercase tracking-wider mb-1">Delivery & Contact Fields</h3>
-                  
+
+                  <div className="p-3 text-[11px] font-medium bg-amber-50 border border-amber-100 text-amber-900 rounded">
+                    📱 Order updates (confirmation, dispatch, delivery) are sent via WhatsApp only. Please enter a number that is active on WhatsApp.
+                  </div>
+
                   {/* Inline Error UI Warning Block */}
                   {validationError && (
                     <div className="p-3 text-[11px] font-medium bg-rose-50 border border-rose-100 text-rose-800 rounded">
@@ -191,17 +195,17 @@ export default function CartDrawer() {
                     <input type="email" required value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="e.g., contact@tohfaonline.com" className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700" />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 mb-1">WhatsApp / Mobile Number</label>
-                    <input 
-                      type="tel" 
-                      required 
+                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 mb-1">WhatsApp Number</label>
+                    <input
+                      type="tel"
+                      required
                       maxLength={10}
-                      value={customerPhone} 
+                      value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ""))} // Auto-strip non-digits instantly
-                      placeholder="e.g., 9999999999" 
-                      className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700 font-mono tracking-wide" 
+                      placeholder="e.g., 9999999999"
+                      className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700 font-mono tracking-wide"
                     />
-                    <span className="text-[9px] text-stone-400 block mt-1">Enter 10-digit number without country code or spaces.</span>
+                    <span className="text-[9px] text-stone-400 block mt-1">Enter your active WhatsApp number (10 digits, no country code or spaces) &mdash; this is where we'll send order updates.</span>
                   </div>
                 </form>
               </>

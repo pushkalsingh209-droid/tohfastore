@@ -109,6 +109,9 @@ export default function CheckoutSuccessPage() {
               <p>
                 Your payment via Razorpay has cleared successfully. Our regional Indian artisans are already packing your handcrafted premium brass artifacts for delivery.
               </p>
+              <p className="text-amber-800 font-medium">
+                📱 We'll send your order confirmation and delivery updates on WhatsApp only, to the number you entered at checkout.
+              </p>
             </div>
 
             {/* Return Call-To-Action Control Key */}
