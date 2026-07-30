@@ -1,5 +1,5 @@
 // app/page.tsx
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import CatalogSection from "@/app/components/CatalogSection";
 import PromoBanner from "@/app/components/PromoBanner";
 import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
@@ -10,10 +10,6 @@ import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
 export const revalidate = 0;
 
 const DEFAULT_PAGE_SIZE = 10;
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gxlervcazzddqcoagewy.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_yfpUfp0RTaHs6nL3VEcnZQ_H_u-KA7C";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Fetches only the products needed for the requested page, using Supabase's
 // range() so the catalog query stays cheap even as the store grows well

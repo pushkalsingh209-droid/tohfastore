@@ -1,7 +1,7 @@
 // app/product/[id]/page.tsx
 import { cache } from "react";
 import type { Metadata } from "next";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import ProductGallery from "@/app/components/ProductGallery";
 import AddToCartButton from "@/app/components/AddToCartButton";
 import ReviewForm from "@/app/components/ReviewForm";
@@ -12,10 +12,6 @@ import { getProductWhatsappLink } from "@/app/utils/whatsapp";
 // guarantee the previous client-side fetch gave), so this route can't be
 // statically frozen at build time.
 export const revalidate = 0;
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gxlervcazzddqcoagewy.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_yfpUfp0RTaHs6nL3VEcnZQ_H_u-KA7C";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Wrapped in React's cache() so generateMetadata and the page component
 // share one Supabase query per request instead of fetching the same

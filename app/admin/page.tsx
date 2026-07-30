@@ -1,15 +1,24 @@
 // app/admin/page.tsx
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { createClient } from "@supabase/supabase-js";
 import Image from "next/image";
 import { getAutocompleteMatches, getSuggestions } from "@/app/utils/searchProducts";
 import Pagination from "@/app/components/Pagination";
 
-// Initialize client browser connection architecture using your unique network parameters
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gxlervcazzddqcoagewy.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_yfpUfp0RTaHs6nL3VEcnZQ_H_u-KA7C";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// All reads/writes below go through /api/admin/* route handlers (protected
+// by middleware.ts's password gate) instead of talking to Supabase directly
+// from the browser. Those routes use the service-role key server-side, so
+// the anon key this page used to use can now be locked down with RLS
+// without breaking the admin panel.
+async function apiRequest(url: string, options?: RequestInit) {
+  const res = await fetch(url, {
+    ...options,
+    headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request to ${url} failed.`);
+  return data;
+}
 
 export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([]);
@@ -48,26 +57,21 @@ export default function AdminDashboard() {
   const [orderPage, setOrderPage] = useState(1);
   const [orderPageSize, setOrderPageSize] = useState(10);
 
-  // Load both inventory data and logged customer order transactions from
-  // Supabase on mount. The two queries are independent, so fetch them in
+  // Load inventory data, orders, reviews, and coupons from the protected
+  // admin API on mount. The four requests are independent, so fetch them in
   // parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [
-      { data: productData, error: productErr },
-      { data: orderData, error: orderErr },
-      { data: reviewData, error: reviewErr },
-      { data: couponData, error: couponErr },
-    ] = await Promise.all([
-      supabase.from("products").select("*").order("created_at", { ascending: false }),
-      supabase.from("orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("reviews").select("*, products(name)").order("created_at", { ascending: false }),
-      supabase.from("coupons").select("*").order("created_at", { ascending: false }),
+    const [productsRes, ordersRes, reviewsRes, couponsRes] = await Promise.allSettled([
+      apiRequest("/api/admin/products"),
+      apiRequest("/api/admin/orders"),
+      apiRequest("/api/admin/reviews"),
+      apiRequest("/api/admin/coupons"),
     ]);
-    if (!productErr && productData) setProducts(productData);
-    if (!orderErr && orderData) setOrders(orderData);
-    if (!reviewErr && reviewData) setReviews(reviewData);
-    if (!couponErr && couponData) setCoupons(couponData);
+    if (productsRes.status === "fulfilled") setProducts(productsRes.value.products);
+    if (ordersRes.status === "fulfilled") setOrders(ordersRes.value.orders);
+    if (reviewsRes.status === "fulfilled") setReviews(reviewsRes.value.reviews);
+    if (couponsRes.status === "fulfilled") setCoupons(couponsRes.value.coupons);
     setLoadingOrders(false);
   };
 
@@ -135,77 +139,36 @@ export default function AdminDashboard() {
     setStatus(editingProductId ? "Updating brass item records..." : "Publishing item to Supabase storage...");
     setIsSubmitting(true);
 
-    const basePayload = {
+    const payload = {
       name: formData.name,
-      price: parseFloat(formData.price),
+      price: formData.price,
       description: formData.description,
-      image_url: formData.imageUrl,
-      inventory: parseInt(formData.inventory),
-      category: formData.category.trim() || null,
-    };
-    const galleryImages = formData.additionalImages.map((url) => url.trim()).filter(Boolean);
-    const isMissingColumn = (error: any, columnHint: string) => {
-      const msg = error?.message || "";
-      return (
-        error?.code === "42703" || // raw Postgres: undefined column
-        error?.code === "PGRST204" || // PostgREST: column missing from schema cache
-        (new RegExp(columnHint, "i").test(msg) && /(schema cache|does not exist|could not find)/i.test(msg))
-      );
+      imageUrl: formData.imageUrl,
+      inventory: formData.inventory,
+      category: formData.category,
+      additionalImages: formData.additionalImages,
     };
 
     try {
-      let gallerySaved = true;
-      let categorySaved = true;
-      let payload: any = { ...basePayload, images: galleryImages };
+      const result = editingProductId
+        ? await apiRequest("/api/admin/products", {
+            method: "PATCH",
+            body: JSON.stringify({ id: editingProductId, ...payload }),
+          })
+        : await apiRequest("/api/admin/products", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
 
-      if (editingProductId) {
-        // ACTION A: Update Existing Product Data Row
-        let { error } = await supabase.from("products").update(payload).eq("id", editingProductId);
-
-        if (error && isMissingColumn(error, "category")) {
-          categorySaved = false;
-          const { category, ...rest } = payload;
-          payload = rest;
-          ({ error } = await supabase.from("products").update(payload).eq("id", editingProductId));
-        }
-        if (error && isMissingColumn(error, "images")) {
-          gallerySaved = false;
-          const { images, ...rest } = payload;
-          payload = rest;
-          ({ error } = await supabase.from("products").update(payload).eq("id", editingProductId));
-        }
-
-        if (error) throw error;
-        setStatus(
-          gallerySaved && categorySaved
+      const allSaved = result.gallerySaved && result.categorySaved;
+      setStatus(
+        allSaved
+          ? editingProductId
             ? "Success! Your modifications have been updated live across the storefront."
-            : "Saved, but some new fields (gallery photos/category) don't exist yet in Supabase. Run the migration, then re-save."
-        );
-        setEditingProductId(null);
-      } else {
-        // ACTION B: Create Brand New Row Entry
-        let { error } = await supabase.from("products").insert([payload]);
-
-        if (error && isMissingColumn(error, "category")) {
-          categorySaved = false;
-          const { category, ...rest } = payload;
-          payload = rest;
-          ({ error } = await supabase.from("products").insert([payload]));
-        }
-        if (error && isMissingColumn(error, "images")) {
-          gallerySaved = false;
-          const { images, ...rest } = payload;
-          payload = rest;
-          ({ error } = await supabase.from("products").insert([payload]));
-        }
-
-        if (error) throw error;
-        setStatus(
-          gallerySaved && categorySaved
-            ? "Success! The premium brass product is live on your storefront catalog."
-            : "Saved, but some new fields (gallery photos/category) don't exist yet in Supabase. Run the migration, then re-save."
-        );
-      }
+            : "Success! The premium brass product is live on your storefront catalog."
+          : "Saved, but some new fields (gallery photos/category) don't exist yet in Supabase. Run the migration, then re-save."
+      );
+      if (editingProductId) setEditingProductId(null);
 
       setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [] });
       fetchData(); // Sync live view structures
@@ -251,18 +214,17 @@ export default function AdminDashboard() {
   // Fast inline adjust function for stock adjustments (+ / - keys)
   const handleStockUpdate = async (productId: string, currentStock: number, adjustment: number) => {
     const newStock = Math.max(0, currentStock + adjustment);
-    const { error } = await supabase
-      .from("products")
-      .update({ inventory: newStock })
-      .eq("id", productId);
-
-    if (error) {
-      alert(`Could not change stock: ${error.message}`);
-    } else {
+    try {
+      await apiRequest("/api/admin/products", {
+        method: "PATCH",
+        body: JSON.stringify({ id: productId, inventory: newStock }),
+      });
       setProducts(products.map(p => p.id === productId ? { ...p, inventory: newStock } : p));
       if (editingProductId === productId) {
         setFormData(prev => ({ ...prev, inventory: newStock.toString() }));
       }
+    } catch (err: any) {
+      alert(`Could not change stock: ${err.message}`);
     }
   };
 
@@ -285,20 +247,16 @@ export default function AdminDashboard() {
   };
 
   const handleReviewModerate = async (reviewId: number, action: "approve" | "reject") => {
-    if (action === "approve") {
-      const { error } = await supabase.from("reviews").update({ approved: true }).eq("id", reviewId);
-      if (error) {
-        alert(`Could not approve review: ${error.message}`);
-        return;
+    try {
+      if (action === "approve") {
+        await apiRequest("/api/admin/reviews", { method: "PATCH", body: JSON.stringify({ id: reviewId }) });
+        setReviews(reviews.map((r) => (r.id === reviewId ? { ...r, approved: true } : r)));
+      } else {
+        await apiRequest("/api/admin/reviews", { method: "DELETE", body: JSON.stringify({ id: reviewId }) });
+        setReviews(reviews.filter((r) => r.id !== reviewId));
       }
-      setReviews(reviews.map((r) => (r.id === reviewId ? { ...r, approved: true } : r)));
-    } else {
-      const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
-      if (error) {
-        alert(`Could not reject review: ${error.message}`);
-        return;
-      }
-      setReviews(reviews.filter((r) => r.id !== reviewId));
+    } catch (err: any) {
+      alert(`Could not ${action} review: ${err.message}`);
     }
   };
 
@@ -312,64 +270,49 @@ export default function AdminDashboard() {
       return;
     }
 
-    let payload: any = {
-      code: couponForm.code.trim().toUpperCase(),
-      discount_type: couponForm.discountType,
-      discount_value: discountValue,
-      max_uses: couponForm.maxUses ? parseInt(couponForm.maxUses) : null,
-      expires_at: couponForm.expiresAt ? new Date(couponForm.expiresAt).toISOString() : null,
-      is_public: couponForm.isPublic,
-    };
+    try {
+      const result = await apiRequest("/api/admin/coupons", {
+        method: "POST",
+        body: JSON.stringify(couponForm),
+      });
 
-    let { data, error } = await supabase.from("coupons").insert([payload]).select();
-
-    let publicSaved = true;
-    if (error?.code === "PGRST204" || /is_public/i.test(error?.message || "")) {
-      publicSaved = false;
-      const { is_public, ...rest } = payload;
-      payload = rest;
-      ({ data, error } = await supabase.from("coupons").insert([payload]).select());
+      setCoupons([result.coupon, ...coupons]);
+      setCouponForm({ code: "", discountType: "flat", discountValue: "", maxUses: "", expiresAt: "", isPublic: false });
+      setCouponStatus(
+        result.publicSaved
+          ? "Coupon created successfully."
+          : "Coupon created, but the \"Show on site\" option needs the latest migration run first (run 0002_add_coupon_visibility.sql, then edit this coupon again)."
+      );
+    } catch (err: any) {
+      setCouponStatus(`Could not create coupon: ${err.message}`);
     }
-
-    if (error) {
-      setCouponStatus(`Could not create coupon: ${error.message}`);
-      return;
-    }
-
-    setCoupons([...(data || []), ...coupons]);
-    setCouponForm({ code: "", discountType: "flat", discountValue: "", maxUses: "", expiresAt: "", isPublic: false });
-    setCouponStatus(
-      publicSaved
-        ? "Coupon created successfully."
-        : "Coupon created, but the \"Show on site\" option needs the latest migration run first (run 0002_add_coupon_visibility.sql, then edit this coupon again)."
-    );
   };
 
   const handleToggleCoupon = async (couponId: number, active: boolean) => {
-    const { error } = await supabase.from("coupons").update({ active }).eq("id", couponId);
-    if (error) {
-      alert(`Could not update coupon: ${error.message}`);
-      return;
+    try {
+      await apiRequest("/api/admin/coupons", { method: "PATCH", body: JSON.stringify({ id: couponId, active }) });
+      setCoupons(coupons.map((c) => (c.id === couponId ? { ...c, active } : c)));
+    } catch (err: any) {
+      alert(`Could not update coupon: ${err.message}`);
     }
-    setCoupons(coupons.map((c) => (c.id === couponId ? { ...c, active } : c)));
   };
 
   const handleToggleCouponVisibility = async (couponId: number, isPublic: boolean) => {
-    const { error } = await supabase.from("coupons").update({ is_public: isPublic }).eq("id", couponId);
-    if (error) {
-      alert(`Could not update coupon visibility: ${error.message}`);
-      return;
+    try {
+      await apiRequest("/api/admin/coupons", { method: "PATCH", body: JSON.stringify({ id: couponId, is_public: isPublic }) });
+      setCoupons(coupons.map((c) => (c.id === couponId ? { ...c, is_public: isPublic } : c)));
+    } catch (err: any) {
+      alert(`Could not update coupon visibility: ${err.message}`);
     }
-    setCoupons(coupons.map((c) => (c.id === couponId ? { ...c, is_public: isPublic } : c)));
   };
 
   const handleDeleteCoupon = async (couponId: number) => {
-    const { error } = await supabase.from("coupons").delete().eq("id", couponId);
-    if (error) {
-      alert(`Could not delete coupon: ${error.message}`);
-      return;
+    try {
+      await apiRequest("/api/admin/coupons", { method: "DELETE", body: JSON.stringify({ id: couponId }) });
+      setCoupons(coupons.filter((c) => c.id !== couponId));
+    } catch (err: any) {
+      alert(`Could not delete coupon: ${err.message}`);
     }
-    setCoupons(coupons.filter((c) => c.id !== couponId));
   };
 
   const handleCancelEdit = () => {
