@@ -93,7 +93,7 @@ export default function RefundPolicy() {
               2. Returns & Replacements
             </h2>
             <p className="text-stone-600">
-              Since our premium heavy brass artifacts are handcrafted, returns are accepted within <span className="font-semibold text-stone-900">3 days of delivery</span> only if the product is received in a damaged, broken, or physically structurally deformed state due to transport logistics fault factors.
+              Since our premium lightweight brass artifacts are handcrafted, we do not accept returns once the product has been dispatched. All sales are final upon dispatch.
             </p>
           </div>
           

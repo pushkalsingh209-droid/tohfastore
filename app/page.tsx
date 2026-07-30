@@ -199,7 +199,7 @@ export default async function StorefrontHome({
               Elevate Spaces with Pure Statement Brass
             </h1>
             <p className="text-stone-300 text-base md:text-lg font-light max-w-xl mx-auto">
-              Discover premium corporate boxes, heritage home decor, and artifacts cast in pure heavy brass.
+              Discover premium corporate boxes, heritage home decor, and artifacts cast in pure lightweight brass.
             </p>
           </div>
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#d97706_1px,transparent_1px)] [background-size:16px_16px]"></div>

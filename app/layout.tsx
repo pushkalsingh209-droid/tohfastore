@@ -35,7 +35,7 @@ export default function RootLayout({
             <div className="max-w-7xl mx-auto px-6 text-center text-sm">
               <p className="font-serif text-amber-500 text-lg mb-2 tracking-wider">Tohfa Premium Handicrafts</p>
               <p className="text-stone-500 text-xs font-light max-w-md mx-auto mb-4">
-                Supplying premium heavy brassware statement designs, artifact boxes, and corporate luxury gifting models globally.
+                Supplying premium lightweight brassware statement designs, artifact boxes, and corporate luxury gifting models globally.
               </p>
               <p className="text-stone-600 text-[11px] uppercase tracking-wider font-light">
                 &copy; {new Date().getFullYear()} Luxury Brass Gift. All Rights Reserved.

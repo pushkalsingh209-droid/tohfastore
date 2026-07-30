@@ -23,7 +23,7 @@ export default function AboutUsPage() {
           {/* Editorial Story Elements */}
           <div className="bg-white border border-stone-200 rounded-lg p-5 sm:p-8 md:p-12 shadow-sm space-y-6 text-stone-700 font-sans text-xs sm:text-sm md:text-base leading-relaxed font-light">
             <p>
-              Welcome to <span className="font-medium text-stone-900 font-serif">TOHFA</span> (luxurybrassgift.com), where timeless Indian heritage meets master metal craftsmanship. We curate and engineer premium heavy brass art pieces, luxury corporate gift boxes, and statement interior decor artifacts designed to last for generations.
+              Welcome to <span className="font-medium text-stone-900 font-serif">TOHFA</span> (luxurybrassgift.com), where timeless Indian heritage meets master metal craftsmanship. We curate and engineer premium lightweight brass art pieces, luxury corporate gift boxes, and statement interior decor artifacts designed to last for generations.
             </p>
             <p>
               Every artifact in our collection is cast in pure brass by skilled regional artisans. By blending ancestral sand-casting mold blueprints with modern design revisions, we capture intricate hand-carved textures and heavy weight profiles that distinguish genuine statement art from mass-produced replicas.
@@ -42,7 +42,7 @@ export default function AboutUsPage() {
                   <tbody className="text-[11px] sm:text-xs md:text-sm font-light leading-normal">
                     <tr className="border-b border-stone-200">
                       <td className="p-3 font-medium text-stone-900 border-r border-stone-200 font-serif">Material Integrity</td>
-                      <td className="p-3 text-stone-600">We exclusively process pure heavy brass allocations, completely free from cheap pot metals or zinc structural dilutes.</td>
+                      <td className="p-3 text-stone-600">We exclusively process pure lightweight brass allocations, completely free from cheap pot metals or zinc structural dilutes.</td>
                     </tr>
                     <tr className="border-b border-stone-200">
                       <td className="p-3 font-medium text-stone-900 border-r border-stone-200 font-serif">Artisan Support</td>
