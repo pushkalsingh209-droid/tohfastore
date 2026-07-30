@@ -1,6 +1,5 @@
 // app/components/CatalogFilters.tsx
 "use client";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest First" },
@@ -12,30 +11,13 @@ export default function CatalogFilters({
   categories,
   category,
   sort,
+  onFilterChange,
 }: {
   categories: string[];
   category: string;
   sort: string;
+  onFilterChange: (next: { category?: string; sort?: string }) => void;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  function updateParams(next: { category?: string; sort?: string }) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (next.category !== undefined) {
-      if (next.category) params.set("category", next.category);
-      else params.delete("category");
-    }
-    if (next.sort !== undefined) {
-      if (next.sort && next.sort !== "newest") params.set("sort", next.sort);
-      else params.delete("sort");
-    }
-    params.set("page", "1");
-    document.getElementById("signature-collection")?.scrollIntoView({ behavior: "auto", block: "start" });
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }
-
   if (categories.length === 0) {
     // No categorized products yet -- only offer sorting.
     return (
@@ -43,7 +25,7 @@ export default function CatalogFilters({
         <span>Sort</span>
         <select
           value={sort}
-          onChange={(e) => updateParams({ sort: e.target.value })}
+          onChange={(e) => onFilterChange({ sort: e.target.value })}
           className="border border-stone-200 dark:border-stone-700 rounded px-2 py-1.5 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono focus:outline-none focus:border-amber-600"
         >
           {SORT_OPTIONS.map((opt) => (
@@ -62,7 +44,7 @@ export default function CatalogFilters({
         <span>Category</span>
         <select
           value={category}
-          onChange={(e) => updateParams({ category: e.target.value })}
+          onChange={(e) => onFilterChange({ category: e.target.value })}
           className="border border-stone-200 dark:border-stone-700 rounded px-2 py-1.5 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono focus:outline-none focus:border-amber-600"
         >
           <option value="">All</option>
@@ -77,7 +59,7 @@ export default function CatalogFilters({
         <span>Sort</span>
         <select
           value={sort}
-          onChange={(e) => updateParams({ sort: e.target.value })}
+          onChange={(e) => onFilterChange({ sort: e.target.value })}
           className="border border-stone-200 dark:border-stone-700 rounded px-2 py-1.5 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono focus:outline-none focus:border-amber-600"
         >
           {SORT_OPTIONS.map((opt) => (

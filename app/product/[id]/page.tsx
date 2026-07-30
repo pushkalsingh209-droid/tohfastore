@@ -71,6 +71,7 @@ export async function generateMetadata({
   return {
     title: `${product.name} | TOHFA`,
     description,
+    alternates: { canonical: `/product/${id}` },
     openGraph: {
       title: product.name,
       description,
@@ -94,8 +95,43 @@ export default async function ProductDetailPage({
   const averageRating =
     reviews.length > 0 ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length : 0;
 
+  const productJsonLd = product
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: product.name,
+        description: product.description || undefined,
+        image: product.image_url ? [product.image_url] : undefined,
+        sku: String(product.id),
+        category: product.category || undefined,
+        brand: { "@type": "Brand", name: "TOHFA" },
+        ...(reviews.length > 0
+          ? {
+              aggregateRating: {
+                "@type": "AggregateRating",
+                ratingValue: averageRating.toFixed(1),
+                reviewCount: reviews.length,
+              },
+            }
+          : {}),
+        offers: {
+          "@type": "Offer",
+          url: `https://luxurybrassgift.com/product/${product.id}`,
+          priceCurrency: "INR",
+          price: Number(product.price),
+          availability: outOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+        },
+      }
+    : null;
+
   return (
     <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+      {productJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        />
+      )}
       {/* PERSISTENT HEADER NAVIGATION MATRIX */}
       <nav className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

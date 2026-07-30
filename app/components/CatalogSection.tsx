@@ -22,6 +22,7 @@ export default function CatalogSection({
   categories,
   category,
   sort,
+  heading,
 }: {
   products: any[];
   count: number;
@@ -30,6 +31,7 @@ export default function CatalogSection({
   categories: string[];
   category: string;
   sort: string;
+  heading?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -52,6 +54,27 @@ export default function CatalogSection({
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(nextPage));
     params.set("pageSize", String(nextPageSize));
+    setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
+    document.getElementById("signature-collection")?.scrollIntoView({ behavior: "auto", block: "start" });
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  }
+
+  // Shared by the Category/Sort dropdowns so switching either one gets the
+  // exact same in-place loading overlay as paging through results, instead
+  // of a bare navigation with no feedback.
+  function handleFilterChange(next: { category?: string; sort?: string }) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next.category !== undefined) {
+      if (next.category) params.set("category", next.category);
+      else params.delete("category");
+    }
+    if (next.sort !== undefined) {
+      if (next.sort && next.sort !== "newest") params.set("sort", next.sort);
+      else params.delete("sort");
+    }
+    params.set("page", "1");
     setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
     document.getElementById("signature-collection")?.scrollIntoView({ behavior: "auto", block: "start" });
     startTransition(() => {
@@ -106,12 +129,12 @@ export default function CatalogSection({
         )}
 
         <h2 id="signature-collection" className="text-2xl font-serif text-stone-900 dark:text-stone-100 border-b border-stone-200 dark:border-stone-800 pb-4 mb-8 mt-6 scroll-mt-24">
-          Our Signature Collection
+          {heading || "Our Signature Collection"}
         </h2>
 
         {(categories.length > 0 || count > 0) && (
           <div className="mb-8">
-            <CatalogFilters categories={categories} category={category} sort={sort} />
+            <CatalogFilters categories={categories} category={category} sort={sort} onFilterChange={handleFilterChange} />
           </div>
         )}
 

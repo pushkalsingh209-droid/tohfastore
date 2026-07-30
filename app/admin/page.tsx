@@ -352,6 +352,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleToggleCategoryHome = async (categoryId: number, showOnHome: boolean) => {
+    try {
+      await apiRequest("/api/admin/categories", {
+        method: "PATCH",
+        body: JSON.stringify({ id: categoryId, show_on_home: showOnHome }),
+      });
+      setCategories(categories.map((c) => (c.id === categoryId ? { ...c, show_on_home: showOnHome } : c)));
+    } catch (err: any) {
+      alert(`Could not update category: ${err.message}`);
+    }
+  };
+
   const handleCancelEdit = () => {
     setEditingProductId(null);
     setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [] });
@@ -835,7 +847,7 @@ export default function AdminDashboard() {
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
             <h2 className="text-xl font-serif text-stone-900">Categories</h2>
-            <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form's dropdown and storefront filter.</p>
+            <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form's dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category's products appear in the homepage's default view (they're still reachable by selecting the category directly).</p>
           </div>
 
           <form onSubmit={handleCreateCategory} className="flex gap-3 mb-4">
@@ -856,19 +868,33 @@ export default function AdminDashboard() {
           {categories.length === 0 ? (
             <p className="text-stone-400 text-sm text-center py-6">No categories yet.</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="divide-y divide-stone-100">
               {categories.map((cat: any) => (
-                <span key={cat.id} className="flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full border border-stone-300 text-xs text-stone-700 bg-stone-50">
-                  {cat.name}
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteCategory(cat.id)}
-                    title="Delete category"
-                    className="w-4 h-4 flex items-center justify-center rounded-full text-rose-600 hover:bg-rose-100 leading-none"
-                  >
-                    &times;
-                  </button>
-                </span>
+                <div key={cat.id} className="py-3 flex items-center justify-between gap-3">
+                  <span className="text-sm text-stone-800 font-medium">{cat.name}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleCategoryHome(cat.id, !cat.show_on_home)}
+                      title="Toggle whether this category's products appear in the homepage's default (unfiltered) view"
+                      className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold border transition ${
+                        cat.show_on_home
+                          ? "border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                          : "border-stone-300 text-stone-500 hover:bg-stone-100"
+                      }`}
+                    >
+                      {cat.show_on_home ? "On Homepage" : "Hidden From Home"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCategory(cat.id)}
+                      title="Delete category"
+                      className="w-7 h-7 flex items-center justify-center rounded-full text-rose-600 hover:bg-rose-100 leading-none border border-rose-200"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           )}

@@ -1,10 +1,12 @@
 // app/page.tsx
+import type { Metadata } from "next";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import CatalogSection from "@/app/components/CatalogSection";
 import PromoBanner from "@/app/components/PromoBanner";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
 import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
 import PageNavLinks from "@/app/components/PageNavLinks";
+import { getCategoryContent } from "@/app/utils/categoryContent";
 
 // Storefront catalog must reflect live admin edits/stock on every view (same
 // guarantee the previous client-side fetch gave), so this route can't be
@@ -13,15 +15,32 @@ export const revalidate = 0;
 
 const DEFAULT_PAGE_SIZE = 10;
 
+// PostgREST's "in"/"not.in" list literal: comma-separated, with any value
+// containing a comma or quote wrapped in double quotes (quotes doubled).
+function notInListLiteral(values: string[]): string {
+  return `(${values.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")})`;
+}
+
 // Fetches only the products needed for the requested page, using Supabase's
 // range() so the catalog query stays cheap even as the store grows well
 // beyond a couple hundred products. The requested page is clamped against
 // the real total first, since asking Supabase for a range past the end of
 // the table returns an error rather than an empty page.
-async function getCatalogPage(requestedPage: number, pageSize: number, category: string, sort: string) {
+//
+// When no explicit category is chosen, products in a category the admin has
+// marked "hidden from home" are excluded -- they're still reachable the
+// moment a category is chosen (via the header menu or the filter dropdown).
+async function getCatalogPage(
+  requestedPage: number,
+  pageSize: number,
+  category: string,
+  sort: string,
+  hiddenCategories: string[]
+) {
   try {
     let countQuery = supabase.from("products").select("*", { count: "exact", head: true });
     if (category) countQuery = countQuery.eq("category", category);
+    else if (hiddenCategories.length > 0) countQuery = countQuery.not("category", "in", notInListLiteral(hiddenCategories));
     const { count, error: countError } = await countQuery;
 
     if (countError) {
@@ -39,6 +58,7 @@ async function getCatalogPage(requestedPage: number, pageSize: number, category:
 
     let query = supabase.from("products").select("*");
     if (category) query = query.eq("category", category);
+    else if (hiddenCategories.length > 0) query = query.not("category", "in", notInListLiteral(hiddenCategories));
     if (sort === "price_asc") query = query.order("price", { ascending: true });
     else if (sort === "price_desc") query = query.order("price", { ascending: false });
     else query = query.order("created_at", { ascending: false });
@@ -53,6 +73,19 @@ async function getCatalogPage(requestedPage: number, pageSize: number, category:
   } catch (err) {
     console.error("Failed to compile database records:", err);
     return { products: [], count: 0, page: 1 };
+  }
+}
+
+// Categories an admin has marked "hidden from home" -- their products drop
+// out of the homepage's default (unfiltered) view but stay reachable by
+// selecting the category directly.
+async function getHiddenCategoryNames(): Promise<string[]> {
+  try {
+    const { data, error } = await supabase.from("categories").select("name").eq("show_on_home", false);
+    if (error) return [];
+    return (data || []).map((row: any) => row.name).filter(Boolean);
+  } catch {
+    return [];
   }
 }
 
@@ -93,25 +126,76 @@ async function getPublicCoupons() {
   }
 }
 
+type HomeSearchParams = { page?: string; pageSize?: string; category?: string; sort?: string };
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<HomeSearchParams>;
+}): Promise<Metadata> {
+  const sp = await searchParams;
+  const category = sp.category || "";
+  const content = category ? getCategoryContent(category) : null;
+
+  if (!content) {
+    return {
+      title: "TOHFA | Luxury Brass Gifts & Handicrafts",
+      description:
+        "Exquisite handcrafted brass decor, vintage utensils, and premium corporate gifting items -- plus pocket temples, pan stands, board games, polyresin decor, and UV resin earrings.",
+      alternates: { canonical: "/" },
+    };
+  }
+
+  return {
+    title: content.metaTitle,
+    description: content.metaDescription,
+    alternates: { canonical: `/?category=${encodeURIComponent(category)}` },
+    openGraph: {
+      title: content.metaTitle,
+      description: content.metaDescription,
+    },
+  };
+}
+
 export default async function StorefrontHome({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; pageSize?: string; category?: string; sort?: string }>;
+  searchParams: Promise<HomeSearchParams>;
 }) {
   const sp = await searchParams;
   const pageSize = PAGE_SIZE_OPTIONS.includes(Number(sp.pageSize)) ? Number(sp.pageSize) : DEFAULT_PAGE_SIZE;
   const requestedPage = Math.max(1, Number(sp.page) || 1);
   const category = sp.category || "";
   const sort = ["price_asc", "price_desc"].includes(sp.sort || "") ? (sp.sort as string) : "newest";
+  const categoryContent = category ? getCategoryContent(category) : null;
 
-  const [{ products, count, page }, categories, publicCoupons] = await Promise.all([
-    getCatalogPage(requestedPage, pageSize, category, sort),
+  const [hiddenCategories, categories, publicCoupons] = await Promise.all([
+    getHiddenCategoryNames(),
     getCategories(),
     getPublicCoupons(),
   ]);
+  const { products, count, page } = await getCatalogPage(requestedPage, pageSize, category, sort, hiddenCategories);
+
+  const itemListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: categoryContent ? categoryContent.heading : "TOHFA Signature Collection",
+    itemListElement: products.map((product: any, index: number) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: `https://luxurybrassgift.com/product/${product.id}`,
+      name: product.name,
+    })),
+  };
 
   return (
     <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+      {/* Structured data so search engines can read the current listing as a
+          proper product list, not just a page of text/images. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+      />
       <PromoBanner coupons={publicCoupons} />
 
       {/* MAIN LAYOUT WRAPPER CONTROLLER NODE */}
@@ -177,17 +261,21 @@ export default async function StorefrontHome({
   </div>
 </nav>
 
-        {/* Hero Banner */}
+        {/* Hero Banner -- swaps to category-specific copy when a category is
+            active, so each category's URL has its own unique H1/intro
+            instead of the generic site pitch (better for SEO and clarity). */}
         <section className="bg-gradient-to-r from-stone-900 via-stone-800 to-amber-950 text-white py-24 px-6 text-center relative overflow-hidden">
           <div className="max-w-3xl mx-auto relative z-10">
             <span className="text-amber-400 uppercase tracking-[0.3em] text-xs font-semibold block mb-3">
-              Timeless Indian Craftsmanship
+              {categoryContent ? categoryContent.tagline : "Timeless Indian Craftsmanship"}
             </span>
             <h1 className="text-4xl md:text-5xl font-serif mb-6 leading-tight">
-              Elevate Spaces with Pure Statement Brass
+              {categoryContent ? categoryContent.heading : "Handcrafted Brass, and Everything Around It"}
             </h1>
             <p className="text-stone-300 text-base md:text-lg font-light max-w-xl mx-auto">
-              Discover premium corporate boxes, heritage home decor, and artifacts cast in pure lightweight brass.
+              {categoryContent
+                ? categoryContent.intro
+                : "Our roots are in premium lightweight brass -- statement décor, idols, and corporate gifts -- extended into pocket temples, board games, polyresin pieces, and handmade resin jewelry, all crafted with the same care."}
             </p>
           </div>
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#d97706_1px,transparent_1px)] [background-size:16px_16px]"></div>
@@ -201,6 +289,7 @@ export default async function StorefrontHome({
           categories={categories}
           category={category}
           sort={sort}
+          heading={categoryContent?.heading}
         />
 
         <RecentlyViewedStrip />
