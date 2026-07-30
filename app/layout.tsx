@@ -44,7 +44,7 @@ export default function RootLayout({
       </head>
       <CartProvider>
       <WishlistProvider>
-        <body className="bg-[#FAF9F6] dark:bg-stone-950 text-stone-800 dark:text-stone-200 antialiased min-h-screen flex flex-col transition-colors">
+        <body className="bg-[var(--background)] dark:bg-stone-950 text-stone-800 dark:text-stone-200 antialiased min-h-screen flex flex-col transition-colors">
 
           {/* Skip link for keyboard/screen-reader users -- visually hidden
               until focused, jumps straight past the nav to page content. */}

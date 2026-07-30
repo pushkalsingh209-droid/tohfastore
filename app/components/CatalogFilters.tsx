@@ -39,7 +39,7 @@ export default function CatalogFilters({
   if (categories.length === 0) {
     // No categorized products yet -- only offer sorting.
     return (
-      <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
+      <div className="flex items-center gap-2 text-xs text-stone-700 dark:text-stone-400">
         <span>Sort</span>
         <select
           value={sort}
@@ -57,7 +57,7 @@ export default function CatalogFilters({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-4 text-xs text-stone-500 dark:text-stone-400">
+    <div className="flex flex-wrap items-center gap-4 text-xs text-stone-700 dark:text-stone-400">
       <div className="flex items-center gap-2">
         <span>Category</span>
         <select

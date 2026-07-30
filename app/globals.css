@@ -6,7 +6,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
+  /* Single source of truth for the site's light-mode page background --
+     every page references this instead of hardcoding a hex value, so it
+     can be changed here alone. */
+  --background: #FFF0CF;
   --foreground: #171717;
 }
 

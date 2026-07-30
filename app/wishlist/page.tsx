@@ -10,7 +10,7 @@ export default function WishlistPage() {
   const { addToCart } = useCart();
 
   return (
-    <div className="bg-[#FAF9F6] dark:bg-stone-950 min-h-screen py-12 md:py-16 px-4 sm:px-6 transition-colors">
+    <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen py-12 md:py-16 px-4 sm:px-6 transition-colors">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 dark:text-stone-100 border-b border-stone-200 dark:border-stone-800 pb-4 mb-8">
           Your Wishlist

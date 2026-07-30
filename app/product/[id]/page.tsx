@@ -11,6 +11,7 @@ import RecordProductView from "@/app/components/RecordProductView";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
 import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink } from "@/app/utils/whatsapp";
+import PageNavLinks from "@/app/components/PageNavLinks";
 
 // Stock/price/description must reflect live admin edits on every view (same
 // guarantee the previous client-side fetch gave), so this route can't be
@@ -94,7 +95,7 @@ export default async function ProductDetailPage({
     reviews.length > 0 ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length : 0;
 
   return (
-    <div className="bg-[#FAF9F6] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+    <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
       {/* PERSISTENT HEADER NAVIGATION MATRIX */}
       <nav className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -105,14 +106,7 @@ export default async function ProductDetailPage({
                 Studio
               </span>
             </div>
-            <div className="flex items-center gap-4 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600 dark:text-stone-400">
-              <a href="/" className="hover:text-amber-700 dark:hover:text-amber-500 transition">
-                Home
-              </a>
-              <a href="/about" className="hover:text-amber-700 dark:hover:text-amber-500 transition">
-                About us
-              </a>
-            </div>
+            <PageNavLinks />
           </div>
         </div>
       </nav>

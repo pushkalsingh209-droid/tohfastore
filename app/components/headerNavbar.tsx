@@ -1,15 +1,26 @@
 // app/components/HeaderNavbar.tsx
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/app/context/CartContext";
 import { useWishlist } from "@/app/context/WishlistContext";
 import SearchBar from "@/app/components/SearchBar";
 import ThemeToggle from "@/app/components/ThemeToggle";
 
+const CATEGORY_LINKS = [
+  "Pocket Temples",
+  "Pan Stands",
+  "Board Games",
+  "Polyresin",
+  "UV Resin Earrings",
+  "Misc",
+];
+
 export default function HeaderNavbar() {
   const { setIsOpen, cartCount } = useCart();
   const { wishlist } = useWishlist();
   const wishlistCount = wishlist?.length || 0;
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
 
   return (
     <header className="border-b border-amber-200 dark:border-stone-800 bg-white dark:bg-stone-950 sticky top-0 z-40 shadow-sm transition-colors">
@@ -93,6 +104,49 @@ export default function HeaderNavbar() {
           </button>
         </nav>
 
+      </div>
+
+      {/* Category menu -- a hamburger toggle on every breakpoint (mobile-first),
+          revealing links into the homepage's existing ?category filter. The
+          default (unfiltered) homepage is never touched; products only appear
+          scoped to a category once a link here is clicked. */}
+      <div className="border-t border-stone-100 dark:border-stone-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <button
+            type="button"
+            onClick={() => setCategoryMenuOpen((open) => !open)}
+            aria-expanded={categoryMenuOpen}
+            aria-controls="category-menu-panel"
+            className="w-full sm:w-auto flex items-center gap-2 py-2.5 text-[11px] uppercase tracking-wider font-semibold text-stone-600 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition"
+          >
+            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              {categoryMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+            Categories
+          </button>
+
+          {categoryMenuOpen && (
+            <div
+              id="category-menu-panel"
+              className="pb-3 flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-5 text-[11px] uppercase tracking-wider font-medium text-stone-500 dark:text-stone-400"
+            >
+              {CATEGORY_LINKS.map((name) => (
+                <Link
+                  key={name}
+                  href={{ pathname: "/", query: { category: name } }}
+                  onClick={() => setCategoryMenuOpen(false)}
+                  className="py-2 sm:py-0 hover:text-amber-700 dark:hover:text-amber-500 transition"
+                >
+                  {name}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

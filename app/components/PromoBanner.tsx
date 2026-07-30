@@ -21,7 +21,7 @@ export default function PromoBanner({ coupons }: { coupons: PublicCoupon[] }) {
   }
 
   return (
-    <div className="bg-amber-50 dark:bg-stone-900 border-b border-amber-100 dark:border-stone-800 text-[11px] sm:text-xs py-2 px-4">
+    <div className="bg-[var(--background)] dark:bg-stone-950 border-b border-stone-200 dark:border-stone-800 text-[11px] sm:text-xs py-2 px-4">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-2">
         {coupons.map((coupon) => (
           <button

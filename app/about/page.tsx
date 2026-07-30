@@ -3,7 +3,7 @@
 
 export default function AboutUsPage() {
   return (
-    <div className="bg-[#FAF9F6] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+    <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
 
       {/* BRAND CONTENT MAIN WRAPPER SECTION */}
       <div className="flex-grow py-12 md:py-16 px-4 sm:px-6">

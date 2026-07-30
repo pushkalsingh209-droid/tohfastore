@@ -4,6 +4,7 @@ import CatalogSection from "@/app/components/CatalogSection";
 import PromoBanner from "@/app/components/PromoBanner";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
 import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
+import PageNavLinks from "@/app/components/PageNavLinks";
 
 // Storefront catalog must reflect live admin edits/stock on every view (same
 // guarantee the previous client-side fetch gave), so this route can't be
@@ -110,7 +111,7 @@ export default async function StorefrontHome({
   ]);
 
   return (
-    <div className="bg-[#FAF9F6] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+    <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
       <PromoBanner coupons={publicCoupons} />
 
       {/* MAIN LAYOUT WRAPPER CONTROLLER NODE */}
@@ -124,20 +125,10 @@ export default async function StorefrontHome({
       {/* Brand Identity Branding Nodes */}
       <div className="flex items-center gap-1.5 select-none">
         <span className="font-serif font-bold text-base md:text-lg text-stone-900 dark:text-stone-100 tracking-widest">TOHFA</span>
-        <span className="text-[9px] md:text-[10px] text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/30 uppercase font-medium">
-          Studio
-        </span>
       </div>
 
-      {/* Persistent Page Links - Clean inline list structure on all viewports */}
-      <div className="flex items-center gap-4 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600 dark:text-stone-400">
-        <a href="/" className="hover:text-amber-700 dark:hover:text-amber-500 transition font-semibold text-stone-900 dark:text-stone-100">
-          Home
-        </a>
-        <a href="/about" className="hover:text-amber-700 dark:hover:text-amber-500 transition">
-          About us
-        </a>
-      </div>
+      {/* Persistent Page Links - hamburger toggle, mobile-first */}
+      <PageNavLinks />
     </div>
 
     {/* RIGHT SIDE: COMMUNICATION MATRIX (Collapses intelligently onto mobile layouts) */}

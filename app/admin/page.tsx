@@ -55,6 +55,7 @@ export default function AdminDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
+  const [productCategoryFilter, setProductCategoryFilter] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
   const [productPage, setProductPage] = useState(1);
   const [productPageSize, setProductPageSize] = useState(10);
@@ -88,15 +89,19 @@ export default function AdminDashboard() {
   // Live search over already-loaded products, reusing the same
   // substring-match + "did you mean" fallback used on the storefront search.
   const visibleProducts = useMemo(() => {
+    const byCategory = productCategoryFilter
+      ? products.filter((p: any) => p.category === productCategoryFilter)
+      : products;
+
     const query = productSearch.trim();
-    if (!query) return products;
+    if (!query) return byCategory;
 
-    const matches = getAutocompleteMatches(products, query, products.length);
-    if (matches.length > 0) return matches.map((m) => products.find((p) => p.id === m.id)).filter(Boolean);
+    const matches = getAutocompleteMatches(byCategory, query, byCategory.length);
+    if (matches.length > 0) return matches.map((m) => byCategory.find((p) => p.id === m.id)).filter(Boolean);
 
-    const suggestions = getSuggestions(products, query, products.length);
-    return suggestions.map((s) => products.find((p) => p.id === s.id)).filter(Boolean);
-  }, [products, productSearch]);
+    const suggestions = getSuggestions(byCategory, query, byCategory.length);
+    return suggestions.map((s) => byCategory.find((p) => p.id === s.id)).filter(Boolean);
+  }, [products, productSearch, productCategoryFilter]);
 
   // Live search over already-loaded orders by customer name/email/phone,
   // Razorpay order id, or payment reference id.
@@ -123,7 +128,7 @@ export default function AdminDashboard() {
   // now-nonexistent page.
   useEffect(() => {
     setProductPage(1);
-  }, [productSearch]);
+  }, [productSearch, productCategoryFilter]);
 
   useEffect(() => {
     setOrderPage(1);
@@ -358,7 +363,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="bg-[#FAF9F6] min-h-screen py-12">
+    <div className="bg-[var(--background)] min-h-screen py-12">
       <div className="max-w-5xl mx-auto px-6 space-y-12">
         
         {/* HEADER BRAND WORKSPACE HEADER */}
@@ -487,32 +492,49 @@ export default function AdminDashboard() {
               </span>
             </div>
 
-            <div className="relative mt-4">
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
+            <div className="flex flex-col sm:flex-row gap-3 mt-4">
+              <div className="relative flex-grow">
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Search added products by name..."
+                  aria-label="Search products"
+                  className="w-full pl-9 pr-3 py-2.5 rounded border border-stone-200 bg-stone-50 text-sm text-stone-800 focus:outline-none focus:border-amber-600 focus:bg-white transition"
+                />
+              </div>
+              <select
+                value={productCategoryFilter}
+                onChange={(e) => setProductCategoryFilter(e.target.value)}
+                aria-label="Filter products by category"
+                className="px-3 py-2.5 rounded border border-stone-200 bg-stone-50 text-sm text-stone-800 focus:outline-none focus:border-amber-600 focus:bg-white transition sm:w-56"
               >
-                <circle cx="11" cy="11" r="7" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <input
-                type="text"
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Search added products by name..."
-                aria-label="Search products"
-                className="w-full pl-9 pr-3 py-2.5 rounded border border-stone-200 bg-stone-50 text-sm text-stone-800 focus:outline-none focus:border-amber-600 focus:bg-white transition"
-              />
+                <option value="">All Categories</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
           {products.length === 0 ? (
             <p className="text-stone-400 text-sm text-center py-6">No products found in cloud database storage.</p>
           ) : visibleProducts.length === 0 ? (
-            <p className="text-stone-400 text-sm text-center py-6">No products match &ldquo;{productSearch}&rdquo;.</p>
+            <p className="text-stone-400 text-sm text-center py-6">
+              {productSearch
+                ? <>No products match &ldquo;{productSearch}&rdquo;.</>
+                : <>No products in the &ldquo;{productCategoryFilter}&rdquo; category yet.</>}
+            </p>
           ) : (
             <>
             <div className="divide-y divide-stone-100">
