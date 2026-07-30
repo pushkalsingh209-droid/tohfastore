@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { validateAndCalculateDiscount } from "@/app/utils/coupons";
+import { calculateOrderGstBreakdown, GST_RATE } from "@/app/utils/gst";
 
 // Interface definition to explicitly type incoming shopping bag artifacts
 interface CartItem {
@@ -47,18 +48,35 @@ export async function POST(req: Request) {
     const itemIds = (items as CartItem[]).map((i) => i.id).filter(Boolean);
     const { data: dbProducts, error: productErr } = await supabase
       .from("products")
-      .select("id, name, price, inventory")
+      .select("id, name, price, inventory, category")
       .in("id", itemIds);
 
     if (productErr) {
       return NextResponse.json({ error: "Could not verify cart items." }, { status: 500 });
     }
 
+    // Each product's category carries its own GST rate (set in the admin
+    // categories panel); products with no category, or a category that's
+    // since been deleted, fall back to the site default rate.
+    const categoryNames = Array.from(
+      new Set((dbProducts || []).map((p: any) => p.category).filter(Boolean))
+    );
+    const categoryGstRates = new Map<string, number>();
+    if (categoryNames.length > 0) {
+      const { data: categoryRows } = await supabase.from("categories").select("name, gst_rate").in("name", categoryNames);
+      for (const row of categoryRows || []) {
+        categoryGstRates.set(row.name, Number(row.gst_rate));
+      }
+    }
+
     const pricedItems = (items as CartItem[]).map((item) => {
       const product = dbProducts?.find((p: any) => String(p.id) === String(item.id));
       if (!product) return null;
       const quantity = Math.max(1, Math.floor(Number(item.quantity) || 0));
-      return { id: product.id, name: product.name, price: Number(product.price), quantity };
+      const gstRate = product.category && categoryGstRates.has(product.category)
+        ? categoryGstRates.get(product.category)!
+        : GST_RATE * 100;
+      return { id: product.id, name: product.name, price: Number(product.price), quantity, gstRate };
     });
 
     if (pricedItems.some((i) => i === null)) {
@@ -112,6 +130,11 @@ export async function POST(req: Request) {
     // Instantiate unique order metadata node block via the secure remote gateway
     const order = await razorpay.orders.create(options);
 
+    // Computed once here (the authoritative, category-aware source of truth)
+    // and handed back so the success-page invoice doesn't need to re-derive
+    // it client-side with a flat rate.
+    const gst = calculateOrderGstBreakdown(pricedItems as { price: number; quantity: number; gstRate: number }[], discount);
+
     // Pass structural tokens back to client interceptor drawers cleanly
     return NextResponse.json({
       orderId: order.id,
@@ -119,6 +142,7 @@ export async function POST(req: Request) {
       subtotal,
       discount,
       couponCode: appliedCouponCode,
+      gst,
     });
 
   } catch (err: unknown) {

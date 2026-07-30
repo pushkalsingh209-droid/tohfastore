@@ -179,6 +179,10 @@ export default function CartDrawer() {
                   discount: appliedCoupon?.discount || 0,
                   couponCode: appliedCoupon?.code || null,
                   total: data.amount / 100,
+                  // Computed server-side in /api/razorpay from each item's own
+                  // category GST rate -- the invoice displays this directly
+                  // instead of re-deriving it client-side with a flat rate.
+                  gst: data.gst,
                 })
               );
             } catch (e) {

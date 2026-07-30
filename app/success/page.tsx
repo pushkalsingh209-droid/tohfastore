@@ -2,7 +2,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useCart } from "@/app/context/CartContext";
-import { calculateGstBreakdown, GST_RATE, BUSINESS_GSTIN } from "@/app/utils/gst";
+import { BUSINESS_GSTIN, type OrderGstBreakdown } from "@/app/utils/gst";
 import PageNavLinks from "@/app/components/PageNavLinks";
 
 interface StashedOrder {
@@ -17,6 +17,7 @@ interface StashedOrder {
   discount: number;
   couponCode: string | null;
   total: number;
+  gst: OrderGstBreakdown;
 }
 
 export default function CheckoutSuccessPage() {
@@ -35,7 +36,7 @@ export default function CheckoutSuccessPage() {
     }
   }, [clearCart]);
 
-  const gst = order ? calculateGstBreakdown(order.total) : null;
+  const gst = order?.gst || null;
 
   return (
     <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
@@ -204,10 +205,19 @@ export default function CheckoutSuccessPage() {
                   <span>Taxable value</span>
                   <span className="font-mono">₹{gst.basePrice.toLocaleString("en-IN")}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>GST ({(GST_RATE * 100).toFixed(0)}%, incl. in price)</span>
-                  <span className="font-mono">₹{gst.gstAmount.toLocaleString("en-IN")}</span>
-                </div>
+                {gst.byRate.length > 1 ? (
+                  gst.byRate.map((g) => (
+                    <div className="flex justify-between" key={g.rate}>
+                      <span>GST ({g.rate}%, incl. in price)</span>
+                      <span className="font-mono">₹{g.gstAmount.toLocaleString("en-IN")}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex justify-between">
+                    <span>GST ({gst.byRate[0]?.rate ?? 0}%, incl. in price)</span>
+                    <span className="font-mono">₹{gst.gstAmount.toLocaleString("en-IN")}</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between items-center pt-4 border-t border-stone-200 dark:border-stone-800">

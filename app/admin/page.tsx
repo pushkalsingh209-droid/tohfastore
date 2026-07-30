@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryGstRate, setNewCategoryGstRate] = useState("5");
   const [categoryStatus, setCategoryStatus] = useState("");
 
   const [couponForm, setCouponForm] = useState({
@@ -333,10 +334,11 @@ export default function AdminDashboard() {
     try {
       const result = await apiRequest("/api/admin/categories", {
         method: "POST",
-        body: JSON.stringify({ name: newCategoryName.trim() }),
+        body: JSON.stringify({ name: newCategoryName.trim(), gst_rate: newCategoryGstRate }),
       });
       setCategories([...categories, result.category].sort((a, b) => a.name.localeCompare(b.name)));
       setNewCategoryName("");
+      setNewCategoryGstRate("5");
       setCategoryStatus("");
     } catch (err: any) {
       setCategoryStatus(err.message || "Could not add category.");
@@ -361,6 +363,18 @@ export default function AdminDashboard() {
       setCategories(categories.map((c) => (c.id === categoryId ? { ...c, show_on_home: showOnHome } : c)));
     } catch (err: any) {
       alert(`Could not update category: ${err.message}`);
+    }
+  };
+
+  const handleUpdateCategoryGstRate = async (categoryId: number, gstRate: string) => {
+    try {
+      const result = await apiRequest("/api/admin/categories", {
+        method: "PATCH",
+        body: JSON.stringify({ id: categoryId, gst_rate: gstRate }),
+      });
+      setCategories(categories.map((c) => (c.id === categoryId ? { ...c, gst_rate: result.category.gst_rate } : c)));
+    } catch (err: any) {
+      alert(`Could not update GST rate: ${err.message}`);
     }
   };
 
@@ -847,7 +861,7 @@ export default function AdminDashboard() {
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
             <h2 className="text-xl font-serif text-stone-900">Categories</h2>
-            <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form's dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category's products appear in the homepage's default view (they're still reachable by selecting the category directly).</p>
+            <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form's dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category's products appear in the homepage's default view (they're still reachable by selecting the category directly). GST % is set per category and used to break down the final bill.</p>
           </div>
 
           <form onSubmit={handleCreateCategory} className="flex gap-3 mb-4">
@@ -858,6 +872,19 @@ export default function AdminDashboard() {
               onChange={(e) => setNewCategoryName(e.target.value)}
               className="flex-grow px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
             />
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                title="GST %"
+                value={newCategoryGstRate}
+                onChange={(e) => setNewCategoryGstRate(e.target.value)}
+                className="w-20 px-3 py-2.5 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
+              />
+              <span className="text-xs text-stone-500 whitespace-nowrap">% GST</span>
+            </div>
             <button type="submit" className="px-4 py-2.5 rounded bg-stone-950 hover:bg-amber-800 text-white font-medium text-xs uppercase tracking-wider shadow transition whitespace-nowrap">
               Add
             </button>
@@ -870,9 +897,25 @@ export default function AdminDashboard() {
           ) : (
             <div className="divide-y divide-stone-100">
               {categories.map((cat: any) => (
-                <div key={cat.id} className="py-3 flex items-center justify-between gap-3">
+                <div key={cat.id} className="py-3 flex items-center justify-between gap-3 flex-wrap">
                   <span className="text-sm text-stone-800 font-medium">{cat.name}</span>
                   <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5" title="GST % for this category's products">
+                      <input
+                        key={`${cat.id}-${cat.gst_rate}`}
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        defaultValue={cat.gst_rate ?? 5}
+                        onBlur={(e) => {
+                          const next = e.target.value;
+                          if (next !== String(cat.gst_rate)) handleUpdateCategoryGstRate(cat.id, next);
+                        }}
+                        className="w-16 px-2 py-1.5 rounded border border-stone-300 text-xs font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+                      />
+                      <span className="text-[11px] text-stone-400">% GST</span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => handleToggleCategoryHome(cat.id, !cat.show_on_home)}

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import Razorpay from "razorpay";
 import { isValidPaymentSignature } from "@/app/utils/razorpaySignature";
-import { calculateGstBreakdown, GST_RATE, BUSINESS_GSTIN } from "@/app/utils/gst";
+import { calculateOrderGstBreakdown, BUSINESS_GSTIN } from "@/app/utils/gst";
 
 const razorpay = new Razorpay({
   key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_build_placeholder",
@@ -165,8 +165,18 @@ export async function POST(req: Request) {
           .join(", ");
 
         // The admin-set price is the final price paid -- GST is
-        // back-calculated out of it for the bill, not added on top.
-        const gst = calculateGstBreakdown(totalAmount);
+        // back-calculated out of it for the bill, not added on top. Each
+        // item is taxed at its own category's rate (set in the admin
+        // categories panel); the discount actually applied (subtotal minus
+        // what Razorpay verified was captured) is spread across rate groups
+        // proportionally.
+        const itemsSubtotal = orderItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
+        const discount = Math.max(0, itemsSubtotal - totalAmount);
+        const gst = calculateOrderGstBreakdown(orderItems, discount);
+        const gstLines =
+          gst.byRate.length > 1
+            ? gst.byRate.map((g) => `  GST (${g.rate}%): ₹${g.gstAmount.toLocaleString("en-IN")}`).join("\n")
+            : `GST (${gst.byRate[0]?.rate ?? 0}%): ₹${gst.gstAmount.toLocaleString("en-IN")}`;
 
         const businessMessage = [
           "New Tohfa order received!",
@@ -176,7 +186,7 @@ export async function POST(req: Request) {
           `Email: ${customerEmail}`,
           `Items: ${itemsSummary || "N/A"}`,
           `Base Amount: ₹${gst.basePrice.toLocaleString("en-IN")}`,
-          `GST (${GST_RATE * 100}%): ₹${gst.gstAmount.toLocaleString("en-IN")}`,
+          gstLines,
           `Total Amount: ₹${gst.totalPrice.toLocaleString("en-IN")}`,
         ].join("\n");
 
@@ -197,7 +207,7 @@ export async function POST(req: Request) {
           itemLines,
           "",
           `Base Amount: ₹${gst.basePrice.toLocaleString("en-IN")}`,
-          `GST (${GST_RATE * 100}%): ₹${gst.gstAmount.toLocaleString("en-IN")}`,
+          gstLines,
           `Total Amount Paid: ₹${gst.totalPrice.toLocaleString("en-IN")}`,
           "",
           `Please reply here on WhatsApp (+${businessWhatsappNumber}) with your complete delivery address so we can ship your order.`,
