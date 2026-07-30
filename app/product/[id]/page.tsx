@@ -1,58 +1,97 @@
 // app/product/[id]/page.tsx
-"use client";
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { cache } from "react";
+import type { Metadata } from "next";
 import { createClient } from "@supabase/supabase-js";
-import { useCart } from "@/app/context/CartContext";
 import ProductGallery from "@/app/components/ProductGallery";
+import AddToCartButton from "@/app/components/AddToCartButton";
+import ReviewForm from "@/app/components/ReviewForm";
 import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink } from "@/app/utils/whatsapp";
+
+// Stock/price/description must reflect live admin edits on every view (same
+// guarantee the previous client-side fetch gave), so this route can't be
+// statically frozen at build time.
+export const revalidate = 0;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gxlervcazzddqcoagewy.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_yfpUfp0RTaHs6nL3VEcnZQ_H_u-KA7C";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export default function ProductDetailPage() {
-  const params = useParams();
-  const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
-  const { addToCart, cart } = useCart();
+// Wrapped in React's cache() so generateMetadata and the page component
+// share one Supabase query per request instead of fetching the same
+// product twice.
+const getProduct = cache(async (id: string) => {
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-  const [product, setProduct] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+    if (error || !data) return null;
+    return data;
+  } catch (err) {
+    console.error("Failed to load product:", err);
+    return null;
+  }
+});
 
-  useEffect(() => {
-    async function loadProduct() {
-      if (!id) return;
-      try {
-        const { data, error } = await supabase
-          .from("products")
-          .select("*")
-          .eq("id", id)
-          .single();
+async function getApprovedReviews(productId: number) {
+  try {
+    const { data, error } = await supabase
+      .from("reviews")
+      .select("*")
+      .eq("product_id", productId)
+      .eq("approved", true)
+      .order("created_at", { ascending: false });
+    if (error) return [];
+    return data || [];
+  } catch {
+    return [];
+  }
+}
 
-        if (error || !data) {
-          setNotFound(true);
-        } else {
-          setProduct(data);
-        }
-      } catch (err) {
-        console.error("Failed to load product:", err);
-        setNotFound(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadProduct();
-  }, [id]);
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const product = await getProduct(id);
+
+  if (!product) {
+    return { title: "Artifact Not Found | TOHFA" };
+  }
+
+  const description =
+    product.description?.slice(0, 155) ||
+    `${product.name} — premium brass handicraft from TOHFA.`;
+
+  return {
+    title: `${product.name} | TOHFA`,
+    description,
+    openGraph: {
+      title: product.name,
+      description,
+      images: product.image_url ? [{ url: product.image_url }] : undefined,
+    },
+  };
+}
+
+export default async function ProductDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const product = await getProduct(id);
+  const reviews = product ? await getApprovedReviews(product.id) : [];
 
   const whatsappHref = product ? getProductWhatsappLink(product) : "#";
-
   const stock = product ? Number(product.inventory) || 0 : 0;
-  const cartQty = product ? cart?.find((item: any) => item.id === product.id)?.quantity || 0 : 0;
   const outOfStock = stock <= 0;
-  const atMaxInCart = !outOfStock && cartQty >= stock;
-  const addToCartDisabled = outOfStock || atMaxInCart;
+  const averageRating =
+    reviews.length > 0 ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length : 0;
 
   return (
     <div className="bg-[#FAF9F6] min-h-screen flex flex-col justify-between">
@@ -83,11 +122,7 @@ export default function ProductDetailPage() {
           &larr; Back to Collections
         </a>
 
-        {loading ? (
-          <div className="text-center py-24">
-            <p className="text-stone-500 text-sm animate-pulse">Loading artifact details...</p>
-          </div>
-        ) : notFound || !product ? (
+        {!product ? (
           <div className="text-center py-24 border-2 border-dashed border-stone-200 rounded-lg bg-white">
             <p className="text-stone-500 font-serif mb-2">This artifact could not be found.</p>
             <a href="/" className="text-xs uppercase tracking-wider text-amber-700 hover:underline">
@@ -95,6 +130,7 @@ export default function ProductDetailPage() {
             </a>
           </div>
         ) : (
+          <>
           <div className="flex flex-col md:flex-row gap-8 md:gap-12">
             {/* Gallery */}
             <div className="md:w-1/2 rounded-lg overflow-hidden border border-stone-200 shadow-sm bg-white">
@@ -112,6 +148,17 @@ export default function ProductDetailPage() {
               <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 mb-2 leading-snug">
                 {product.name}
               </h1>
+              {reviews.length > 0 && (
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-amber-500 text-sm leading-none">
+                    {"★".repeat(Math.round(averageRating))}
+                    {"☆".repeat(5 - Math.round(averageRating))}
+                  </span>
+                  <span className="text-[11px] text-stone-400">
+                    {averageRating.toFixed(1)} ({reviews.length} review{reviews.length === 1 ? "" : "s"})
+                  </span>
+                </div>
+              )}
               <span className="text-amber-700 font-bold font-mono text-2xl mb-1">
                 ₹{Number(product.price).toLocaleString("en-IN")}
               </span>
@@ -141,20 +188,41 @@ export default function ProductDetailPage() {
                 </p>
 
                 {/* SECONDARY CTA: Add To Cart — same action/label/style as the main page card */}
-                <button
-                  onClick={() => addToCart(product)}
-                  disabled={addToCartDisabled}
-                  className={`w-full text-xs uppercase tracking-wider px-5 py-3.5 rounded font-medium transition duration-200 shadow-sm ${
-                    addToCartDisabled
-                      ? "bg-stone-200 text-stone-400 cursor-not-allowed"
-                      : "bg-stone-900 hover:bg-amber-700 text-white active:scale-95"
-                  }`}
-                >
-                  {outOfStock ? "Out of Stock" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
-                </button>
+                <AddToCartButton product={product} />
               </div>
             </div>
           </div>
+
+          {/* Customer Reviews */}
+          <div className="mt-16 max-w-2xl">
+            <h2 className="text-xl font-serif text-stone-900 border-b border-stone-200 pb-4 mb-6">
+              Customer Reviews
+            </h2>
+
+            {reviews.length === 0 ? (
+              <p className="text-stone-400 text-sm mb-6">No reviews yet — be the first to share your experience.</p>
+            ) : (
+              <div className="space-y-4 mb-8">
+                {reviews.map((review: any) => (
+                  <div key={review.id} className="border-b border-stone-100 pb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500 text-xs leading-none">
+                        {"★".repeat(review.rating)}
+                        {"☆".repeat(5 - review.rating)}
+                      </span>
+                      <span className="text-sm font-medium text-stone-900">{review.customer_name}</span>
+                    </div>
+                    {review.review_text && (
+                      <p className="text-stone-600 text-sm font-light mt-1.5 leading-relaxed">{review.review_text}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <ReviewForm productId={product.id} />
+          </div>
+          </>
         )}
       </div>
 

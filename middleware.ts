@@ -6,8 +6,8 @@ export function middleware(request: NextRequest) {
   // 1. Get the current URL path the user is trying to open
   const { pathname } = request.nextUrl;
 
-  // 2. If they are trying to access the /admin page
-  if (pathname.startsWith('/admin')) {
+  // 2. Gate the admin dashboard and its admin-only API routes
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     // Get the password from the URL parameters (e.g., /admin?pass=your_password)
     const urlPassword = request.nextUrl.searchParams.get('pass');
     const correctPassword = process.env.ADMIN_PASSWORD || "Brass123";
@@ -45,7 +45,7 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Configure middleware to ONLY run when someone hits the admin route
+// Run on the admin dashboard and any admin-only API route
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin/:path*', '/api/admin/:path*'],
 };

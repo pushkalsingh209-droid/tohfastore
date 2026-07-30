@@ -3,6 +3,8 @@
 import { useCart } from "@/app/context/CartContext";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { calculateGstBreakdown, GST_RATE } from "@/app/utils/gst";
 
 export default function CartDrawer() {
   const { cart, isOpen, setIsOpen, removeFromCart, cartTotal } = useCart();
@@ -16,9 +18,48 @@ export default function CartDrawer() {
   // Specialized inline validation alert messages state
   const [validationError, setValidationError] = useState("");
 
+  // Coupon code state -- the discount shown here is just a UI preview;
+  // /api/razorpay re-validates and re-applies it authoritatively.
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+
   const router = useRouter();
 
   if (!isOpen) return null;
+
+  const handleApplyCoupon = async () => {
+    setCouponError("");
+    if (!couponInput.trim()) return;
+
+    setApplyingCoupon(true);
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ couponCode: couponInput.trim(), subtotal: cartTotal }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCouponError(data.error || "Could not apply coupon.");
+        setAppliedCoupon(null);
+        return;
+      }
+      setAppliedCoupon({ code: data.code, discount: data.discount });
+    } catch (err: any) {
+      setCouponError(err.message || "Could not apply coupon.");
+      setAppliedCoupon(null);
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setCouponError("");
+  };
 
   const initializeRazorpaySDK = () => {
     return new Promise((resolve) => {
@@ -63,11 +104,12 @@ export default function CartDrawer() {
         return;
       }
 
-      // Fetch Order ID from Next.js serverless route
+      // Fetch Order ID from Next.js serverless route -- price/coupon are
+      // re-validated server-side there regardless of what's shown locally
       const res = await fetch("/api/razorpay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: cart, totalAmount: cartTotal }),
+        body: JSON.stringify({ items: cart, couponCode: appliedCoupon?.code || undefined }),
       });
       
       const data = await res.json();
@@ -93,6 +135,9 @@ export default function CartDrawer() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 event: "payment.captured",
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
                 payload: {
                   payment: {
                     entity: {
@@ -103,11 +148,13 @@ export default function CartDrawer() {
                       contact: cleanPhone // Pass perfectly clean digits array forward
                     }
                   },
+                  // Only the display name travels through this body -- items,
+                  // price, and coupon are read server-side from the real
+                  // Razorpay order notes set in /api/razorpay, not from here.
                   order: {
                     entity: {
                       notes: {
-                        items: JSON.stringify(cart.map((i: any) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity }))),
-                        customer_name: customerName 
+                        customer_name: customerName
                       }
                     }
                   }
@@ -160,7 +207,9 @@ export default function CartDrawer() {
                 <div className="space-y-4 max-h-[35vh] overflow-y-auto border-b pb-4">
                   {cart.map((item: any) => (
                     <div key={item.id} className="flex items-center gap-4 pb-2">
-                      <img src={item.image_url} alt={item.name} className="w-12 h-12 rounded object-cover border bg-stone-50" />
+                      <div className="relative w-12 h-12 rounded overflow-hidden border bg-stone-50 flex-shrink-0">
+                        <Image src={item.image_url} alt={item.name} fill sizes="48px" className="object-cover" />
+                      </div>
                       <div className="flex-grow">
                         <h4 className="font-serif text-xs font-medium text-stone-900 line-clamp-1">{item.name}</h4>
                         <p className="text-[11px] text-stone-400">Qty: {item.quantity}</p>
@@ -169,6 +218,39 @@ export default function CartDrawer() {
                       <button onClick={() => removeFromCart(item.id)} className="text-stone-400 hover:text-rose-600 text-[11px]">Remove</button>
                     </div>
                   ))}
+                </div>
+
+                {/* Coupon Code */}
+                <div className="pt-2 pb-1">
+                  {appliedCoupon ? (
+                    <div className="flex items-center justify-between p-2.5 text-xs bg-emerald-50 border border-emerald-100 text-emerald-800 rounded">
+                      <span>
+                        Coupon <span className="font-mono font-bold">{appliedCoupon.code}</span> applied &minus;₹{appliedCoupon.discount.toLocaleString("en-IN")}
+                      </span>
+                      <button type="button" onClick={handleRemoveCoupon} className="text-emerald-700 hover:underline font-medium">
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                        placeholder="Coupon code"
+                        className="flex-grow px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700 font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={applyingCoupon}
+                        className="px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded border border-stone-300 text-stone-700 hover:bg-stone-100 transition disabled:opacity-50"
+                      >
+                        {applyingCoupon ? "Checking..." : "Apply"}
+                      </button>
+                    </div>
+                  )}
+                  {couponError && <p className="text-[11px] text-rose-600 mt-1.5">{couponError}</p>}
                 </div>
 
                 {/* Secure Contact Input Forms Layer */}
@@ -212,11 +294,32 @@ export default function CartDrawer() {
             )}
           </div>
 
-          {cart.length > 0 && (
+          {cart.length > 0 && (() => {
+            const finalTotal = appliedCoupon ? Math.max(0, cartTotal - appliedCoupon.discount) : cartTotal;
+            const gst = calculateGstBreakdown(finalTotal);
+            return (
             <div className="p-6 border-t border-stone-100 bg-stone-50 space-y-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-stone-600 font-medium">Subtotal Amount:</span>
-                <span className="text-lg font-mono font-bold text-stone-900">₹{cartTotal.toLocaleString("en-IN")}</span>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-stone-600 font-medium">Subtotal Amount:</span>
+                  <span className={`font-mono font-bold text-stone-900 ${appliedCoupon ? "text-sm" : "text-lg"}`}>₹{cartTotal.toLocaleString("en-IN")}</span>
+                </div>
+                {appliedCoupon && (
+                  <>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-emerald-700 font-medium">Coupon ({appliedCoupon.code}):</span>
+                      <span className="font-mono font-bold text-emerald-700">&minus;₹{appliedCoupon.discount.toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm border-t border-stone-200 pt-1.5">
+                      <span className="text-stone-600 font-medium">Total:</span>
+                      <span className="text-lg font-mono font-bold text-stone-900">₹{finalTotal.toLocaleString("en-IN")}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex items-center justify-between text-[11px] text-stone-400 border-t border-stone-200 pt-1.5 mt-1">
+                  <span>Base Price + GST ({GST_RATE * 100}%, inclusive):</span>
+                  <span className="font-mono">₹{gst.basePrice.toLocaleString("en-IN")} + ₹{gst.gstAmount.toLocaleString("en-IN")}</span>
+                </div>
               </div>
               <button 
                 type="submit" 
@@ -227,7 +330,8 @@ export default function CartDrawer() {
                 {loading ? "Verifying Transaction..." : "Proceed to Payment"}
               </button>
             </div>
-          )}
+            );
+          })()}
 
         </div>
       </div>

@@ -1,6 +1,7 @@
 // app/components/ProductGallery.tsx
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 
 interface ProductGalleryProps {
   images: string[];
@@ -8,6 +9,7 @@ interface ProductGalleryProps {
   active: boolean;
   zoomable?: boolean;
   size?: "card" | "detail" | "frame";
+  priority?: boolean;
 }
 
 const SLIDE_INTERVAL_MS = 2600;
@@ -22,6 +24,7 @@ export default function ProductGallery({
   active,
   zoomable = false,
   size = "card",
+  priority = false,
 }: ProductGalleryProps) {
   const [phase, setPhase] = useState<"idle" | "flipping" | "sliding">("idle");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -122,6 +125,13 @@ export default function ProductGallery({
   const heightClass =
     size === "detail" ? "h-80 sm:h-96 md:h-[28rem]" : size === "frame" ? "h-full" : "h-72";
 
+  const imageSizes =
+    size === "detail"
+      ? "(max-width: 768px) 100vw, 50vw"
+      : size === "frame"
+      ? "100vw"
+      : "(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw";
+
   function handleMouseEnter() {
     if (zoomable) setIsZooming(true);
   }
@@ -171,10 +181,13 @@ export default function ProductGallery({
   if (gallery.length === 0) {
     return (
       <div className={`w-full ${heightClass} bg-white relative overflow-hidden`}>
-        <img
+        <Image
           src="https://images.unsplash.com/photo-1614362705324-8da11fd16754?auto=format&fit=crop&w=500&q=80"
           alt={productName}
-          className="w-full h-full object-contain"
+          fill
+          sizes={imageSizes}
+          className="object-contain"
+          priority={priority}
         />
       </div>
     );
@@ -213,10 +226,10 @@ export default function ProductGallery({
         <div className="gallery-zoom-image w-full h-full" style={zoomWrapperStyle}>
           <div className={`flip-card-inner ${isFlipped ? "is-flipped" : ""}`}>
             <div className="flip-face">
-              <img src={gallery[currentIndex]} alt={productName} className="w-full h-full object-contain" />
+              <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className="object-contain" priority={priority} />
             </div>
             <div className="flip-face flip-face-back">
-              <img src={gallery[backIndex]} alt={productName} className="w-full h-full object-contain" />
+              <Image src={gallery[backIndex]} alt={productName} fill sizes={imageSizes} className="object-contain" />
             </div>
           </div>
         </div>
@@ -239,8 +252,12 @@ export default function ProductGallery({
             transition: slideTransitioning ? undefined : "none",
           }}
         >
-          <img src={gallery[currentIndex]} alt={productName} className="gallery-slide-item" />
-          <img src={gallery[incomingIndex]} alt={productName} className="gallery-slide-item" />
+          <div className="gallery-slide-item relative">
+            <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className="object-contain" />
+          </div>
+          <div className="gallery-slide-item relative">
+            <Image src={gallery[incomingIndex]} alt={productName} fill sizes={imageSizes} className="object-contain" />
+          </div>
         </div>
       </div>
     </div>

@@ -1,0 +1,157 @@
+// app/components/CatalogSection.tsx
+"use client";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import ProductCard from "@/app/components/ProductCard";
+import CatalogPagination from "@/app/components/CatalogPagination";
+import CatalogFilters from "@/app/components/CatalogFilters";
+
+const LOADING_MESSAGES = [
+  "Polishing the brass...",
+  "Rounding up more treasures...",
+  "Dusting off the shelves...",
+  "Carrying in the next batch...",
+  "Almost there...",
+];
+
+export default function CatalogSection({
+  products,
+  count,
+  page,
+  pageSize,
+  categories,
+  category,
+  sort,
+}: {
+  products: any[];
+  count: number;
+  page: number;
+  pageSize: number;
+  categories: string[];
+  category: string;
+  sort: string;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+  const [showReady, setShowReady] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(LOADING_MESSAGES[0]);
+  const wasPending = useRef(false);
+
+  useEffect(() => {
+    if (wasPending.current && !isPending) {
+      setShowReady(true);
+      const timer = setTimeout(() => setShowReady(false), 1400);
+      return () => clearTimeout(timer);
+    }
+    wasPending.current = isPending;
+  }, [isPending]);
+
+  function navigate(nextPage: number, nextPageSize: number) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", String(nextPage));
+    params.set("pageSize", String(nextPageSize));
+    setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
+    document.getElementById("signature-collection")?.scrollIntoView({ behavior: "auto", block: "start" });
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  }
+
+  function scrollToTop() {
+    document.getElementById("signature-collection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function scrollToBottom() {
+    document.getElementById("catalog-bottom")?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }
+
+  return (
+    <>
+      {/* Catatchy loading / "ready" overlay covering a Next/Previous/page-size
+          transition, so the wait for the next batch of products (and their
+          images) feels intentional rather than like a stall. */}
+      {(isPending || showReady) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/30 backdrop-blur-sm">
+          <div className="bg-white rounded-lg shadow-xl border border-amber-200 px-10 py-8 text-center min-w-[240px]">
+            {isPending ? (
+              <>
+                <div className="w-10 h-10 border-4 border-amber-200 border-t-amber-700 rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-sm font-serif text-stone-700">{loadingMessage}</p>
+              </>
+            ) : (
+              <>
+                <div className="text-3xl mb-2">✨</div>
+                <p className="text-sm font-serif font-bold text-amber-700">We&rsquo;re ready &mdash; here you go!</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Catalog Grid Section */}
+      <section className="max-w-7xl mx-auto px-6 pt-16 pb-20">
+        {count > 0 && products.length > 0 && (
+          <CatalogPagination
+            page={page}
+            pageSize={pageSize}
+            totalItems={count}
+            position="top"
+            onPageChange={(p) => navigate(p, pageSize)}
+            onPageSizeChange={(size) => navigate(1, size)}
+            onScrollTop={scrollToTop}
+            onScrollBottom={scrollToBottom}
+          />
+        )}
+
+        <h2 id="signature-collection" className="text-2xl font-serif text-stone-900 border-b border-stone-200 pb-4 mb-8 mt-6 scroll-mt-24">
+          Our Signature Collection
+        </h2>
+
+        {(categories.length > 0 || count > 0) && (
+          <div className="mb-8">
+            <CatalogFilters categories={categories} category={category} sort={sort} />
+          </div>
+        )}
+
+        {count === 0 && category ? (
+          <div className="text-center py-16 border-2 border-dashed border-stone-200 rounded-lg bg-white">
+            <p className="text-stone-500 font-serif mb-2">No artifacts found in &ldquo;{category}&rdquo;.</p>
+            <a href="/" className="text-xs uppercase tracking-wider text-amber-700 hover:underline">Clear filter</a>
+          </div>
+        ) : count === 0 ? (
+          <div className="text-center py-16 border-2 border-dashed border-stone-200 rounded-lg bg-white">
+            <p className="text-stone-500 font-serif mb-2">No brass artifacts found in stock.</p>
+            <p className="text-stone-400 text-xs">Log into the admin workspace to upload your catalog items.</p>
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-16 border-2 border-dashed border-stone-200 rounded-lg bg-white">
+            <p className="text-stone-500 font-serif mb-2">No artifacts on this page.</p>
+            <a href="/" className="text-xs uppercase tracking-wider text-amber-700 hover:underline">Back to page 1</a>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {products.map((product, index) => (
+                <ProductCard key={product.id} product={product} priority={index === 0} />
+              ))}
+            </div>
+            <div id="catalog-bottom">
+              <CatalogPagination
+                page={page}
+                pageSize={pageSize}
+                totalItems={count}
+                position="bottom"
+                onPageChange={(p) => navigate(p, pageSize)}
+                onPageSizeChange={(size) => navigate(1, size)}
+                onScrollTop={scrollToTop}
+                onScrollBottom={scrollToBottom}
+              />
+            </div>
+          </>
+        )}
+      </section>
+    </>
+  );
+}

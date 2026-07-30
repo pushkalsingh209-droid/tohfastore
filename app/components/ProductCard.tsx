@@ -10,7 +10,7 @@ import TempleCardFrame from "@/app/components/TempleCardFrame";
 
 const DOUBLE_TAP_WINDOW_MS = 350;
 
-export default function ProductCard({ product }: { product: any }) {
+export default function ProductCard({ product, priority = false }: { product: any; priority?: boolean }) {
   const { addToCart, cart } = useCart();
   const [active, setActive] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
@@ -59,7 +59,7 @@ export default function ProductCard({ product }: { product: any }) {
         onMouseLeave={() => isDesktop && setActive(false)}
         onClick={handleImageClick}
       >
-        <ProductGallery images={gallery} productName={product.name} active={active} size="card" />
+        <ProductGallery images={gallery} productName={product.name} active={active} size="card" priority={priority} />
 
         {!isDesktop && active && (
           <span className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-stone-900/80 text-white text-[10px] uppercase tracking-wider px-3 py-1 rounded-full pointer-events-none">

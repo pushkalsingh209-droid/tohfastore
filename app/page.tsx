@@ -1,42 +1,120 @@
 // app/page.tsx
-"use client";
-
-import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
-import ProductCard from "@/app/components/ProductCard";
+import CatalogSection from "@/app/components/CatalogSection";
+import PromoBanner from "@/app/components/PromoBanner";
+import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
+
+// Storefront catalog must reflect live admin edits/stock on every view (same
+// guarantee the previous client-side fetch gave), so this route can't be
+// statically frozen at build time.
+export const revalidate = 0;
+
+const DEFAULT_PAGE_SIZE = 10;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gxlervcazzddqcoagewy.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_yfpUfp0RTaHs6nL3VEcnZQ_H_u-KA7C";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export default function StorefrontHome() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+// Fetches only the products needed for the requested page, using Supabase's
+// range() so the catalog query stays cheap even as the store grows well
+// beyond a couple hundred products. The requested page is clamped against
+// the real total first, since asking Supabase for a range past the end of
+// the table returns an error rather than an empty page.
+async function getCatalogPage(requestedPage: number, pageSize: number, category: string, sort: string) {
+  try {
+    let countQuery = supabase.from("products").select("*", { count: "exact", head: true });
+    if (category) countQuery = countQuery.eq("category", category);
+    const { count, error: countError } = await countQuery;
 
-  useEffect(() => {
-    async function loadCatalog() {
-      try {
-        const { data, error } = await supabase
-          .from("products")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (!error && data) {
-          setProducts(data);
-        } else if (error) {
-          console.error("Supabase catalog read exception:", error.message);
-        }
-      } catch (err) {
-        console.error("Failed to compile database records:", err);
-      } finally {
-        setLoading(false);
-      }
+    if (countError) {
+      console.error("Supabase catalog count exception:", countError.message);
+      return { products: [], count: 0, page: 1 };
     }
-    loadCatalog();
-  }, []);
+
+    const totalCount = count || 0;
+    if (totalCount === 0) return { products: [], count: 0, page: 1 };
+
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const page = Math.min(Math.max(1, requestedPage), totalPages);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let query = supabase.from("products").select("*");
+    if (category) query = query.eq("category", category);
+    if (sort === "price_asc") query = query.order("price", { ascending: true });
+    else if (sort === "price_desc") query = query.order("price", { ascending: false });
+    else query = query.order("created_at", { ascending: false });
+
+    const { data, error } = await query.range(from, to);
+
+    if (error) {
+      console.error("Supabase catalog read exception:", error.message);
+      return { products: [], count: totalCount, page };
+    }
+    return { products: data || [], count: totalCount, page };
+  } catch (err) {
+    console.error("Failed to compile database records:", err);
+    return { products: [], count: 0, page: 1 };
+  }
+}
+
+// Distinct, non-null categories across the whole catalog (not just the
+// current page) so the filter dropdown lists every option regardless of
+// which page/filter is currently applied.
+async function getCategories(): Promise<string[]> {
+  try {
+    const { data, error } = await supabase.from("products").select("category").not("category", "is", null);
+    if (error) return [];
+    const unique = Array.from(new Set((data || []).map((row: any) => row.category).filter(Boolean)));
+    return unique.sort();
+  } catch {
+    return [];
+  }
+}
+
+// Active, non-expired, not-maxed-out coupons an admin has marked "public" --
+// shown in the on-site promo banner. Coupons left private are still
+// redeemable at checkout, just never listed here.
+async function getPublicCoupons() {
+  try {
+    const { data, error } = await supabase
+      .from("coupons")
+      .select("code, discount_type, discount_value, max_uses, used_count, expires_at")
+      .eq("active", true)
+      .eq("is_public", true);
+    if (error) return [];
+
+    const now = new Date();
+    return (data || []).filter((c: any) => {
+      if (c.expires_at && new Date(c.expires_at) < now) return false;
+      if (c.max_uses != null && c.used_count >= c.max_uses) return false;
+      return true;
+    });
+  } catch {
+    return [];
+  }
+}
+
+export default async function StorefrontHome({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; pageSize?: string; category?: string; sort?: string }>;
+}) {
+  const sp = await searchParams;
+  const pageSize = PAGE_SIZE_OPTIONS.includes(Number(sp.pageSize)) ? Number(sp.pageSize) : DEFAULT_PAGE_SIZE;
+  const requestedPage = Math.max(1, Number(sp.page) || 1);
+  const category = sp.category || "";
+  const sort = ["price_asc", "price_desc"].includes(sp.sort || "") ? (sp.sort as string) : "newest";
+
+  const [{ products, count, page }, categories, publicCoupons] = await Promise.all([
+    getCatalogPage(requestedPage, pageSize, category, sort),
+    getCategories(),
+    getPublicCoupons(),
+  ]);
 
   return (
     <div className="bg-[#FAF9F6] min-h-screen flex flex-col justify-between">
+      <PromoBanner coupons={publicCoupons} />
       
       {/* MAIN LAYOUT WRAPPER CONTROLLER NODE */}
       <div>
@@ -127,29 +205,15 @@ export default function StorefrontHome() {
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#d97706_1px,transparent_1px)] [background-size:16px_16px]"></div>
         </section>
 
-        {/* Catalog Grid Section */}
-        <section className="max-w-7xl mx-auto px-6 pt-16 pb-20">
-          <h2 className="text-2xl font-serif text-stone-900 border-b border-stone-200 pb-4 mb-8">
-            Our Signature Collection
-          </h2>
-          
-          {loading ? (
-            <div className="text-center py-16">
-              <p className="text-stone-500 text-sm animate-pulse">Streaming luxury catalog from database...</p>
-            </div>
-          ) : products.length === 0 ? (
-            <div className="text-center py-16 border-2 border-dashed border-stone-200 rounded-lg bg-white">
-              <p className="text-stone-500 font-serif mb-2">No brass artifacts found in stock.</p>
-              <p className="text-stone-400 text-xs">Log into the admin workspace to upload your catalog items.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
-        </section>
+        <CatalogSection
+          products={products}
+          count={count}
+          page={page}
+          pageSize={pageSize}
+          categories={categories}
+          category={category}
+          sort={sort}
+        />
       </div>
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}

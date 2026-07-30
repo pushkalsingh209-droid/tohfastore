@@ -1,7 +1,10 @@
 // app/admin/page.tsx
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
+import Image from "next/image";
+import { getAutocompleteMatches, getSuggestions } from "@/app/utils/searchProducts";
+import Pagination from "@/app/components/Pagination";
 
 // Initialize client browser connection architecture using your unique network parameters
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gxlervcazzddqcoagewy.supabase.co";
@@ -11,7 +14,19 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [coupons, setCoupons] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+
+  const [couponForm, setCouponForm] = useState({
+    code: "",
+    discountType: "flat",
+    discountValue: "",
+    maxUses: "",
+    expiresAt: "",
+    isPublic: false,
+  });
+  const [couponStatus, setCouponStatus] = useState("");
   
   const [formData, setFormData] = useState({
     name: "",
@@ -19,35 +34,100 @@ export default function AdminDashboard() {
     description: "",
     imageUrl: "",
     inventory: "5",
+    category: "",
     additionalImages: [] as string[]
   });
   
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [productSearch, setProductSearch] = useState("");
+  const [orderSearch, setOrderSearch] = useState("");
+  const [productPage, setProductPage] = useState(1);
+  const [productPageSize, setProductPageSize] = useState(10);
+  const [orderPage, setOrderPage] = useState(1);
+  const [orderPageSize, setOrderPageSize] = useState(10);
 
-  // Load both inventory data and logged customer order transactions from Supabase on mount
+  // Load both inventory data and logged customer order transactions from
+  // Supabase on mount. The two queries are independent, so fetch them in
+  // parallel instead of one after another.
   const fetchData = async () => {
-    // 1. Fetch Products
-    const { data: productData, error: productErr } = await supabase
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (!productErr && productData) setProducts(productData);
-
-    // 2. Fetch Orders
     setLoadingOrders(true);
-    const { data: orderData, error: orderErr } = await supabase
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const [
+      { data: productData, error: productErr },
+      { data: orderData, error: orderErr },
+      { data: reviewData, error: reviewErr },
+      { data: couponData, error: couponErr },
+    ] = await Promise.all([
+      supabase.from("products").select("*").order("created_at", { ascending: false }),
+      supabase.from("orders").select("*").order("created_at", { ascending: false }),
+      supabase.from("reviews").select("*, products(name)").order("created_at", { ascending: false }),
+      supabase.from("coupons").select("*").order("created_at", { ascending: false }),
+    ]);
+    if (!productErr && productData) setProducts(productData);
     if (!orderErr && orderData) setOrders(orderData);
+    if (!reviewErr && reviewData) setReviews(reviewData);
+    if (!couponErr && couponData) setCoupons(couponData);
     setLoadingOrders(false);
   };
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Live search over already-loaded products, reusing the same
+  // substring-match + "did you mean" fallback used on the storefront search.
+  const visibleProducts = useMemo(() => {
+    const query = productSearch.trim();
+    if (!query) return products;
+
+    const matches = getAutocompleteMatches(products, query, products.length);
+    if (matches.length > 0) return matches.map((m) => products.find((p) => p.id === m.id)).filter(Boolean);
+
+    const suggestions = getSuggestions(products, query, products.length);
+    return suggestions.map((s) => products.find((p) => p.id === s.id)).filter(Boolean);
+  }, [products, productSearch]);
+
+  // Live search over already-loaded orders by customer name/email/phone,
+  // Razorpay order id, or payment reference id.
+  const visibleOrders = useMemo(() => {
+    const query = orderSearch.trim().toLowerCase();
+    if (!query) return orders;
+    return orders.filter((order: any) => {
+      const haystack = [
+        order.order_id,
+        order.payment_id,
+        order.customer_details?.name,
+        order.customer_details?.email,
+        order.customer_details?.contact,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [orders, orderSearch]);
+
+  // Reset to page 1 whenever the underlying filtered set changes, so a
+  // search that narrows the results never leaves the view stranded on a
+  // now-nonexistent page.
+  useEffect(() => {
+    setProductPage(1);
+  }, [productSearch]);
+
+  useEffect(() => {
+    setOrderPage(1);
+  }, [orderSearch]);
+
+  const paginatedProducts = useMemo(() => {
+    const start = (productPage - 1) * productPageSize;
+    return visibleProducts.slice(start, start + productPageSize);
+  }, [visibleProducts, productPage, productPageSize]);
+
+  const paginatedOrders = useMemo(() => {
+    const start = (orderPage - 1) * orderPageSize;
+    return visibleOrders.slice(start, start + orderPageSize);
+  }, [visibleOrders, orderPage, orderPageSize]);
 
   // Handle Form Submission (Handles BOTH Creating and Updating products)
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,57 +141,73 @@ export default function AdminDashboard() {
       description: formData.description,
       image_url: formData.imageUrl,
       inventory: parseInt(formData.inventory),
+      category: formData.category.trim() || null,
     };
     const galleryImages = formData.additionalImages.map((url) => url.trim()).filter(Boolean);
-    const isMissingImagesColumn = (error: any) => {
+    const isMissingColumn = (error: any, columnHint: string) => {
       const msg = error?.message || "";
       return (
         error?.code === "42703" || // raw Postgres: undefined column
         error?.code === "PGRST204" || // PostgREST: column missing from schema cache
-        (/images/i.test(msg) && /(schema cache|does not exist|could not find)/i.test(msg))
+        (new RegExp(columnHint, "i").test(msg) && /(schema cache|does not exist|could not find)/i.test(msg))
       );
     };
 
     try {
       let gallerySaved = true;
+      let categorySaved = true;
+      let payload: any = { ...basePayload, images: galleryImages };
 
       if (editingProductId) {
         // ACTION A: Update Existing Product Data Row
-        let { error } = await supabase
-          .from("products")
-          .update({ ...basePayload, images: galleryImages })
-          .eq("id", editingProductId);
+        let { error } = await supabase.from("products").update(payload).eq("id", editingProductId);
 
-        if (error && isMissingImagesColumn(error)) {
+        if (error && isMissingColumn(error, "category")) {
+          categorySaved = false;
+          const { category, ...rest } = payload;
+          payload = rest;
+          ({ error } = await supabase.from("products").update(payload).eq("id", editingProductId));
+        }
+        if (error && isMissingColumn(error, "images")) {
           gallerySaved = false;
-          ({ error } = await supabase.from("products").update(basePayload).eq("id", editingProductId));
+          const { images, ...rest } = payload;
+          payload = rest;
+          ({ error } = await supabase.from("products").update(payload).eq("id", editingProductId));
         }
 
         if (error) throw error;
         setStatus(
-          gallerySaved
+          gallerySaved && categorySaved
             ? "Success! Your modifications have been updated live across the storefront."
-            : "Saved without gallery photos — the \"images\" column doesn't exist yet in Supabase. Run the migration, then re-save to add extra photos."
+            : "Saved, but some new fields (gallery photos/category) don't exist yet in Supabase. Run the migration, then re-save."
         );
         setEditingProductId(null);
       } else {
         // ACTION B: Create Brand New Row Entry
-        let { error } = await supabase.from("products").insert([{ ...basePayload, images: galleryImages }]);
+        let { error } = await supabase.from("products").insert([payload]);
 
-        if (error && isMissingImagesColumn(error)) {
+        if (error && isMissingColumn(error, "category")) {
+          categorySaved = false;
+          const { category, ...rest } = payload;
+          payload = rest;
+          ({ error } = await supabase.from("products").insert([payload]));
+        }
+        if (error && isMissingColumn(error, "images")) {
           gallerySaved = false;
-          ({ error } = await supabase.from("products").insert([basePayload]));
+          const { images, ...rest } = payload;
+          payload = rest;
+          ({ error } = await supabase.from("products").insert([payload]));
         }
 
         if (error) throw error;
         setStatus(
-          gallerySaved
+          gallerySaved && categorySaved
             ? "Success! The premium brass product is live on your storefront catalog."
-            : "Saved without gallery photos — the \"images\" column doesn't exist yet in Supabase. Run the migration, then re-save to add extra photos."
+            : "Saved, but some new fields (gallery photos/category) don't exist yet in Supabase. Run the migration, then re-save."
         );
       }
 
-      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", additionalImages: [] });
+      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [] });
       fetchData(); // Sync live view structures
     } catch (err: any) {
       setStatus(`Database Exception: ${err.message || "Pipeline connection failed."}`);
@@ -129,6 +225,7 @@ export default function AdminDashboard() {
       description: product.description,
       imageUrl: product.image_url,
       inventory: product.inventory.toString(),
+      category: product.category || "",
       additionalImages: Array.isArray(product.images) ? product.images : []
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -169,9 +266,115 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleStatusChange = async (orderId: number, newStatus: string) => {
+    try {
+      const res = await fetch("/api/admin/orders/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: orderId, status: newStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Could not update order status: ${data.error || "Unknown error"}`);
+        return;
+      }
+      setOrders(orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)));
+    } catch (err: any) {
+      alert(`Could not update order status: ${err.message}`);
+    }
+  };
+
+  const handleReviewModerate = async (reviewId: number, action: "approve" | "reject") => {
+    if (action === "approve") {
+      const { error } = await supabase.from("reviews").update({ approved: true }).eq("id", reviewId);
+      if (error) {
+        alert(`Could not approve review: ${error.message}`);
+        return;
+      }
+      setReviews(reviews.map((r) => (r.id === reviewId ? { ...r, approved: true } : r)));
+    } else {
+      const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
+      if (error) {
+        alert(`Could not reject review: ${error.message}`);
+        return;
+      }
+      setReviews(reviews.filter((r) => r.id !== reviewId));
+    }
+  };
+
+  const handleCreateCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCouponStatus("Creating coupon...");
+
+    const discountValue = parseFloat(couponForm.discountValue);
+    if (!couponForm.code.trim() || !discountValue || discountValue <= 0) {
+      setCouponStatus("Please enter a code and a discount value greater than 0.");
+      return;
+    }
+
+    let payload: any = {
+      code: couponForm.code.trim().toUpperCase(),
+      discount_type: couponForm.discountType,
+      discount_value: discountValue,
+      max_uses: couponForm.maxUses ? parseInt(couponForm.maxUses) : null,
+      expires_at: couponForm.expiresAt ? new Date(couponForm.expiresAt).toISOString() : null,
+      is_public: couponForm.isPublic,
+    };
+
+    let { data, error } = await supabase.from("coupons").insert([payload]).select();
+
+    let publicSaved = true;
+    if (error?.code === "PGRST204" || /is_public/i.test(error?.message || "")) {
+      publicSaved = false;
+      const { is_public, ...rest } = payload;
+      payload = rest;
+      ({ data, error } = await supabase.from("coupons").insert([payload]).select());
+    }
+
+    if (error) {
+      setCouponStatus(`Could not create coupon: ${error.message}`);
+      return;
+    }
+
+    setCoupons([...(data || []), ...coupons]);
+    setCouponForm({ code: "", discountType: "flat", discountValue: "", maxUses: "", expiresAt: "", isPublic: false });
+    setCouponStatus(
+      publicSaved
+        ? "Coupon created successfully."
+        : "Coupon created, but the \"Show on site\" option needs the latest migration run first (run 0002_add_coupon_visibility.sql, then edit this coupon again)."
+    );
+  };
+
+  const handleToggleCoupon = async (couponId: number, active: boolean) => {
+    const { error } = await supabase.from("coupons").update({ active }).eq("id", couponId);
+    if (error) {
+      alert(`Could not update coupon: ${error.message}`);
+      return;
+    }
+    setCoupons(coupons.map((c) => (c.id === couponId ? { ...c, active } : c)));
+  };
+
+  const handleToggleCouponVisibility = async (couponId: number, isPublic: boolean) => {
+    const { error } = await supabase.from("coupons").update({ is_public: isPublic }).eq("id", couponId);
+    if (error) {
+      alert(`Could not update coupon visibility: ${error.message}`);
+      return;
+    }
+    setCoupons(coupons.map((c) => (c.id === couponId ? { ...c, is_public: isPublic } : c)));
+  };
+
+  const handleDeleteCoupon = async (couponId: number) => {
+    const { error } = await supabase.from("coupons").delete().eq("id", couponId);
+    if (error) {
+      alert(`Could not delete coupon: ${error.message}`);
+      return;
+    }
+    setCoupons(coupons.filter((c) => c.id !== couponId));
+  };
+
   const handleCancelEdit = () => {
     setEditingProductId(null);
-    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", additionalImages: [] });
+    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [] });
     setStatus("");
   };
 
@@ -222,6 +425,12 @@ export default function AdminDashboard() {
               <div>
                 <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">Price (INR ₹)</label>
                 <input type="number" required disabled={isSubmitting} placeholder="e.g., 3500" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+                  Category <span className="text-stone-400 font-normal normal-case">(optional — powers the storefront filter)</span>
+                </label>
+                <input type="text" disabled={isSubmitting} placeholder="e.g., Diyas, Idols, Corporate Gifts" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
               </div>
             </div>
 
@@ -288,24 +497,60 @@ export default function AdminDashboard() {
         {/* SECTION B: ACTIVE PRODUCT INVENTORY BALANCES TUNER */}
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
-            <h2 className="text-xl font-serif text-stone-900">Live Storefront Catalog & Stock Tracker</h2>
-            <p className="text-stone-500 text-xs mt-1">Manage physical stock variations or open a product's text fields to overwrite details cleanly.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-serif text-stone-900">Live Storefront Catalog & Stock Tracker</h2>
+                <p className="text-stone-500 text-xs mt-1">Manage physical stock variations or open a product's text fields to overwrite details cleanly.</p>
+              </div>
+              <span className="text-xs font-mono font-bold text-stone-500 bg-stone-100 border border-stone-200 rounded px-3 py-1.5 whitespace-nowrap">
+                {products.length} product{products.length === 1 ? "" : "s"} added
+              </span>
+            </div>
+
+            <div className="relative mt-4">
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Search added products by name..."
+                aria-label="Search products"
+                className="w-full pl-9 pr-3 py-2.5 rounded border border-stone-200 bg-stone-50 text-sm text-stone-800 focus:outline-none focus:border-amber-600 focus:bg-white transition"
+              />
+            </div>
           </div>
 
           {products.length === 0 ? (
             <p className="text-stone-400 text-sm text-center py-6">No products found in cloud database storage.</p>
+          ) : visibleProducts.length === 0 ? (
+            <p className="text-stone-400 text-sm text-center py-6">No products match &ldquo;{productSearch}&rdquo;.</p>
           ) : (
+            <>
             <div className="divide-y divide-stone-100">
-              {products.map((product) => (
+              {paginatedProducts.map((product, index) => (
                 <div key={product.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-grow">
-                    <img src={product.image_url} alt={product.name} className="w-14 h-14 rounded object-cover border border-stone-200 bg-stone-50 flex-shrink-0" />
+                    <span className="text-xs font-mono font-bold text-stone-400 w-6 text-right flex-shrink-0">
+                      {(productPage - 1) * productPageSize + index + 1}
+                    </span>
+                    <div className="relative w-14 h-14 rounded overflow-hidden border border-stone-200 bg-stone-50 flex-shrink-0">
+                      <Image src={product.image_url} alt={product.name} fill sizes="56px" className="object-cover" />
+                    </div>
                     <div>
                       <h3 className="font-serif text-stone-900 text-sm font-medium">{product.name}</h3>
                       <p className="text-amber-800 text-xs font-mono font-bold">₹{Number(product.price).toLocaleString("en-IN")}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-0 pt-3 sm:pt-0">
                     <div className="flex items-center gap-2">
                       <button onClick={() => handleStockUpdate(product.id, product.inventory, -1)} className="w-8 h-8 rounded border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 transition">-</button>
@@ -316,7 +561,7 @@ export default function AdminDashboard() {
                       </div>
                       <button onClick={() => handleStockUpdate(product.id, product.inventory, 1)} className="w-8 h-8 rounded border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 transition">+</button>
                     </div>
-                    
+
                     <button type="button" onClick={() => handleEditClick(product)} className="px-4 py-2 border border-amber-600 rounded text-amber-700 hover:bg-amber-50 font-semibold text-xs uppercase shadow-sm transition">
                       Edit Details
                     </button>
@@ -324,21 +569,61 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
+            <Pagination
+              page={productPage}
+              pageSize={productPageSize}
+              totalItems={visibleProducts.length}
+              itemLabel="products"
+              onPageChange={setProductPage}
+              onPageSizeChange={(size) => { setProductPageSize(size); setProductPage(1); }}
+            />
+            </>
           )}
         </div>
 
         {/* SECTION C: SECURE INCOMING CUSTOMER ORDERS LEDGER */}
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
-            <h2 className="text-xl font-serif text-stone-900">Settled Customer Transactions</h2>
-            <p className="text-stone-500 text-xs mt-1">Real-time purchase streams verified and pushed directly by your Razorpay webhook endpoint script.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-serif text-stone-900">Settled Customer Transactions</h2>
+                <p className="text-stone-500 text-xs mt-1">Real-time purchase streams verified and pushed directly by your Razorpay webhook endpoint script.</p>
+              </div>
+              <span className="text-xs font-mono font-bold text-stone-500 bg-stone-100 border border-stone-200 rounded px-3 py-1.5 whitespace-nowrap">
+                {orders.length} transaction{orders.length === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            <div className="relative mt-4">
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                value={orderSearch}
+                onChange={(e) => setOrderSearch(e.target.value)}
+                placeholder="Search by customer name, email, phone, order ID, or payment reference ID..."
+                aria-label="Search transactions"
+                className="w-full pl-9 pr-3 py-2.5 rounded border border-stone-200 bg-stone-50 text-sm text-stone-800 focus:outline-none focus:border-amber-600 focus:bg-white transition"
+              />
+            </div>
           </div>
 
           {loadingOrders ? (
             <p className="text-stone-400 text-sm text-center py-6 animate-pulse">Syncing transactions ledger from cloud data cache...</p>
           ) : orders.length === 0 ? (
             <p className="text-stone-400 text-sm text-center py-6">No payment captured records generated yet.</p>
+          ) : visibleOrders.length === 0 ? (
+            <p className="text-stone-400 text-sm text-center py-6">No transactions match &ldquo;{orderSearch}&rdquo;.</p>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <table className="w-full text-left font-sans text-xs sm:text-sm text-stone-600 border-collapse">
                 <thead>
@@ -346,15 +631,19 @@ export default function AdminDashboard() {
                     <th className="p-4">Payment Reference ID</th>
                     <th className="p-4">Customer Info</th>
                     <th className="p-4">Purchased Items</th>
+                    <th className="p-4">Status</th>
                     <th className="p-4 text-right">Revenue Value</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
-                  {orders.map((order) => (
+                  {paginatedOrders.map((order: any) => (
                     <tr key={order.id} className="hover:bg-stone-50/50 transition">
                       <td className="p-4 font-mono font-bold text-stone-800">
                         {order.payment_id}
                         <span className="block text-[10px] text-stone-400 font-normal mt-1">
+                          Order ID: {order.order_id}
+                        </span>
+                        <span className="block text-[10px] text-stone-400 font-normal mt-0.5">
                           {new Date(order.created_at).toLocaleString("en-IN")}
                         </span>
                       </td>
@@ -377,6 +666,26 @@ export default function AdminDashboard() {
                           )}
                         </div>
                       </td>
+                      <td className="p-4">
+                        <select
+                          value={order.status || "processing"}
+                          onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                          className={`text-[11px] uppercase font-semibold px-2 py-1.5 rounded border focus:outline-none ${
+                            order.status === "delivered"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : order.status === "shipped"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : order.status === "cancelled"
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : "bg-stone-100 text-stone-700 border-stone-200"
+                          }`}
+                        >
+                          <option value="processing">Processing</option>
+                          <option value="shipped">Shipped</option>
+                          <option value="delivered">Delivered</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      </td>
                       <td className="p-4 text-right font-mono font-bold text-amber-800 text-base">
                         ₹{Number(order.amount).toLocaleString("en-IN")}
                       </td>
@@ -384,6 +693,193 @@ export default function AdminDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <Pagination
+              page={orderPage}
+              pageSize={orderPageSize}
+              totalItems={visibleOrders.length}
+              itemLabel="transactions"
+              onPageChange={setOrderPage}
+              onPageSizeChange={(size) => { setOrderPageSize(size); setOrderPage(1); }}
+            />
+            </>
+          )}
+        </div>
+
+        {/* SECTION D: COUPON / DISCOUNT CODES */}
+        <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+          <div className="border-b border-stone-200 pb-4 mb-6">
+            <h2 className="text-xl font-serif text-stone-900">Coupon Codes</h2>
+            <p className="text-stone-500 text-xs mt-1">Discounts are validated and applied server-side at checkout, so codes are safe from tampering.</p>
+          </div>
+
+          <form onSubmit={handleCreateCoupon} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <input
+              type="text"
+              required
+              placeholder="CODE"
+              value={couponForm.code}
+              onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
+              className="px-3 py-2.5 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+            <select
+              value={couponForm.discountType}
+              onChange={(e) => setCouponForm({ ...couponForm, discountType: e.target.value })}
+              className="px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+            >
+              <option value="flat">₹ Flat off</option>
+              <option value="percent">% Off</option>
+            </select>
+            <input
+              type="number"
+              required
+              placeholder={couponForm.discountType === "percent" ? "e.g., 10" : "e.g., 200"}
+              value={couponForm.discountValue}
+              onChange={(e) => setCouponForm({ ...couponForm, discountValue: e.target.value })}
+              className="px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+            <input
+              type="number"
+              placeholder="Max uses (optional)"
+              value={couponForm.maxUses}
+              onChange={(e) => setCouponForm({ ...couponForm, maxUses: e.target.value })}
+              className="px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+            <div className="flex gap-2">
+              <input
+                type="date"
+                title="Expiry date (optional)"
+                value={couponForm.expiresAt}
+                onChange={(e) => setCouponForm({ ...couponForm, expiresAt: e.target.value })}
+                className="flex-grow px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+              />
+              <button type="submit" className="px-4 py-2.5 rounded bg-stone-950 hover:bg-amber-800 text-white font-medium text-xs uppercase tracking-wider shadow transition whitespace-nowrap">
+                Add
+              </button>
+            </div>
+          </form>
+
+          <label className="flex items-center gap-2 text-xs text-stone-600 mb-6 -mt-2">
+            <input
+              type="checkbox"
+              checked={couponForm.isPublic}
+              onChange={(e) => setCouponForm({ ...couponForm, isPublic: e.target.checked })}
+              className="w-4 h-4 accent-amber-700"
+            />
+            Show on site (public promo banner) &mdash; leave unchecked to share this code only externally (WhatsApp, social, etc.)
+          </label>
+
+          {couponStatus && <p className="text-xs text-stone-500 mb-4">{couponStatus}</p>}
+
+          {coupons.length === 0 ? (
+            <p className="text-stone-400 text-sm text-center py-6">No coupon codes created yet.</p>
+          ) : (
+            <div className="divide-y divide-stone-100">
+              {coupons.map((coupon: any) => (
+                <div key={coupon.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="font-mono font-bold text-stone-900 text-sm">{coupon.code}</span>
+                    <span className="text-xs text-amber-700 font-medium">
+                      {coupon.discount_type === "percent" ? `${coupon.discount_value}% off` : `₹${coupon.discount_value} off`}
+                    </span>
+                    <span className="text-[11px] text-stone-400">
+                      Used {coupon.used_count}{coupon.max_uses ? ` / ${coupon.max_uses}` : ""}
+                    </span>
+                    {coupon.expires_at && (
+                      <span className="text-[11px] text-stone-400">
+                        Expires {new Date(coupon.expires_at).toLocaleDateString("en-IN")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleCouponVisibility(coupon.id, !coupon.is_public)}
+                      title="Toggle whether this code appears in the on-site promo banner"
+                      className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold border transition ${
+                        coupon.is_public
+                          ? "border-amber-600 text-amber-700 hover:bg-amber-50"
+                          : "border-stone-300 text-stone-500 hover:bg-stone-100"
+                      }`}
+                    >
+                      {coupon.is_public ? "Public" : "Private"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleCoupon(coupon.id, !coupon.active)}
+                      className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold border transition ${
+                        coupon.active
+                          ? "border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                          : "border-stone-300 text-stone-500 hover:bg-stone-100"
+                      }`}
+                    >
+                      {coupon.active ? "Active" : "Inactive"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCoupon(coupon.id)}
+                      className="px-3 py-1.5 rounded border border-rose-600 text-rose-700 hover:bg-rose-50 text-[11px] uppercase font-semibold transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* SECTION E: PRODUCT REVIEW MODERATION QUEUE */}
+        <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+          <div className="border-b border-stone-200 pb-4 mb-6">
+            <h2 className="text-xl font-serif text-stone-900">Product Reviews</h2>
+            <p className="text-stone-500 text-xs mt-1">Approve a review to publish it on the storefront, or reject it to remove it permanently.</p>
+          </div>
+
+          {reviews.length === 0 ? (
+            <p className="text-stone-400 text-sm text-center py-6">No reviews submitted yet.</p>
+          ) : (
+            <div className="divide-y divide-stone-100">
+              {reviews.map((review: any) => (
+                <div key={review.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex-grow">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-amber-500 text-xs leading-none">
+                        {"★".repeat(review.rating)}
+                        {"☆".repeat(5 - review.rating)}
+                      </span>
+                      <span className="text-sm font-medium text-stone-900">{review.customer_name}</span>
+                      <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-stone-100 text-stone-500">
+                        {review.products?.name || `Product #${review.product_id}`}
+                      </span>
+                      <span className={`text-[10px] uppercase font-semibold px-2 py-0.5 rounded ${review.approved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                        {review.approved ? "Live" : "Pending"}
+                      </span>
+                    </div>
+                    {review.review_text && (
+                      <p className="text-stone-600 text-xs font-light mt-1.5">{review.review_text}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {!review.approved && (
+                      <button
+                        type="button"
+                        onClick={() => handleReviewModerate(review.id, "approve")}
+                        className="px-4 py-2 border border-emerald-600 rounded text-emerald-700 hover:bg-emerald-50 font-semibold text-xs uppercase shadow-sm transition"
+                      >
+                        Approve
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleReviewModerate(review.id, "reject")}
+                      className="px-4 py-2 border border-rose-600 rounded text-rose-700 hover:bg-rose-50 font-semibold text-xs uppercase shadow-sm transition"
+                    >
+                      {review.approved ? "Remove" : "Reject"}
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

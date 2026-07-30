@@ -1,40 +1,91 @@
 // app/api/razorpay-webhook/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import Razorpay from "razorpay";
+import { isValidPaymentSignature } from "@/app/utils/razorpaySignature";
+import { calculateGstBreakdown, GST_RATE, BUSINESS_GSTIN } from "@/app/utils/gst";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gxlervcazzddqcoagewy.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_yfpUfp0RTaHs6nL3VEcnZQ_H_u-KA7C";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+const razorpay = new Razorpay({
+  key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_build_placeholder",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "build_secret_placeholder",
+});
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
     if (body.event === "payment.captured") {
+      const razorpayOrderId = body.razorpay_order_id;
+      const razorpayPaymentId = body.razorpay_payment_id;
+      const razorpaySignature = body.razorpay_signature;
+
+      if (!isValidPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature, process.env.RAZORPAY_KEY_SECRET)) {
+        console.error("Rejected order webhook: invalid or missing Razorpay payment signature.");
+        return NextResponse.json({ error: "Invalid payment signature." }, { status: 401 });
+      }
+
+      // Idempotency guard: a retried/duplicated client call for a payment
+      // we've already recorded must not insert a second order or deduct
+      // stock twice.
+      const { data: existingOrder } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("payment_id", razorpayPaymentId)
+        .maybeSingle();
+
+      if (existingOrder) {
+        return NextResponse.json({ status: "already_recorded" });
+      }
+
       const paymentEntity = body.payload.payment.entity;
-      const orderId = paymentEntity.order_id;
-      const paymentId = paymentEntity.id;
-      const totalAmount = paymentEntity.amount / 100;
-      
-      // Capture custom customer data filled out in the drawer inputs
+      const orderId = razorpayOrderId;
+      const paymentId = razorpayPaymentId;
+
+      // Cross-check the claimed amount against what Razorpay actually
+      // captured, rather than trusting the client-supplied figure outright.
+      // Also pull the item list/coupon from the REAL order notes Razorpay
+      // stored at order-creation time (set server-side in /api/razorpay),
+      // rather than the notes the client claims in this request body --
+      // otherwise a tampered request could get real-money-verified payment
+      // while claiming a different (larger) set of items, over-deducting
+      // stock for things that were never actually paid for.
+      let totalAmount = paymentEntity.amount / 100;
+      let orderItems: any[] = [];
+      let couponCode: string | null = null;
+      try {
+        const [capturedPayment, capturedOrder] = await Promise.all([
+          razorpay.payments.fetch(paymentId),
+          razorpay.orders.fetch(orderId),
+        ]);
+        if (capturedPayment.status !== "captured" || capturedPayment.order_id !== orderId) {
+          console.error("Rejected order webhook: payment not captured or order mismatch.", paymentId);
+          return NextResponse.json({ error: "Payment not verified." }, { status: 401 });
+        }
+        totalAmount = Number(capturedPayment.amount) / 100;
+
+        const notes: any = capturedOrder.notes || {};
+        orderItems = notes.items ? (typeof notes.items === "string" ? JSON.parse(notes.items) : notes.items) : [];
+        couponCode = notes.couponCode || null;
+      } catch (verifyErr) {
+        console.error("Rejected order webhook: could not verify payment/order with Razorpay.", verifyErr);
+        return NextResponse.json({ error: "Payment verification failed." }, { status: 401 });
+      }
+
+      // Capture custom customer data filled out in the drawer inputs --
+      // display-only fields with no effect on price/stock, so the client's
+      // own values are fine to trust here.
       const customerEmail = paymentEntity.email || "customer@example.com";
       const customerPhone = paymentEntity.contact || "9999999999";
-
-      let orderItems = [];
       let customerName = "Premium Customer";
-      
       try {
         const rawNotes = body.payload.order?.entity?.notes || body.payload.payment?.entity?.notes;
-        if (rawNotes) {
-          if (rawNotes.items) {
-            orderItems = typeof rawNotes.items === "string" ? JSON.parse(rawNotes.items) : rawNotes.items;
-          }
-          if (rawNotes.customer_name) {
-            customerName = rawNotes.customer_name;
-          }
-        }
+        if (rawNotes?.customer_name) customerName = rawNotes.customer_name;
       } catch (parseError) {
-        console.error("Notes items parsing error fallback tracking route execution:", parseError);
+        console.error("Customer name parsing fallback:", parseError);
       }
 
       // 1. Log directly to Supabase orders table with the updated details
@@ -47,10 +98,29 @@ export async function POST(req: Request) {
             amount: totalAmount,
             customer_details: { email: customerEmail, contact: customerPhone, name: customerName },
             items: orderItems,
+            status: "processing",
           }
         ]);
 
       if (dbError) throw new Error(`Supabase Exception: ${dbError.message}`);
+
+      // 1a. If a coupon was applied, count this verified, paid order against
+      // its usage limit now (not at order-creation time, so abandoned/failed
+      // checkouts never consume a redemption).
+      if (couponCode) {
+        try {
+          const { data: coupon } = await supabase
+            .from("coupons")
+            .select("id, used_count")
+            .eq("code", couponCode)
+            .maybeSingle();
+          if (coupon) {
+            await supabase.from("coupons").update({ used_count: coupon.used_count + 1 }).eq("id", coupon.id);
+          }
+        } catch (couponErr) {
+          console.error("Coupon usage increment failed:", couponErr);
+        }
+      }
 
       // 1b. Deduct purchased quantities from live stock so sold-out items stop
       // accepting further orders. Best-effort: a failure here must not block
@@ -70,6 +140,16 @@ export async function POST(req: Request) {
             if (!current) continue;
             const newInventory = Math.max(0, Number(current.inventory) - Number(item.quantity || 0));
             await supabase.from("products").update({ inventory: newInventory }).eq("id", item.id);
+
+            // Best-effort low-stock alert to the business WhatsApp number.
+            try {
+              const LOW_STOCK_THRESHOLD = 3;
+              if (newInventory <= LOW_STOCK_THRESHOLD) {
+                await sendLowStockAlert(item.name ?? current.id, newInventory);
+              }
+            } catch (lowStockErr) {
+              console.error("Low-stock alert failed:", lowStockErr);
+            }
           }
         }
       } catch (stockError) {
@@ -84,57 +164,53 @@ export async function POST(req: Request) {
       // instance only supports a handful of distinct chats per month, so
       // customer-side delivery may stop working past that quota.
       try {
-        const greenApiUrl = process.env.GREEN_API_URL;
-        const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
-        const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
+        const itemsSummary = orderItems
+          .map((item: any) => `${item.name} x${item.quantity}`)
+          .join(", ");
+
+        // The admin-set price is the final price paid -- GST is
+        // back-calculated out of it for the bill, not added on top.
+        const gst = calculateGstBreakdown(totalAmount);
+
+        const businessMessage = [
+          "New Tohfa order received!",
+          `Order ID: ${orderId}`,
+          `Customer: ${customerName}`,
+          `Phone: ${customerPhone}`,
+          `Email: ${customerEmail}`,
+          `Items: ${itemsSummary || "N/A"}`,
+          `Base Amount: ₹${gst.basePrice.toLocaleString("en-IN")}`,
+          `GST (${GST_RATE * 100}%): ₹${gst.gstAmount.toLocaleString("en-IN")}`,
+          `Total Amount: ₹${gst.totalPrice.toLocaleString("en-IN")}`,
+        ].join("\n");
+
+        const itemLines = orderItems.length
+          ? orderItems.map((item: any) => `  ${item.name} x${item.quantity}`).join("\n")
+          : "  N/A";
         const businessWhatsappNumber = process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351";
 
-        if (greenApiUrl && greenApiIdInstance && greenApiTokenInstance) {
-          const itemsSummary = orderItems
-            .map((item: any) => `${item.name} x${item.quantity}`)
-            .join(", ");
+        const customerMessage = [
+          "🧾 *TOHFA — Order Invoice*",
+          `GSTIN: ${BUSINESS_GSTIN}`,
+          "",
+          `Hi ${customerName}, thank you for your order!`,
+          `Order ID: ${orderId}`,
+          `Date: ${new Date().toLocaleString("en-IN")}`,
+          "",
+          "Items:",
+          itemLines,
+          "",
+          `Base Amount: ₹${gst.basePrice.toLocaleString("en-IN")}`,
+          `GST (${GST_RATE * 100}%): ₹${gst.gstAmount.toLocaleString("en-IN")}`,
+          `Total Amount Paid: ₹${gst.totalPrice.toLocaleString("en-IN")}`,
+          "",
+          `Please reply here on WhatsApp (+${businessWhatsappNumber}) with your complete delivery address so we can ship your order.`,
+        ].join("\n");
 
-          const businessMessage = [
-            "New Tohfa order received!",
-            `Order ID: ${orderId}`,
-            `Customer: ${customerName}`,
-            `Phone: ${customerPhone}`,
-            `Email: ${customerEmail}`,
-            `Amount: ₹${totalAmount.toLocaleString("en-IN")}`,
-            `Items: ${itemsSummary || "N/A"}`,
-          ].join("\n");
-
-          const customerMessage = [
-            `Hi ${customerName}, thank you for your Tohfa order!`,
-            `Order ID: ${orderId}`,
-            `Amount: ₹${totalAmount.toLocaleString("en-IN")}`,
-            `Items: ${itemsSummary || "N/A"}`,
-            "We'll reach out here on WhatsApp with delivery updates.",
-          ].join("\n");
-
-          const customerChatId = customerPhone.startsWith("91")
-            ? `${customerPhone}@c.us`
-            : `91${customerPhone}@c.us`;
-
-          const sendWhatsappMessage = async (chatId: string, message: string) => {
-            const res = await fetch(
-              `${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chatId, message }),
-              }
-            );
-            if (!res.ok) {
-              console.error("WhatsApp (Green API) send failed:", chatId, await res.text());
-            }
-          };
-
-          await Promise.all([
-            sendWhatsappMessage(`${businessWhatsappNumber}@c.us`, businessMessage),
-            sendWhatsappMessage(customerChatId, customerMessage),
-          ]);
-        }
+        await Promise.all([
+          sendWhatsappMessage(businessWhatsappNumber, businessMessage),
+          sendWhatsappMessage(customerPhone, customerMessage),
+        ]);
       } catch (waError) {
         console.error("WhatsApp dispatch skip:", waError);
       }
@@ -144,4 +220,37 @@ export async function POST(req: Request) {
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
+}
+
+// Best-effort WhatsApp send via Green API. Silently no-ops until
+// GREEN_API_URL / GREEN_API_ID_INSTANCE / GREEN_API_TOKEN_INSTANCE are set.
+async function sendWhatsappMessage(phone: string, message: string) {
+  const greenApiUrl = process.env.GREEN_API_URL;
+  const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
+  const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
+  if (!greenApiUrl || !greenApiIdInstance || !greenApiTokenInstance) return;
+
+  const chatId = phone.startsWith("91") ? `${phone}@c.us` : `91${phone}@c.us`;
+
+  const res = await fetch(
+    `${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId, message }),
+    }
+  );
+  if (!res.ok) {
+    console.error("WhatsApp (Green API) send failed:", chatId, await res.text());
+  }
+}
+
+async function sendLowStockAlert(productName: string, remaining: number) {
+  const message = [
+    "Low stock alert!",
+    `Product: ${productName}`,
+    `Remaining units: ${remaining}`,
+    remaining === 0 ? "This item is now OUT OF STOCK." : "Consider restocking soon.",
+  ].join("\n");
+  await sendWhatsappMessage(process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351", message);
 }
