@@ -2,6 +2,7 @@
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import CatalogSection from "@/app/components/CatalogSection";
 import PromoBanner from "@/app/components/PromoBanner";
+import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
 import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
 
 // Storefront catalog must reflect live admin edits/stock on every view (same
@@ -109,47 +110,47 @@ export default async function StorefrontHome({
   ]);
 
   return (
-    <div className="bg-[#FAF9F6] min-h-screen flex flex-col justify-between">
+    <div className="bg-[#FAF9F6] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
       <PromoBanner coupons={publicCoupons} />
-      
+
       {/* MAIN LAYOUT WRAPPER CONTROLLER NODE */}
       <div>
         {/* BRAND SUB-HEADER NAVIGATION BAR */}
-       <nav className="bg-white border-b border-stone-200 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-30">
+       <nav className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-30 transition-colors">
   <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-    
+
     {/* LEFT SIDE: BRAND LOGO & CORE ROUTE LINKS */}
     <div className="flex items-center justify-between md:justify-start md:gap-8">
       {/* Brand Identity Branding Nodes */}
       <div className="flex items-center gap-1.5 select-none">
-        <span className="font-serif font-bold text-base md:text-lg text-stone-900 tracking-widest">TOHFA</span>
-        <span className="text-[9px] md:text-[10px] text-amber-700 border border-amber-200 rounded px-1.5 py-0.5 bg-amber-50 uppercase font-medium">
+        <span className="font-serif font-bold text-base md:text-lg text-stone-900 dark:text-stone-100 tracking-widest">TOHFA</span>
+        <span className="text-[9px] md:text-[10px] text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/30 uppercase font-medium">
           Studio
         </span>
       </div>
 
       {/* Persistent Page Links - Clean inline list structure on all viewports */}
-      <div className="flex items-center gap-4 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600">
-        <a href="/" className="hover:text-amber-700 transition font-semibold text-stone-900">
+      <div className="flex items-center gap-4 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600 dark:text-stone-400">
+        <a href="/" className="hover:text-amber-700 dark:hover:text-amber-500 transition font-semibold text-stone-900 dark:text-stone-100">
           Home
         </a>
-        <a href="/about" className="hover:text-amber-700 transition">
+        <a href="/about" className="hover:text-amber-700 dark:hover:text-amber-500 transition">
           About us
         </a>
       </div>
     </div>
 
     {/* RIGHT SIDE: COMMUNICATION MATRIX (Collapses intelligently onto mobile layouts) */}
-    <div className="flex items-center justify-between md:justify-end gap-3 md:gap-6 pt-2 md:pt-0 border-t border-stone-100 md:border-none">
-      
+    <div className="flex items-center justify-between md:justify-end gap-3 md:gap-6 pt-2 md:pt-0 border-t border-stone-100 dark:border-stone-800 md:border-none">
+
       {/* 1. ELECTRONIC MAIL MODULE */}
       <div className="flex flex-col md:block">
         <span className="block text-[9px] md:text-xs uppercase tracking-wider text-stone-400 font-bold md:mb-1">
           Email Support
         </span>
-        <a 
-          href="mailto:contact@tohfaonline.com" 
-          className="text-amber-800 font-mono text-xs md:text-sm font-medium hover:underline break-all"
+        <a
+          href="mailto:contact@tohfaonline.com"
+          className="text-amber-800 dark:text-amber-400 font-mono text-xs md:text-sm font-medium hover:underline break-all"
         >
           contact@tohfaonline.com
         </a>
@@ -160,7 +161,7 @@ export default async function StorefrontHome({
         <span className="text-[9px] md:text-xs uppercase tracking-wider text-stone-400 font-bold mb-1">
           Call/WhatsApp
         </span>
-        <p className="text-stone-900 font-medium font-mono text-xs md:text-sm">
+        <p className="text-stone-900 dark:text-stone-100 font-medium font-mono text-xs md:text-sm">
           +91 6302672351
         </p>
       </div>
@@ -210,6 +211,8 @@ export default async function StorefrontHome({
           category={category}
           sort={sort}
         />
+
+        <RecentlyViewedStrip />
       </div>
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}

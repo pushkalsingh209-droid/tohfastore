@@ -164,6 +164,26 @@ export default function CartDrawer() {
           } catch (e) {
             console.error("Direct backend log pipeline tracing bottleneck:", e);
           } finally {
+            try {
+              sessionStorage.setItem(
+                "tohfa_last_order",
+                JSON.stringify({
+                  orderId: data.orderId,
+                  paymentId: response.razorpay_payment_id,
+                  date: new Date().toISOString(),
+                  customerName,
+                  customerPhone: cleanPhone,
+                  customerEmail,
+                  items: cart.map((item: any) => ({ name: item.name, price: item.price, quantity: item.quantity })),
+                  subtotal: cartTotal,
+                  discount: appliedCoupon?.discount || 0,
+                  couponCode: appliedCoupon?.code || null,
+                  total: data.amount / 100,
+                })
+              );
+            } catch (e) {
+              console.error("Could not stash invoice data:", e);
+            }
             setIsOpen(false);
             router.push("/success");
           }
@@ -192,11 +212,11 @@ export default function CartDrawer() {
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
       <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-white shadow-xl flex flex-col h-full">
-          
-          <div className="p-6 border-b border-stone-100 flex items-center justify-between">
-            <h2 className="text-lg font-serif text-stone-900 font-bold tracking-wide">Your Shopping Bag</h2>
-            <button onClick={() => setIsOpen(false)} className="text-stone-400 hover:text-stone-600 text-sm font-medium">✕ Close</button>
+        <div className="w-screen max-w-md bg-white dark:bg-stone-900 shadow-xl flex flex-col h-full">
+
+          <div className="p-6 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
+            <h2 className="text-lg font-serif text-stone-900 dark:text-stone-100 font-bold tracking-wide">Your Shopping Bag</h2>
+            <button onClick={() => setIsOpen(false)} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-sm font-medium">✕ Close</button>
           </div>
 
           <div className="flex-grow overflow-y-auto p-6 space-y-4">
@@ -204,16 +224,16 @@ export default function CartDrawer() {
               <p className="text-stone-400 text-sm font-light text-center py-12">Your shopping bag is empty.</p>
             ) : (
               <>
-                <div className="space-y-4 max-h-[35vh] overflow-y-auto border-b pb-4">
+                <div className="space-y-4 max-h-[35vh] overflow-y-auto border-b dark:border-stone-800 pb-4">
                   {cart.map((item: any) => (
                     <div key={item.id} className="flex items-center gap-4 pb-2">
-                      <div className="relative w-12 h-12 rounded overflow-hidden border bg-stone-50 flex-shrink-0">
+                      <div className="relative w-12 h-12 rounded overflow-hidden border dark:border-stone-700 bg-stone-50 flex-shrink-0">
                         <Image src={item.image_url} alt={item.name} fill sizes="48px" className="object-cover" />
                       </div>
                       <div className="flex-grow">
-                        <h4 className="font-serif text-xs font-medium text-stone-900 line-clamp-1">{item.name}</h4>
+                        <h4 className="font-serif text-xs font-medium text-stone-900 dark:text-stone-100 line-clamp-1">{item.name}</h4>
                         <p className="text-[11px] text-stone-400">Qty: {item.quantity}</p>
-                        <p className="text-xs text-amber-800 font-bold font-mono">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
+                        <p className="text-xs text-amber-800 dark:text-amber-500 font-bold font-mono">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
                       </div>
                       <button onClick={() => removeFromCart(item.id)} className="text-stone-400 hover:text-rose-600 text-[11px]">Remove</button>
                     </div>
@@ -223,11 +243,11 @@ export default function CartDrawer() {
                 {/* Coupon Code */}
                 <div className="pt-2 pb-1">
                   {appliedCoupon ? (
-                    <div className="flex items-center justify-between p-2.5 text-xs bg-emerald-50 border border-emerald-100 text-emerald-800 rounded">
+                    <div className="flex items-center justify-between p-2.5 text-xs bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 rounded">
                       <span>
                         Coupon <span className="font-mono font-bold">{appliedCoupon.code}</span> applied &minus;₹{appliedCoupon.discount.toLocaleString("en-IN")}
                       </span>
-                      <button type="button" onClick={handleRemoveCoupon} className="text-emerald-700 hover:underline font-medium">
+                      <button type="button" onClick={handleRemoveCoupon} className="text-emerald-700 dark:text-emerald-400 hover:underline font-medium">
                         Remove
                       </button>
                     </div>
@@ -238,13 +258,13 @@ export default function CartDrawer() {
                         value={couponInput}
                         onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
                         placeholder="Coupon code"
-                        className="flex-grow px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700 font-mono"
+                        className="flex-grow px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700 font-mono"
                       />
                       <button
                         type="button"
                         onClick={handleApplyCoupon}
                         disabled={applyingCoupon}
-                        className="px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded border border-stone-300 text-stone-700 hover:bg-stone-100 transition disabled:opacity-50"
+                        className="px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded border border-stone-300 dark:border-stone-600 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition disabled:opacity-50"
                       >
                         {applyingCoupon ? "Checking..." : "Apply"}
                       </button>
@@ -255,29 +275,29 @@ export default function CartDrawer() {
 
                 {/* Secure Contact Input Forms Layer */}
                 <form id="checkout-contact-form" onSubmit={handleRazorpayPayment} className="space-y-3 pt-2">
-                  <h3 className="text-xs font-serif font-bold text-stone-900 uppercase tracking-wider mb-1">Delivery & Contact Fields</h3>
+                  <h3 className="text-xs font-serif font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider mb-1">Delivery & Contact Fields</h3>
 
-                  <div className="p-3 text-[11px] font-medium bg-amber-50 border border-amber-100 text-amber-900 rounded">
+                  <div className="p-3 text-[11px] font-medium bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 text-amber-900 dark:text-amber-300 rounded">
                     📱 Order updates (confirmation, dispatch, delivery) are sent via WhatsApp only. Please enter a number that is active on WhatsApp.
                   </div>
 
                   {/* Inline Error UI Warning Block */}
                   {validationError && (
-                    <div className="p-3 text-[11px] font-medium bg-rose-50 border border-rose-100 text-rose-800 rounded">
+                    <div className="p-3 text-[11px] font-medium bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 text-rose-800 dark:text-rose-400 rounded">
                       ⚠️ {validationError}
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 mb-1">Full Name</label>
-                    <input type="text" required value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="e.g., Pushkal Singh" className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700" />
+                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">Full Name</label>
+                    <input type="text" required value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="e.g., Pushkal Singh" className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700" />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 mb-1">Email Address</label>
-                    <input type="email" required value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="e.g., contact@tohfaonline.com" className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700" />
+                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">Email Address</label>
+                    <input type="email" required value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="e.g., contact@tohfaonline.com" className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700" />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 mb-1">WhatsApp Number</label>
+                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">WhatsApp Number</label>
                     <input
                       type="tel"
                       required
@@ -285,7 +305,7 @@ export default function CartDrawer() {
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ""))} // Auto-strip non-digits instantly
                       placeholder="e.g., 9999999999"
-                      className="w-full px-3 py-2 border border-stone-200 rounded text-xs bg-stone-50 focus:outline-none focus:border-amber-700 font-mono tracking-wide"
+                      className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700 font-mono tracking-wide"
                     />
                     <span className="text-[9px] text-stone-400 block mt-1">Enter your active WhatsApp number (10 digits, no country code or spaces) &mdash; this is where we'll send order updates.</span>
                   </div>
@@ -298,25 +318,25 @@ export default function CartDrawer() {
             const finalTotal = appliedCoupon ? Math.max(0, cartTotal - appliedCoupon.discount) : cartTotal;
             const gst = calculateGstBreakdown(finalTotal);
             return (
-            <div className="p-6 border-t border-stone-100 bg-stone-50 space-y-4">
+            <div className="p-6 border-t border-stone-100 dark:border-stone-800 bg-stone-50 dark:bg-stone-950 space-y-4">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-stone-600 font-medium">Subtotal Amount:</span>
-                  <span className={`font-mono font-bold text-stone-900 ${appliedCoupon ? "text-sm" : "text-lg"}`}>₹{cartTotal.toLocaleString("en-IN")}</span>
+                  <span className="text-stone-600 dark:text-stone-400 font-medium">Subtotal Amount:</span>
+                  <span className={`font-mono font-bold text-stone-900 dark:text-stone-100 ${appliedCoupon ? "text-sm" : "text-lg"}`}>₹{cartTotal.toLocaleString("en-IN")}</span>
                 </div>
                 {appliedCoupon && (
                   <>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-emerald-700 font-medium">Coupon ({appliedCoupon.code}):</span>
-                      <span className="font-mono font-bold text-emerald-700">&minus;₹{appliedCoupon.discount.toLocaleString("en-IN")}</span>
+                      <span className="text-emerald-700 dark:text-emerald-400 font-medium">Coupon ({appliedCoupon.code}):</span>
+                      <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">&minus;₹{appliedCoupon.discount.toLocaleString("en-IN")}</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm border-t border-stone-200 pt-1.5">
-                      <span className="text-stone-600 font-medium">Total:</span>
-                      <span className="text-lg font-mono font-bold text-stone-900">₹{finalTotal.toLocaleString("en-IN")}</span>
+                    <div className="flex items-center justify-between text-sm border-t border-stone-200 dark:border-stone-700 pt-1.5">
+                      <span className="text-stone-600 dark:text-stone-400 font-medium">Total:</span>
+                      <span className="text-lg font-mono font-bold text-stone-900 dark:text-stone-100">₹{finalTotal.toLocaleString("en-IN")}</span>
                     </div>
                   </>
                 )}
-                <div className="flex items-center justify-between text-[11px] text-stone-400 border-t border-stone-200 pt-1.5 mt-1">
+                <div className="flex items-center justify-between text-[11px] text-stone-400 border-t border-stone-200 dark:border-stone-700 pt-1.5 mt-1">
                   <span>Base Price + GST ({GST_RATE * 100}%, inclusive):</span>
                   <span className="font-mono">₹{gst.basePrice.toLocaleString("en-IN")} + ₹{gst.gstAmount.toLocaleString("en-IN")}</span>
                 </div>

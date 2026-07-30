@@ -3,40 +3,40 @@
 
 export default function TermsAndConditions() {
   return (
-    <div className="bg-[#FAF9F6] min-h-screen flex flex-col justify-between">
-      
+    <div className="bg-[#FAF9F6] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+
       {/* PERSISTENT HEADER NAVIGATION MATRIX */}
-      <nav className="bg-white border-b border-stone-200 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-50">
+      <nav className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          
+
           {/* LEFT SIDE: BRAND LOGO & CORE ROUTE LINKS */}
           <div className="flex items-center justify-between md:justify-start md:gap-8">
             <div className="flex items-center gap-1.5 select-none">
-              <span className="font-serif font-bold text-base md:text-lg text-stone-900 tracking-widest">TOHFA</span>
-              <span className="text-[9px] md:text-[10px] text-amber-700 border border-amber-200 rounded px-1.5 py-0.5 bg-amber-50 uppercase font-medium">
+              <span className="font-serif font-bold text-base md:text-lg text-stone-900 dark:text-stone-100 tracking-widest">TOHFA</span>
+              <span className="text-[9px] md:text-[10px] text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/30 uppercase font-medium">
                 Studio
               </span>
             </div>
 
-            <div className="flex items-center gap-4 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600">
-              <a href="/" className="hover:text-amber-700 transition">
+            <div className="flex items-center gap-4 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600 dark:text-stone-400">
+              <a href="/" className="hover:text-amber-700 dark:hover:text-amber-500 transition">
                 Home
               </a>
-              <a href="/about" className="hover:text-amber-700 transition">
+              <a href="/about" className="hover:text-amber-700 dark:hover:text-amber-500 transition">
                 Our Heritage
               </a>
             </div>
           </div>
 
           {/* RIGHT SIDE: COMMUNICATION MATRIX */}
-          <div className="flex items-center justify-between md:justify-end gap-3 md:gap-6 pt-2 md:pt-0 border-t border-stone-100 md:border-none">
+          <div className="flex items-center justify-between md:justify-end gap-3 md:gap-6 pt-2 md:pt-0 border-t border-stone-100 dark:border-stone-800 md:border-none">
             <div className="flex flex-col md:block">
               <span className="block text-[9px] md:text-xs uppercase tracking-wider text-stone-400 font-bold md:mb-1">
                 Email Support
               </span>
-              <a 
-                href="mailto:contact@tohfaonline.com" 
-                className="text-amber-800 font-mono text-xs md:text-sm font-medium hover:underline break-all"
+              <a
+                href="mailto:contact@tohfaonline.com"
+                className="text-amber-800 dark:text-amber-400 font-mono text-xs md:text-sm font-medium hover:underline break-all"
               >
                 contact@tohfaonline.com
               </a>
@@ -46,7 +46,7 @@ export default function TermsAndConditions() {
               <span className="text-[9px] md:text-xs uppercase tracking-wider text-stone-400 font-bold mb-1">
                 Call/WhatsApp
               </span>
-              <p className="text-stone-900 font-medium font-mono text-xs md:text-sm">
+              <p className="text-stone-900 dark:text-stone-100 font-medium font-mono text-xs md:text-sm">
                 +91 6302672351
               </p>
             </div>
@@ -69,52 +69,52 @@ export default function TermsAndConditions() {
       </nav>
 
       {/* MAIN POLICY CONTENT BODY */}
-      <div className="flex-grow py-12 md:py-16 px-4 sm:px-6 font-sans text-stone-700">
-        <div className="max-w-3xl mx-auto bg-white border border-stone-200 rounded-lg p-6 sm:p-8 md:p-12 shadow-sm space-y-6 text-xs sm:text-sm font-light leading-relaxed">
+      <div className="flex-grow py-12 md:py-16 px-4 sm:px-6 font-sans text-stone-700 dark:text-stone-300">
+        <div className="max-w-3xl mx-auto bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-6 sm:p-8 md:p-12 shadow-sm space-y-6 text-xs sm:text-sm font-light leading-relaxed">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 mb-2 font-medium tracking-wide">
+            <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 dark:text-stone-100 mb-2 font-medium tracking-wide">
               Terms & Conditions
             </h1>
             <p className="text-[10px] sm:text-xs text-stone-400 font-mono">Last updated: June 2026</p>
           </div>
-          <hr className="border-stone-100" />
-          
-          <p className="text-stone-600">
+          <hr className="border-stone-100 dark:border-stone-800" />
+
+          <p className="text-stone-600 dark:text-stone-400">
             Welcome to TOHFA (luxurybrassgift.com). By browsing and using this website, you agree to comply with and be bound by the following terms and conditions of use.
           </p>
           
           <div className="space-y-2">
-            <h2 className="text-sm sm:text-base font-serif text-stone-950 font-semibold tracking-wide pt-2">
+            <h2 className="text-sm sm:text-base font-serif text-stone-950 dark:text-stone-100 font-semibold tracking-wide pt-2">
               1. Storefront Information
             </h2>
-            <p className="text-stone-600">
+            <p className="text-stone-600 dark:text-stone-400">
               The term "TOHFA", "us", or "we" refers to the owner of the website. The term "you" refers to the user or viewer of our website.
             </p>
           </div>
           
           <div className="space-y-2">
-            <h2 className="text-sm sm:text-base font-serif text-stone-950 font-semibold tracking-wide pt-2">
+            <h2 className="text-sm sm:text-base font-serif text-stone-950 dark:text-stone-100 font-semibold tracking-wide pt-2">
               2. Product Specifications & Pricing
             </h2>
-            <p className="text-stone-600">
+            <p className="text-stone-600 dark:text-stone-400">
               All descriptions of products or product pricing are subject to change at any time without notice. We reserve the right to discontinue any brass artifact or luxury box at any time. We make every effort to display as accurately as possible the colors and finishes of our brass goods.
             </p>
           </div>
           
           <div className="space-y-2">
-            <h2 className="text-sm sm:text-base font-serif text-stone-950 font-semibold tracking-wide pt-2">
+            <h2 className="text-sm sm:text-base font-serif text-stone-950 dark:text-stone-100 font-semibold tracking-wide pt-2">
               3. Payment & Order Acceptance
             </h2>
-            <p className="text-stone-600">
+            <p className="text-stone-600 dark:text-stone-400">
               We accept payments via domestic credit/debit cards, net banking, and UPI channels managed securely by Razorpay. We reserve the right to refuse any order you place with us.
             </p>
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-sm sm:text-base font-serif text-stone-950 font-semibold tracking-wide pt-2">
+            <h2 className="text-sm sm:text-base font-serif text-stone-950 dark:text-stone-100 font-semibold tracking-wide pt-2">
               4. Governing Law
             </h2>
-            <p className="text-stone-600">
+            <p className="text-stone-600 dark:text-stone-400">
               Your use of this website and any dispute arising out of such use of the website is subject to the laws of India.
             </p>
           </div>

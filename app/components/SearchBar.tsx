@@ -91,12 +91,12 @@ export default function SearchBar() {
           onKeyDown={handleKeyDown}
           placeholder="Search brass artifacts..."
           aria-label="Search products"
-          className="w-full pl-9 pr-3 py-2.5 rounded border border-stone-200 bg-stone-50 text-sm text-stone-800 focus:outline-none focus:border-amber-600 focus:bg-white transition"
+          className="w-full pl-9 pr-3 py-2.5 rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-sm text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-600 focus:bg-white dark:focus:bg-stone-800 transition"
         />
       </div>
 
       {isOpen && trimmedQuery.length > 0 && (
-        <div className="absolute left-0 right-0 mt-1 bg-white border border-stone-200 rounded shadow-lg z-50 max-h-72 overflow-y-auto">
+        <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded shadow-lg z-50 max-h-72 overflow-y-auto">
           {results.length === 0 ? (
             <p className="px-4 py-3 text-xs text-stone-400">No artifacts found.</p>
           ) : (
@@ -112,7 +112,7 @@ export default function SearchBar() {
                   type="button"
                   onClick={() => goToProduct(p.id)}
                   className={`block w-full text-left px-4 py-2.5 text-sm transition ${
-                    idx === activeIndex ? "bg-amber-50 text-amber-800" : "hover:bg-stone-50 text-stone-700"
+                    idx === activeIndex ? "bg-amber-50 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400" : "hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300"
                   }`}
                 >
                   {p.name}

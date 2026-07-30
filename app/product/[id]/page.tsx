@@ -4,7 +4,11 @@ import type { Metadata } from "next";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import ProductGallery from "@/app/components/ProductGallery";
 import AddToCartButton from "@/app/components/AddToCartButton";
+import WishlistButton from "@/app/components/WishlistButton";
+import ShareButtons from "@/app/components/ShareButtons";
 import ReviewForm from "@/app/components/ReviewForm";
+import RecordProductView from "@/app/components/RecordProductView";
+import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
 import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink } from "@/app/utils/whatsapp";
 
@@ -90,22 +94,22 @@ export default async function ProductDetailPage({
     reviews.length > 0 ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length : 0;
 
   return (
-    <div className="bg-[#FAF9F6] min-h-screen flex flex-col justify-between">
+    <div className="bg-[#FAF9F6] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
       {/* PERSISTENT HEADER NAVIGATION MATRIX */}
-      <nav className="bg-white border-b border-stone-200 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-30">
+      <nav className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center justify-between md:justify-start md:gap-8">
             <div className="flex items-center gap-1.5 select-none">
-              <span className="font-serif font-bold text-base md:text-lg text-stone-900 tracking-widest">TOHFA</span>
-              <span className="text-[9px] md:text-[10px] text-amber-700 border border-amber-200 rounded px-1.5 py-0.5 bg-amber-50 uppercase font-medium">
+              <span className="font-serif font-bold text-base md:text-lg text-stone-900 dark:text-stone-100 tracking-widest">TOHFA</span>
+              <span className="text-[9px] md:text-[10px] text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/30 uppercase font-medium">
                 Studio
               </span>
             </div>
-            <div className="flex items-center gap-4 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600">
-              <a href="/" className="hover:text-amber-700 transition">
+            <div className="flex items-center gap-4 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600 dark:text-stone-400">
+              <a href="/" className="hover:text-amber-700 dark:hover:text-amber-500 transition">
                 Home
               </a>
-              <a href="/about" className="hover:text-amber-700 transition">
+              <a href="/about" className="hover:text-amber-700 dark:hover:text-amber-500 transition">
                 About us
               </a>
             </div>
@@ -114,22 +118,23 @@ export default async function ProductDetailPage({
       </nav>
 
       <div className="flex-grow max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 md:py-12">
-        <a href="/" className="inline-block text-xs uppercase tracking-wider text-stone-500 hover:text-amber-700 transition mb-6">
+        <a href="/" className="inline-block text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition mb-6">
           &larr; Back to Collections
         </a>
 
         {!product ? (
-          <div className="text-center py-24 border-2 border-dashed border-stone-200 rounded-lg bg-white">
-            <p className="text-stone-500 font-serif mb-2">This artifact could not be found.</p>
-            <a href="/" className="text-xs uppercase tracking-wider text-amber-700 hover:underline">
+          <div className="text-center py-24 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
+            <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">This artifact could not be found.</p>
+            <a href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">
               Return to Collections
             </a>
           </div>
         ) : (
           <>
+          <RecordProductView id={product.id} name={product.name} price={product.price} image_url={product.image_url} />
           <div className="flex flex-col md:flex-row gap-8 md:gap-12">
             {/* Gallery */}
-            <div className="md:w-1/2 rounded-lg overflow-hidden border border-stone-200 shadow-sm bg-white">
+            <div className="md:w-1/2 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 shadow-sm bg-white">
               <ProductGallery
                 images={getProductGallery(product)}
                 productName={product.name}
@@ -141,7 +146,7 @@ export default async function ProductDetailPage({
 
             {/* Details + CTAs */}
             <div className="md:w-1/2 flex flex-col">
-              <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 mb-2 leading-snug">
+              <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 dark:text-stone-100 mb-2 leading-snug">
                 {product.name}
               </h1>
               {reviews.length > 0 && (
@@ -155,14 +160,14 @@ export default async function ProductDetailPage({
                   </span>
                 </div>
               )}
-              <span className="text-amber-700 font-bold font-mono text-2xl mb-1">
+              <span className="text-amber-700 dark:text-amber-500 font-bold font-mono text-2xl mb-1">
                 ₹{Number(product.price).toLocaleString("en-IN")}
               </span>
               <span className={`text-[11px] uppercase font-medium mb-6 ${outOfStock ? "text-rose-600 font-bold" : "text-stone-400"}`}>
                 {outOfStock ? "Out of Stock" : `Stock: ${product.inventory} units`}
               </span>
 
-              <p className="text-stone-600 text-sm sm:text-base font-light leading-relaxed mb-8 whitespace-pre-line">
+              <p className="text-stone-600 dark:text-stone-300 text-sm sm:text-base font-light leading-relaxed mb-8 whitespace-pre-line">
                 {product.description}
               </p>
 
@@ -185,13 +190,15 @@ export default async function ProductDetailPage({
 
                 {/* SECONDARY CTA: Add To Cart — same action/label/style as the main page card */}
                 <AddToCartButton product={product} />
+                <WishlistButton product={product} />
+                <ShareButtons productName={product.name} />
               </div>
             </div>
           </div>
 
           {/* Customer Reviews */}
           <div className="mt-16 max-w-2xl">
-            <h2 className="text-xl font-serif text-stone-900 border-b border-stone-200 pb-4 mb-6">
+            <h2 className="text-xl font-serif text-stone-900 dark:text-stone-100 border-b border-stone-200 dark:border-stone-800 pb-4 mb-6">
               Customer Reviews
             </h2>
 
@@ -200,16 +207,16 @@ export default async function ProductDetailPage({
             ) : (
               <div className="space-y-4 mb-8">
                 {reviews.map((review: any) => (
-                  <div key={review.id} className="border-b border-stone-100 pb-4">
+                  <div key={review.id} className="border-b border-stone-100 dark:border-stone-800 pb-4">
                     <div className="flex items-center gap-2">
                       <span className="text-amber-500 text-xs leading-none">
                         {"★".repeat(review.rating)}
                         {"☆".repeat(5 - review.rating)}
                       </span>
-                      <span className="text-sm font-medium text-stone-900">{review.customer_name}</span>
+                      <span className="text-sm font-medium text-stone-900 dark:text-stone-100">{review.customer_name}</span>
                     </div>
                     {review.review_text && (
-                      <p className="text-stone-600 text-sm font-light mt-1.5 leading-relaxed">{review.review_text}</p>
+                      <p className="text-stone-600 dark:text-stone-300 text-sm font-light mt-1.5 leading-relaxed">{review.review_text}</p>
                     )}
                   </div>
                 ))}
@@ -221,6 +228,8 @@ export default async function ProductDetailPage({
           </>
         )}
       </div>
+
+      {product && <RecentlyViewedStrip excludeId={product.id} />}
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}
       <footer className="bg-stone-900 text-stone-400 text-xs py-8 border-t border-stone-800">

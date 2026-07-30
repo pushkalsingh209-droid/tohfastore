@@ -3,54 +3,54 @@
 
 export default function AboutUsPage() {
   return (
-    <div className="bg-[#FAF9F6] min-h-screen flex flex-col justify-between">
-      
+    <div className="bg-[#FAF9F6] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+
       {/* BRAND CONTENT MAIN WRAPPER SECTION */}
       <div className="flex-grow py-12 md:py-16 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto space-y-10 md:space-y-12">
-          
+
           {/* Brand Narrative Presentation */}
           <div className="text-center space-y-3">
-            <span className="text-amber-700 uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block">
+            <span className="text-amber-700 dark:text-amber-500 uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block">
               Our Heritage & Craft
             </span>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-stone-900 tracking-wide">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-stone-900 dark:text-stone-100 tracking-wide">
               About TOHFA
             </h1>
             <div className="w-16 h-0.5 bg-amber-600 mx-auto mt-4" />
           </div>
 
           {/* Editorial Story Elements */}
-          <div className="bg-white border border-stone-200 rounded-lg p-5 sm:p-8 md:p-12 shadow-sm space-y-6 text-stone-700 font-sans text-xs sm:text-sm md:text-base leading-relaxed font-light">
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-5 sm:p-8 md:p-12 shadow-sm space-y-6 text-stone-700 dark:text-stone-300 font-sans text-xs sm:text-sm md:text-base leading-relaxed font-light">
             <p>
-              Welcome to <span className="font-medium text-stone-900 font-serif">TOHFA</span> (luxurybrassgift.com), where timeless Indian heritage meets master metal craftsmanship. We curate and engineer premium lightweight brass art pieces, luxury corporate gift boxes, and statement interior decor artifacts designed to last for generations.
+              Welcome to <span className="font-medium text-stone-900 dark:text-stone-100 font-serif">TOHFA</span> (luxurybrassgift.com), where timeless Indian heritage meets master metal craftsmanship. We curate and engineer premium lightweight brass art pieces, luxury corporate gift boxes, and statement interior decor artifacts designed to last for generations.
             </p>
             <p>
               Every artifact in our collection is cast in pure brass by skilled regional artisans. By blending ancestral sand-casting mold blueprints with modern design revisions, we capture intricate hand-carved textures and heavy weight profiles that distinguish genuine statement art from mass-produced replicas.
             </p>
-            
+
             {/* Core Values Information Matrix Table (With horizontal mobile scrolling protect wrapper) */}
             <div className="pt-4 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0">
               <div className="inline-block min-w-full align-middle">
-                <table className="min-w-full text-left border-collapse border border-stone-200">
+                <table className="min-w-full text-left border-collapse border border-stone-200 dark:border-stone-700">
                   <thead>
-                    <tr className="bg-stone-50 font-serif font-bold text-stone-900 border-b border-stone-200 text-[11px] sm:text-xs md:text-sm">
-                      <th className="p-3 border-r border-stone-200 whitespace-nowrap w-1/3">Core Pillar</th>
+                    <tr className="bg-stone-50 dark:bg-stone-800 font-serif font-bold text-stone-900 dark:text-stone-100 border-b border-stone-200 dark:border-stone-700 text-[11px] sm:text-xs md:text-sm">
+                      <th className="p-3 border-r border-stone-200 dark:border-stone-700 whitespace-nowrap w-1/3">Core Pillar</th>
                       <th className="p-3">Our Commitment</th>
                     </tr>
                   </thead>
                   <tbody className="text-[11px] sm:text-xs md:text-sm font-light leading-normal">
-                    <tr className="border-b border-stone-200">
-                      <td className="p-3 font-medium text-stone-900 border-r border-stone-200 font-serif">Material Integrity</td>
-                      <td className="p-3 text-stone-600">We exclusively process pure lightweight brass allocations, completely free from cheap pot metals or zinc structural dilutes.</td>
+                    <tr className="border-b border-stone-200 dark:border-stone-700">
+                      <td className="p-3 font-medium text-stone-900 dark:text-stone-100 border-r border-stone-200 dark:border-stone-700 font-serif">Material Integrity</td>
+                      <td className="p-3 text-stone-600 dark:text-stone-400">We exclusively process pure lightweight brass allocations, completely free from cheap pot metals or zinc structural dilutes.</td>
                     </tr>
-                    <tr className="border-b border-stone-200">
-                      <td className="p-3 font-medium text-stone-900 border-r border-stone-200 font-serif">Artisan Support</td>
-                      <td className="p-3 text-stone-600">We partner directly with traditional metal smithing families, securing fair wage frameworks and keeping ancient crafts alive.</td>
+                    <tr className="border-b border-stone-200 dark:border-stone-700">
+                      <td className="p-3 font-medium text-stone-900 dark:text-stone-100 border-r border-stone-200 dark:border-stone-700 font-serif">Artisan Support</td>
+                      <td className="p-3 text-stone-600 dark:text-stone-400">We partner directly with traditional metal smithing families, securing fair wage frameworks and keeping ancient crafts alive.</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-medium text-stone-900 border-r border-stone-200 font-serif">Corporate Customization</td>
-                      <td className="p-3 text-stone-600">Providing bespoke custom logo laser engravings, structural velvet box modifications, and premium heavy assembly configurations.</td>
+                      <td className="p-3 font-medium text-stone-900 dark:text-stone-100 border-r border-stone-200 dark:border-stone-700 font-serif">Corporate Customization</td>
+                      <td className="p-3 text-stone-600 dark:text-stone-400">Providing bespoke custom logo laser engravings, structural velvet box modifications, and premium heavy assembly configurations.</td>
                     </tr>
                   </tbody>
                 </table>

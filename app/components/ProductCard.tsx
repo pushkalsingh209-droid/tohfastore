@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/app/context/CartContext";
+import { useWishlist } from "@/app/context/WishlistContext";
 import ProductGallery from "@/app/components/ProductGallery";
 import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink } from "@/app/utils/whatsapp";
@@ -12,6 +13,7 @@ const DOUBLE_TAP_WINDOW_MS = 350;
 
 export default function ProductCard({ product, priority = false }: { product: any; priority?: boolean }) {
   const { addToCart, cart } = useCart();
+  const { isWishlisted, toggleWishlist } = useWishlist();
   const [active, setActive] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
   const lastTapRef = useRef(0);
@@ -51,7 +53,7 @@ export default function ProductCard({ product, priority = false }: { product: an
 
   return (
     <TempleCardFrame>
-    <div className="bg-white rounded-lg overflow-hidden group shadow-sm hover:shadow-md transition duration-300">
+    <div className="bg-white dark:bg-stone-900 rounded-lg overflow-hidden group shadow-sm hover:shadow-md dark:shadow-stone-950/50 transition duration-300">
       <Link
         href={`/product/${product.id}`}
         className="block relative touch-manipulation"
@@ -61,6 +63,28 @@ export default function ProductCard({ product, priority = false }: { product: an
       >
         <ProductGallery images={gallery} productName={product.name} active={active} size="card" priority={priority} />
 
+        {/* Wishlist Heart Toggle */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleWishlist(product);
+          }}
+          aria-label={isWishlisted(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+          aria-pressed={isWishlisted(product.id)}
+          className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white/90 dark:bg-stone-900/90 shadow-sm flex items-center justify-center hover:scale-110 transition"
+        >
+          <svg
+            className={`w-4 h-4 transition ${isWishlisted(product.id) ? "fill-rose-600 text-rose-600" : "fill-none text-stone-500"}`}
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-7.5-4.6-10-9.1C.3 8.4 2 5 5.5 5c2 0 3.5 1.2 4.5 2.7C11 6.2 12.5 5 14.5 5 18 5 19.7 8.4 22 11.9 19.5 16.4 12 21 12 21z" />
+          </svg>
+        </button>
+
         {!isDesktop && active && (
           <span className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-stone-900/80 text-white text-[10px] uppercase tracking-wider px-3 py-1 rounded-full pointer-events-none">
             Double-tap for details
@@ -69,15 +93,15 @@ export default function ProductCard({ product, priority = false }: { product: an
       </Link>
 
       <div className="p-6">
-        <h3 className="font-serif text-lg text-stone-900 mb-1 group-hover:text-amber-700 transition">
+        <h3 className="font-serif text-lg text-stone-900 dark:text-stone-100 mb-1 group-hover:text-amber-700 dark:group-hover:text-amber-500 transition">
           {product.name}
         </h3>
-        <p className="text-stone-500 text-xs line-clamp-2 mb-4 font-light">
+        <p className="text-stone-500 dark:text-stone-400 text-xs line-clamp-2 mb-4 font-light">
           {product.description}
         </p>
-        <div className="flex items-center justify-between pt-3 border-t border-stone-100">
+        <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
           <div className="flex flex-col">
-            <span className="text-amber-700 font-bold font-mono text-lg">
+            <span className="text-amber-700 dark:text-amber-500 font-bold font-mono text-lg">
               ₹{Number(product.price).toLocaleString("en-IN")}
             </span>
             <span className={`text-[10px] uppercase font-medium ${outOfStock ? "text-rose-600 font-bold" : "text-stone-400"}`}>
@@ -89,7 +113,7 @@ export default function ProductCard({ product, priority = false }: { product: an
             disabled={addToCartDisabled}
             className={`text-xs uppercase tracking-wider px-5 py-2.5 rounded font-medium transition duration-200 shadow-sm ${
               addToCartDisabled
-                ? "bg-stone-200 text-stone-400 cursor-not-allowed"
+                ? "bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-500 cursor-not-allowed"
                 : "bg-stone-900 hover:bg-amber-700 text-white active:scale-95"
             }`}
           >

@@ -25,7 +25,11 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryStatus, setCategoryStatus] = useState("");
 
   const [couponForm, setCouponForm] = useState({
     code: "",
@@ -57,21 +61,23 @@ export default function AdminDashboard() {
   const [orderPage, setOrderPage] = useState(1);
   const [orderPageSize, setOrderPageSize] = useState(10);
 
-  // Load inventory data, orders, reviews, and coupons from the protected
-  // admin API on mount. The four requests are independent, so fetch them in
-  // parallel instead of one after another.
+  // Load inventory data, orders, reviews, coupons, and categories from the
+  // protected admin API on mount. The requests are independent, so fetch
+  // them in parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [productsRes, ordersRes, reviewsRes, couponsRes] = await Promise.allSettled([
+    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes] = await Promise.allSettled([
       apiRequest("/api/admin/products"),
       apiRequest("/api/admin/orders"),
       apiRequest("/api/admin/reviews"),
       apiRequest("/api/admin/coupons"),
+      apiRequest("/api/admin/categories"),
     ]);
     if (productsRes.status === "fulfilled") setProducts(productsRes.value.products);
     if (ordersRes.status === "fulfilled") setOrders(ordersRes.value.orders);
     if (reviewsRes.status === "fulfilled") setReviews(reviewsRes.value.reviews);
     if (couponsRes.status === "fulfilled") setCoupons(couponsRes.value.coupons);
+    if (categoriesRes.status === "fulfilled") setCategories(categoriesRes.value.categories);
     setLoadingOrders(false);
   };
 
@@ -315,6 +321,32 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    setCategoryStatus("Adding category...");
+    try {
+      const result = await apiRequest("/api/admin/categories", {
+        method: "POST",
+        body: JSON.stringify({ name: newCategoryName.trim() }),
+      });
+      setCategories([...categories, result.category].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewCategoryName("");
+      setCategoryStatus("");
+    } catch (err: any) {
+      setCategoryStatus(err.message || "Could not add category.");
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: number) => {
+    try {
+      await apiRequest("/api/admin/categories", { method: "DELETE", body: JSON.stringify({ id: categoryId }) });
+      setCategories(categories.filter((c) => c.id !== categoryId));
+    } catch (err: any) {
+      alert(`Could not delete category: ${err.message}`);
+    }
+  };
+
   const handleCancelEdit = () => {
     setEditingProductId(null);
     setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [] });
@@ -373,7 +405,12 @@ export default function AdminDashboard() {
                 <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
                   Category <span className="text-stone-400 font-normal normal-case">(optional — powers the storefront filter)</span>
                 </label>
-                <input type="text" disabled={isSubmitting} placeholder="e.g., Diyas, Idols, Corporate Gifts" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+                <select disabled={isSubmitting} value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+                  <option value="">Uncategorized</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -767,6 +804,49 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* SECTION D.1: CATEGORIES */}
+        <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+          <div className="border-b border-stone-200 pb-4 mb-6">
+            <h2 className="text-xl font-serif text-stone-900">Categories</h2>
+            <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form's dropdown and storefront filter.</p>
+          </div>
+
+          <form onSubmit={handleCreateCategory} className="flex gap-3 mb-4">
+            <input
+              type="text"
+              placeholder="e.g., Wall Decor"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              className="flex-grow px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+            <button type="submit" className="px-4 py-2.5 rounded bg-stone-950 hover:bg-amber-800 text-white font-medium text-xs uppercase tracking-wider shadow transition whitespace-nowrap">
+              Add
+            </button>
+          </form>
+
+          {categoryStatus && <p className="text-xs text-stone-500 mb-4">{categoryStatus}</p>}
+
+          {categories.length === 0 ? (
+            <p className="text-stone-400 text-sm text-center py-6">No categories yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat: any) => (
+                <span key={cat.id} className="flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full border border-stone-300 text-xs text-stone-700 bg-stone-50">
+                  {cat.name}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCategory(cat.id)}
+                    title="Delete category"
+                    className="w-4 h-4 flex items-center justify-center rounded-full text-rose-600 hover:bg-rose-100 leading-none"
+                  >
+                    &times;
+                  </button>
+                </span>
               ))}
             </div>
           )}

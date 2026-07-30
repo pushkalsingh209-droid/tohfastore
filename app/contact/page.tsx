@@ -3,40 +3,40 @@
 
 export default function ContactUsPage() {
   return (
-    <div className="bg-[#FAF9F6] min-h-screen flex flex-col justify-between">
-      
+    <div className="bg-[#FAF9F6] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+
       {/* PERSISTENT HEADER NAVIGATION MATRIX */}
-      <nav className="bg-white border-b border-stone-200 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-50">
+      <nav className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          
+
           {/* LEFT SIDE: BRAND LOGO & CORE ROUTE LINKS */}
           <div className="flex items-center justify-between md:justify-start md:gap-8">
             <div className="flex items-center gap-1.5 select-none">
-              <span className="font-serif font-bold text-base md:text-lg text-stone-900 tracking-widest">TOHFA</span>
-              <span className="text-[9px] md:text-[10px] text-amber-700 border border-amber-200 rounded px-1.5 py-0.5 bg-amber-50 uppercase font-medium">
+              <span className="font-serif font-bold text-base md:text-lg text-stone-900 dark:text-stone-100 tracking-widest">TOHFA</span>
+              <span className="text-[9px] md:text-[10px] text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/30 uppercase font-medium">
                 Studio
               </span>
             </div>
 
-            <div className="flex items-center gap-4 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600">
-              <a href="/" className="hover:text-amber-700 transition">
+            <div className="flex items-center gap-4 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600 dark:text-stone-400">
+              <a href="/" className="hover:text-amber-700 dark:hover:text-amber-500 transition">
                 Home
               </a>
-              <a href="/about" className="hover:text-amber-700 transition">
+              <a href="/about" className="hover:text-amber-700 dark:hover:text-amber-500 transition">
                 Our Heritage
               </a>
             </div>
           </div>
 
           {/* RIGHT SIDE: COMMUNICATION MATRIX */}
-          <div className="flex items-center justify-between md:justify-end gap-3 md:gap-6 pt-2 md:pt-0 border-t border-stone-100 md:border-none">
+          <div className="flex items-center justify-between md:justify-end gap-3 md:gap-6 pt-2 md:pt-0 border-t border-stone-100 dark:border-stone-800 md:border-none">
             <div className="flex flex-col md:block">
               <span className="block text-[9px] md:text-xs uppercase tracking-wider text-stone-400 font-bold md:mb-1">
                 Email Support
               </span>
-              <a 
-                href="mailto:contact@tohfaonline.com" 
-                className="text-amber-800 font-mono text-xs md:text-sm font-medium hover:underline break-all"
+              <a
+                href="mailto:contact@tohfaonline.com"
+                className="text-amber-800 dark:text-amber-400 font-mono text-xs md:text-sm font-medium hover:underline break-all"
               >
                 contact@tohfaonline.com
               </a>
@@ -46,7 +46,7 @@ export default function ContactUsPage() {
               <span className="text-[9px] md:text-xs uppercase tracking-wider text-stone-400 font-bold mb-1">
                 Call/WhatsApp
               </span>
-              <p className="text-stone-900 font-medium font-mono text-xs md:text-sm">
+              <p className="text-stone-900 dark:text-stone-100 font-medium font-mono text-xs md:text-sm">
                 +91 6302672351
               </p>
             </div>
@@ -69,14 +69,14 @@ export default function ContactUsPage() {
       </nav>
 
       {/* MAIN POLICY CONTENT BODY */}
-      <div className="flex-grow py-12 md:py-16 px-4 sm:px-6 font-sans text-stone-700">
-        <div className="max-w-2xl mx-auto bg-white border border-stone-200 rounded-lg p-6 sm:p-8 md:p-12 shadow-sm space-y-8 text-xs sm:text-sm font-light">
+      <div className="flex-grow py-12 md:py-16 px-4 sm:px-6 font-sans text-stone-700 dark:text-stone-300">
+        <div className="max-w-2xl mx-auto bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-6 sm:p-8 md:p-12 shadow-sm space-y-8 text-xs sm:text-sm font-light">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 font-medium tracking-wide">
+            <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 dark:text-stone-100 font-medium tracking-wide">
               Contact Us
             </h1>
             <p className="text-stone-500 text-[11px] sm:text-xs font-mono">Official corporate compliance channels for TOHFA</p>
-            <hr className="border-stone-100 mt-4" />
+            <hr className="border-stone-100 dark:border-stone-800 mt-4" />
           </div>
 
           <div className="space-y-6">
@@ -84,7 +84,7 @@ export default function ContactUsPage() {
               <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-stone-400 font-bold mb-1">
                 Corporate Identity
               </h3>
-              <p className="text-stone-900 font-medium font-serif text-base">
+              <p className="text-stone-900 dark:text-stone-100 font-medium font-serif text-base">
                 TOHFA &nbsp;(luxurybrassgift.com)
               </p>
             </div>
@@ -105,7 +105,7 @@ export default function ContactUsPage() {
               <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-stone-400 font-bold mb-2">
                 Mobile / WhatsApp Communication Node
               </h3>
-              <p className="text-stone-900 font-medium font-mono text-xs sm:text-sm mb-3">
+              <p className="text-stone-900 dark:text-stone-100 font-medium font-mono text-xs sm:text-sm mb-3">
                 +91 6302672351
               </p>
               <div className="pt-1">
@@ -127,7 +127,7 @@ export default function ContactUsPage() {
               <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-stone-400 font-bold mb-1">
                 Registered Operational Hub
               </h3>
-              <p className="text-stone-800 font-light leading-relaxed text-xs sm:text-sm">
+              <p className="text-stone-800 dark:text-stone-300 font-light leading-relaxed text-xs sm:text-sm">
                 TOHFA,<br />
                 Dehradun, Uttarakhand,<br />
                 India - 248001
@@ -135,7 +135,7 @@ export default function ContactUsPage() {
             </div>
           </div>
 
-          <div className="pt-6 border-t border-stone-100 text-[10px] sm:text-[11px] text-stone-400 text-center leading-relaxed">
+          <div className="pt-6 border-t border-stone-100 dark:border-stone-800 text-[10px] sm:text-[11px] text-stone-400 text-center leading-relaxed">
             Operational customer assistance tickets are monitored and processed directly by our logistics desk from Monday through Saturday, between 10:00 AM and 6:00 PM IST.
           </div>
         </div>

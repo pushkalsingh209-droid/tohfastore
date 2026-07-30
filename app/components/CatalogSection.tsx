@@ -74,16 +74,16 @@ export default function CatalogSection({
           images) feels intentional rather than like a stall. */}
       {(isPending || showReady) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/30 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-xl border border-amber-200 px-10 py-8 text-center min-w-[240px]">
+          <div className="bg-white dark:bg-stone-900 rounded-lg shadow-xl border border-amber-200 dark:border-amber-800 px-10 py-8 text-center min-w-[240px]">
             {isPending ? (
               <>
-                <div className="w-10 h-10 border-4 border-amber-200 border-t-amber-700 rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-sm font-serif text-stone-700">{loadingMessage}</p>
+                <div className="w-10 h-10 border-4 border-amber-200 dark:border-amber-900 border-t-amber-700 dark:border-t-amber-500 rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-sm font-serif text-stone-700 dark:text-stone-300">{loadingMessage}</p>
               </>
             ) : (
               <>
                 <div className="text-3xl mb-2">✨</div>
-                <p className="text-sm font-serif font-bold text-amber-700">We&rsquo;re ready &mdash; here you go!</p>
+                <p className="text-sm font-serif font-bold text-amber-700 dark:text-amber-500">We&rsquo;re ready &mdash; here you go!</p>
               </>
             )}
           </div>
@@ -105,7 +105,7 @@ export default function CatalogSection({
           />
         )}
 
-        <h2 id="signature-collection" className="text-2xl font-serif text-stone-900 border-b border-stone-200 pb-4 mb-8 mt-6 scroll-mt-24">
+        <h2 id="signature-collection" className="text-2xl font-serif text-stone-900 dark:text-stone-100 border-b border-stone-200 dark:border-stone-800 pb-4 mb-8 mt-6 scroll-mt-24">
           Our Signature Collection
         </h2>
 
@@ -116,19 +116,19 @@ export default function CatalogSection({
         )}
 
         {count === 0 && category ? (
-          <div className="text-center py-16 border-2 border-dashed border-stone-200 rounded-lg bg-white">
-            <p className="text-stone-500 font-serif mb-2">No artifacts found in &ldquo;{category}&rdquo;.</p>
-            <a href="/" className="text-xs uppercase tracking-wider text-amber-700 hover:underline">Clear filter</a>
+          <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
+            <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">No artifacts found in &ldquo;{category}&rdquo;.</p>
+            <a href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">Clear filter</a>
           </div>
         ) : count === 0 ? (
-          <div className="text-center py-16 border-2 border-dashed border-stone-200 rounded-lg bg-white">
-            <p className="text-stone-500 font-serif mb-2">No brass artifacts found in stock.</p>
+          <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
+            <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">No brass artifacts found in stock.</p>
             <p className="text-stone-400 text-xs">Log into the admin workspace to upload your catalog items.</p>
           </div>
         ) : products.length === 0 ? (
-          <div className="text-center py-16 border-2 border-dashed border-stone-200 rounded-lg bg-white">
-            <p className="text-stone-500 font-serif mb-2">No artifacts on this page.</p>
-            <a href="/" className="text-xs uppercase tracking-wider text-amber-700 hover:underline">Back to page 1</a>
+          <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
+            <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">No artifacts on this page.</p>
+            <a href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">Back to page 1</a>
           </div>
         ) : (
           <>

@@ -39,12 +39,12 @@ export default function CatalogFilters({
   if (categories.length === 0) {
     // No categorized products yet -- only offer sorting.
     return (
-      <div className="flex items-center gap-2 text-xs text-stone-500">
+      <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
         <span>Sort</span>
         <select
           value={sort}
           onChange={(e) => updateParams({ sort: e.target.value })}
-          className="border border-stone-200 rounded px-2 py-1.5 bg-white text-xs font-mono focus:outline-none focus:border-amber-600"
+          className="border border-stone-200 dark:border-stone-700 rounded px-2 py-1.5 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono focus:outline-none focus:border-amber-600"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -57,13 +57,13 @@ export default function CatalogFilters({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-4 text-xs text-stone-500">
+    <div className="flex flex-wrap items-center gap-4 text-xs text-stone-500 dark:text-stone-400">
       <div className="flex items-center gap-2">
         <span>Category</span>
         <select
           value={category}
           onChange={(e) => updateParams({ category: e.target.value })}
-          className="border border-stone-200 rounded px-2 py-1.5 bg-white text-xs font-mono focus:outline-none focus:border-amber-600"
+          className="border border-stone-200 dark:border-stone-700 rounded px-2 py-1.5 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono focus:outline-none focus:border-amber-600"
         >
           <option value="">All</option>
           {categories.map((c) => (
@@ -78,7 +78,7 @@ export default function CatalogFilters({
         <select
           value={sort}
           onChange={(e) => updateParams({ sort: e.target.value })}
-          className="border border-stone-200 rounded px-2 py-1.5 bg-white text-xs font-mono focus:outline-none focus:border-amber-600"
+          className="border border-stone-200 dark:border-stone-700 rounded px-2 py-1.5 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono focus:outline-none focus:border-amber-600"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>

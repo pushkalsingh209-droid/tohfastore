@@ -3,40 +3,40 @@
 
 export default function RefundPolicy() {
   return (
-    <div className="bg-[#FAF9F6] min-h-screen flex flex-col justify-between">
-      
+    <div className="bg-[#FAF9F6] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+
       {/* PERSISTENT HEADER NAVIGATION MATRIX */}
-      <nav className="bg-white border-b border-stone-200 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-50">
+      <nav className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          
+
           {/* LEFT SIDE: BRAND LOGO & CORE ROUTE LINKS */}
           <div className="flex items-center justify-between md:justify-start md:gap-8">
             <div className="flex items-center gap-1.5 select-none">
-              <span className="font-serif font-bold text-base md:text-lg text-stone-900 tracking-widest">TOHFA</span>
-              <span className="text-[9px] md:text-[10px] text-amber-700 border border-amber-200 rounded px-1.5 py-0.5 bg-amber-50 uppercase font-medium">
+              <span className="font-serif font-bold text-base md:text-lg text-stone-900 dark:text-stone-100 tracking-widest">TOHFA</span>
+              <span className="text-[9px] md:text-[10px] text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/30 uppercase font-medium">
                 Studio
               </span>
             </div>
 
-            <div className="flex items-center gap-4 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600">
-              <a href="/" className="hover:text-amber-700 transition">
+            <div className="flex items-center gap-4 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600 dark:text-stone-400">
+              <a href="/" className="hover:text-amber-700 dark:hover:text-amber-500 transition">
                 Home
               </a>
-              <a href="/about" className="hover:text-amber-700 transition">
+              <a href="/about" className="hover:text-amber-700 dark:hover:text-amber-500 transition">
                 Our Heritage
               </a>
             </div>
           </div>
 
           {/* RIGHT SIDE: COMMUNICATION MATRIX */}
-          <div className="flex items-center justify-between md:justify-end gap-3 md:gap-6 pt-2 md:pt-0 border-t border-stone-100 md:border-none">
+          <div className="flex items-center justify-between md:justify-end gap-3 md:gap-6 pt-2 md:pt-0 border-t border-stone-100 dark:border-stone-800 md:border-none">
             <div className="flex flex-col md:block">
               <span className="block text-[9px] md:text-xs uppercase tracking-wider text-stone-400 font-bold md:mb-1">
                 Email Support
               </span>
-              <a 
-                href="mailto:contact@tohfaonline.com" 
-                className="text-amber-800 font-mono text-xs md:text-sm font-medium hover:underline break-all"
+              <a
+                href="mailto:contact@tohfaonline.com"
+                className="text-amber-800 dark:text-amber-400 font-mono text-xs md:text-sm font-medium hover:underline break-all"
               >
                 contact@tohfaonline.com
               </a>
@@ -46,7 +46,7 @@ export default function RefundPolicy() {
               <span className="text-[9px] md:text-xs uppercase tracking-wider text-stone-400 font-bold mb-1">
                 Call/WhatsApp
               </span>
-              <p className="text-stone-900 font-medium font-mono text-xs md:text-sm">
+              <p className="text-stone-900 dark:text-stone-100 font-medium font-mono text-xs md:text-sm">
                 +91 6302672351
               </p>
             </div>
@@ -69,44 +69,44 @@ export default function RefundPolicy() {
       </nav>
 
       {/* MAIN POLICY CONTENT BODY */}
-      <div className="flex-grow py-12 md:py-16 px-4 sm:px-6 font-sans text-stone-700">
-        <div className="max-w-3xl mx-auto bg-white border border-stone-200 rounded-lg p-6 sm:p-8 md:p-12 shadow-sm space-y-6 text-xs sm:text-sm font-light leading-relaxed">
+      <div className="flex-grow py-12 md:py-16 px-4 sm:px-6 font-sans text-stone-700 dark:text-stone-300">
+        <div className="max-w-3xl mx-auto bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-6 sm:p-8 md:p-12 shadow-sm space-y-6 text-xs sm:text-sm font-light leading-relaxed">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 mb-2 font-medium tracking-wide">
+            <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 dark:text-stone-100 mb-2 font-medium tracking-wide">
               Cancellation & Refund Policy
             </h1>
             <p className="text-[10px] sm:text-xs text-stone-400 font-mono">Last updated: June 2026</p>
           </div>
-          <hr className="border-stone-100" />
-          
+          <hr className="border-stone-100 dark:border-stone-800" />
+
           <div className="space-y-2">
-            <h2 className="text-sm sm:text-base font-serif text-stone-950 font-semibold tracking-wide">
+            <h2 className="text-sm sm:text-base font-serif text-stone-950 dark:text-stone-100 font-semibold tracking-wide">
               1. Order Cancellation
             </h2>
-            <p className="text-stone-600">
+            <p className="text-stone-600 dark:text-stone-400">
               Customers can request an order cancellation within 24 hours of placing the purchase order, provided the physical item has not been dispatched from our workshop warehouse inventory node.
             </p>
           </div>
-          
+
           <div className="space-y-2">
-            <h2 className="text-sm sm:text-base font-serif text-stone-950 font-semibold tracking-wide pt-2">
+            <h2 className="text-sm sm:text-base font-serif text-stone-950 dark:text-stone-100 font-semibold tracking-wide pt-2">
               2. Returns & Replacements
             </h2>
-            <p className="text-stone-600">
+            <p className="text-stone-600 dark:text-stone-400">
               Since our premium lightweight brass artifacts are handcrafted, we do not accept returns once the product has been dispatched. All sales are final upon dispatch.
             </p>
           </div>
-          
+
           <div className="space-y-2">
-            <h2 className="text-sm sm:text-base font-serif text-stone-950 font-semibold tracking-wide pt-2">
+            <h2 className="text-sm sm:text-base font-serif text-stone-950 dark:text-stone-100 font-semibold tracking-wide pt-2">
               3. Refund Processing Timelines
             </h2>
-            <p className="text-stone-600">
+            <p className="text-stone-600 dark:text-stone-400">
               Once a return request is validated and inspected by our warehouse audit leads, the settled purchase balance value will be processed back to your original payment source route (bank account, card ledger, or UPI token wallet).
             </p>
           </div>
-          
-          <div className="bg-amber-50 border border-amber-100 rounded p-4 text-[11px] sm:text-xs font-medium text-amber-900 leading-relaxed">
+
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded p-4 text-[11px] sm:text-xs font-medium text-amber-900 dark:text-amber-300 leading-relaxed">
             💡 <span className="font-bold">Note:</span> Refunds typically require <span className="font-bold underline">5 to 7 working days</span> to clear and reflect inside your personal bank statement, conforming to standard automated banking settlement processing pipelines.
           </div>
         </div>
