@@ -1,18 +1,10 @@
 // app/components/CatalogSection.tsx
 "use client";
-import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import ProductCard from "@/app/components/ProductCard";
 import CatalogPagination from "@/app/components/CatalogPagination";
 import CatalogFilters from "@/app/components/CatalogFilters";
-
-const LOADING_MESSAGES = [
-  "Polishing the brass...",
-  "Rounding up more treasures...",
-  "Dusting off the shelves...",
-  "Carrying in the next batch...",
-  "Almost there...",
-];
+import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
 
 export default function CatalogSection({
   products,
@@ -36,27 +28,14 @@ export default function CatalogSection({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
-  const [showReady, setShowReady] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState(LOADING_MESSAGES[0]);
-  const wasPending = useRef(false);
-
-  useEffect(() => {
-    if (wasPending.current && !isPending) {
-      setShowReady(true);
-      const timer = setTimeout(() => setShowReady(false), 1400);
-      return () => clearTimeout(timer);
-    }
-    wasPending.current = isPending;
-  }, [isPending]);
+  const { runTransition } = useCatalogLoading();
 
   function navigate(nextPage: number, nextPageSize: number) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(nextPage));
     params.set("pageSize", String(nextPageSize));
-    setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
     document.getElementById("signature-collection")?.scrollIntoView({ behavior: "auto", block: "start" });
-    startTransition(() => {
+    runTransition(() => {
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
     });
   }
@@ -75,9 +54,8 @@ export default function CatalogSection({
       else params.delete("sort");
     }
     params.set("page", "1");
-    setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
     document.getElementById("signature-collection")?.scrollIntoView({ behavior: "auto", block: "start" });
-    startTransition(() => {
+    runTransition(() => {
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
     });
   }
@@ -92,29 +70,8 @@ export default function CatalogSection({
 
   return (
     <>
-      {/* Catatchy loading / "ready" overlay covering a Next/Previous/page-size
-          transition, so the wait for the next batch of products (and their
-          images) feels intentional rather than like a stall. */}
-      {(isPending || showReady) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/30 backdrop-blur-sm">
-          <div className="bg-white dark:bg-stone-900 rounded-lg shadow-xl border border-amber-200 dark:border-amber-800 px-10 py-8 text-center min-w-[240px]">
-            {isPending ? (
-              <>
-                <div className="w-10 h-10 border-4 border-amber-200 dark:border-amber-900 border-t-amber-700 dark:border-t-amber-500 rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-sm font-serif text-stone-700 dark:text-stone-300">{loadingMessage}</p>
-              </>
-            ) : (
-              <>
-                <div className="text-3xl mb-2">✨</div>
-                <p className="text-sm font-serif font-bold text-amber-700 dark:text-amber-500">We&rsquo;re ready &mdash; here you go!</p>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Catalog Grid Section */}
-      <section className="max-w-7xl mx-auto px-6 pt-16 pb-20">
+      <section className="max-w-7xl mx-auto px-6 pt-4 pb-8">
         {count > 0 && products.length > 0 && (
           <CatalogPagination
             page={page}
@@ -128,7 +85,7 @@ export default function CatalogSection({
           />
         )}
 
-        <h2 id="signature-collection" className="text-2xl font-serif text-stone-900 dark:text-stone-100 border-b border-stone-200 dark:border-stone-800 pb-4 mb-8 mt-6 scroll-mt-24">
+        <h2 id="signature-collection" className="text-2xl font-serif text-stone-900 dark:text-stone-100 border-b border-stone-200 dark:border-stone-800 pb-4 mb-8 mt-2 scroll-mt-24">
           {heading || "Our Signature Collection"}
         </h2>
 

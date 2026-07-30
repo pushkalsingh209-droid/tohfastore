@@ -2,11 +2,12 @@
 import type { Metadata } from "next";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import CatalogSection from "@/app/components/CatalogSection";
+import CategorySlider from "@/app/components/CategorySlider";
 import PromoBanner from "@/app/components/PromoBanner";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
 import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
-import PageNavLinks from "@/app/components/PageNavLinks";
 import { getCategoryContent } from "@/app/utils/categoryContent";
+import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
 
 // Storefront catalog must reflect live admin edits/stock on every view (same
 // guarantee the previous client-side fetch gave), so this route can't be
@@ -61,6 +62,8 @@ async function getCatalogPage(
     else if (hiddenCategories.length > 0) query = query.not("category", "in", notInListLiteral(hiddenCategories));
     if (sort === "price_asc") query = query.order("price", { ascending: true });
     else if (sort === "price_desc") query = query.order("price", { ascending: false });
+    else if (sort === "name_asc") query = query.order("name", { ascending: true });
+    else if (sort === "name_desc") query = query.order("name", { ascending: false });
     else query = query.order("created_at", { ascending: false });
 
     const { data, error } = await query.range(from, to);
@@ -166,13 +169,14 @@ export default async function StorefrontHome({
   const pageSize = PAGE_SIZE_OPTIONS.includes(Number(sp.pageSize)) ? Number(sp.pageSize) : DEFAULT_PAGE_SIZE;
   const requestedPage = Math.max(1, Number(sp.page) || 1);
   const category = sp.category || "";
-  const sort = ["price_asc", "price_desc"].includes(sp.sort || "") ? (sp.sort as string) : "newest";
+  const sort = ["price_asc", "price_desc", "name_asc", "name_desc"].includes(sp.sort || "") ? (sp.sort as string) : "newest";
   const categoryContent = category ? getCategoryContent(category) : null;
 
-  const [hiddenCategories, categories, publicCoupons] = await Promise.all([
+  const [hiddenCategories, categories, publicCoupons, categorySliderItems] = await Promise.all([
     getHiddenCategoryNames(),
     getCategories(),
     getPublicCoupons(),
+    getCategorySliderItems(),
   ]);
   const { products, count, page } = await getCatalogPage(requestedPage, pageSize, category, sort, hiddenCategories);
 
@@ -200,22 +204,11 @@ export default async function StorefrontHome({
 
       {/* MAIN LAYOUT WRAPPER CONTROLLER NODE */}
       <div>
-        {/* BRAND SUB-HEADER NAVIGATION BAR */}
+        {/* SUB-HEADER: CONTACT/COMMUNICATION BAR (brand + Home/About menu now live in the global header) */}
        <nav className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-30 transition-colors">
-  <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+  <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-end">
 
-    {/* LEFT SIDE: BRAND LOGO & CORE ROUTE LINKS */}
-    <div className="flex items-center justify-between md:justify-start md:gap-8">
-      {/* Brand Identity Branding Nodes */}
-      <div className="flex items-center gap-1.5 select-none">
-        <span className="font-serif font-bold text-base md:text-lg text-stone-900 dark:text-stone-100 tracking-widest">TOHFA</span>
-      </div>
-
-      {/* Persistent Page Links - hamburger toggle, mobile-first */}
-      <PageNavLinks />
-    </div>
-
-    {/* RIGHT SIDE: COMMUNICATION MATRIX (Collapses intelligently onto mobile layouts) */}
+    {/* COMMUNICATION MATRIX (Collapses intelligently onto mobile layouts) */}
     <div className="flex items-center justify-between md:justify-end gap-3 md:gap-6 pt-2 md:pt-0 border-t border-stone-100 dark:border-stone-800 md:border-none">
 
       {/* 1. ELECTRONIC MAIL MODULE */}
@@ -275,11 +268,13 @@ export default async function StorefrontHome({
             <p className="text-stone-300 text-base md:text-lg font-light max-w-xl mx-auto">
               {categoryContent
                 ? categoryContent.intro
-                : "Our roots are in premium lightweight brass -- statement décor, idols, and corporate gifts -- extended into pocket temples, board games, polyresin pieces, and handmade resin jewelry, all crafted with the same care."}
+                : "Our roots are in premium lightweight brass -- statement décor, idols, and corporate gifts -- alongside pocket temple and pan-stand photo frames, board games, polyresin statues, and handmade resin jewelry, each crafted with its own care."}
             </p>
           </div>
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#d97706_1px,transparent_1px)] [background-size:16px_16px]"></div>
         </section>
+
+        <CategorySlider items={categorySliderItems} />
 
         <CatalogSection
           products={products}

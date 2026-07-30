@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useCart } from "@/app/context/CartContext";
 import { BUSINESS_GSTIN, type OrderGstBreakdown } from "@/app/utils/gst";
-import PageNavLinks from "@/app/components/PageNavLinks";
 
 interface StashedOrder {
   orderId: string;
@@ -41,23 +40,11 @@ export default function CheckoutSuccessPage() {
   return (
     <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
 
-      {/* PERSISTENT HEADER NAVIGATION MATRIX */}
+      {/* SUB-HEADER: CONTACT/COMMUNICATION BAR (brand + Home/About menu now live in the global header) */}
       <nav className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-30 print:hidden">
-        <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-end">
 
-          {/* LEFT SIDE: BRAND LOGO & CORE ROUTE LINKS */}
-          <div className="flex items-center justify-between md:justify-start md:gap-8">
-            <div className="flex items-center gap-1.5 select-none">
-              <span className="font-serif font-bold text-base md:text-lg text-stone-900 dark:text-stone-100 tracking-widest">TOHFA</span>
-              <span className="text-[9px] md:text-[10px] text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/30 uppercase font-medium">
-                Studio
-              </span>
-            </div>
-
-            <PageNavLinks />
-          </div>
-
-          {/* RIGHT SIDE: COMMUNICATION MATRIX */}
+          {/* COMMUNICATION MATRIX */}
           <div className="flex items-center justify-between md:justify-end gap-3 md:gap-6 pt-2 md:pt-0 border-t border-stone-100 dark:border-stone-800 md:border-none">
             <div className="flex flex-col md:block">
               <span className="block text-[9px] md:text-xs uppercase tracking-wider text-stone-400 font-bold md:mb-1">

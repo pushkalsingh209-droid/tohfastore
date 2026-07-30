@@ -3,9 +3,11 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { CartProvider } from "@/app/context/CartContext";
 import { WishlistProvider } from "@/app/context/WishlistContext";
+import { CatalogLoadingProvider } from "@/app/context/CatalogLoadingContext";
 import CartDrawer from "@/app/components/CartDrawer";
 import HeaderNavbar from "@/app/components/headerNavbar";
 import CookieConsent from "@/app/components/CookieConsent";
+import CatalogLoadingOverlay from "@/app/components/CatalogLoadingOverlay";
 import "./globals.css"; // Imports your global styling configurations
 
 export const metadata: Metadata = {
@@ -44,6 +46,7 @@ export default function RootLayout({
       </head>
       <CartProvider>
       <WishlistProvider>
+      <CatalogLoadingProvider>
         <body className="bg-[var(--background)] dark:bg-stone-950 text-stone-800 dark:text-stone-200 antialiased min-h-screen flex flex-col transition-colors">
 
           {/* Skip link for keyboard/screen-reader users -- visually hidden
@@ -80,12 +83,17 @@ export default function RootLayout({
           {/* Cookie consent banner (bottom of screen, one-time until dismissed) */}
           <CookieConsent />
 
+          {/* Shared loading overlay for pagination, filters, and the header's
+              category menu -- one implementation, triggered from anywhere. */}
+          <CatalogLoadingOverlay />
+
           {/* Dynamically loads Razorpay's secure transactional modal overlay system */}
           <Script
             src="https://checkout.razorpay.com/v1/checkout.js"
             strategy="lazyOnload"
           />
         </body>
+      </CatalogLoadingProvider>
       </WishlistProvider>
       </CartProvider>
     </html>

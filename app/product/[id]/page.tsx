@@ -9,9 +9,10 @@ import ShareButtons from "@/app/components/ShareButtons";
 import ReviewForm from "@/app/components/ReviewForm";
 import RecordProductView from "@/app/components/RecordProductView";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
+import CategorySlider from "@/app/components/CategorySlider";
 import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink } from "@/app/utils/whatsapp";
-import PageNavLinks from "@/app/components/PageNavLinks";
+import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
 
 // Stock/price/description must reflect live admin edits on every view (same
 // guarantee the previous client-side fetch gave), so this route can't be
@@ -88,6 +89,7 @@ export default async function ProductDetailPage({
   const { id } = await params;
   const product = await getProduct(id);
   const reviews = product ? await getApprovedReviews(product.id) : [];
+  const categorySliderItems = await getCategorySliderItems();
 
   const whatsappHref = product ? getProductWhatsappLink(product) : "#";
   const stock = product ? Number(product.inventory) || 0 : 0;
@@ -132,20 +134,6 @@ export default async function ProductDetailPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
         />
       )}
-      {/* PERSISTENT HEADER NAVIGATION MATRIX */}
-      <nav className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 py-3 md:py-4 px-4 md:px-6 shadow-sm sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center justify-between md:justify-start md:gap-8">
-            <div className="flex items-center gap-1.5 select-none">
-              <span className="font-serif font-bold text-base md:text-lg text-stone-900 dark:text-stone-100 tracking-widest">TOHFA</span>
-              <span className="text-[9px] md:text-[10px] text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/30 uppercase font-medium">
-                Studio
-              </span>
-            </div>
-            <PageNavLinks />
-          </div>
-        </div>
-      </nav>
 
       <div className="flex-grow max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 md:py-12">
         <a href="/" className="inline-block text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition mb-6">
@@ -260,6 +248,8 @@ export default async function ProductDetailPage({
       </div>
 
       {product && <RecentlyViewedStrip excludeId={product.id} />}
+
+      <CategorySlider items={categorySliderItems} />
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}
       <footer className="bg-stone-900 text-stone-400 text-xs py-8 border-t border-stone-800">

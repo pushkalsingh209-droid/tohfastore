@@ -1,26 +1,55 @@
 // app/components/HeaderNavbar.tsx
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
 import { useWishlist } from "@/app/context/WishlistContext";
+import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
 import SearchBar from "@/app/components/SearchBar";
 import ThemeToggle from "@/app/components/ThemeToggle";
-
-const CATEGORY_LINKS = [
-  "Pocket Temples",
-  "Pan Stands",
-  "Board Games",
-  "Polyresin",
-  "UV Resin Earrings",
-  "Misc",
-];
+import PageNavLinks from "@/app/components/PageNavLinks";
 
 export default function HeaderNavbar() {
   const { setIsOpen, cartCount } = useCart();
   const { wishlist } = useWishlist();
   const wishlistCount = wishlist?.length || 0;
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const [menuCategories, setMenuCategories] = useState<string[]>([]);
+  const router = useRouter();
+  const { runTransition } = useCatalogLoading();
+
+  // The category menu mirrors whatever the admin panel has marked "hidden
+  // from home" -- those categories still need a way to be reached, so they
+  // surface here automatically instead of via a hardcoded list that would
+  // drift out of sync with the admin panel.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/categories")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const hidden = (data.categories || [])
+          .filter((c: any) => c.show_on_home === false)
+          .map((c: any) => c.name);
+        setMenuCategories(hidden);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function goToCategory(e: React.MouseEvent, name: string) {
+    // Let a modified click (open in new tab, etc.) fall through to normal
+    // browser handling instead of hijacking it.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    setCategoryMenuOpen(false);
+    runTransition(() => {
+      router.push(`/?category=${encodeURIComponent(name)}`, { scroll: false });
+    });
+  }
 
   return (
     <header className="border-b border-amber-200 dark:border-stone-800 bg-white dark:bg-stone-950 sticky top-0 z-40 shadow-sm transition-colors">
@@ -106,43 +135,53 @@ export default function HeaderNavbar() {
 
       </div>
 
-      {/* Category menu -- a hamburger toggle on every breakpoint (mobile-first),
-          revealing links into the homepage's existing ?category filter. The
-          default (unfiltered) homepage is never touched; products only appear
-          scoped to a category once a link here is clicked. */}
+      {/* Categories (left) and the Home/About Menu (right) share one line,
+          both as hamburger toggles. Categories is populated from whichever
+          categories the admin has marked "hidden from home" -- revealing
+          links into the homepage's existing ?category filter. The default
+          (unfiltered) homepage is never touched; products only appear scoped
+          to a category once a link here is clicked. */}
       <div className="border-t border-stone-100 dark:border-stone-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <button
-            type="button"
-            onClick={() => setCategoryMenuOpen((open) => !open)}
-            aria-expanded={categoryMenuOpen}
-            aria-controls="category-menu-panel"
-            className="w-full sm:w-auto flex items-center gap-2 py-2.5 text-[11px] uppercase tracking-wider font-semibold text-stone-600 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition"
-          >
-            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              {categoryMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-            Categories
-          </button>
+          <div className="flex items-center justify-between gap-3">
+            {menuCategories.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setCategoryMenuOpen((open) => !open)}
+                aria-expanded={categoryMenuOpen}
+                aria-controls="category-menu-panel"
+                className="flex items-center gap-2 py-2.5 text-[11px] uppercase tracking-wider font-semibold text-stone-600 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition"
+              >
+                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  {categoryMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+                Categories
+              </button>
+            ) : (
+              <span />
+            )}
 
-          {categoryMenuOpen && (
+            <PageNavLinks />
+          </div>
+
+          {categoryMenuOpen && menuCategories.length > 0 && (
             <div
               id="category-menu-panel"
               className="pb-3 flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-5 text-[11px] uppercase tracking-wider font-medium text-stone-500 dark:text-stone-400"
             >
-              {CATEGORY_LINKS.map((name) => (
-                <Link
+              {menuCategories.map((name) => (
+                <a
                   key={name}
-                  href={{ pathname: "/", query: { category: name } }}
-                  onClick={() => setCategoryMenuOpen(false)}
+                  href={`/?category=${encodeURIComponent(name)}`}
+                  onClick={(e) => goToCategory(e, name)}
                   className="py-2 sm:py-0 hover:text-amber-700 dark:hover:text-amber-500 transition"
                 >
                   {name}
-                </Link>
+                </a>
               ))}
             </div>
           )}
