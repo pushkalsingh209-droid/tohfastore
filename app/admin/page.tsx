@@ -26,6 +26,7 @@ export default function AdminDashboard() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [settings, setSettings] = useState<Record<string, string>>({});
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -68,18 +69,20 @@ export default function AdminDashboard() {
   // them in parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes] = await Promise.allSettled([
+    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes] = await Promise.allSettled([
       apiRequest("/api/admin/products"),
       apiRequest("/api/admin/orders"),
       apiRequest("/api/admin/reviews"),
       apiRequest("/api/admin/coupons"),
       apiRequest("/api/admin/categories"),
+      apiRequest("/api/admin/settings"),
     ]);
     if (productsRes.status === "fulfilled") setProducts(productsRes.value.products);
     if (ordersRes.status === "fulfilled") setOrders(ordersRes.value.orders);
     if (reviewsRes.status === "fulfilled") setReviews(reviewsRes.value.reviews);
     if (couponsRes.status === "fulfilled") setCoupons(couponsRes.value.coupons);
     if (categoriesRes.status === "fulfilled") setCategories(categoriesRes.value.categories);
+    if (settingsRes.status === "fulfilled") setSettings(settingsRes.value.settings);
     setLoadingOrders(false);
   };
 
@@ -415,6 +418,35 @@ export default function AdminDashboard() {
       setCategories(categories.map((c) => (c.id === categoryId ? { ...c, gst_rate: result.category.gst_rate } : c)));
     } catch (err: any) {
       alert(`Could not update GST rate: ${err.message}`);
+    }
+  };
+
+  // Site-wide default "products per page" -- applies whenever a visitor
+  // hasn't explicitly changed the page-size selector themselves.
+  const handleUpdateDefaultPageSize = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ default_page_size: value }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: any) {
+      alert(`Could not update default page size: ${err.message}`);
+    }
+  };
+
+  // A category's own default-page-size override -- blank clears it back
+  // to the site-wide default above.
+  const handleUpdateCategoryPageSize = async (categoryId: number, value: string) => {
+    try {
+      const parsed = value.trim() === "" ? null : Number(value);
+      const result = await apiRequest("/api/admin/categories", {
+        method: "PATCH",
+        body: JSON.stringify({ id: categoryId, default_page_size: parsed }),
+      });
+      setCategories(categories.map((c) => (c.id === categoryId ? { ...c, default_page_size: result.category.default_page_size } : c)));
+    } catch (err: any) {
+      alert(`Could not update category page size: ${err.message}`);
     }
   };
 
@@ -934,11 +966,34 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        {/* SECTION D.0: STOREFRONT SETTINGS */}
+        <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+          <div className="border-b border-stone-200 pb-4 mb-6">
+            <h2 className="text-xl font-serif text-stone-900">Storefront Settings</h2>
+            <p className="text-stone-500 text-xs mt-1">Controls what visitors see by default -- they can still change the page-size selector themselves at any time.</p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="text-sm text-stone-700 font-medium">Default products per page (site-wide)</label>
+            <input
+              key={settings.default_page_size ?? ""}
+              type="number"
+              min={1}
+              max={500}
+              defaultValue={settings.default_page_size ?? "10"}
+              onBlur={(e) => {
+                const next = e.target.value.trim();
+                if (next && next !== settings.default_page_size) handleUpdateDefaultPageSize(next);
+              }}
+              className="w-24 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+          </div>
+        </div>
+
         {/* SECTION D.1: CATEGORIES */}
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
             <h2 className="text-xl font-serif text-stone-900">Categories</h2>
-            <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form's dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category's products appear in the homepage's default view (they're still reachable by selecting the category directly). GST % is set per category and used to break down the final bill.</p>
+            <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form's dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category's products appear in the homepage's default view (they're still reachable by selecting the category directly). GST % is set per category and used to break down the final bill. &ldquo;Products/page&rdquo; overrides the site-wide default just for that category&rsquo;s own page -- leave blank to use the default above.</p>
           </div>
 
           <form onSubmit={handleCreateCategory} className="flex gap-3 mb-4">
@@ -992,6 +1047,22 @@ export default function AdminDashboard() {
                         className="w-16 px-2 py-1.5 rounded border border-stone-300 text-xs font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
                       />
                       <span className="text-[11px] text-stone-400">% GST</span>
+                    </div>
+                    <div className="flex items-center gap-1.5" title="Products per page override for this category -- leave blank to use the site-wide default">
+                      <input
+                        key={`${cat.id}-${cat.default_page_size ?? ""}`}
+                        type="number"
+                        min={1}
+                        max={500}
+                        placeholder="Default"
+                        defaultValue={cat.default_page_size ?? ""}
+                        onBlur={(e) => {
+                          const next = e.target.value.trim();
+                          if (next !== String(cat.default_page_size ?? "")) handleUpdateCategoryPageSize(cat.id, next);
+                        }}
+                        className="w-16 px-2 py-1.5 rounded border border-stone-300 text-xs font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+                      />
+                      <span className="text-[11px] text-stone-400">/page</span>
                     </div>
                     <button
                       type="button"

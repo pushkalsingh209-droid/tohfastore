@@ -16,13 +16,14 @@ import {
   filterLivePublicCoupons,
   getTotalProductCount,
   getBestsellers,
+  getSiteSettings,
+  getCategoryDefaultPageSize,
 } from "@/app/utils/storeQueries";
 
 // The page still renders per-request (it reads searchParams for pagination/
 // category/sort), but the expensive Supabase reads behind it are cached via
 // unstable_cache in app/utils/storeQueries.ts, so this no longer forces a
 // full no-store/no-cache mode on every fetch in the tree.
-const DEFAULT_PAGE_SIZE = 10;
 
 type HomeSearchParams = { page?: string; pageSize?: string; category?: string; sort?: string; stock?: string };
 
@@ -61,7 +62,6 @@ export default async function StorefrontHome({
   searchParams: Promise<HomeSearchParams>;
 }) {
   const sp = await searchParams;
-  const pageSize = PAGE_SIZE_OPTIONS.includes(Number(sp.pageSize)) ? Number(sp.pageSize) : DEFAULT_PAGE_SIZE;
   const requestedPage = Math.max(1, Number(sp.page) || 1);
   const category = sp.category || "";
   // "sequence" (admin-controlled display_order) is the true default --
@@ -72,13 +72,22 @@ export default async function StorefrontHome({
   const inStockOnly = sp.stock === "in";
   const categoryContent = category ? getCategoryContent(category) : null;
 
-  const [hiddenCategories, rawPublicCoupons, categorySliderItems, totalProductCount, bestsellers] = await Promise.all([
+  const [hiddenCategories, rawPublicCoupons, categorySliderItems, totalProductCount, bestsellers, siteSettings, categoryPageSize] = await Promise.all([
     getHiddenCategoryNames(),
     getPublicCoupons(),
     getCategorySliderItems(),
     getTotalProductCount(),
     category ? Promise.resolve([]) : getBestsellers(8),
+    getSiteSettings(),
+    category ? getCategoryDefaultPageSize(category) : Promise.resolve(null),
   ]);
+
+  // Priority: an explicit visitor choice (the page-size selector) always
+  // wins; otherwise a category's own override; otherwise the site-wide
+  // admin default.
+  const defaultPageSize = categoryPageSize ?? siteSettings.defaultPageSize;
+  const pageSize = PAGE_SIZE_OPTIONS.includes(Number(sp.pageSize)) ? Number(sp.pageSize) : defaultPageSize;
+
   const { products, count, page } = await getCatalogPage(requestedPage, pageSize, category, sort, hiddenCategories, inStockOnly);
 
   // categorySliderItems already has one entry per distinct category with

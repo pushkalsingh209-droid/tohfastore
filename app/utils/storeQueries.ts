@@ -35,6 +35,52 @@ export const getHiddenCategoryNames = unstable_cache(
   { revalidate: 60 }
 );
 
+const FALLBACK_DEFAULT_PAGE_SIZE = 10;
+
+// Site-wide default "products per page" an admin can set (e.g. "50 for
+// today"), applied whenever a visitor hasn't explicitly picked a size via
+// the page-size selector. Falls back to 10 if the settings row is missing
+// (e.g. migration not yet run) or malformed.
+export const getSiteSettings = unstable_cache(
+  async (): Promise<{ defaultPageSize: number }> => {
+    try {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "default_page_size")
+        .maybeSingle();
+      if (error || !data) return { defaultPageSize: FALLBACK_DEFAULT_PAGE_SIZE };
+      const parsed = parseInt(data.value, 10);
+      return { defaultPageSize: Number.isFinite(parsed) && parsed > 0 ? parsed : FALLBACK_DEFAULT_PAGE_SIZE };
+    } catch {
+      return { defaultPageSize: FALLBACK_DEFAULT_PAGE_SIZE };
+    }
+  },
+  ["site-settings"],
+  { revalidate: 60 }
+);
+
+// A category's own default-page-size override, if an admin set one --
+// null means "use the site-wide default above" instead.
+export const getCategoryDefaultPageSize = unstable_cache(
+  async (categoryName: string): Promise<number | null> => {
+    try {
+      if (!categoryName) return null;
+      const { data, error } = await supabase
+        .from("categories")
+        .select("default_page_size")
+        .eq("name", categoryName)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data.default_page_size ?? null;
+    } catch {
+      return null;
+    }
+  },
+  ["category-default-page-size"],
+  { revalidate: 60 }
+);
+
 // Active, non-expired, not-maxed-out coupons an admin has marked "public" --
 // shown in the on-site promo banner. Coupons left private are still
 // redeemable at checkout, just never listed here. The expiry/usage filter

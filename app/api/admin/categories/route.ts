@@ -45,9 +45,18 @@ export async function POST(req: Request) {
   }
 }
 
+// A category's page-size override must be a real positive page size, or
+// null/empty to clear it back to the site-wide default.
+function parseCategoryPageSize(value: unknown): number | null | undefined {
+  if (value === null || value === "") return null;
+  const num = Number(value);
+  if (!Number.isFinite(num) || !Number.isInteger(num) || num < 1 || num > 500) return undefined;
+  return num;
+}
+
 export async function PATCH(req: Request) {
   try {
-    const { id, show_on_home, gst_rate } = await req.json();
+    const { id, show_on_home, gst_rate, default_page_size } = await req.json();
     if (!id) return NextResponse.json({ error: "Missing category id." }, { status: 400 });
 
     const updates: Record<string, unknown> = {};
@@ -58,6 +67,13 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: "GST rate must be a number between 0 and 100." }, { status: 400 });
       }
       updates.gst_rate = gstRate;
+    }
+    if (default_page_size !== undefined) {
+      const pageSize = parseCategoryPageSize(default_page_size);
+      if (pageSize === undefined) {
+        return NextResponse.json({ error: "Default page size must be a whole number between 1 and 500 (or blank)." }, { status: 400 });
+      }
+      updates.default_page_size = pageSize;
     }
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
