@@ -1,4 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#78350f"/>
-  <text x="256" y="326" font-family="Georgia, 'Times New Roman', serif" font-size="260" font-weight="700" fill="#fbbf24" text-anchor="middle">T</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="brassGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e8c468"/>
+      <stop offset="100%" stop-color="#a97d2b"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="40" fill="#3d1113"/>
+  <path d="M 100 118 L 88 168 L 100 158 L 112 168 Z" fill="url(#brassGrad)"/>
+  <path d="M 100 112 C 60 112 45 78 72 62 C 92 50 100 78 100 100 C 100 78 108 50 128 62 C 155 78 140 112 100 112 Z" fill="url(#brassGrad)"/>
+  <circle cx="100" cy="106" r="11" fill="#3d1113"/>
+  <circle cx="100" cy="106" r="11" fill="none" stroke="url(#brassGrad)" stroke-width="3"/>
 </svg>

@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     const itemIds = (items as CartItem[]).map((i) => i.id).filter(Boolean);
     const { data: dbProducts, error: productErr } = await supabase
       .from("products")
-      .select("id, name, price, inventory, category")
+      .select("id, name, price, inventory, category, image_url")
       .in("id", itemIds);
 
     if (productErr) {
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       const gstRate = product.category && categoryGstRates.has(product.category)
         ? categoryGstRates.get(product.category)!
         : GST_RATE * 100;
-      return { id: product.id, name: product.name, price: Number(product.price), quantity, gstRate };
+      return { id: product.id, name: product.name, price: Number(product.price), quantity, gstRate, image_url: product.image_url };
     });
 
     if (pricedItems.some((i) => i === null)) {

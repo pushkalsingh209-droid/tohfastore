@@ -56,10 +56,37 @@ export default function HeaderNavbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 md:h-20 flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
 
         <div className="flex items-center justify-between md:justify-start md:gap-8">
-          {/* Brand Typography */}
-          <a href="/" className="flex flex-col group outline-none">
-            <span className="text-xl md:text-2xl font-serif tracking-widest text-amber-700 dark:text-amber-500 font-bold group-hover:text-amber-800 dark:group-hover:text-amber-400 transition">TOHFA</span>
-            <span className="text-[9px] md:text-[10px] uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400 -mt-1">Luxury Gift Paradise</span>
+          {/* Brand mark + wordmark -- the same gift-knot mark used on the
+              favicon, WhatsApp profile photo, and order-confirmation email
+              header, so the brand reads as one consistent sender across
+              channels instead of looking like a different business emailed
+              the customer. Inlined as SVG (not an <img>) so it stays crisp
+              at any size with no extra network request. */}
+          <a href="/" className="flex items-center gap-2 group outline-none">
+            <svg viewBox="0 0 200 200" className="w-8 h-8 md:w-10 md:h-10 flex-shrink-0" aria-hidden="true">
+              <defs>
+                <linearGradient id="brassGradHeader" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#ffffff" />
+                  <stop offset="100%" stopColor="#FFF0CF" />
+                </linearGradient>
+              </defs>
+              {/* Same amber-700/500 as the "TOHFA" text beside it, so the
+                  mark reads as one color system with the wordmark instead
+                  of the darker maroon used on the favicon/email/WhatsApp
+                  asset. */}
+              <rect width="200" height="200" rx="40" className="fill-amber-700 dark:fill-amber-500" />
+              <path d="M 100 118 L 88 168 L 100 158 L 112 168 Z" fill="url(#brassGradHeader)" />
+              <path
+                d="M 100 112 C 60 112 45 78 72 62 C 92 50 100 78 100 100 C 100 78 108 50 128 62 C 155 78 140 112 100 112 Z"
+                fill="url(#brassGradHeader)"
+              />
+              <circle cx="100" cy="106" r="11" className="fill-amber-700 dark:fill-amber-500" />
+              <circle cx="100" cy="106" r="11" fill="none" stroke="url(#brassGradHeader)" strokeWidth="3" />
+            </svg>
+            <div className="flex flex-col">
+              <span className="text-xl md:text-2xl font-serif tracking-widest text-amber-700 dark:text-amber-500 font-bold group-hover:text-amber-800 dark:group-hover:text-amber-400 transition">TOHFA</span>
+              <span className="text-[9px] md:text-[10px] uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400 -mt-1">Luxury Gift Paradise</span>
+            </div>
           </a>
 
           <div className="flex items-center gap-1 md:hidden">

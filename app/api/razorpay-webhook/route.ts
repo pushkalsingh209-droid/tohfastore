@@ -2,8 +2,11 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import Razorpay from "razorpay";
+import { Resend } from "resend";
 import { isValidPaymentSignature } from "@/app/utils/razorpaySignature";
 import { calculateOrderGstBreakdown, BUSINESS_GSTIN } from "@/app/utils/gst";
+
+const CONTACT_INBOX = "contact@tohfaonline.com";
 
 const razorpay = new Razorpay({
   key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_build_placeholder",
@@ -158,13 +161,18 @@ export async function POST(req: Request) {
         console.error("Stock deduction after sale failed:", stockError);
       }
 
-      // 2. Best-effort WhatsApp alerts (Green API) -- one to the store's own
-      // WhatsApp number, one to the customer's WhatsApp number entered at
-      // checkout. Silently no-ops until GREEN_API_URL / GREEN_API_ID_INSTANCE
-      // / GREEN_API_TOKEN_INSTANCE are set, so a missing/failed send never
-      // blocks order confirmation. Note: the free Green API "Developer"
-      // instance only supports a handful of distinct chats per month, so
-      // customer-side delivery may stop working past that quota.
+      // Precompute the order summary content shared by both the WhatsApp
+      // alerts and the confirmation emails below, so a failure building it
+      // can't silently skip one channel while leaving the other running on
+      // stale data. gst/formattedAddress are hoisted out of this try block
+      // (not just the joined WhatsApp strings) so the richer HTML emails
+      // below can use the same structured values instead of re-deriving or
+      // parsing them back out of plain text.
+      let businessMessage = "";
+      let customerMessage = "";
+      let gst: ReturnType<typeof calculateOrderGstBreakdown> | null = null;
+      let formattedAddress = "Not provided -- request via WhatsApp";
+      const businessWhatsappNumber = process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351";
       try {
         const itemsSummary = orderItems
           .map((item: any) => `${item.name} x${item.quantity}`)
@@ -178,25 +186,25 @@ export async function POST(req: Request) {
         // proportionally.
         const itemsSubtotal = orderItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
         const discount = Math.max(0, itemsSubtotal - totalAmount);
-        const gst = calculateOrderGstBreakdown(orderItems, discount);
+        gst = calculateOrderGstBreakdown(orderItems, discount);
         const gstLines =
           gst.byRate.length > 1
             ? gst.byRate.map((g) => `  GST (${g.rate}%): ₹${g.gstAmount.toLocaleString("en-IN")}`).join("\n")
             : `GST (${gst.byRate[0]?.rate ?? 0}%): ₹${gst.gstAmount.toLocaleString("en-IN")}`;
 
-        const formattedAddress = shippingAddress
-          ? [
-              shippingAddress.line,
-              shippingAddress.landmark ? `Near ${shippingAddress.landmark}` : "",
-              shippingAddress.city,
-              shippingAddress.state,
-              shippingAddress.pincode,
-            ]
-              .filter(Boolean)
-              .join(", ")
-          : "Not provided -- request via WhatsApp";
+        if (shippingAddress) {
+          formattedAddress = [
+            shippingAddress.line,
+            shippingAddress.landmark ? `Near ${shippingAddress.landmark}` : "",
+            shippingAddress.city,
+            shippingAddress.state,
+            shippingAddress.pincode,
+          ]
+            .filter(Boolean)
+            .join(", ");
+        }
 
-        const businessMessage = [
+        businessMessage = [
           "New Tohfa order received!",
           `Order ID: ${orderId}`,
           `Customer: ${customerName}`,
@@ -212,9 +220,8 @@ export async function POST(req: Request) {
         const itemLines = orderItems.length
           ? orderItems.map((item: any) => `  ${item.name} x${item.quantity}`).join("\n")
           : "  N/A";
-        const businessWhatsappNumber = process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351";
 
-        const customerMessage = [
+        customerMessage = [
           "🧾 *TOHFA — Order Invoice*",
           `GSTIN: ${BUSINESS_GSTIN}`,
           "",
@@ -234,13 +241,51 @@ export async function POST(req: Request) {
           "",
           `Any questions? Reply here on WhatsApp (+${businessWhatsappNumber}) any time.`,
         ].join("\n");
+      } catch (buildErr) {
+        console.error("Order summary build failed:", buildErr);
+      }
 
-        await Promise.all([
-          sendWhatsappMessage(businessWhatsappNumber, businessMessage),
-          sendWhatsappMessage(customerPhone, customerMessage),
-        ]);
-      } catch (waError) {
-        console.error("WhatsApp dispatch skip:", waError);
+      // 2. Best-effort WhatsApp alerts (Green API) -- one to the store's own
+      // WhatsApp number, one to the customer's WhatsApp number entered at
+      // checkout. Silently no-ops until GREEN_API_URL / GREEN_API_ID_INSTANCE
+      // / GREEN_API_TOKEN_INSTANCE are set, so a missing/failed send never
+      // blocks order confirmation. Note: the free Green API "Developer"
+      // instance only supports a handful of distinct chats per month, so
+      // customer-side delivery may stop working past that quota.
+      if (businessMessage && customerMessage) {
+        // Lead with a photo of the first item that has one -- WhatsApp
+        // renders it as an image message with the order summary as the
+        // caption underneath, instead of a bare wall of text.
+        const heroImage = orderItems.find((item: any) => item.image_url)?.image_url;
+        try {
+          await Promise.all([
+            sendWhatsappMessage(businessWhatsappNumber, businessMessage, heroImage),
+            sendWhatsappMessage(customerPhone, customerMessage, heroImage),
+          ]);
+        } catch (waError) {
+          console.error("WhatsApp dispatch skip:", waError);
+        }
+
+        // 3. Best-effort order confirmation emails (Resend) -- one to the
+        // business inbox, one to the customer (skipped if no real email was
+        // captured at checkout). Silently no-ops until RESEND_API_KEY is
+        // set, and never blocks order confirmation, mirroring the WhatsApp
+        // alerts above.
+        if (gst) {
+          try {
+            await sendOrderEmails({
+              orderId,
+              customerName,
+              customerPhone,
+              customerEmail,
+              formattedAddress,
+              orderItems,
+              gst,
+            });
+          } catch (emailError) {
+            console.error("Order email dispatch skip:", emailError);
+          }
+        }
       }
     }
 
@@ -252,13 +297,31 @@ export async function POST(req: Request) {
 
 // Best-effort WhatsApp send via Green API. Silently no-ops until
 // GREEN_API_URL / GREEN_API_ID_INSTANCE / GREEN_API_TOKEN_INSTANCE are set.
-async function sendWhatsappMessage(phone: string, message: string) {
+// When imageUrl is given, sends it as an image message with `message` as
+// the caption (sendFileByUrl) instead of a plain text message -- falls back
+// to plain text if the image send fails for any reason (bad URL, WhatsApp
+// media rejection, etc.) so a formatting problem never costs the alert
+// entirely.
+async function sendWhatsappMessage(phone: string, message: string, imageUrl?: string) {
   const greenApiUrl = process.env.GREEN_API_URL;
   const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
   const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
   if (!greenApiUrl || !greenApiIdInstance || !greenApiTokenInstance) return;
 
   const chatId = phone.startsWith("91") ? `${phone}@c.us` : `91${phone}@c.us`;
+
+  if (imageUrl) {
+    const imageRes = await fetch(
+      `${greenApiUrl}/waInstance${greenApiIdInstance}/sendFileByUrl/${greenApiTokenInstance}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId, urlFile: imageUrl, fileName: "tohfa-order.jpg", caption: message }),
+      }
+    );
+    if (imageRes.ok) return;
+    console.error("WhatsApp (Green API) image send failed, falling back to text:", chatId, await imageRes.text());
+  }
 
   const res = await fetch(
     `${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`,
@@ -270,6 +333,177 @@ async function sendWhatsappMessage(phone: string, message: string) {
   );
   if (!res.ok) {
     console.error("WhatsApp (Green API) send failed:", chatId, await res.text());
+  }
+}
+
+const SITE_URL = "https://tohfaonline.com";
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Each row links both the photo and the name to the product's live page --
+// clicking through from the email should land exactly where the item was
+// bought from, not a search or the bare homepage.
+function buildItemRowsHtml(items: any[]): string {
+  return items
+    .map((item) => {
+      const productUrl = `${SITE_URL}/product/${item.id}`;
+      const lineTotal = (Number(item.price) * Number(item.quantity)).toLocaleString("en-IN");
+      const image = item.image_url
+        ? `<a href="${productUrl}"><img src="${escapeHtml(item.image_url)}" width="56" height="56" alt="${escapeHtml(item.name)}" style="display:block;border-radius:6px;object-fit:cover;border:1px solid #e7e5e4;" /></a>`
+        : "";
+      return `<tr>
+        <td style="padding:10px 0;width:64px;vertical-align:top;">${image}</td>
+        <td style="padding:10px 12px;vertical-align:top;">
+          <a href="${productUrl}" style="color:#1c1917;text-decoration:none;font-weight:600;font-size:14px;">${escapeHtml(item.name)}</a><br/>
+          <span style="color:#78716c;font-size:12px;">Qty: ${escapeHtml(item.quantity)} &times; &#8377;${Number(item.price).toLocaleString("en-IN")}</span>
+        </td>
+        <td style="padding:10px 0;text-align:right;vertical-align:top;font-family:monospace;font-size:14px;white-space:nowrap;">&#8377;${lineTotal}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+// Professional HTML order-confirmation template shared by both the business
+// and customer emails -- customer contact details are only shown on the
+// business copy (the customer already knows their own details).
+function buildOrderEmailHtml(params: {
+  heading: string;
+  intro: string;
+  orderId: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  formattedAddress: string;
+  orderItems: any[];
+  gst: ReturnType<typeof calculateOrderGstBreakdown>;
+  showCustomerContact: boolean;
+}): string {
+  const { heading, intro, orderId, customerName, customerPhone, customerEmail, formattedAddress, orderItems, gst, showCustomerContact } = params;
+
+  const gstRows = gst.byRate
+    .map(
+      (g) =>
+        `<tr><td style="padding:2px 0;color:#78716c;">GST (${g.rate}%)</td><td style="padding:2px 0;text-align:right;font-family:monospace;">&#8377;${g.gstAmount.toLocaleString("en-IN")}</td></tr>`
+    )
+    .join("");
+
+  return `<div style="font-family: Arial, Helvetica, sans-serif; background:#f5f5f4; padding:24px 0;">
+    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e7e5e4;">
+      <div style="background:linear-gradient(to right, #241010, #481416, #3d1113);padding:24px;text-align:center;">
+        <img src="${SITE_URL}/logo-mark.png" width="44" height="44" alt="TOHFA" style="display:block;margin:0 auto 10px;border-radius:10px;" />
+        <div style="color:#e8c468;font-size:20px;font-weight:bold;letter-spacing:3px;">TOHFA</div>
+        <div style="color:#d9c9ab;font-size:10px;text-transform:uppercase;letter-spacing:2px;margin-top:4px;">Luxury Gift Paradise</div>
+      </div>
+      <div style="padding:24px;">
+        <h2 style="color:#b45309;font-size:18px;margin:0 0 8px;">${escapeHtml(heading)}</h2>
+        <p style="color:#44403c;font-size:13px;line-height:1.6;margin:0 0 16px;">${escapeHtml(intro)}</p>
+
+        <table style="width:100%;font-size:13px;color:#57534e;border-bottom:1px solid #e7e5e4;padding-bottom:12px;margin-bottom:16px;">
+          <tr><td style="padding:2px 0;">Order ID</td><td style="padding:2px 0;text-align:right;font-family:monospace;">${escapeHtml(orderId)}</td></tr>
+          <tr><td style="padding:2px 0;">Date</td><td style="padding:2px 0;text-align:right;">${new Date().toLocaleString("en-IN")}</td></tr>
+        </table>
+
+        <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#a8a29e;margin:0 0 8px;">Customer Details</h3>
+        <table style="width:100%;font-size:13px;color:#1c1917;margin-bottom:16px;">
+          <tr><td style="padding:2px 0;color:#78716c;width:90px;">Name</td><td style="padding:2px 0;">${escapeHtml(customerName)}</td></tr>
+          ${
+            showCustomerContact
+              ? `<tr><td style="padding:2px 0;color:#78716c;">Phone</td><td style="padding:2px 0;font-family:monospace;">${escapeHtml(customerPhone)}</td></tr>
+          <tr><td style="padding:2px 0;color:#78716c;">Email</td><td style="padding:2px 0;">${escapeHtml(customerEmail)}</td></tr>`
+              : ""
+          }
+        </table>
+
+        <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#a8a29e;margin:0 0 8px;">Shipping Address</h3>
+        <p style="font-size:13px;color:#1c1917;margin:0 0 16px;line-height:1.5;">${escapeHtml(formattedAddress)}</p>
+
+        <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#a8a29e;margin:0 0 8px;">Items Ordered</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+          ${buildItemRowsHtml(orderItems)}
+        </table>
+
+        <table style="width:100%;font-size:13px;color:#57534e;border-top:1px solid #e7e5e4;padding-top:10px;">
+          <tr><td style="padding:2px 0;">Base Amount</td><td style="padding:2px 0;text-align:right;font-family:monospace;">&#8377;${gst.basePrice.toLocaleString("en-IN")}</td></tr>
+          ${gstRows}
+          <tr><td style="padding:8px 0 0;font-weight:bold;font-size:15px;color:#1c1917;">Total</td><td style="padding:8px 0 0;text-align:right;font-weight:bold;font-size:16px;color:#b45309;font-family:monospace;">&#8377;${gst.totalPrice.toLocaleString("en-IN")}</td></tr>
+        </table>
+      </div>
+      <div style="background:#fafaf9;padding:16px 24px;text-align:center;font-size:11px;color:#a8a29e;border-top:1px solid #e7e5e4;">
+        Questions? WhatsApp us at +91 6302672351 or email <a href="mailto:${CONTACT_INBOX}" style="color:#b45309;">${CONTACT_INBOX}</a><br/>
+        GSTIN: ${escapeHtml(BUSINESS_GSTIN)}
+      </div>
+    </div>
+  </div>`;
+}
+
+// Best-effort order confirmation emails via Resend. Silently no-ops until
+// RESEND_API_KEY is set (same pattern as the WhatsApp helper below), so a
+// missing key never blocks order confirmation.
+async function sendOrderEmails(params: {
+  orderId: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  formattedAddress: string;
+  orderItems: any[];
+  gst: ReturnType<typeof calculateOrderGstBreakdown>;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+
+  const { orderId, customerName, customerPhone, customerEmail, formattedAddress, orderItems, gst } = params;
+  const resend = new Resend(apiKey);
+
+  const sends = [
+    resend.emails.send({
+      from: "TOHFA Orders <noreply@tohfaonline.com>",
+      to: CONTACT_INBOX,
+      subject: `New order received — ${orderId}`,
+      html: buildOrderEmailHtml({
+        heading: "New Order Received",
+        intro: "A new order has been placed and payment has been verified by Razorpay.",
+        orderId,
+        customerName,
+        customerPhone,
+        customerEmail,
+        formattedAddress,
+        orderItems,
+        gst,
+        showCustomerContact: true,
+      }),
+    }),
+  ];
+
+  // customerEmail falls back to a placeholder upstream when Razorpay doesn't
+  // supply a real one -- skip rather than emailing that literal address.
+  if (customerEmail && customerEmail !== "customer@example.com") {
+    sends.push(
+      resend.emails.send({
+        from: "TOHFA <noreply@tohfaonline.com>",
+        to: customerEmail,
+        replyTo: CONTACT_INBOX,
+        subject: `Your TOHFA order confirmation — ${orderId}`,
+        html: buildOrderEmailHtml({
+          heading: `Thank you, ${customerName}!`,
+          intro: "Your order has been confirmed and our artisans are preparing it for dispatch. We'll send delivery updates on WhatsApp too.",
+          orderId,
+          customerName,
+          customerPhone,
+          customerEmail,
+          formattedAddress,
+          orderItems,
+          gst,
+          showCustomerContact: false,
+        }),
+      })
+    );
+  }
+
+  const results = await Promise.all(sends);
+  for (const result of results) {
+    if (result.error) console.error("Resend order-email send failed:", result.error);
   }
 }
 

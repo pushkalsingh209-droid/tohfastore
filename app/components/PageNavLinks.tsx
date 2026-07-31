@@ -30,7 +30,7 @@ export default function PageNavLinks() {
       {open && (
         <div
           id="page-nav-links-panel"
-          className="absolute right-0 top-full mt-2 z-40 min-w-[140px] flex flex-col bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded shadow-md py-1.5 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600 dark:text-stone-400"
+          className="absolute right-0 top-full mt-2 z-50 min-w-[140px] flex flex-col bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded shadow-md py-1.5 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600 dark:text-stone-400"
         >
           <a
             href="/"
@@ -52,6 +52,13 @@ export default function PageNavLinks() {
             className="px-4 py-2 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
           >
             Track Order
+          </a>
+          <a
+            href="/contact"
+            onClick={() => setOpen(false)}
+            className="px-4 py-2 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+          >
+            Reach Us
           </a>
         </div>
       )}
