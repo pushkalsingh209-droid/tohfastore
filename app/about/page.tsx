@@ -58,6 +58,27 @@ export default function AboutUsPage() {
             </div>
           </div>
 
+          {/* Founder Story */}
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-5 sm:p-8 md:p-12 shadow-sm space-y-4 text-stone-700 dark:text-stone-300 font-sans text-xs sm:text-sm md:text-base leading-relaxed font-light">
+            <div className="text-center space-y-1 pb-2">
+              <span className="text-amber-700 dark:text-amber-500 uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block">
+                Meet the Founder
+              </span>
+              <h2 className="text-xl sm:text-2xl font-serif text-stone-900 dark:text-stone-100 tracking-wide">
+                Sakshi Singh
+              </h2>
+            </div>
+            <p>
+              TOHFA is founded and led by <span className="font-medium text-stone-900 dark:text-stone-100 font-serif">Sakshi Singh</span> (born Sakshi Verma), a self-taught resin artist now based in Dehradun, originally from Gorakhpur. Handicrafts were never the family trade &mdash; her father built his career in agricultural seed trading, and her brother runs a clothing retail business &mdash; but Sakshi charted an entirely new path of her own, starting the handicraft business from the ground up with TOHFA.
+            </p>
+            <p>
+              With no formal training and no family precedent in the craft to draw on, she taught herself the art of resin work and has built TOHFA into what it is today through hands-on learning and sheer persistence. Her driving belief is simple: handcrafted artifacts like these deserve to be seen and celebrated widely, and she has made it her mission to take them to a wider audience, one collection at a time.
+            </p>
+            <p className="text-stone-600 dark:text-stone-400">
+              She is married to Pushkal Singh, an alumnus of IIT Kharagpur.
+            </p>
+          </div>
+
           {/* Updated Communication Panel with Explicit Email Text Display */}
           <div className="bg-amber-950 text-stone-100 rounded-lg p-6 sm:p-8 md:p-10 text-center space-y-4 shadow-md">
             <h3 className="font-serif text-lg sm:text-xl tracking-wide text-amber-400 font-medium">Direct Procurement Requests</h3>
