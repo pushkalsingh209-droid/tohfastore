@@ -14,6 +14,7 @@ export default function CatalogSection({
   categories,
   category,
   sort,
+  inStockOnly,
   heading,
 }: {
   products: any[];
@@ -23,6 +24,7 @@ export default function CatalogSection({
   categories: string[];
   category: string;
   sort: string;
+  inStockOnly: boolean;
   heading?: string;
 }) {
   const router = useRouter();
@@ -43,7 +45,7 @@ export default function CatalogSection({
   // Shared by the Category/Sort dropdowns so switching either one gets the
   // exact same in-place loading overlay as paging through results, instead
   // of a bare navigation with no feedback.
-  function handleFilterChange(next: { category?: string; sort?: string }) {
+  function handleFilterChange(next: { category?: string; sort?: string; inStock?: boolean }) {
     const params = new URLSearchParams(searchParams.toString());
     if (next.category !== undefined) {
       if (next.category) params.set("category", next.category);
@@ -52,6 +54,10 @@ export default function CatalogSection({
     if (next.sort !== undefined) {
       if (next.sort && next.sort !== "newest") params.set("sort", next.sort);
       else params.delete("sort");
+    }
+    if (next.inStock !== undefined) {
+      if (next.inStock) params.set("stock", "in");
+      else params.delete("stock");
     }
     params.set("page", "1");
     document.getElementById("signature-collection")?.scrollIntoView({ behavior: "auto", block: "start" });
@@ -91,11 +97,29 @@ export default function CatalogSection({
 
         {(categories.length > 0 || count > 0) && (
           <div className="mb-8">
-            <CatalogFilters categories={categories} category={category} sort={sort} onFilterChange={handleFilterChange} />
+            <CatalogFilters
+              categories={categories}
+              category={category}
+              sort={sort}
+              inStockOnly={inStockOnly}
+              onFilterChange={handleFilterChange}
+            />
           </div>
         )}
 
-        {count === 0 && category ? (
+        {count === 0 && inStockOnly ? (
+          <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
+            <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">
+              No in-stock artifacts {category ? <>in &ldquo;{category}&rdquo;</> : "found"} right now.
+            </p>
+            <button
+              onClick={() => handleFilterChange({ inStock: false })}
+              className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline"
+            >
+              Show out-of-stock items too
+            </button>
+          </div>
+        ) : count === 0 && category ? (
           <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
             <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">No artifacts found in &ldquo;{category}&rdquo;.</p>
             <a href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">Clear filter</a>

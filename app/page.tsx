@@ -24,7 +24,7 @@ import {
 // full no-store/no-cache mode on every fetch in the tree.
 const DEFAULT_PAGE_SIZE = 10;
 
-type HomeSearchParams = { page?: string; pageSize?: string; category?: string; sort?: string };
+type HomeSearchParams = { page?: string; pageSize?: string; category?: string; sort?: string; stock?: string };
 
 export async function generateMetadata({
   searchParams,
@@ -65,6 +65,7 @@ export default async function StorefrontHome({
   const requestedPage = Math.max(1, Number(sp.page) || 1);
   const category = sp.category || "";
   const sort = ["price_asc", "price_desc", "name_asc", "name_desc"].includes(sp.sort || "") ? (sp.sort as string) : "newest";
+  const inStockOnly = sp.stock === "in";
   const categoryContent = category ? getCategoryContent(category) : null;
 
   const [hiddenCategories, rawPublicCoupons, categorySliderItems, totalProductCount, bestsellers] = await Promise.all([
@@ -74,7 +75,7 @@ export default async function StorefrontHome({
     getTotalProductCount(),
     category ? Promise.resolve([]) : getBestsellers(8),
   ]);
-  const { products, count, page } = await getCatalogPage(requestedPage, pageSize, category, sort, hiddenCategories);
+  const { products, count, page } = await getCatalogPage(requestedPage, pageSize, category, sort, hiddenCategories, inStockOnly);
 
   // categorySliderItems already has one entry per distinct category with
   // products, so the filter dropdown's list can be derived from it instead
@@ -187,6 +188,7 @@ export default async function StorefrontHome({
           categories={categories}
           category={category}
           sort={sort}
+          inStockOnly={inStockOnly}
           heading={categoryContent?.heading}
         />
 

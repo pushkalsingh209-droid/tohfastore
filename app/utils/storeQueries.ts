@@ -76,11 +76,19 @@ export function filterLivePublicCoupons(coupons: any[]) {
 // automatically), so the common case -- page 1, default sort -- is served
 // from cache instead of two fresh queries (count + range) every visit.
 export const getCatalogPage = unstable_cache(
-  async (requestedPage: number, pageSize: number, category: string, sort: string, hiddenCategories: string[]) => {
+  async (
+    requestedPage: number,
+    pageSize: number,
+    category: string,
+    sort: string,
+    hiddenCategories: string[],
+    inStockOnly: boolean = false
+  ) => {
     try {
       let countQuery = supabase.from("products").select("*", { count: "exact", head: true });
       if (category) countQuery = countQuery.eq("category", category);
       else if (hiddenCategories.length > 0) countQuery = countQuery.not("category", "in", notInListLiteral(hiddenCategories));
+      if (inStockOnly) countQuery = countQuery.gt("inventory", 0);
       const { count, error: countError } = await countQuery;
 
       if (countError) {
@@ -99,6 +107,7 @@ export const getCatalogPage = unstable_cache(
       let query = supabase.from("products").select("*");
       if (category) query = query.eq("category", category);
       else if (hiddenCategories.length > 0) query = query.not("category", "in", notInListLiteral(hiddenCategories));
+      if (inStockOnly) query = query.gt("inventory", 0);
       if (sort === "price_asc") query = query.order("price", { ascending: true });
       else if (sort === "price_desc") query = query.order("price", { ascending: false });
       else if (sort === "name_asc") query = query.order("name", { ascending: true });
