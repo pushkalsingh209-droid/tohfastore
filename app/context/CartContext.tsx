@@ -56,6 +56,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  // Clamps to [0, item's stock snapshot] and drops the line entirely once
+  // it hits 0, so the +/- stepper in the cart drawer doubles as a remove
+  // action without a separate code path.
+  const updateQuantity = (id: string, delta: number) => {
+    setCart((prev) => {
+      const updated = prev
+        .map((item) => {
+          if (item.id !== id) return item;
+          const maxStock = Number(item.inventory) || 0;
+          return { ...item, quantity: Math.min(maxStock, Math.max(0, item.quantity + delta)) };
+        })
+        .filter((item) => item.quantity > 0);
+      localStorage.setItem("tohfa_cart", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const clearCart = () => {
     setCart([]);
     localStorage.removeItem("tohfa_cart");
@@ -72,6 +89,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setIsOpen,
         addToCart,
         removeFromCart,
+        updateQuantity,
         clearCart,
         cartTotal,
         cartCount,

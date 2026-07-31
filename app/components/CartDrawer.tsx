@@ -8,7 +8,7 @@ import { calculateGstBreakdown, GST_RATE } from "@/app/utils/gst";
 import { INDIAN_STATES } from "@/app/utils/indianStates";
 
 export default function CartDrawer() {
-  const { cart, isOpen, setIsOpen, removeFromCart, cartTotal } = useCart();
+  const { cart, isOpen, setIsOpen, removeFromCart, updateQuantity, cartTotal } = useCart();
   const [loading, setLoading] = useState(false);
 
   // Customer identity data capture states
@@ -307,10 +307,29 @@ export default function CartDrawer() {
                       </div>
                       <div className="flex-grow">
                         <h4 className="font-serif text-xs font-medium text-stone-900 dark:text-stone-100 line-clamp-1">{item.name}</h4>
-                        <p className="text-[11px] text-stone-400">Qty: {item.quantity}</p>
-                        <p className="text-xs text-amber-800 dark:text-amber-500 font-bold font-mono">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item.id, -1)}
+                            aria-label="Decrease quantity"
+                            className="w-6 h-6 flex items-center justify-center rounded border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition font-bold text-xs leading-none"
+                          >
+                            &minus;
+                          </button>
+                          <span className="text-xs font-mono text-stone-700 dark:text-stone-300 w-5 text-center">{item.quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item.id, 1)}
+                            disabled={item.quantity >= (Number(item.inventory) || 0)}
+                            aria-label="Increase quantity"
+                            className="w-6 h-6 flex items-center justify-center rounded border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition font-bold text-xs leading-none"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <p className="text-xs text-amber-800 dark:text-amber-500 font-bold font-mono mt-1">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
                       </div>
-                      <button onClick={() => removeFromCart(item.id)} className="text-stone-400 hover:text-rose-600 text-[11px]">Remove</button>
+                      <button onClick={() => removeFromCart(item.id)} className="text-stone-400 hover:text-rose-600 text-[11px] self-start">Remove</button>
                     </div>
                   ))}
                 </div>
