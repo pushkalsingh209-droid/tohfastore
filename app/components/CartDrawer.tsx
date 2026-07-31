@@ -14,6 +14,9 @@ export default function CartDrawer() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  // Stored inside the existing customer_details JSON column on the order
+  // (alongside name/email/contact) -- no new table or column needed.
+  const [customerAddress, setCustomerAddress] = useState("");
   
   // Specialized inline validation alert messages state
   const [validationError, setValidationError] = useState("");
@@ -95,6 +98,11 @@ export default function CartDrawer() {
       return;
     }
 
+    if (customerAddress.trim().length < 10) {
+      setValidationError("Please enter your complete delivery address.");
+      return;
+    }
+
     setLoading(true);
     try {
       const isSDKLoaded = await initializeRazorpaySDK();
@@ -148,13 +156,14 @@ export default function CartDrawer() {
                       contact: cleanPhone // Pass perfectly clean digits array forward
                     }
                   },
-                  // Only the display name travels through this body -- items,
+                  // Only display-only fields travel through this body -- items,
                   // price, and coupon are read server-side from the real
                   // Razorpay order notes set in /api/razorpay, not from here.
                   order: {
                     entity: {
                       notes: {
-                        customer_name: customerName
+                        customer_name: customerName,
+                        customer_address: customerAddress.trim()
                       }
                     }
                   }
@@ -312,6 +321,17 @@ export default function CartDrawer() {
                       className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700 font-mono tracking-wide"
                     />
                     <span className="text-[9px] text-stone-400 block mt-1">Enter your active WhatsApp number (10 digits, no country code or spaces) &mdash; this is where we'll send order updates.</span>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">Delivery Address</label>
+                    <textarea
+                      required
+                      rows={2}
+                      value={customerAddress}
+                      onChange={(e) => setCustomerAddress(e.target.value)}
+                      placeholder="House/Flat No., Street, Landmark, City, State, PIN Code"
+                      className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700 resize-none"
+                    />
                   </div>
                 </form>
               </>

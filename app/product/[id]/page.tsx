@@ -1,5 +1,6 @@
 // app/product/[id]/page.tsx
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import ProductGallery from "@/app/components/ProductGallery";
@@ -14,44 +15,50 @@ import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink } from "@/app/utils/whatsapp";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
 
-// Stock/price/description must reflect live admin edits on every view (same
-// guarantee the previous client-side fetch gave), so this route can't be
-// statically frozen at build time.
-export const revalidate = 0;
+// The Supabase reads below are cached via unstable_cache (30s) so repeat
+// views of a popular product don't each cost a fresh round trip -- wrapped
+// again in React's cache() so generateMetadata and the page component still
+// only invoke it once per request.
+const getProduct = cache(
+  unstable_cache(
+    async (id: string) => {
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .eq("id", id)
+          .single();
 
-// Wrapped in React's cache() so generateMetadata and the page component
-// share one Supabase query per request instead of fetching the same
-// product twice.
-const getProduct = cache(async (id: string) => {
-  try {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("id", id)
-      .single();
+        if (error || !data) return null;
+        return data;
+      } catch (err) {
+        console.error("Failed to load product:", err);
+        return null;
+      }
+    },
+    ["product-by-id"],
+    { revalidate: 30 }
+  )
+);
 
-    if (error || !data) return null;
-    return data;
-  } catch (err) {
-    console.error("Failed to load product:", err);
-    return null;
-  }
-});
-
-async function getApprovedReviews(productId: number) {
-  try {
-    const { data, error } = await supabase
-      .from("reviews")
-      .select("*")
-      .eq("product_id", productId)
-      .eq("approved", true)
-      .order("created_at", { ascending: false });
-    if (error) return [];
-    return data || [];
-  } catch {
-    return [];
-  }
-}
+const getApprovedReviews = unstable_cache(
+  async (productId: number) => {
+    try {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("*")
+        .eq("product_id", productId)
+        .eq("approved", true)
+        .order("created_at", { ascending: false });
+      if (error) return [];
+      return data || [];
+    } catch {
+      return [];
+    }
+  },
+  ["approved-reviews"],
+  { revalidate: 30 }
+);
 
 export async function generateMetadata({
   params,
@@ -263,6 +270,7 @@ export default async function ProductDetailPage({
             <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
             <a href="/refunds" className="hover:text-amber-400 transition">Refund &amp; Cancellation</a>
             <a href="/contact" className="hover:text-amber-400 transition">Contact Us</a>
+            <a href="/track" className="hover:text-amber-400 transition">Track Your Order</a>
           </div>
         </div>
       </footer>

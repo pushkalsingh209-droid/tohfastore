@@ -6,15 +6,21 @@ const VALID_STATUSES = ["processing", "shipped", "delivered", "cancelled"];
 
 export async function POST(req: Request) {
   try {
-    const { id, status } = await req.json();
+    const { id, status, awb_number } = await req.json();
 
     if (!id || !VALID_STATUSES.includes(status)) {
       return NextResponse.json({ error: "Invalid order id or status." }, { status: 400 });
     }
 
+    // AWB / logistics tracking number is optional -- an admin may set it
+    // any time (before or after marking an order shipped), or leave it out
+    // entirely for orders handled without a traceable courier.
+    const updates: Record<string, unknown> = { status };
+    if (awb_number !== undefined) updates.awb_number = String(awb_number).trim() || null;
+
     const { data: order, error: updateError } = await supabase
       .from("orders")
-      .update({ status })
+      .update(updates)
       .eq("id", id)
       .select()
       .single();
@@ -35,7 +41,8 @@ export async function POST(req: Request) {
         if (greenApiUrl && greenApiIdInstance && greenApiTokenInstance && customerPhone) {
           const message =
             status === "shipped"
-              ? `Good news! Your Tohfa order ${order.order_id} has shipped and is on its way.`
+              ? `Good news! Your Tohfa order ${order.order_id} has shipped and is on its way.` +
+                (order.awb_number ? ` Tracking No: ${order.awb_number}` : "")
               : `Your Tohfa order ${order.order_id} has been delivered. Thank you for shopping with us!`;
 
           const chatId = customerPhone.startsWith("91") ? `${customerPhone}@c.us` : `91${customerPhone}@c.us`;

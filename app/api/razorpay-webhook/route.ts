@@ -77,14 +77,18 @@ export async function POST(req: Request) {
       const customerEmail = paymentEntity.email || "customer@example.com";
       const customerPhone = paymentEntity.contact || "9999999999";
       let customerName = "Premium Customer";
+      let customerAddress = "";
       try {
         const rawNotes = body.payload.order?.entity?.notes || body.payload.payment?.entity?.notes;
         if (rawNotes?.customer_name) customerName = rawNotes.customer_name;
+        if (rawNotes?.customer_address) customerAddress = rawNotes.customer_address;
       } catch (parseError) {
         console.error("Customer name parsing fallback:", parseError);
       }
 
-      // 1. Log directly to Supabase orders table with the updated details
+      // 1. Log directly to Supabase orders table with the updated details.
+      // Address rides in the same existing customer_details JSON column as
+      // email/contact/name -- no new table or column needed for it.
       const { error: dbError } = await supabase
         .from("orders")
         .insert([
@@ -92,7 +96,7 @@ export async function POST(req: Request) {
             order_id: orderId,
             payment_id: paymentId,
             amount: totalAmount,
-            customer_details: { email: customerEmail, contact: customerPhone, name: customerName },
+            customer_details: { email: customerEmail, contact: customerPhone, name: customerName, address: customerAddress },
             items: orderItems,
             status: "processing",
           }
@@ -184,6 +188,7 @@ export async function POST(req: Request) {
           `Customer: ${customerName}`,
           `Phone: ${customerPhone}`,
           `Email: ${customerEmail}`,
+          `Address: ${customerAddress || "Not provided -- request via WhatsApp"}`,
           `Items: ${itemsSummary || "N/A"}`,
           `Base Amount: ₹${gst.basePrice.toLocaleString("en-IN")}`,
           gstLines,

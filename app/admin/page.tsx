@@ -116,6 +116,7 @@ export default function AdminDashboard() {
         order.customer_details?.name,
         order.customer_details?.email,
         order.customer_details?.contact,
+        order.customer_details?.address,
       ]
         .filter(Boolean)
         .join(" ")
@@ -255,6 +256,26 @@ export default function AdminDashboard() {
       setOrders(orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)));
     } catch (err: any) {
       alert(`Could not update order status: ${err.message}`);
+    }
+  };
+
+  // Optional courier AWB / tracking number -- not required to change an
+  // order's status, settable any time once a courier has assigned one.
+  const handleAwbUpdate = async (orderId: number, currentStatus: string, awbNumber: string) => {
+    try {
+      const res = await fetch("/api/admin/orders/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: orderId, status: currentStatus, awb_number: awbNumber }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Could not update tracking number: ${data.error || "Unknown error"}`);
+        return;
+      }
+      setOrders(orders.map((o) => (o.id === orderId ? { ...o, awb_number: data.order.awb_number } : o)));
+    } catch (err: any) {
+      alert(`Could not update tracking number: ${err.message}`);
     }
   };
 
@@ -679,6 +700,12 @@ export default function AdminDashboard() {
                         <div className="font-normal text-stone-900">{order.customer_details?.name || "Pushkal Singh"}</div>
                         <div className="text-xs text-stone-500 mt-0.5">{order.customer_details?.email}</div>
                         <div className="text-xs text-stone-400 mt-0.5">{order.customer_details?.contact}</div>
+                        {order.customer_details?.address && (
+                          <div className="text-[11px] text-stone-500 mt-1.5 max-w-[220px] leading-snug">
+                            <span className="uppercase tracking-wide text-stone-400 font-semibold">Address: </span>
+                            {order.customer_details.address}
+                          </div>
+                        )}
                       </td>
                       <td className="p-4">
                         <div className="space-y-1">
@@ -713,6 +740,18 @@ export default function AdminDashboard() {
                           <option value="delivered">Delivered</option>
                           <option value="cancelled">Cancelled</option>
                         </select>
+                        <input
+                          key={`${order.id}-${order.awb_number ?? ""}`}
+                          type="text"
+                          defaultValue={order.awb_number || ""}
+                          placeholder="AWB / tracking no. (optional)"
+                          title="Courier AWB / tracking number -- optional, not needed for local pickup or courier-free deliveries"
+                          onBlur={(e) => {
+                            const next = e.target.value.trim();
+                            if (next !== (order.awb_number || "")) handleAwbUpdate(order.id, order.status || "processing", next);
+                          }}
+                          className="mt-2 block w-40 px-2 py-1.5 rounded border border-stone-200 text-[11px] font-mono focus:outline-none focus:border-amber-600 bg-stone-50 placeholder:text-stone-400"
+                        />
                       </td>
                       <td className="p-4 text-right font-mono font-bold text-amber-800 text-base">
                         ₹{Number(order.amount).toLocaleString("en-IN")}

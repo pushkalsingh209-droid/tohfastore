@@ -135,22 +135,50 @@ export default function HeaderNavbar() {
 
       </div>
 
-      {/* Categories (left) and the Home/About Menu (right) share one line,
-          both as hamburger toggles. Categories is populated from whichever
-          categories the admin has marked "hidden from home" -- revealing
-          links into the homepage's existing ?category filter. The default
-          (unfiltered) homepage is never touched; products only appear scoped
-          to a category once a link here is clicked. */}
+      {/* Third row, one line at every width: Menu (left) / contact info
+          (center, desktop only -- hidden on mobile to keep this row from
+          crowding) / Categories (right). Categories is populated from
+          whichever categories the admin has marked "hidden from home" --
+          revealing links into the homepage's existing ?category filter. The
+          default (unfiltered) homepage is never touched; products only
+          appear scoped to a category once a link here is clicked. */}
       <div className="border-t border-stone-100 dark:border-stone-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 py-2.5">
+            <PageNavLinks />
+
+            {/* Contact info -- desktop only, centered between Menu and Categories */}
+            <div className="hidden md:flex items-center gap-6 text-[11px] text-stone-500 dark:text-stone-400">
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="uppercase tracking-wider font-semibold text-stone-400 dark:text-stone-500">Email:</span>
+                <a href="mailto:contact@tohfaonline.com" className="text-amber-800 dark:text-amber-400 font-mono hover:underline">
+                  contact@tohfaonline.com
+                </a>
+              </span>
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="uppercase tracking-wider font-semibold text-stone-400 dark:text-stone-500">Call/WhatsApp:</span>
+                <span className="font-mono text-stone-900 dark:text-stone-100">+91 6302672351</span>
+              </span>
+              <a
+                href="https://wa.me/916302672351"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] uppercase tracking-wider font-semibold px-3 py-1.5 rounded shadow-sm transition active:scale-95 whitespace-nowrap"
+              >
+                <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-4.846c1.66.986 3.296 1.489 4.974 1.49 5.405 0 9.811-4.366 9.815-9.736.002-2.599-1.002-5.045-2.83-6.876C16.718 2.2 14.28 1.2 11.999 1.2c-5.41 0-9.821 4.366-9.825 9.736a9.617 9.617 0 0 0 1.503 5.123L2.68 20.2l4.411-1.154z" />
+                </svg>
+                Chat
+              </a>
+            </div>
+
             {menuCategories.length > 0 ? (
               <button
                 type="button"
                 onClick={() => setCategoryMenuOpen((open) => !open)}
                 aria-expanded={categoryMenuOpen}
                 aria-controls="category-menu-panel"
-                className="flex items-center gap-2 py-2.5 text-[11px] uppercase tracking-wider font-semibold text-stone-600 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition"
+                className="flex items-center gap-2 text-[11px] uppercase tracking-wider font-semibold text-stone-600 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition flex-shrink-0"
               >
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   {categoryMenuOpen ? (
@@ -164,8 +192,6 @@ export default function HeaderNavbar() {
             ) : (
               <span />
             )}
-
-            <PageNavLinks />
           </div>
 
           {categoryMenuOpen && menuCategories.length > 0 && (

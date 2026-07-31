@@ -46,6 +46,13 @@ export default function PageNavLinks() {
           >
             About us
           </a>
+          <a
+            href="/track"
+            onClick={() => setOpen(false)}
+            className="px-4 py-2 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+          >
+            Track Order
+          </a>
         </div>
       )}
     </div>

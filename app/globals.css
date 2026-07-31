@@ -20,10 +20,33 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Guards against any one element's accidental horizontal bleed (e.g. a
+   full-bleed scroll rail's negative margin) turning into a page-wide
+   horizontal scrollbar -- rails that need their own horizontal scroll set
+   overflow-x:auto directly on themselves, which still works independently
+   of this. */
+html {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Smooth in-page jumps for the hero's "Shop Now" / "Browse Categories"
+   anchors and similar same-page links. */
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 /* Consistent keyboard-focus indicator across every interactive element,

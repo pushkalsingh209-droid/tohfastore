@@ -64,7 +64,7 @@ export default function CategorySlider({ items }: { items: CategorySliderItem[] 
   }
 
   return (
-    <section className="max-w-7xl mx-auto px-6 pt-6">
+    <section id="shop-by-category" className="max-w-7xl mx-auto px-6 pt-6 scroll-mt-24">
       <h2 className="text-xl font-serif text-stone-900 dark:text-stone-100 mb-5">Shop by Category</h2>
       <div
         ref={trackRef}

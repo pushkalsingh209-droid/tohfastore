@@ -155,6 +155,7 @@ export default function ContactUsPage() {
             <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
             <a href="/refunds" className="hover:text-amber-400 transition">Refund & Cancellation</a>
             <a href="/contact" className="hover:text-amber-400 transition font-semibold text-amber-400">Contact Us</a>
+            <a href="/track" className="hover:text-amber-400 transition">Track Your Order</a>
           </div>
         </div>
       </footer>

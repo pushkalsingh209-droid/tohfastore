@@ -1,6 +1,7 @@
 // app/layout.tsx
 import type { Metadata } from "next";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import { CartProvider } from "@/app/context/CartContext";
 import { WishlistProvider } from "@/app/context/WishlistContext";
 import { CatalogLoadingProvider } from "@/app/context/CatalogLoadingContext";
@@ -8,6 +9,8 @@ import CartDrawer from "@/app/components/CartDrawer";
 import HeaderNavbar from "@/app/components/headerNavbar";
 import CookieConsent from "@/app/components/CookieConsent";
 import CatalogLoadingOverlay from "@/app/components/CatalogLoadingOverlay";
+import InstallPrompt from "@/app/components/InstallPrompt";
+import FloatingContactButtons from "@/app/components/FloatingContactButtons";
 import "./globals.css"; // Imports your global styling configurations
 
 export const metadata: Metadata = {
@@ -87,11 +90,25 @@ export default function RootLayout({
               category menu -- one implementation, triggered from anywhere. */}
           <CatalogLoadingOverlay />
 
+          {/* Dismissible "Add to Home Screen" banner, free with the manifest
+              already in place -- only ever appears where the browser itself
+              decides the site is installable. */}
+          <InstallPrompt />
+
+          {/* Mobile-only floating WhatsApp/email shortcut -- the header's
+              contact row is desktop-only, so this keeps "chat with us" one
+              tap away on the screens where it matters most. */}
+          <FloatingContactButtons />
+
           {/* Dynamically loads Razorpay's secure transactional modal overlay system */}
           <Script
             src="https://checkout.razorpay.com/v1/checkout.js"
             strategy="lazyOnload"
           />
+
+          {/* Free on the current Vercel plan -- gives real traffic/perf data
+              instead of guesswork for what to optimize next. */}
+          <Analytics />
         </body>
       </CatalogLoadingProvider>
       </WishlistProvider>
