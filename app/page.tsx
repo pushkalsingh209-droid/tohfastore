@@ -64,7 +64,11 @@ export default async function StorefrontHome({
   const pageSize = PAGE_SIZE_OPTIONS.includes(Number(sp.pageSize)) ? Number(sp.pageSize) : DEFAULT_PAGE_SIZE;
   const requestedPage = Math.max(1, Number(sp.page) || 1);
   const category = sp.category || "";
-  const sort = ["price_asc", "price_desc", "name_asc", "name_desc"].includes(sp.sort || "") ? (sp.sort as string) : "newest";
+  // "sequence" (admin-controlled display_order) is the true default --
+  // "newest" is now a distinct, explicit choice rather than the fallback,
+  // so people can still browse by recency without losing the admin's
+  // curated ordering as the default view.
+  const sort = ["newest", "price_asc", "price_desc", "name_asc", "name_desc"].includes(sp.sort || "") ? (sp.sort as string) : "sequence";
   const inStockOnly = sp.stock === "in";
   const categoryContent = category ? getCategoryContent(category) : null;
 

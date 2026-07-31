@@ -112,7 +112,12 @@ export const getCatalogPage = unstable_cache(
       else if (sort === "price_desc") query = query.order("price", { ascending: false });
       else if (sort === "name_asc") query = query.order("name", { ascending: true });
       else if (sort === "name_desc") query = query.order("name", { ascending: false });
-      else query = query.order("created_at", { ascending: false });
+      else if (sort === "newest") query = query.order("created_at", { ascending: false });
+      // Default ("sequence"): the admin's manual display_order (lower =
+      // shows first). Nulls -- not yet assigned a position -- sort last
+      // (Postgres ASC default), with newest-first as a tiebreaker so
+      // several unordered products still have a stable, sensible order.
+      else query = query.order("display_order", { ascending: true }).order("created_at", { ascending: false });
 
       const { data, error } = await query.range(from, to);
 

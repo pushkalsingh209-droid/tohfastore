@@ -16,7 +16,15 @@ function isMissingColumn(error: any, columnHint: string) {
 }
 
 export async function GET() {
-  const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+  // Ordered the same way the storefront's default view is: by the admin's
+  // manual display_order (nulls -- not yet assigned -- sort last), then
+  // newest-first as a tiebreaker, so the admin list reflects the same
+  // sequence a customer would actually see.
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ products: data || [] });
 }
@@ -80,6 +88,9 @@ export async function PATCH(req: Request) {
       payload.images = Array.isArray(fields.additionalImages)
         ? fields.additionalImages.map((u: string) => u.trim()).filter(Boolean)
         : [];
+    }
+    if (fields.display_order !== undefined) {
+      payload.display_order = fields.display_order === null || fields.display_order === "" ? null : parseInt(fields.display_order);
     }
 
     let gallerySaved = true;

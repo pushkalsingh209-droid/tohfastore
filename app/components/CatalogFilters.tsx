@@ -2,6 +2,7 @@
 "use client";
 
 const SORT_OPTIONS = [
+  { value: "sequence", label: "Featured Order" },
   { value: "newest", label: "Newest First" },
   { value: "price_asc", label: "Price: Low to High" },
   { value: "price_desc", label: "Price: High to Low" },

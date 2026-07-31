@@ -245,6 +245,21 @@ export default function AdminDashboard() {
     }
   };
 
+  // Manual storefront position -- lower numbers show first. Left blank
+  // (null), a product falls back to sorting last (newest-first among
+  // other unassigned products) until an admin gives it a number.
+  const handleDisplayOrderUpdate = async (productId: string, displayOrder: number | null) => {
+    try {
+      const result = await apiRequest("/api/admin/products", {
+        method: "PATCH",
+        body: JSON.stringify({ id: productId, display_order: displayOrder }),
+      });
+      setProducts(products.map((p) => (p.id === productId ? { ...p, display_order: result.product.display_order } : p)));
+    } catch (err: any) {
+      alert(`Could not update display order: ${err.message}`);
+    }
+  };
+
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     try {
       const res = await fetch("/api/admin/orders/update-status", {
@@ -592,9 +607,20 @@ export default function AdminDashboard() {
               {paginatedProducts.map((product, index) => (
                 <div key={product.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-grow">
-                    <span className="text-xs font-mono font-bold text-stone-400 w-6 text-right flex-shrink-0">
-                      {(productPage - 1) * productPageSize + index + 1}
-                    </span>
+                    <input
+                      key={`${product.id}-${product.display_order ?? ""}`}
+                      type="number"
+                      min={1}
+                      defaultValue={product.display_order ?? ""}
+                      placeholder={String((productPage - 1) * productPageSize + index + 1)}
+                      title="Position on the storefront -- lower shows first. Leave blank to fall back to newest-first."
+                      onBlur={(e) => {
+                        const next = e.target.value.trim();
+                        const parsed = next === "" ? null : Number(next);
+                        if (parsed !== (product.display_order ?? null)) handleDisplayOrderUpdate(product.id, parsed);
+                      }}
+                      className="text-xs font-mono font-bold text-stone-600 w-12 px-1.5 py-1 rounded border border-stone-200 text-right flex-shrink-0 focus:outline-none focus:border-amber-600"
+                    />
                     <div className="relative w-14 h-14 rounded overflow-hidden border border-stone-200 bg-stone-50 flex-shrink-0">
                       <Image src={product.image_url} alt={product.name} fill sizes="56px" className="object-cover" />
                     </div>

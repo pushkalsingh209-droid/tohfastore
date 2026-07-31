@@ -52,7 +52,7 @@ export default function CatalogSection({
       else params.delete("category");
     }
     if (next.sort !== undefined) {
-      if (next.sort && next.sort !== "newest") params.set("sort", next.sort);
+      if (next.sort && next.sort !== "sequence") params.set("sort", next.sort);
       else params.delete("sort");
     }
     if (next.inStock !== undefined) {
