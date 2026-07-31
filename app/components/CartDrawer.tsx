@@ -1,23 +1,64 @@
 // app/components/CartDrawer.tsx
 "use client";
 import { useCart } from "@/app/context/CartContext";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { calculateGstBreakdown, GST_RATE } from "@/app/utils/gst";
+import { INDIAN_STATES } from "@/app/utils/indianStates";
 
 export default function CartDrawer() {
   const { cart, isOpen, setIsOpen, removeFromCart, cartTotal } = useCart();
   const [loading, setLoading] = useState(false);
-  
+
   // Customer identity data capture states
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
-  // Stored inside the existing customer_details JSON column on the order
-  // (alongside name/email/contact) -- no new table or column needed.
-  const [customerAddress, setCustomerAddress] = useState("");
-  
+
+  // Structured delivery address -- stored in its own shipping_address
+  // column on the order (separate from customer_details) so it's cleanly
+  // queryable and clearly labeled in the admin panel.
+  const [addressLine, setAddressLine] = useState("");
+  const [landmark, setLandmark] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [city, setCity] = useState("");
+  const [addressState, setAddressState] = useState("");
+  const [pincodeLookupStatus, setPincodeLookupStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const pincodeLookupRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Looks up city/state from the PIN code once 6 digits are entered, via
+  // our own server-side proxy (the public API has no CORS headers, so the
+  // browser can't call it directly). Debounced so it only fires once
+  // typing settles, and only overwrites city/state if the lookup succeeds
+  // -- the fields stay editable either way.
+  useEffect(() => {
+    if (pincodeLookupRef.current) clearTimeout(pincodeLookupRef.current);
+    if (!/^\d{6}$/.test(pincode)) {
+      setPincodeLookupStatus("idle");
+      return;
+    }
+    setPincodeLookupStatus("loading");
+    pincodeLookupRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/pincode/${pincode}`);
+        const data = await res.json();
+        if (!res.ok) {
+          setPincodeLookupStatus("error");
+          return;
+        }
+        if (data.city) setCity(data.city);
+        if (data.state && INDIAN_STATES.includes(data.state)) setAddressState(data.state);
+        setPincodeLookupStatus("done");
+      } catch {
+        setPincodeLookupStatus("error");
+      }
+    }, 500);
+    return () => {
+      if (pincodeLookupRef.current) clearTimeout(pincodeLookupRef.current);
+    };
+  }, [pincode]);
+
   // Specialized inline validation alert messages state
   const [validationError, setValidationError] = useState("");
 
@@ -98,8 +139,23 @@ export default function CartDrawer() {
       return;
     }
 
-    if (customerAddress.trim().length < 10) {
-      setValidationError("Please enter your complete delivery address.");
+    if (!addressLine.trim()) {
+      setValidationError("Please enter your address (House/Flat No., Street, Area).");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(pincode)) {
+      setValidationError("Please enter a valid 6-digit PIN code.");
+      return;
+    }
+
+    if (!city.trim()) {
+      setValidationError("Please enter your city.");
+      return;
+    }
+
+    if (!addressState) {
+      setValidationError("Please select your state.");
       return;
     }
 
@@ -163,7 +219,13 @@ export default function CartDrawer() {
                     entity: {
                       notes: {
                         customer_name: customerName,
-                        customer_address: customerAddress.trim()
+                        shipping_address: {
+                          line: addressLine.trim(),
+                          landmark: landmark.trim(),
+                          city: city.trim(),
+                          state: addressState,
+                          pincode,
+                        }
                       }
                     }
                   }
@@ -323,15 +385,74 @@ export default function CartDrawer() {
                     <span className="text-[9px] text-stone-400 block mt-1">Enter your active WhatsApp number (10 digits, no country code or spaces) &mdash; this is where we'll send order updates.</span>
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">Delivery Address</label>
+                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">Address (House/Flat No., Street, Area)</label>
                     <textarea
                       required
                       rows={2}
-                      value={customerAddress}
-                      onChange={(e) => setCustomerAddress(e.target.value)}
-                      placeholder="House/Flat No., Street, Landmark, City, State, PIN Code"
+                      value={addressLine}
+                      onChange={(e) => setAddressLine(e.target.value)}
+                      placeholder="e.g., Flat 4B, Green Residency, MG Road"
                       className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700 resize-none"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">Landmark <span className="normal-case text-stone-400">(optional)</span></label>
+                    <input
+                      type="text"
+                      value={landmark}
+                      onChange={(e) => setLandmark(e.target.value)}
+                      placeholder="e.g., Near City Hospital"
+                      className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">PIN Code</label>
+                      <input
+                        type="text"
+                        required
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={pincode}
+                        onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="e.g., 500001"
+                        className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700 font-mono tracking-wide"
+                      />
+                      {pincodeLookupStatus === "loading" && (
+                        <span className="text-[9px] text-stone-400 block mt-1">Looking up city/state...</span>
+                      )}
+                      {pincodeLookupStatus === "error" && (
+                        <span className="text-[9px] text-rose-500 block mt-1">Couldn&rsquo;t find that PIN &mdash; enter city/state manually.</span>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">City</label>
+                      <input
+                        type="text"
+                        required
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="Auto-fills from PIN"
+                        className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">State</label>
+                    <select
+                      required
+                      value={addressState}
+                      onChange={(e) => setAddressState(e.target.value)}
+                      className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700"
+                    >
+                      <option value="">Select State</option>
+                      {INDIAN_STATES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                   </div>
                 </form>
               </>

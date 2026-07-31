@@ -77,18 +77,19 @@ export async function POST(req: Request) {
       const customerEmail = paymentEntity.email || "customer@example.com";
       const customerPhone = paymentEntity.contact || "9999999999";
       let customerName = "Premium Customer";
-      let customerAddress = "";
+      let shippingAddress: { line: string; landmark: string; city: string; state: string; pincode: string } | null = null;
       try {
         const rawNotes = body.payload.order?.entity?.notes || body.payload.payment?.entity?.notes;
         if (rawNotes?.customer_name) customerName = rawNotes.customer_name;
-        if (rawNotes?.customer_address) customerAddress = rawNotes.customer_address;
+        if (rawNotes?.shipping_address) shippingAddress = rawNotes.shipping_address;
       } catch (parseError) {
         console.error("Customer name parsing fallback:", parseError);
       }
 
       // 1. Log directly to Supabase orders table with the updated details.
-      // Address rides in the same existing customer_details JSON column as
-      // email/contact/name -- no new table or column needed for it.
+      // The structured address lives in its own shipping_address column,
+      // separate from customer_details, so it's clearly labeled in the
+      // admin panel instead of buried in a free-text blob.
       const { error: dbError } = await supabase
         .from("orders")
         .insert([
@@ -96,7 +97,8 @@ export async function POST(req: Request) {
             order_id: orderId,
             payment_id: paymentId,
             amount: totalAmount,
-            customer_details: { email: customerEmail, contact: customerPhone, name: customerName, address: customerAddress },
+            customer_details: { email: customerEmail, contact: customerPhone, name: customerName },
+            shipping_address: shippingAddress,
             items: orderItems,
             status: "processing",
           }
@@ -182,13 +184,25 @@ export async function POST(req: Request) {
             ? gst.byRate.map((g) => `  GST (${g.rate}%): ₹${g.gstAmount.toLocaleString("en-IN")}`).join("\n")
             : `GST (${gst.byRate[0]?.rate ?? 0}%): ₹${gst.gstAmount.toLocaleString("en-IN")}`;
 
+        const formattedAddress = shippingAddress
+          ? [
+              shippingAddress.line,
+              shippingAddress.landmark ? `Near ${shippingAddress.landmark}` : "",
+              shippingAddress.city,
+              shippingAddress.state,
+              shippingAddress.pincode,
+            ]
+              .filter(Boolean)
+              .join(", ")
+          : "Not provided -- request via WhatsApp";
+
         const businessMessage = [
           "New Tohfa order received!",
           `Order ID: ${orderId}`,
           `Customer: ${customerName}`,
           `Phone: ${customerPhone}`,
           `Email: ${customerEmail}`,
-          `Address: ${customerAddress || "Not provided -- request via WhatsApp"}`,
+          `Address: ${formattedAddress}`,
           `Items: ${itemsSummary || "N/A"}`,
           `Base Amount: ₹${gst.basePrice.toLocaleString("en-IN")}`,
           gstLines,
@@ -215,7 +229,10 @@ export async function POST(req: Request) {
           gstLines,
           `Total Amount Paid: ₹${gst.totalPrice.toLocaleString("en-IN")}`,
           "",
-          `Please reply here on WhatsApp (+${businessWhatsappNumber}) with your complete delivery address so we can ship your order.`,
+          "Shipping to:",
+          formattedAddress,
+          "",
+          `Any questions? Reply here on WhatsApp (+${businessWhatsappNumber}) any time.`,
         ].join("\n");
 
         await Promise.all([

@@ -116,7 +116,11 @@ export default function AdminDashboard() {
         order.customer_details?.name,
         order.customer_details?.email,
         order.customer_details?.contact,
-        order.customer_details?.address,
+        order.shipping_address?.line,
+        order.shipping_address?.landmark,
+        order.shipping_address?.city,
+        order.shipping_address?.state,
+        order.shipping_address?.pincode,
       ]
         .filter(Boolean)
         .join(" ")
@@ -700,10 +704,18 @@ export default function AdminDashboard() {
                         <div className="font-normal text-stone-900">{order.customer_details?.name || "Pushkal Singh"}</div>
                         <div className="text-xs text-stone-500 mt-0.5">{order.customer_details?.email}</div>
                         <div className="text-xs text-stone-400 mt-0.5">{order.customer_details?.contact}</div>
-                        {order.customer_details?.address && (
-                          <div className="text-[11px] text-stone-500 mt-1.5 max-w-[220px] leading-snug">
-                            <span className="uppercase tracking-wide text-stone-400 font-semibold">Address: </span>
-                            {order.customer_details.address}
+                        {order.shipping_address && (
+                          <div className="text-[11px] text-stone-500 mt-1.5 max-w-[240px] leading-snug space-y-0.5 border-t border-stone-100 pt-1.5">
+                            <div>
+                              <span className="uppercase tracking-wide text-stone-400 font-semibold">Ship to: </span>
+                              {order.shipping_address.line}
+                            </div>
+                            {order.shipping_address.landmark && (
+                              <div className="text-stone-400">Near {order.shipping_address.landmark}</div>
+                            )}
+                            <div>
+                              {order.shipping_address.city}, {order.shipping_address.state} &mdash; <span className="font-mono">{order.shipping_address.pincode}</span>
+                            </div>
                           </div>
                         )}
                       </td>
