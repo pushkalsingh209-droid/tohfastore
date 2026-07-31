@@ -29,7 +29,7 @@ function InStockToggle({
   onFilterChange: (next: { category?: string; sort?: string; inStock?: boolean }) => void;
 }) {
   return (
-    <div className={GROUP_RIGHT}>
+    <div className={GROUP_CENTER}>
       <span>In stock only</span>
       <button
         type="button"
@@ -96,7 +96,8 @@ export default function CatalogFilters({
           ))}
         </select>
       </div>
-      <div className={GROUP_CENTER}>
+      <InStockToggle inStockOnly={inStockOnly} onFilterChange={onFilterChange} />
+      <div className={GROUP_RIGHT}>
         <span>Sort</span>
         <select value={sort} onChange={(e) => onFilterChange({ sort: e.target.value })} className={SELECT_CLASSES}>
           {SORT_OPTIONS.map((opt) => (
@@ -106,7 +107,6 @@ export default function CatalogFilters({
           ))}
         </select>
       </div>
-      <InStockToggle inStockOnly={inStockOnly} onFilterChange={onFilterChange} />
     </div>
   );
 }
