@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { CATEGORY_CONTENT } from "@/app/utils/categoryContent";
 
-const SITE_URL = "https://luxurybrassgift.com";
+const SITE_URL = "https://tohfaonline.com";
 
 const STATIC_PAGES = ["", "/about", "/contact", "/privacy", "/terms", "/refunds", "/wishlist"];
 

@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { CartProvider } from "@/app/context/CartContext";
 import { WishlistProvider } from "@/app/context/WishlistContext";
 import { CatalogLoadingProvider } from "@/app/context/CatalogLoadingContext";
@@ -11,10 +12,12 @@ import CookieConsent from "@/app/components/CookieConsent";
 import CatalogLoadingOverlay from "@/app/components/CatalogLoadingOverlay";
 import InstallPrompt from "@/app/components/InstallPrompt";
 import FloatingContactButtons from "@/app/components/FloatingContactButtons";
+import AbandonedCartNudge from "@/app/components/AbandonedCartNudge";
 import "./globals.css"; // Imports your global styling configurations
 
 export const metadata: Metadata = {
-  title: "Tohfa | Luxury Brass Gifts & Handicrafts",
+  metadataBase: new URL("https://tohfaonline.com"),
+  title: "Tohfa | Luxury Gift Paradise & Handicrafts",
   description: "Exquisite handcrafted brass decor, vintage utensils, and premium corporate gifting items.",
   manifest: "/manifest.json",
   icons: {
@@ -78,7 +81,7 @@ export default function RootLayout({
                 Supplying premium lightweight brassware statement designs, artifact boxes, and corporate luxury gifting models globally.
               </p>
               <p className="text-stone-600 text-[11px] uppercase tracking-wider font-light">
-                &copy; {new Date().getFullYear()} Luxury Brass Gift. All Rights Reserved.
+                &copy; {new Date().getFullYear()} Luxury Gift Paradise. All Rights Reserved.
               </p>
             </div>
           </footer>
@@ -100,6 +103,11 @@ export default function RootLayout({
               tap away on the screens where it matters most. */}
           <FloatingContactButtons />
 
+          {/* Client-side-only nudge back to a non-empty cart left closed for
+              a while -- no new backend calls, reuses the existing cart
+              state that already persists to localStorage. */}
+          <AbandonedCartNudge />
+
           {/* Dynamically loads Razorpay's secure transactional modal overlay system */}
           <Script
             src="https://checkout.razorpay.com/v1/checkout.js"
@@ -110,6 +118,21 @@ export default function RootLayout({
               instead of guesswork for what to optimize next. */}
           <Analytics />
         </body>
+        {/* GA4 -- feeds the Google Ads campaign currently running for
+            tohfaonline.com. Purchase conversions are fired separately on
+            the success page using the real order amount (see
+            app/success/page.tsx), not just this page-view tag. This also
+            loads gtag.js and sets up window.gtag, which the Ads config
+            below reuses instead of loading a second copy of the script. */}
+        <GoogleAnalytics gaId="G-VQNDNFET4F" />
+        {/* Google Ads conversion tag (AW-16996304509), provided directly by
+            the user for the live ad campaign. Reuses the dataLayer/gtag
+            already set up above rather than re-loading gtag.js. */}
+        <Script id="google-ads-config" strategy="afterInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('config', 'AW-16996304509');`}
+        </Script>
       </CatalogLoadingProvider>
       </WishlistProvider>
       </CartProvider>

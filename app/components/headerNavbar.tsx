@@ -59,7 +59,7 @@ export default function HeaderNavbar() {
           {/* Brand Typography */}
           <a href="/" className="flex flex-col group outline-none">
             <span className="text-xl md:text-2xl font-serif tracking-widest text-amber-700 dark:text-amber-500 font-bold group-hover:text-amber-800 dark:group-hover:text-amber-400 transition">TOHFA</span>
-            <span className="text-[9px] md:text-[10px] uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400 -mt-1">Luxury Brass Gift</span>
+            <span className="text-[9px] md:text-[10px] uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400 -mt-1">Luxury Gift Paradise</span>
           </a>
 
           <div className="flex items-center gap-1 md:hidden">

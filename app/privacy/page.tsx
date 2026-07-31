@@ -80,7 +80,7 @@ export default function PrivacyPolicy() {
           <hr className="border-stone-100 dark:border-stone-800" />
 
           <p className="text-stone-600 dark:text-stone-400">
-            At TOHFA, accessible from luxurybrassgift.com, one of our main priorities is the privacy of our visitors. This Privacy Policy document contains types of information that is collected and recorded by TOHFA and how we use it.
+            At TOHFA, accessible from tohfaonline.com, one of our main priorities is the privacy of our visitors. This Privacy Policy document contains types of information that is collected and recorded by TOHFA and how we use it.
           </p>
           
           <div className="space-y-2">
@@ -117,7 +117,7 @@ export default function PrivacyPolicy() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
             <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-stone-500 mt-1">© 2026 luxurybrassgift.com. All Rights Reserved.</p>
+            <p className="text-[10px] text-stone-500 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
           
           {/* Public links verified during gateway inspections */}

@@ -80,7 +80,7 @@ export default function TermsAndConditions() {
           <hr className="border-stone-100 dark:border-stone-800" />
 
           <p className="text-stone-600 dark:text-stone-400">
-            Welcome to TOHFA (luxurybrassgift.com). By browsing and using this website, you agree to comply with and be bound by the following terms and conditions of use.
+            Welcome to TOHFA (tohfaonline.com). By browsing and using this website, you agree to comply with and be bound by the following terms and conditions of use.
           </p>
           
           <div className="space-y-2">
@@ -126,7 +126,7 @@ export default function TermsAndConditions() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
             <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-stone-500 mt-1">© 2026 luxurybrassgift.com. All Rights Reserved.</p>
+            <p className="text-[10px] text-stone-500 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
           
           {/* Public links verified during gateway inspections */}

@@ -10,6 +10,7 @@ import { getProductWhatsappLink } from "@/app/utils/whatsapp";
 import TempleCardFrame from "@/app/components/TempleCardFrame";
 
 const DOUBLE_TAP_WINDOW_MS = 350;
+const LOW_STOCK_THRESHOLD = 3;
 
 export default function ProductCard({ product, priority = false }: { product: any; priority?: boolean }) {
   const { addToCart, cart } = useCart();
@@ -21,6 +22,7 @@ export default function ProductCard({ product, priority = false }: { product: an
   const stock = Number(product.inventory) || 0;
   const cartQty = cart?.find((item: any) => item.id === product.id)?.quantity || 0;
   const outOfStock = stock <= 0;
+  const lowStock = !outOfStock && stock <= LOW_STOCK_THRESHOLD;
   const atMaxInCart = !outOfStock && cartQty >= stock;
   const addToCartDisabled = outOfStock || atMaxInCart;
 
@@ -104,8 +106,12 @@ export default function ProductCard({ product, priority = false }: { product: an
             <span className="text-amber-700 dark:text-amber-500 font-bold font-mono text-lg">
               ₹{Number(product.price).toLocaleString("en-IN")}
             </span>
-            <span className={`text-[10px] uppercase font-medium ${outOfStock ? "text-rose-600 font-bold" : "text-stone-400"}`}>
-              {outOfStock ? "Out of Stock" : `Stock: ${product.inventory} units`}
+            <span
+              className={`text-[10px] uppercase font-medium ${
+                outOfStock || lowStock ? "text-rose-600 font-bold" : "text-stone-400"
+              }`}
+            >
+              {outOfStock ? "Out of Stock" : lowStock ? `Only ${product.inventory} left!` : `Stock: ${product.inventory} units`}
             </span>
           </div>
           <button

@@ -37,7 +37,7 @@ export async function generateMetadata({
 
   if (!content) {
     return {
-      title: "TOHFA | Luxury Brass Gifts & Handicrafts",
+      title: "TOHFA | Luxury Gift Paradise & Handicrafts",
       description:
         "Exquisite handcrafted brass decor, vintage utensils, and premium corporate gifting items -- plus pocket temples, pan stands, board games, polyresin decor, and UV resin earrings.",
       alternates: { canonical: "/" },
@@ -95,10 +95,26 @@ export default async function StorefrontHome({
     itemListElement: products.map((product: any, index: number) => ({
       "@type": "ListItem",
       position: index + 1,
-      url: `https://luxurybrassgift.com/product/${product.id}`,
+      url: `https://tohfaonline.com/product/${product.id}`,
       name: product.name,
     })),
   };
+
+  const breadcrumbJsonLd = category
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: "https://tohfaonline.com/" },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: categoryContent?.heading || category,
+            item: `https://tohfaonline.com/?category=${encodeURIComponent(category)}`,
+          },
+        ],
+      }
+    : null;
 
   return (
     <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
@@ -108,6 +124,12 @@ export default async function StorefrontHome({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
       />
+      {breadcrumbJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
+      )}
       <PromoBanner coupons={publicCoupons} />
 
       {/* MAIN LAYOUT WRAPPER CONTROLLER NODE */}
@@ -200,7 +222,7 @@ export default async function StorefrontHome({
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
             <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-stone-500 mt-1">© 2026 luxurybrassgift.com. All Rights Reserved.</p>
+            <p className="text-[10px] text-stone-500 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
           
           {/* Public links verified during gateway inspections */}

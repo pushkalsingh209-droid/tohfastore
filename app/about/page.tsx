@@ -23,7 +23,7 @@ export default function AboutUsPage() {
           {/* Editorial Story Elements */}
           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-5 sm:p-8 md:p-12 shadow-sm space-y-6 text-stone-700 dark:text-stone-300 font-sans text-xs sm:text-sm md:text-base leading-relaxed font-light">
             <p>
-              Welcome to <span className="font-medium text-stone-900 dark:text-stone-100 font-serif">TOHFA</span> (luxurybrassgift.com), where timeless Indian heritage meets master metal craftsmanship. We curate and engineer premium lightweight brass art pieces, luxury corporate gift boxes, and statement interior decor artifacts designed to last for generations.
+              Welcome to <span className="font-medium text-stone-900 dark:text-stone-100 font-serif">TOHFA</span> (tohfaonline.com), where timeless Indian heritage meets master metal craftsmanship. We curate and engineer premium lightweight brass art pieces, luxury corporate gift boxes, and statement interior decor artifacts designed to last for generations.
             </p>
             <p>
               Every artifact in our collection is cast in pure brass by skilled regional artisans. By blending ancestral sand-casting mold blueprints with modern design revisions, we capture intricate hand-carved textures and heavy weight profiles that distinguish genuine statement art from mass-produced replicas.
@@ -97,7 +97,7 @@ export default function AboutUsPage() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
             <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-stone-500 mt-1">© 2026 luxurybrassgift.com. All Rights Reserved.</p>
+            <p className="text-[10px] text-stone-500 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
           
           {/* Public links verified during gateway inspections */}

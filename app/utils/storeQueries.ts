@@ -204,3 +204,64 @@ export const getBestsellers = unstable_cache(
   ["bestsellers"],
   { revalidate: 300 }
 );
+
+// "Customers also bought" for a product's own category -- ranks by real
+// co-purchase counts from recent orders first, then tops up with other
+// in-category products (unranked, unitsSold 0) so the strip isn't empty
+// right after launch or for a category with little order history yet.
+export const getRelatedProducts = unstable_cache(
+  async (category: string, excludeId: number, limit = 8): Promise<BestsellerItem[]> => {
+    try {
+      if (!category) return [];
+
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("items")
+        .order("created_at", { ascending: false })
+        .limit(300);
+
+      const soldCount = new Map<string, number>();
+      for (const order of (orders as any[]) || []) {
+        const items = Array.isArray(order.items) ? order.items : [];
+        for (const item of items) {
+          if (!item?.id || String(item.id) === String(excludeId)) continue;
+          soldCount.set(String(item.id), (soldCount.get(String(item.id)) || 0) + (Number(item.quantity) || 0));
+        }
+      }
+
+      const productMap = new Map<string, any>();
+
+      const rankedIds = Array.from(soldCount.keys());
+      if (rankedIds.length > 0) {
+        const { data: ranked } = await supabase
+          .from("products")
+          .select("id, name, price, image_url, inventory, category")
+          .in("id", rankedIds);
+        for (const p of (ranked as any[]) || []) {
+          if (p.category === category) productMap.set(String(p.id), p);
+        }
+      }
+
+      if (productMap.size < limit) {
+        const { data: fallback } = await supabase
+          .from("products")
+          .select("id, name, price, image_url, inventory, category")
+          .eq("category", category)
+          .neq("id", excludeId)
+          .limit(limit * 2);
+        for (const p of (fallback as any[]) || []) {
+          if (!productMap.has(String(p.id))) productMap.set(String(p.id), p);
+        }
+      }
+
+      return Array.from(productMap.values())
+        .map((p) => ({ ...p, unitsSold: soldCount.get(String(p.id)) || 0 }))
+        .sort((a, b) => b.unitsSold - a.unitsSold)
+        .slice(0, limit);
+    } catch {
+      return [];
+    }
+  },
+  ["related-products"],
+  { revalidate: 300 }
+);

@@ -11,9 +11,11 @@ import ReviewForm from "@/app/components/ReviewForm";
 import RecordProductView from "@/app/components/RecordProductView";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
 import CategorySlider from "@/app/components/CategorySlider";
+import BestsellersStrip from "@/app/components/BestsellersStrip";
 import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink } from "@/app/utils/whatsapp";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
+import { getRelatedProducts } from "@/app/utils/storeQueries";
 
 // The Supabase reads below are cached via unstable_cache (30s) so repeat
 // views of a popular product don't each cost a fresh round trip -- wrapped
@@ -97,9 +99,11 @@ export default async function ProductDetailPage({
   const product = await getProduct(id);
   const reviews = product ? await getApprovedReviews(product.id) : [];
   const categorySliderItems = await getCategorySliderItems();
+  const relatedProducts = product ? await getRelatedProducts(product.category, product.id) : [];
 
   const stock = product ? Number(product.inventory) || 0 : 0;
   const outOfStock = stock <= 0;
+  const lowStock = !outOfStock && stock <= 3;
   const whatsappHref = product ? getProductWhatsappLink(product, outOfStock) : "#";
   const averageRating =
     reviews.length > 0 ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length : 0;
@@ -125,11 +129,37 @@ export default async function ProductDetailPage({
           : {}),
         offers: {
           "@type": "Offer",
-          url: `https://luxurybrassgift.com/product/${product.id}`,
+          url: `https://tohfaonline.com/product/${product.id}`,
           priceCurrency: "INR",
           price: Number(product.price),
           availability: outOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
         },
+      }
+    : null;
+
+  const breadcrumbJsonLd = product
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: "https://tohfaonline.com/" },
+          ...(product.category
+            ? [
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: product.category,
+                  item: `https://tohfaonline.com/?category=${encodeURIComponent(product.category)}`,
+                },
+              ]
+            : []),
+          {
+            "@type": "ListItem",
+            position: product.category ? 3 : 2,
+            name: product.name,
+            item: `https://tohfaonline.com/product/${product.id}`,
+          },
+        ],
       }
     : null;
 
@@ -139,6 +169,12 @@ export default async function ProductDetailPage({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        />
+      )}
+      {breadcrumbJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
         />
       )}
 
@@ -188,8 +224,12 @@ export default async function ProductDetailPage({
               <span className="text-amber-700 dark:text-amber-500 font-bold font-mono text-2xl mb-1">
                 ₹{Number(product.price).toLocaleString("en-IN")}
               </span>
-              <span className={`text-[11px] uppercase font-medium mb-6 ${outOfStock ? "text-rose-600 font-bold" : "text-stone-400"}`}>
-                {outOfStock ? "Out of Stock" : `Stock: ${product.inventory} units`}
+              <span
+                className={`text-[11px] uppercase font-medium mb-6 ${
+                  outOfStock || lowStock ? "text-rose-600 font-bold" : "text-stone-400"
+                }`}
+              >
+                {outOfStock ? "Out of Stock" : lowStock ? `Only ${product.inventory} left!` : `Stock: ${product.inventory} units`}
               </span>
 
               <p className="text-stone-600 dark:text-stone-300 text-sm sm:text-base font-light leading-relaxed mb-8 whitespace-pre-line">
@@ -258,6 +298,8 @@ export default async function ProductDetailPage({
         )}
       </div>
 
+      {relatedProducts.length > 0 && <BestsellersStrip items={relatedProducts} title="Customers Also Bought" />}
+
       {product && <RecentlyViewedStrip excludeId={product.id} />}
 
       <CategorySlider items={categorySliderItems} />
@@ -267,7 +309,7 @@ export default async function ProductDetailPage({
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
             <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-stone-500 mt-1">© 2026 luxurybrassgift.com. All Rights Reserved.</p>
+            <p className="text-[10px] text-stone-500 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-6 text-[11px] uppercase tracking-wider font-medium text-stone-400">
             <a href="/terms" className="hover:text-amber-400 transition">Terms &amp; Conditions</a>
