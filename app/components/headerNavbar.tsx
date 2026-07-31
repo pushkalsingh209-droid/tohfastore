@@ -135,19 +135,38 @@ export default function HeaderNavbar() {
 
       </div>
 
-      {/* Third row, one line at every width: Menu (left) / contact info
+      {/* Third row, one line at every width: Categories (left) / contact info
           (center, desktop only -- hidden on mobile to keep this row from
-          crowding) / Categories (right). Categories is populated from
-          whichever categories the admin has marked "hidden from home" --
-          revealing links into the homepage's existing ?category filter. The
-          default (unfiltered) homepage is never touched; products only
-          appear scoped to a category once a link here is clicked. */}
+          crowding) / Menu (right). Categories is populated from whichever
+          categories the admin has marked "hidden from home" -- revealing
+          links into the homepage's existing ?category filter. The default
+          (unfiltered) homepage is never touched; products only appear
+          scoped to a category once a link here is clicked. */}
       <div className="border-t border-stone-100 dark:border-stone-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between gap-3 py-2.5">
-            <PageNavLinks />
+            {menuCategories.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setCategoryMenuOpen((open) => !open)}
+                aria-expanded={categoryMenuOpen}
+                aria-controls="category-menu-panel"
+                className="flex items-center gap-2 text-[11px] uppercase tracking-wider font-semibold text-stone-600 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition flex-shrink-0"
+              >
+                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  {categoryMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+                Categories
+              </button>
+            ) : (
+              <span />
+            )}
 
-            {/* Contact info -- desktop only, centered between Menu and Categories */}
+            {/* Contact info -- desktop only, centered between Categories and Menu */}
             <div className="hidden md:flex items-center gap-6 text-[11px] text-stone-500 dark:text-stone-400">
               <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <span className="uppercase tracking-wider font-semibold text-stone-400 dark:text-stone-500">Email:</span>
@@ -172,26 +191,7 @@ export default function HeaderNavbar() {
               </a>
             </div>
 
-            {menuCategories.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setCategoryMenuOpen((open) => !open)}
-                aria-expanded={categoryMenuOpen}
-                aria-controls="category-menu-panel"
-                className="flex items-center gap-2 text-[11px] uppercase tracking-wider font-semibold text-stone-600 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition flex-shrink-0"
-              >
-                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  {categoryMenuOpen ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                  )}
-                </svg>
-                Categories
-              </button>
-            ) : (
-              <span />
-            )}
+            <PageNavLinks />
           </div>
 
           {categoryMenuOpen && menuCategories.length > 0 && (
