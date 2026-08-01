@@ -60,6 +60,20 @@ export default function PageNavLinks() {
           >
             Reach Us
           </a>
+          <a
+            href="/catalogue"
+            onClick={() => setOpen(false)}
+            className="px-4 py-2 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+          >
+            Download Catalogue
+          </a>
+          <a
+            href="/corporate"
+            onClick={() => setOpen(false)}
+            className="px-4 py-2 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+          >
+            Corporate Gifting
+          </a>
         </div>
       )}
     </div>

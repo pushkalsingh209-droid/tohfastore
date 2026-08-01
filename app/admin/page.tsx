@@ -27,6 +27,8 @@ export default function AdminDashboard() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>({});
+  const [leads, setLeads] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -69,13 +71,15 @@ export default function AdminDashboard() {
   // them in parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes] = await Promise.allSettled([
+    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes] = await Promise.allSettled([
       apiRequest("/api/admin/products"),
       apiRequest("/api/admin/orders"),
       apiRequest("/api/admin/reviews"),
       apiRequest("/api/admin/coupons"),
       apiRequest("/api/admin/categories"),
       apiRequest("/api/admin/settings"),
+      apiRequest("/api/admin/leads"),
+      apiRequest("/api/admin/analytics"),
     ]);
     if (productsRes.status === "fulfilled") setProducts(productsRes.value.products);
     if (ordersRes.status === "fulfilled") setOrders(ordersRes.value.orders);
@@ -83,6 +87,8 @@ export default function AdminDashboard() {
     if (couponsRes.status === "fulfilled") setCoupons(couponsRes.value.coupons);
     if (categoriesRes.status === "fulfilled") setCategories(categoriesRes.value.categories);
     if (settingsRes.status === "fulfilled") setSettings(settingsRes.value.settings);
+    if (leadsRes.status === "fulfilled") setLeads(leadsRes.value.leads);
+    if (analyticsRes.status === "fulfilled") setAnalytics(analyticsRes.value);
     setLoadingOrders(false);
   };
 
@@ -475,6 +481,125 @@ export default function AdminDashboard() {
           </button>
         </div>
 
+        {/* SECTION OVERVIEW: BUSINESS ANALYTICS */}
+        <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+          <div className="border-b border-stone-200 pb-4 mb-6">
+            <h2 className="text-xl font-serif text-stone-900">Business Overview</h2>
+            <p className="text-stone-500 text-xs mt-1">Computed from your order history. Visitor-to-order conversion rate isn&rsquo;t shown here yet -- it needs Google Analytics&rsquo; Data API connected, which isn&rsquo;t set up.</p>
+          </div>
+
+          {!analytics ? (
+            <p className="text-stone-400 text-sm text-center py-6">Loading analytics...</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Total Orders</p>
+                  <p className="text-xl font-mono font-bold text-stone-900">{analytics.totalOrders}</p>
+                </div>
+                <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Total Revenue</p>
+                  <p className="text-xl font-mono font-bold text-stone-900">₹{Math.round(analytics.totalRevenue).toLocaleString("en-IN")}</p>
+                </div>
+                <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Avg. Order Value</p>
+                  <p className="text-xl font-mono font-bold text-stone-900">₹{Math.round(analytics.averageOrderValue).toLocaleString("en-IN")}</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">Repeat Purchase Rate</p>
+                  <p className="text-xl font-mono font-bold text-amber-800">{analytics.repeatPurchaseRate.toFixed(1)}%</p>
+                  <p className="text-[10px] text-amber-600 mt-0.5">{analytics.repeatCustomers} of {analytics.totalCustomers} customers</p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">Revenue &mdash; Last 6 Months</h3>
+                <div className="flex items-end gap-3 h-32">
+                  {analytics.monthlyTrend.map((m: any) => {
+                    const max = Math.max(...analytics.monthlyTrend.map((x: any) => x.revenue), 1);
+                    const heightPct = Math.max(4, (m.revenue / max) * 100);
+                    return (
+                      <div key={m.label} className="flex-1 flex flex-col items-center justify-end h-full">
+                        <span className="text-[9px] font-mono text-stone-500 mb-1">{m.revenue > 0 ? `₹${Math.round(m.revenue / 1000)}k` : ""}</span>
+                        <div className="w-full bg-amber-600 rounded-t transition-all" style={{ height: `${heightPct}%` }} />
+                        <span className="text-[10px] text-stone-400 mt-1.5 whitespace-nowrap">{m.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* SECTION OVERVIEW: LEADS */}
+        <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+          <div className="border-b border-stone-200 pb-4 mb-6 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h2 className="text-xl font-serif text-stone-900">Leads</h2>
+              <p className="text-stone-500 text-xs mt-1">Captured from the /catalogue download form and the /corporate gifting inquiry form.</p>
+            </div>
+            <span className="text-xs font-mono font-bold text-stone-500 bg-stone-100 border border-stone-200 rounded px-3 py-1.5 whitespace-nowrap">
+              {leads.length} lead{leads.length === 1 ? "" : "s"}
+            </span>
+          </div>
+
+          {leads.length === 0 ? (
+            <p className="text-stone-400 text-sm text-center py-6">No leads captured yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-stone-50 text-stone-700 uppercase font-semibold text-[10px] tracking-wider border-b border-stone-200">
+                    <th className="p-3">Name</th>
+                    <th className="p-3">Contact</th>
+                    <th className="p-3">Source</th>
+                    <th className="p-3">Details</th>
+                    <th className="p-3 text-right">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {leads.map((lead: any) => (
+                    <tr key={lead.id}>
+                      <td className="p-3 font-medium text-stone-900 whitespace-nowrap">{lead.name}</td>
+                      <td className="p-3 text-stone-600">
+                        {lead.email && <div>{lead.email}</div>}
+                        {lead.phone && <div className="text-stone-400 font-mono">{lead.phone}</div>}
+                      </td>
+                      <td className="p-3">
+                        <span
+                          className={`px-2 py-1 rounded text-[10px] uppercase font-semibold whitespace-nowrap ${
+                            lead.source === "corporate_gifting"
+                              ? "bg-amber-50 text-amber-700 border border-amber-200"
+                              : "bg-stone-100 text-stone-600 border border-stone-200"
+                          }`}
+                        >
+                          {lead.source === "corporate_gifting" ? "Corporate" : "Catalogue"}
+                        </span>
+                      </td>
+                      <td className="p-3 text-stone-500 max-w-[240px]">
+                        {lead.details && (
+                          <div className="space-y-0.5">
+                            {lead.details.company && <div>Company: {lead.details.company}</div>}
+                            {lead.details.quantity && <div>Qty: {lead.details.quantity}</div>}
+                            {lead.details.occasion && <div>Occasion: {lead.details.occasion}</div>}
+                            {lead.details.message && (
+                              <div className="text-stone-400 italic line-clamp-2">&ldquo;{lead.details.message}&rdquo;</div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3 text-right text-stone-400 font-mono whitespace-nowrap">
+                        {new Date(lead.created_at).toLocaleDateString("en-IN")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {/* SECTION A: PRODUCT REGISTRY MANAGEMENT FORM */}
         <div className={`bg-white border rounded-lg shadow-sm p-8 transition duration-300 ${editingProductId ? "border-amber-500 shadow-amber-50" : "border-amber-200"}`}>
           <div className="border-b border-stone-100 pb-4 mb-6 flex items-center justify-between">
@@ -585,9 +710,23 @@ export default function AdminDashboard() {
                 <h2 className="text-xl font-serif text-stone-900">Live Storefront Catalog & Stock Tracker</h2>
                 <p className="text-stone-500 text-xs mt-1">Manage physical stock variations or open a product's text fields to overwrite details cleanly.</p>
               </div>
-              <span className="text-xs font-mono font-bold text-stone-500 bg-stone-100 border border-stone-200 rounded px-3 py-1.5 whitespace-nowrap">
-                {products.length} product{products.length === 1 ? "" : "s"} added
-              </span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs font-mono font-bold text-stone-500 bg-stone-100 border border-stone-200 rounded px-3 py-1.5 whitespace-nowrap">
+                  {products.length} product{products.length === 1 ? "" : "s"} added
+                </span>
+                <a
+                  href="/api/admin/catalogue"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Download a branded, category-wise PDF catalogue of every product"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide bg-amber-700 hover:bg-amber-800 text-white px-3 py-1.5 rounded shadow-sm transition whitespace-nowrap"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+                  </svg>
+                  Catalogue PDF
+                </a>
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 mt-4">

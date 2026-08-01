@@ -13,6 +13,7 @@ import CatalogLoadingOverlay from "@/app/components/CatalogLoadingOverlay";
 import InstallPrompt from "@/app/components/InstallPrompt";
 import FloatingContactButtons from "@/app/components/FloatingContactButtons";
 import AbandonedCartNudge from "@/app/components/AbandonedCartNudge";
+import MetaPixel from "@/app/components/MetaPixel";
 import "./globals.css"; // Imports your global styling configurations
 
 export const metadata: Metadata = {
@@ -133,6 +134,9 @@ export default function RootLayout({
           function gtag(){dataLayer.push(arguments);}
           gtag('config', 'AW-16996304509');`}
         </Script>
+        {/* Meta (Facebook/Instagram) Pixel -- no-ops until
+            NEXT_PUBLIC_META_PIXEL_ID is set. */}
+        <MetaPixel />
       </CatalogLoadingProvider>
       </WishlistProvider>
       </CartProvider>

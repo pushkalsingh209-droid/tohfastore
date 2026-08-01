@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { sendGAEvent } from "@next/third-parties/google";
 import { useCart } from "@/app/context/CartContext";
 import { BUSINESS_GSTIN, type OrderGstBreakdown } from "@/app/utils/gst";
+import { trackMetaPurchase } from "@/app/utils/metaPixel";
 
 interface StashedOrder {
   orderId: string;
@@ -34,12 +35,13 @@ export default function CheckoutSuccessPage() {
       const parsed: StashedOrder = JSON.parse(raw);
       setOrder(parsed);
 
-      // GA4 purchase conversion, fired once per order (guarded in
-      // localStorage, not sessionStorage, so a bookmarked/back-button
-      // revisit of this exact success URL doesn't double-count revenue
-      // in Ads/Analytics). Uses the real, server-verified order total --
-      // not a client-guessed figure.
-      const dedupeKey = `tohfa_ga_purchase_${parsed.orderId}`;
+      // Purchase conversions (GA4 + Meta Pixel), fired once per order
+      // (guarded in localStorage, not sessionStorage, so a bookmarked/
+      // back-button revisit of this exact success URL doesn't double-count
+      // revenue in Ads/Analytics). Uses the real, server-verified order
+      // total -- not a client-guessed figure. trackMetaPurchase silently
+      // no-ops if the Meta Pixel was never loaded (no Pixel ID set).
+      const dedupeKey = `tohfa_purchase_tracked_${parsed.orderId}`;
       if (!localStorage.getItem(dedupeKey)) {
         sendGAEvent("event", "purchase", {
           transaction_id: parsed.orderId,
@@ -52,6 +54,7 @@ export default function CheckoutSuccessPage() {
             quantity: item.quantity,
           })),
         });
+        trackMetaPurchase(parsed.total);
         localStorage.setItem(dedupeKey, "1");
       }
     } catch (e) {
