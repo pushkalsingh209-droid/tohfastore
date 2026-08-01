@@ -9,6 +9,7 @@ export async function GET() {
 }
 
 const DEFAULT_GST_RATE = 5;
+const DEFAULT_DISCOUNT_PERCENT = 25;
 
 // A category's GST rate must be a real, non-negative percentage a business
 // could actually be charged -- 100% would already be absurd for goods.
@@ -19,9 +20,19 @@ function parseGstRate(value: unknown): number | null {
   return Math.round(num * 100) / 100;
 }
 
+// The displayed "off" percentage a fabricated original price is worked
+// backward from -- 0 disables the slashed-price display for that category,
+// 100 would make the original price infinite/undefined, so it's excluded.
+function parseDiscountPercent(value: unknown): number | null {
+  if (value === undefined || value === null || value === "") return DEFAULT_DISCOUNT_PERCENT;
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < 0 || num >= 100) return null;
+  return Math.round(num * 100) / 100;
+}
+
 export async function POST(req: Request) {
   try {
-    const { name, gst_rate } = await req.json();
+    const { name, gst_rate, discount_percent } = await req.json();
     const trimmed = (name || "").trim();
     if (!trimmed) return NextResponse.json({ error: "Please enter a category name." }, { status: 400 });
 
@@ -29,8 +40,15 @@ export async function POST(req: Request) {
     if (gstRate === null) {
       return NextResponse.json({ error: "GST rate must be a number between 0 and 100." }, { status: 400 });
     }
+    const discountPercent = parseDiscountPercent(discount_percent);
+    if (discountPercent === null) {
+      return NextResponse.json({ error: "Discount % must be a number between 0 and 99." }, { status: 400 });
+    }
 
-    const { data, error } = await supabase.from("categories").insert([{ name: trimmed, gst_rate: gstRate }]).select();
+    const { data, error } = await supabase
+      .from("categories")
+      .insert([{ name: trimmed, gst_rate: gstRate, discount_percent: discountPercent }])
+      .select();
 
     if (error) {
       if (error.code === "23505") {
@@ -56,7 +74,7 @@ function parseCategoryPageSize(value: unknown): number | null | undefined {
 
 export async function PATCH(req: Request) {
   try {
-    const { id, show_on_home, gst_rate, default_page_size } = await req.json();
+    const { id, show_on_home, gst_rate, default_page_size, discount_percent } = await req.json();
     if (!id) return NextResponse.json({ error: "Missing category id." }, { status: 400 });
 
     const updates: Record<string, unknown> = {};
@@ -67,6 +85,13 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: "GST rate must be a number between 0 and 100." }, { status: 400 });
       }
       updates.gst_rate = gstRate;
+    }
+    if (discount_percent !== undefined) {
+      const discountPercent = parseDiscountPercent(discount_percent);
+      if (discountPercent === null) {
+        return NextResponse.json({ error: "Discount % must be a number between 0 and 99." }, { status: 400 });
+      }
+      updates.discount_percent = discountPercent;
     }
     if (default_page_size !== undefined) {
       const pageSize = parseCategoryPageSize(default_page_size);

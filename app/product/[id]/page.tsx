@@ -12,6 +12,7 @@ import RecordProductView from "@/app/components/RecordProductView";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
 import CategorySlider from "@/app/components/CategorySlider";
 import BestsellersStrip from "@/app/components/BestsellersStrip";
+import PriceDisplay from "@/app/components/PriceDisplay";
 import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink } from "@/app/utils/whatsapp";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
@@ -192,7 +193,7 @@ export default async function ProductDetailPage({
           </div>
         ) : (
           <>
-          <RecordProductView id={product.id} name={product.name} price={product.price} image_url={product.image_url} />
+          <RecordProductView id={product.id} name={product.name} price={product.price} image_url={product.image_url} category={product.category} />
           <div className="flex flex-col md:flex-row gap-8 md:gap-12">
             {/* Gallery */}
             <div className="md:w-1/2 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 shadow-sm bg-white">
@@ -221,9 +222,13 @@ export default async function ProductDetailPage({
                   </span>
                 </div>
               )}
-              <span className="text-amber-700 dark:text-amber-500 font-bold font-mono text-2xl mb-1">
-                ₹{Number(product.price).toLocaleString("en-IN")}
-              </span>
+              <div className="mb-1">
+                <PriceDisplay
+                  price={Number(product.price)}
+                  category={product.category}
+                  className="text-amber-700 dark:text-amber-500 font-bold font-mono text-2xl"
+                />
+              </div>
               <span
                 className={`text-[11px] uppercase font-medium mb-6 ${
                   outOfStock || lowStock ? "text-rose-600 font-bold" : "text-stone-400"

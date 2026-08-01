@@ -5,6 +5,8 @@ import { sendGAEvent } from "@next/third-parties/google";
 import { useCart } from "@/app/context/CartContext";
 import { BUSINESS_GSTIN, type OrderGstBreakdown } from "@/app/utils/gst";
 import { trackMetaPurchase } from "@/app/utils/metaPixel";
+import { calculateSlashedPrice } from "@/app/utils/pricing";
+import { useCategoryDiscountMap } from "@/app/context/CategoryDiscountContext";
 
 interface StashedOrder {
   orderId: string;
@@ -13,7 +15,7 @@ interface StashedOrder {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
-  items: { name: string; price: number; quantity: number }[];
+  items: { name: string; price: number; quantity: number; category?: string | null }[];
   subtotal: number;
   discount: number;
   couponCode: string | null;
@@ -24,6 +26,7 @@ interface StashedOrder {
 export default function CheckoutSuccessPage() {
   const { clearCart } = useCart();
   const [order, setOrder] = useState<StashedOrder | null>(null);
+  const categoryDiscounts = useCategoryDiscountMap();
 
   useEffect(() => {
     // Automatically wipe local persistent memory records clean upon confirmation landing
@@ -148,19 +151,50 @@ export default function CheckoutSuccessPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {order.items.map((item, idx) => (
-                    <tr key={idx} className="border-b border-stone-100 dark:border-stone-800">
-                      <td className="py-2 text-stone-700 dark:text-stone-300">{item.name}</td>
-                      <td className="py-2 text-center text-stone-500">{item.quantity}</td>
-                      <td className="py-2 text-right font-mono text-stone-900 dark:text-stone-100">
-                        ₹{(item.price * item.quantity).toLocaleString("en-IN")}
-                      </td>
-                    </tr>
-                  ))}
+                  {order.items.map((item, idx) => {
+                    const lineTotal = item.price * item.quantity;
+                    const slashed = calculateSlashedPrice(lineTotal, categoryDiscounts[item.category || ""]);
+                    return (
+                      <tr key={idx} className="border-b border-stone-100 dark:border-stone-800">
+                        <td className="py-2 text-stone-700 dark:text-stone-300">{item.name}</td>
+                        <td className="py-2 text-center text-stone-500">{item.quantity}</td>
+                        <td className="py-2 text-right font-mono text-stone-900 dark:text-stone-100">
+                          {slashed && (
+                            <span className="block text-stone-400 dark:text-stone-500 line-through text-[10px]">
+                              ₹{slashed.originalPrice.toLocaleString("en-IN")}
+                            </span>
+                          )}
+                          ₹{lineTotal.toLocaleString("en-IN")}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 
               <div className="space-y-1 text-xs text-stone-500 dark:text-stone-400 mb-4">
+                {(() => {
+                  const mrpSubtotal = order.items.reduce((sum, item) => {
+                    const lineTotal = item.price * item.quantity;
+                    const slashed = calculateSlashedPrice(lineTotal, categoryDiscounts[item.category || ""]);
+                    return sum + (slashed ? slashed.originalPrice : lineTotal);
+                  }, 0);
+                  const hasMrpSavings = mrpSubtotal > order.subtotal;
+                  if (!hasMrpSavings) return null;
+                  const savingsPercent = Math.round(((mrpSubtotal - order.subtotal) / mrpSubtotal) * 100);
+                  return (
+                    <>
+                      <div className="flex justify-between">
+                        <span>MRP Subtotal</span>
+                        <span className="font-mono line-through text-stone-400 dark:text-stone-500">₹{mrpSubtotal.toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="flex justify-between text-emerald-700 dark:text-emerald-500">
+                        <span>You Saved</span>
+                        <span className="font-mono">₹{(mrpSubtotal - order.subtotal).toLocaleString("en-IN")} ({savingsPercent}% off)</span>
+                      </div>
+                    </>
+                  );
+                })()}
                 <div className="flex justify-between">
                   <span>Subtotal</span>
                   <span className="font-mono">₹{order.subtotal.toLocaleString("en-IN")}</span>

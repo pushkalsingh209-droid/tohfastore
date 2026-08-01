@@ -6,10 +6,14 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { calculateGstBreakdown, GST_RATE } from "@/app/utils/gst";
 import { INDIAN_STATES } from "@/app/utils/indianStates";
+import { calculateSlashedPrice } from "@/app/utils/pricing";
+import { useCategoryDiscountMap } from "@/app/context/CategoryDiscountContext";
+import PriceDisplay from "@/app/components/PriceDisplay";
 
 export default function CartDrawer() {
   const { cart, isOpen, setIsOpen, removeFromCart, updateQuantity, cartTotal } = useCart();
   const [loading, setLoading] = useState(false);
+  const categoryDiscounts = useCategoryDiscountMap();
 
   // Customer identity data capture states
   const [customerName, setCustomerName] = useState("");
@@ -245,7 +249,7 @@ export default function CartDrawer() {
                   customerName,
                   customerPhone: cleanPhone,
                   customerEmail,
-                  items: cart.map((item: any) => ({ name: item.name, price: item.price, quantity: item.quantity })),
+                  items: cart.map((item: any) => ({ name: item.name, price: item.price, quantity: item.quantity, category: item.category })),
                   subtotal: cartTotal,
                   discount: appliedCoupon?.discount || 0,
                   couponCode: appliedCoupon?.code || null,
@@ -327,7 +331,15 @@ export default function CartDrawer() {
                             +
                           </button>
                         </div>
-                        <p className="text-xs text-amber-800 dark:text-amber-500 font-bold font-mono mt-1">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
+                        <div className="mt-1">
+                          <PriceDisplay
+                            price={item.price * item.quantity}
+                            category={item.category}
+                            className="text-xs text-amber-800 dark:text-amber-500 font-bold font-mono"
+                            originalClassName="text-stone-400 dark:text-stone-500 line-through font-mono text-[10px]"
+                            badgeClassName="text-emerald-700 dark:text-emerald-500 text-[8px] font-bold uppercase"
+                          />
+                        </div>
                       </div>
                       <button onClick={() => removeFromCart(item.id)} className="text-stone-400 hover:text-rose-600 text-[11px] self-start">Remove</button>
                     </div>
@@ -481,13 +493,38 @@ export default function CartDrawer() {
           {cart.length > 0 && (() => {
             const finalTotal = appliedCoupon ? Math.max(0, cartTotal - appliedCoupon.discount) : cartTotal;
             const gst = calculateGstBreakdown(finalTotal);
+
+            // Aggregate MRP across the whole cart -- each line's slashed
+            // original price, summed, falling back to the real line total
+            // for any item whose category has no discount % configured.
+            const mrpSubtotal = cart.reduce((sum: number, item: any) => {
+              const slashed = calculateSlashedPrice(item.price * item.quantity, categoryDiscounts[item.category]);
+              return sum + (slashed ? slashed.originalPrice : item.price * item.quantity);
+            }, 0);
+            const hasMrpSavings = mrpSubtotal > cartTotal;
+            const mrpSavingsPercent = hasMrpSavings ? Math.round(((mrpSubtotal - cartTotal) / mrpSubtotal) * 100) : 0;
+
             return (
             <div className="p-6 border-t border-stone-100 dark:border-stone-800 bg-stone-50 dark:bg-stone-950 space-y-4">
               <div className="space-y-1.5">
+                {hasMrpSavings && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-stone-500 dark:text-stone-400 font-medium">MRP Subtotal:</span>
+                    <span className="font-mono text-stone-400 dark:text-stone-500 line-through">₹{mrpSubtotal.toLocaleString("en-IN")}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-stone-600 dark:text-stone-400 font-medium">Subtotal Amount:</span>
                   <span className={`font-mono font-bold text-stone-900 dark:text-stone-100 ${appliedCoupon ? "text-sm" : "text-lg"}`}>₹{cartTotal.toLocaleString("en-IN")}</span>
                 </div>
+                {hasMrpSavings && (
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-emerald-700 dark:text-emerald-400 font-medium">You Save:</span>
+                    <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                      ₹{(mrpSubtotal - cartTotal).toLocaleString("en-IN")} ({mrpSavingsPercent}% off)
+                    </span>
+                  </div>
+                )}
                 {appliedCoupon && (
                   <>
                     <div className="flex items-center justify-between text-sm">

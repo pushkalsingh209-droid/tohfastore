@@ -2,6 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { BestsellerItem } from "@/app/utils/storeQueries";
+import PriceDisplay from "@/app/components/PriceDisplay";
 
 // Lightweight cards (not the full ProductCard with its own gallery/cart
 // button) so this reads as a quick "what's trending" rail rather than a
@@ -36,9 +37,13 @@ export default function BestsellersStrip({
             <p className="mt-2 text-xs font-serif text-stone-800 dark:text-stone-200 line-clamp-2 group-hover:text-amber-700 dark:group-hover:text-amber-500 transition">
               {product.name}
             </p>
-            <p className="text-[11px] text-amber-700 dark:text-amber-500 font-mono font-bold">
-              ₹{Number(product.price).toLocaleString("en-IN")}
-            </p>
+            <PriceDisplay
+              price={Number(product.price)}
+              category={product.category}
+              className="text-[11px] text-amber-700 dark:text-amber-500 font-mono font-bold"
+              originalClassName="text-stone-400 dark:text-stone-500 line-through font-mono text-[9px]"
+              badgeClassName="text-emerald-700 dark:text-emerald-500 text-[8px] font-bold uppercase"
+            />
           </Link>
         ))}
       </div>

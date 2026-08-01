@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       const gstRate = product.category && categoryGstRates.has(product.category)
         ? categoryGstRates.get(product.category)!
         : GST_RATE * 100;
-      return { id: product.id, name: product.name, price: Number(product.price), quantity, gstRate, image_url: product.image_url };
+      return { id: product.id, name: product.name, price: Number(product.price), quantity, gstRate, image_url: product.image_url, category: product.category };
     });
 
     if (pricedItems.some((i) => i === null)) {

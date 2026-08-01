@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useWishlist } from "@/app/context/WishlistContext";
 import { useCart } from "@/app/context/CartContext";
+import PriceDisplay from "@/app/components/PriceDisplay";
 
 export default function WishlistPage() {
   const { wishlist, removeFromWishlist } = useWishlist();
@@ -36,9 +37,15 @@ export default function WishlistPage() {
                       {product.name}
                     </h3>
                   </Link>
-                  <p className="text-amber-700 dark:text-amber-500 font-mono font-bold text-xs sm:text-sm mb-2">
-                    ₹{Number(product.price).toLocaleString("en-IN")}
-                  </p>
+                  <div className="mb-2">
+                    <PriceDisplay
+                      price={Number(product.price)}
+                      category={product.category}
+                      className="text-amber-700 dark:text-amber-500 font-mono font-bold text-xs sm:text-sm"
+                      originalClassName="text-stone-400 dark:text-stone-500 line-through font-mono text-[9px]"
+                      badgeClassName="text-emerald-700 dark:text-emerald-500 text-[8px] font-bold uppercase"
+                    />
+                  </div>
                   <div className="flex gap-1.5">
                     <button
                       type="button"

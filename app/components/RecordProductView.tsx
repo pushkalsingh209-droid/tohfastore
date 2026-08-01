@@ -10,15 +10,17 @@ export default function RecordProductView({
   name,
   price,
   image_url,
+  category,
 }: {
   id: string | number;
   name: string;
   price: number;
   image_url: string;
+  category?: string | null;
 }) {
   useEffect(() => {
-    recordRecentlyViewed({ id, name, price, image_url });
-  }, [id, name, price, image_url]);
+    recordRecentlyViewed({ id, name, price, image_url, category });
+  }, [id, name, price, image_url, category]);
 
   return null;
 }

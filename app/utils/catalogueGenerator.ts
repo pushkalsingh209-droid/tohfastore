@@ -12,6 +12,7 @@ import React from "react";
 import sharp from "sharp";
 import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { calculateSlashedPrice } from "@/app/utils/pricing";
 
 // Product photos are uploaded at full resolution for the storefront, but a
 // catalogue card only ever displays one at ~150pt wide -- embedding the
@@ -79,7 +80,10 @@ const styles = StyleSheet.create({
   },
   cardImage: { width: "100%", height: 110, borderRadius: 4, objectFit: "cover", marginBottom: 6 },
   cardName: { fontSize: 9, fontWeight: 700, color: INK, marginBottom: 3 },
+  cardPriceRow: { flexDirection: "row", alignItems: "baseline", gap: 4 },
   cardPrice: { fontSize: 10, color: AMBER, fontWeight: 700 },
+  cardOriginalPrice: { fontSize: 7, color: "#a8a29e", textDecoration: "line-through" },
+  cardBadge: { fontSize: 6, color: "#15803d", fontWeight: 700, textTransform: "uppercase" },
   cardStock: { fontSize: 7, color: "#b91c1c", marginTop: 2, textTransform: "uppercase" },
 
   footer: {
@@ -114,6 +118,18 @@ export async function generateCatalogueBuffer(): Promise<Buffer> {
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
+
+  // Category discount % map -- drives the "MRP Rs. X, Y% off" shown per
+  // card below. Best-effort: an empty map just means plain prices.
+  const categoryDiscounts: Record<string, number> = {};
+  try {
+    const { data: categoryRows } = await supabase.from("categories").select("name, discount_percent");
+    for (const row of categoryRows || []) {
+      if (row.discount_percent != null) categoryDiscounts[row.name] = Number(row.discount_percent);
+    }
+  } catch (discountErr) {
+    console.error("Category discount lookup failed:", discountErr);
+  }
 
   const grouped = new Map<string, any[]>();
   for (const product of products || []) {
@@ -167,12 +183,21 @@ export async function generateCatalogueBuffer(): Promise<Buffer> {
           { style: styles.grid },
           ...grouped.get(category)!.map((product) => {
             const thumb = thumbnails.get(product.id);
+            const slashed = calculateSlashedPrice(Number(product.price), categoryDiscounts[product.category]);
             return React.createElement(
               View,
               { key: product.id, style: styles.card, wrap: false },
               thumb ? React.createElement(Image, { src: thumb, style: styles.cardImage }) : null,
               React.createElement(Text, { style: styles.cardName }, product.name),
-              React.createElement(Text, { style: styles.cardPrice }, `Rs. ${Number(product.price).toLocaleString("en-IN")}`),
+              React.createElement(
+                View,
+                { style: styles.cardPriceRow },
+                React.createElement(Text, { style: styles.cardPrice }, `Rs. ${Number(product.price).toLocaleString("en-IN")}`),
+                slashed
+                  ? React.createElement(Text, { style: styles.cardOriginalPrice }, `Rs. ${slashed.originalPrice.toLocaleString("en-IN")}`)
+                  : null
+              ),
+              slashed ? React.createElement(Text, { style: styles.cardBadge }, `${slashed.discountPercent}% off`) : null,
               Number(product.inventory) <= 0
                 ? React.createElement(Text, { style: styles.cardStock }, "Out of Stock")
                 : null

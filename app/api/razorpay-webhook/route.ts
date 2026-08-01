@@ -5,6 +5,7 @@ import Razorpay from "razorpay";
 import { Resend } from "resend";
 import { isValidPaymentSignature } from "@/app/utils/razorpaySignature";
 import { calculateOrderGstBreakdown, BUSINESS_GSTIN } from "@/app/utils/gst";
+import { calculateSlashedPrice } from "@/app/utils/pricing";
 
 const CONTACT_INBOX = "contact@tohfaonline.com";
 
@@ -173,6 +174,22 @@ export async function POST(req: Request) {
       let gst: ReturnType<typeof calculateOrderGstBreakdown> | null = null;
       let formattedAddress = "Not provided -- request via WhatsApp";
       const businessWhatsappNumber = process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351";
+
+      // Category discount % map -- drives the customer-facing "MRP ₹X, Y%
+      // off" display on the customer WhatsApp invoice and email. The
+      // business alert/email deliberately keeps showing only the real
+      // price (an internal ops notification, not a marketing document).
+      // Best-effort: an empty map just means no slashed pricing shows.
+      let categoryDiscounts: Record<string, number> = {};
+      try {
+        const { data: categoryRows } = await supabase.from("categories").select("name, discount_percent");
+        for (const row of categoryRows || []) {
+          if (row.discount_percent != null) categoryDiscounts[row.name] = Number(row.discount_percent);
+        }
+      } catch (discountErr) {
+        console.error("Category discount lookup failed:", discountErr);
+      }
+
       try {
         const itemsSummary = orderItems
           .map((item: any) => `${item.name} x${item.quantity}`)
@@ -217,9 +234,27 @@ export async function POST(req: Request) {
           `Total Amount: ₹${gst.totalPrice.toLocaleString("en-IN")}`,
         ].join("\n");
 
+        // Customer-facing item lines show "MRP ₹X, Y% off" per line when
+        // that item's category has a discount % configured -- the real
+        // price paid (item.price) is unaffected either way.
+        let mrpSubtotal = 0;
         const itemLines = orderItems.length
-          ? orderItems.map((item: any) => `  ${item.name} x${item.quantity}`).join("\n")
+          ? orderItems
+              .map((item: any) => {
+                const lineTotal = item.price * item.quantity;
+                const slashed = calculateSlashedPrice(lineTotal, categoryDiscounts[item.category]);
+                mrpSubtotal += slashed ? slashed.originalPrice : lineTotal;
+                return slashed
+                  ? `  ${item.name} x${item.quantity} (MRP ₹${slashed.originalPrice.toLocaleString("en-IN")}, ${slashed.discountPercent}% off)`
+                  : `  ${item.name} x${item.quantity}`;
+              })
+              .join("\n")
           : "  N/A";
+        const itemsSubtotalReal = orderItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
+        const hasMrpSavings = mrpSubtotal > itemsSubtotalReal;
+        const savingsLine = hasMrpSavings
+          ? `You Saved: ₹${(mrpSubtotal - itemsSubtotalReal).toLocaleString("en-IN")} (${Math.round(((mrpSubtotal - itemsSubtotalReal) / mrpSubtotal) * 100)}% off MRP)\n`
+          : "";
 
         customerMessage = [
           "🧾 *TOHFA — Order Invoice*",
@@ -232,7 +267,7 @@ export async function POST(req: Request) {
           "Items:",
           itemLines,
           "",
-          `Base Amount: ₹${gst.basePrice.toLocaleString("en-IN")}`,
+          `${savingsLine}Base Amount: ₹${gst.basePrice.toLocaleString("en-IN")}`,
           gstLines,
           `Total Amount Paid: ₹${gst.totalPrice.toLocaleString("en-IN")}`,
           "",
@@ -281,6 +316,7 @@ export async function POST(req: Request) {
               formattedAddress,
               orderItems,
               gst,
+              categoryDiscounts,
             });
           } catch (emailError) {
             console.error("Order email dispatch skip:", emailError);
@@ -344,12 +380,17 @@ function escapeHtml(value: unknown): string {
 
 // Each row links both the photo and the name to the product's live page --
 // clicking through from the email should land exactly where the item was
-// bought from, not a search or the bare homepage.
-function buildItemRowsHtml(items: any[]): string {
+// bought from, not a search or the bare homepage. When categoryDiscounts is
+// given (customer copy only -- see buildOrderEmailHtml), each row also
+// shows a struck-through MRP worked back from that category's discount %;
+// the real price paid (item.price) is unaffected either way.
+function buildItemRowsHtml(items: any[], categoryDiscounts?: Record<string, number>): string {
   return items
     .map((item) => {
       const productUrl = `${SITE_URL}/product/${item.id}`;
-      const lineTotal = (Number(item.price) * Number(item.quantity)).toLocaleString("en-IN");
+      const lineTotalNum = Number(item.price) * Number(item.quantity);
+      const lineTotal = lineTotalNum.toLocaleString("en-IN");
+      const slashed = categoryDiscounts ? calculateSlashedPrice(lineTotalNum, categoryDiscounts[item.category]) : null;
       const image = item.image_url
         ? `<a href="${productUrl}"><img src="${escapeHtml(item.image_url)}" width="56" height="56" alt="${escapeHtml(item.name)}" style="display:block;border-radius:6px;object-fit:cover;border:1px solid #e7e5e4;" /></a>`
         : "";
@@ -359,10 +400,32 @@ function buildItemRowsHtml(items: any[]): string {
           <a href="${productUrl}" style="color:#1c1917;text-decoration:none;font-weight:600;font-size:14px;">${escapeHtml(item.name)}</a><br/>
           <span style="color:#78716c;font-size:12px;">Qty: ${escapeHtml(item.quantity)} &times; &#8377;${Number(item.price).toLocaleString("en-IN")}</span>
         </td>
-        <td style="padding:10px 0;text-align:right;vertical-align:top;font-family:monospace;font-size:14px;white-space:nowrap;">&#8377;${lineTotal}</td>
+        <td style="padding:10px 0;text-align:right;vertical-align:top;font-family:monospace;font-size:14px;white-space:nowrap;">
+          ${slashed ? `<div style="color:#a8a29e;text-decoration:line-through;font-size:11px;">&#8377;${slashed.originalPrice.toLocaleString("en-IN")}</div>` : ""}
+          &#8377;${lineTotal}
+        </td>
       </tr>`;
     })
     .join("");
+}
+
+// Aggregate "MRP Subtotal" / "You Saved" rows above the Base Amount line --
+// only rendered when categoryDiscounts is given (the customer copy) and
+// actually produces a saving.
+function mrpSavingsRowsHtml(items: any[], categoryDiscounts?: Record<string, number>): string {
+  if (!categoryDiscounts) return "";
+  let mrpSubtotal = 0;
+  let realSubtotal = 0;
+  for (const item of items) {
+    const lineTotal = Number(item.price) * Number(item.quantity);
+    realSubtotal += lineTotal;
+    const slashed = calculateSlashedPrice(lineTotal, categoryDiscounts[item.category]);
+    mrpSubtotal += slashed ? slashed.originalPrice : lineTotal;
+  }
+  if (mrpSubtotal <= realSubtotal) return "";
+  const savingsPercent = Math.round(((mrpSubtotal - realSubtotal) / mrpSubtotal) * 100);
+  return `<tr><td style="padding:2px 0;">MRP Subtotal</td><td style="padding:2px 0;text-align:right;font-family:monospace;text-decoration:line-through;color:#a8a29e;">&#8377;${mrpSubtotal.toLocaleString("en-IN")}</td></tr>
+    <tr><td style="padding:2px 0;color:#15803d;">You Saved</td><td style="padding:2px 0;text-align:right;font-family:monospace;color:#15803d;">&#8377;${(mrpSubtotal - realSubtotal).toLocaleString("en-IN")} (${savingsPercent}% off)</td></tr>`;
 }
 
 // Professional HTML order-confirmation template shared by both the business
@@ -379,8 +442,9 @@ function buildOrderEmailHtml(params: {
   orderItems: any[];
   gst: ReturnType<typeof calculateOrderGstBreakdown>;
   showCustomerContact: boolean;
+  categoryDiscounts?: Record<string, number>;
 }): string {
-  const { heading, intro, orderId, customerName, customerPhone, customerEmail, formattedAddress, orderItems, gst, showCustomerContact } = params;
+  const { heading, intro, orderId, customerName, customerPhone, customerEmail, formattedAddress, orderItems, gst, showCustomerContact, categoryDiscounts } = params;
 
   const gstRows = gst.byRate
     .map(
@@ -421,10 +485,11 @@ function buildOrderEmailHtml(params: {
 
         <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#a8a29e;margin:0 0 8px;">Items Ordered</h3>
         <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
-          ${buildItemRowsHtml(orderItems)}
+          ${buildItemRowsHtml(orderItems, showCustomerContact ? undefined : categoryDiscounts)}
         </table>
 
         <table style="width:100%;font-size:13px;color:#57534e;border-top:1px solid #e7e5e4;padding-top:10px;">
+          ${mrpSavingsRowsHtml(orderItems, showCustomerContact ? undefined : categoryDiscounts)}
           <tr><td style="padding:2px 0;">Base Amount</td><td style="padding:2px 0;text-align:right;font-family:monospace;">&#8377;${gst.basePrice.toLocaleString("en-IN")}</td></tr>
           ${gstRows}
           <tr><td style="padding:8px 0 0;font-weight:bold;font-size:15px;color:#1c1917;">Total</td><td style="padding:8px 0 0;text-align:right;font-weight:bold;font-size:16px;color:#b45309;font-family:monospace;">&#8377;${gst.totalPrice.toLocaleString("en-IN")}</td></tr>
@@ -449,11 +514,12 @@ async function sendOrderEmails(params: {
   formattedAddress: string;
   orderItems: any[];
   gst: ReturnType<typeof calculateOrderGstBreakdown>;
+  categoryDiscounts?: Record<string, number>;
 }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
 
-  const { orderId, customerName, customerPhone, customerEmail, formattedAddress, orderItems, gst } = params;
+  const { orderId, customerName, customerPhone, customerEmail, formattedAddress, orderItems, gst, categoryDiscounts } = params;
   const resend = new Resend(apiKey);
 
   const sends = [
@@ -472,6 +538,7 @@ async function sendOrderEmails(params: {
         orderItems,
         gst,
         showCustomerContact: true,
+        categoryDiscounts,
       }),
     }),
   ];
@@ -496,6 +563,7 @@ async function sendOrderEmails(params: {
           orderItems,
           gst,
           showCustomerContact: false,
+          categoryDiscounts,
         }),
       })
     );

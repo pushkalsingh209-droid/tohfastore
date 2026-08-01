@@ -33,6 +33,7 @@ export default function AdminDashboard() {
 
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryGstRate, setNewCategoryGstRate] = useState("5");
+  const [newCategoryDiscountPercent, setNewCategoryDiscountPercent] = useState("25");
   const [categoryStatus, setCategoryStatus] = useState("");
 
   const [couponForm, setCouponForm] = useState({
@@ -65,6 +66,7 @@ export default function AdminDashboard() {
   const [productPageSize, setProductPageSize] = useState(10);
   const [orderPage, setOrderPage] = useState(1);
   const [orderPageSize, setOrderPageSize] = useState(10);
+  const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "coupons" | "settings" | "reviews">("overview");
 
   // Load inventory data, orders, reviews, coupons, and categories from the
   // protected admin API on mount. The requests are independent, so fetch
@@ -383,11 +385,12 @@ export default function AdminDashboard() {
     try {
       const result = await apiRequest("/api/admin/categories", {
         method: "POST",
-        body: JSON.stringify({ name: newCategoryName.trim(), gst_rate: newCategoryGstRate }),
+        body: JSON.stringify({ name: newCategoryName.trim(), gst_rate: newCategoryGstRate, discount_percent: newCategoryDiscountPercent }),
       });
       setCategories([...categories, result.category].sort((a, b) => a.name.localeCompare(b.name)));
       setNewCategoryName("");
       setNewCategoryGstRate("5");
+      setNewCategoryDiscountPercent("25");
       setCategoryStatus("");
     } catch (err: any) {
       setCategoryStatus(err.message || "Could not add category.");
@@ -424,6 +427,18 @@ export default function AdminDashboard() {
       setCategories(categories.map((c) => (c.id === categoryId ? { ...c, gst_rate: result.category.gst_rate } : c)));
     } catch (err: any) {
       alert(`Could not update GST rate: ${err.message}`);
+    }
+  };
+
+  const handleUpdateCategoryDiscountPercent = async (categoryId: number, discountPercent: string) => {
+    try {
+      const result = await apiRequest("/api/admin/categories", {
+        method: "PATCH",
+        body: JSON.stringify({ id: categoryId, discount_percent: discountPercent }),
+      });
+      setCategories(categories.map((c) => (c.id === categoryId ? { ...c, discount_percent: result.category.discount_percent } : c)));
+    } catch (err: any) {
+      alert(`Could not update discount %: ${err.message}`);
     }
   };
 
@@ -481,6 +496,35 @@ export default function AdminDashboard() {
           </button>
         </div>
 
+        {/* MOBILE-FIRST SECTION TABS -- wraps into rows (3 per row on
+            narrow phones) instead of scrolling horizontally, so all tabs
+            are visible without needing to scroll sideways. */}
+        <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-1.5">
+          {[
+            { key: "overview", label: "Overview" },
+            { key: "products", label: "Products" },
+            { key: "orders", label: "Orders" },
+            { key: "coupons", label: "Coupons" },
+            { key: "settings", label: "Settings" },
+            { key: "reviews", label: "Reviews" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key as typeof activeTab)}
+              className={`sm:flex-shrink-0 px-3 py-2.5 rounded text-[11px] sm:text-xs uppercase tracking-wider font-semibold text-center transition ${
+                activeTab === tab.key
+                  ? "bg-amber-600 text-white shadow-sm"
+                  : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "overview" && (
+        <>
         {/* SECTION OVERVIEW: BUSINESS ANALYTICS */}
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
@@ -600,6 +644,11 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        </>
+        )}
+
+        {activeTab === "products" && (
+        <>
         {/* SECTION A: PRODUCT REGISTRY MANAGEMENT FORM */}
         <div className={`bg-white border rounded-lg shadow-sm p-8 transition duration-300 ${editingProductId ? "border-amber-500 shadow-amber-50" : "border-amber-200"}`}>
           <div className="border-b border-stone-100 pb-4 mb-6 flex items-center justify-between">
@@ -831,6 +880,11 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        </>
+        )}
+
+        {activeTab === "orders" && (
+        <>
         {/* SECTION C: SECURE INCOMING CUSTOMER ORDERS LEDGER */}
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
@@ -982,6 +1036,11 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        </>
+        )}
+
+        {activeTab === "coupons" && (
+        <>
         {/* SECTION D: COUPON / DISCOUNT CODES */}
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
@@ -1105,6 +1164,11 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        </>
+        )}
+
+        {activeTab === "settings" && (
+        <>
         {/* SECTION D.0: STOREFRONT SETTINGS */}
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
@@ -1132,7 +1196,7 @@ export default function AdminDashboard() {
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
             <h2 className="text-xl font-serif text-stone-900">Categories</h2>
-            <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form's dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category's products appear in the homepage's default view (they're still reachable by selecting the category directly). GST % is set per category and used to break down the final bill. &ldquo;Products/page&rdquo; overrides the site-wide default just for that category&rsquo;s own page -- leave blank to use the default above.</p>
+            <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form's dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category's products appear in the homepage's default view (they're still reachable by selecting the category directly). GST % is set per category and used to break down the final bill. &ldquo;% Off&rdquo; shows a struck-through original price everywhere on the site (product price you set stays the real price charged -- this is display only). &ldquo;Products/page&rdquo; overrides the site-wide default just for that category&rsquo;s own page -- leave blank to use the default above.</p>
           </div>
 
           <form onSubmit={handleCreateCategory} className="flex gap-3 mb-4">
@@ -1155,6 +1219,19 @@ export default function AdminDashboard() {
                 className="w-20 px-3 py-2.5 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
               />
               <span className="text-xs text-stone-500 whitespace-nowrap">% GST</span>
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <input
+                type="number"
+                min="0"
+                max="99"
+                step="0.01"
+                title="Discount % (used to show a struck-through original price)"
+                value={newCategoryDiscountPercent}
+                onChange={(e) => setNewCategoryDiscountPercent(e.target.value)}
+                className="w-20 px-3 py-2.5 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
+              />
+              <span className="text-xs text-stone-500 whitespace-nowrap">% Off</span>
             </div>
             <button type="submit" className="px-4 py-2.5 rounded bg-stone-950 hover:bg-amber-800 text-white font-medium text-xs uppercase tracking-wider shadow transition whitespace-nowrap">
               Add
@@ -1186,6 +1263,22 @@ export default function AdminDashboard() {
                         className="w-16 px-2 py-1.5 rounded border border-stone-300 text-xs font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
                       />
                       <span className="text-[11px] text-stone-400">% GST</span>
+                    </div>
+                    <div className="flex items-center gap-1.5" title="Discount % used to show a struck-through original price on the storefront (the real price customers pay is unaffected)">
+                      <input
+                        key={`${cat.id}-${cat.discount_percent}`}
+                        type="number"
+                        min="0"
+                        max="99"
+                        step="0.01"
+                        defaultValue={cat.discount_percent ?? 25}
+                        onBlur={(e) => {
+                          const next = e.target.value;
+                          if (next !== String(cat.discount_percent)) handleUpdateCategoryDiscountPercent(cat.id, next);
+                        }}
+                        className="w-16 px-2 py-1.5 rounded border border-stone-300 text-xs font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+                      />
+                      <span className="text-[11px] text-stone-400">% Off</span>
                     </div>
                     <div className="flex items-center gap-1.5" title="Products per page override for this category -- leave blank to use the site-wide default">
                       <input
@@ -1230,6 +1323,11 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        </>
+        )}
+
+        {activeTab === "reviews" && (
+        <>
         {/* SECTION E: PRODUCT REVIEW MODERATION QUEUE */}
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
@@ -1284,6 +1382,8 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
+        </>
+        )}
 
       </div>
     </div>
