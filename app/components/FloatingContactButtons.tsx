@@ -3,6 +3,10 @@
 // keep that row from crowding), so mobile gets its own always-visible
 // shortcut instead -- a small floating WhatsApp + email pair, the pattern
 // most e-commerce sites use to keep contact one tap away.
+import { WHATSAPP_NUMBER } from "@/app/utils/whatsapp";
+
+const GENERAL_INQUIRY_MESSAGE = "Hi! I want to enquire about Tohfa products.";
+
 export default function FloatingContactButtons() {
   return (
     <div className="md:hidden fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2.5 print:hidden">
@@ -17,7 +21,7 @@ export default function FloatingContactButtons() {
         </svg>
       </a>
       <a
-        href="https://wa.me/916302672351"
+        href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(GENERAL_INQUIRY_MESSAGE)}`}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat on WhatsApp"

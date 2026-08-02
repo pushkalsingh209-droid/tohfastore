@@ -254,18 +254,24 @@ export default async function ProductDetailPage({
                   href={whatsappHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`flex items-center justify-center w-full text-white text-sm uppercase tracking-wider font-semibold py-4 rounded shadow transition active:scale-[0.99] gap-2 ${
+                  className={`grid grid-cols-[auto_1fr_auto] items-center gap-2 w-full text-white text-sm uppercase tracking-wider font-semibold py-4 px-4 rounded shadow transition active:scale-[0.99] ${
                     outOfStock ? "bg-amber-700 hover:bg-amber-800" : "bg-emerald-600 hover:bg-emerald-700"
                   }`}
                 >
+                  {/* Grid, not flex+justify-center: the icon and this
+                      invisible spacer (matched to the icon's own width) sit
+                      in the outer two columns, so the middle column's
+                      centered text can never overlap the icon regardless of
+                      how long the label gets. */}
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                     <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-4.846c1.66.986 3.296 1.489 4.974 1.49 5.405 0 9.811-4.366 9.815-9.736.002-2.599-1.002-5.045-2.83-6.876C16.718 2.2 14.28 1.2 11.999 1.2c-5.41 0-9.821 4.366-9.825 9.736a9.617 9.617 0 0 0 1.503 5.123L2.68 20.2l4.411-1.154z" />
                   </svg>
-                  {outOfStock ? "Chat to Check Availability" : "Chat & Ask For a Discount"}
+                  <span className="text-center">{outOfStock ? "Chat to Check Availability" : "Chat & Ask For a Discount"}</span>
+                  <span aria-hidden="true" className="w-4" />
                 </a>
                 <p className="text-center text-[11px] text-stone-400">
                   {outOfStock
-                    ? "This item is currently out of stock — message us on WhatsApp and we'll let you know when it's back."
+                    ? "This item is currently out of stock — reach out to us on WhatsApp to check when it will be available again."
                     : "Our team replies fast on WhatsApp — ask questions, request bulk pricing, or negotiate before you buy."}
                 </p>
 

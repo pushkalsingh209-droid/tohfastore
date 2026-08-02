@@ -11,11 +11,16 @@ export interface CategorySliderItem {
 
 export async function getCategorySliderItems(): Promise<CategorySliderItem[]> {
   try {
+    // Out-of-stock products never get picked as the category's representative
+    // photo -- if every product in a category is out of stock, that category
+    // simply doesn't appear in the slider/hero at all (there's no in-stock
+    // item to show for it) rather than showing something unavailable.
     const { data, error } = await supabase
       .from("products")
       .select("id, name, image_url, category")
       .not("category", "is", null)
-      .not("image_url", "is", null);
+      .not("image_url", "is", null)
+      .gt("inventory", 0);
     if (error || !data) return [];
 
     const byCategory = new Map<string, { id: number; name: string; image_url: string }[]>();
