@@ -15,7 +15,54 @@ export default function SearchBar() {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [listening, setListening] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Web Speech API -- runs entirely in the browser (Chrome/Edge send audio
+  // to their own speech service under the hood, but there's no server cost
+  // or API key on our end either way), so this is checked client-side only
+  // to avoid a server/client render mismatch, and the mic button simply
+  // never renders on browsers without support (notably iOS Safari) rather
+  // than showing a button that wouldn't work.
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-IN";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (event: any) => {
+      const transcript = event.results?.[0]?.[0]?.transcript;
+      if (transcript) {
+        setQuery(transcript);
+        setIsOpen(true);
+        setActiveIndex(-1);
+      }
+    };
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+    recognitionRef.current = recognition;
+    setVoiceSupported(true);
+    return () => recognition.abort();
+  }, []);
+
+  function toggleVoiceSearch() {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+    if (listening) {
+      recognition.stop();
+      setListening(false);
+    } else {
+      try {
+        recognition.start();
+        setListening(true);
+      } catch {
+        // start() throws if already running (rapid double-click) -- no-op
+      }
+    }
+  }
 
   useEffect(() => {
     async function loadProducts() {
@@ -89,10 +136,34 @@ export default function SearchBar() {
           }}
           onFocus={() => trimmedQuery && setIsOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder="Search brass artifacts..."
+          placeholder={listening ? "Listening..." : "Search brass artifacts..."}
           aria-label="Search products"
-          className="w-full pl-9 pr-3 py-2.5 rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-sm text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-600 focus:bg-white dark:focus:bg-stone-800 transition"
+          className={`w-full pl-9 py-2.5 rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-sm text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-600 focus:bg-white dark:focus:bg-stone-800 transition ${
+            voiceSupported ? "pr-9" : "pr-3"
+          }`}
         />
+        {voiceSupported && (
+          <button
+            type="button"
+            onClick={toggleVoiceSearch}
+            aria-label={listening ? "Stop voice search" : "Search by voice"}
+            aria-pressed={listening}
+            className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full transition ${
+              listening ? "text-red-600 animate-pulse" : "text-stone-400 hover:text-amber-700 dark:hover:text-amber-500"
+            }`}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z" />
+              <path
+                d="M19 11a7 7 0 0 1-14 0M12 18v3"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        )}
       </div>
 
       {isOpen && trimmedQuery.length > 0 && (
