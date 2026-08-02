@@ -92,10 +92,11 @@ export default function CataloguePage() {
             </div>
             <div>
               <label className="block text-xs uppercase tracking-wider text-stone-600 dark:text-stone-400 font-semibold mb-2">
-                WhatsApp Number <span className="normal-case text-stone-400">(optional)</span>
+                WhatsApp Number
               </label>
               <input
                 type="tel"
+                required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="9876543210"

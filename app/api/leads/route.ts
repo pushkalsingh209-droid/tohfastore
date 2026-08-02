@@ -37,6 +37,9 @@ export async function POST(req: Request) {
     if (!VALID_SOURCES.includes(source)) {
       return NextResponse.json({ error: "Invalid lead source." }, { status: 400 });
     }
+    if (source === "catalogue_download" && !phone) {
+      return NextResponse.json({ error: "Please enter your WhatsApp number so we can send you the catalogue." }, { status: 400 });
+    }
     if (!email && !phone) {
       return NextResponse.json({ error: "Please enter an email or phone number so we can reach you." }, { status: 400 });
     }
