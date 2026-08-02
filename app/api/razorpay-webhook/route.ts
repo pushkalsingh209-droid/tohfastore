@@ -6,6 +6,7 @@ import { Resend } from "resend";
 import { isValidPaymentSignature } from "@/app/utils/razorpaySignature";
 import { calculateOrderGstBreakdown, BUSINESS_GSTIN } from "@/app/utils/gst";
 import { calculateSlashedPrice } from "@/app/utils/pricing";
+import { sendWhatsappMessage } from "@/app/utils/greenApi";
 
 const CONTACT_INBOX = "contact@tohfaonline.com";
 
@@ -328,47 +329,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ status: "webhook_acknowledged" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
-
-// Best-effort WhatsApp send via Green API. Silently no-ops until
-// GREEN_API_URL / GREEN_API_ID_INSTANCE / GREEN_API_TOKEN_INSTANCE are set.
-// When imageUrl is given, sends it as an image message with `message` as
-// the caption (sendFileByUrl) instead of a plain text message -- falls back
-// to plain text if the image send fails for any reason (bad URL, WhatsApp
-// media rejection, etc.) so a formatting problem never costs the alert
-// entirely.
-async function sendWhatsappMessage(phone: string, message: string, imageUrl?: string) {
-  const greenApiUrl = process.env.GREEN_API_URL;
-  const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
-  const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
-  if (!greenApiUrl || !greenApiIdInstance || !greenApiTokenInstance) return;
-
-  const chatId = phone.startsWith("91") ? `${phone}@c.us` : `91${phone}@c.us`;
-
-  if (imageUrl) {
-    const imageRes = await fetch(
-      `${greenApiUrl}/waInstance${greenApiIdInstance}/sendFileByUrl/${greenApiTokenInstance}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId, urlFile: imageUrl, fileName: "tohfa-order.jpg", caption: message }),
-      }
-    );
-    if (imageRes.ok) return;
-    console.error("WhatsApp (Green API) image send failed, falling back to text:", chatId, await imageRes.text());
-  }
-
-  const res = await fetch(
-    `${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chatId, message }),
-    }
-  );
-  if (!res.ok) {
-    console.error("WhatsApp (Green API) send failed:", chatId, await res.text());
   }
 }
 

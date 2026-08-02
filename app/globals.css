@@ -124,6 +124,44 @@ textarea:focus-visible,
   transition: transform 200ms ease-out;
 }
 
+/* WelcomeGaneshaPopup's entrance: a windshield-wiper sweep -- the card
+   pivots around its own bottom-left corner (transform-origin below), which
+   sits exactly at the fixed-position wrapper's left-viewport-edge anchor,
+   so the whole card swings through a circular arc around that point rather
+   than sliding in a straight line. Starts swept away (rotated out of view),
+   sweeps in to the resting tilt. The .ganesha-anim-leave class runs this
+   same keyframe in reverse, so the exit sweeps back out along the same
+   arc it swept in on. */
+@keyframes ganesha-wiper {
+  0% {
+    transform: rotate(-100deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(12deg);
+    opacity: 1;
+  }
+}
+
+.ganesha-anim-enter {
+  transform-origin: 0% 100%;
+  animation: ganesha-wiper 2000ms cubic-bezier(0.45, 0, 0.55, 1) forwards;
+}
+
+.ganesha-anim-leave {
+  transform-origin: 0% 100%;
+  animation: ganesha-wiper 2000ms cubic-bezier(0.45, 0, 0.55, 1) reverse forwards;
+}
+
+.ganesha-anim-shown {
+  transform-origin: 0% 100%;
+  transform: rotate(12deg);
+  opacity: 1;
+}
+
 @media print {
   html {
     color-scheme: light;

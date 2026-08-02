@@ -271,6 +271,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleLeadFollowUp = async (leadId: number, markOnly: boolean) => {
+    try {
+      const result = await apiRequest("/api/admin/leads/follow-up", {
+        method: "POST",
+        body: JSON.stringify({ id: leadId, markOnly }),
+      });
+      setLeads(leads.map((l) => (l.id === leadId ? result.lead : l)));
+    } catch (err: any) {
+      alert(`Could not follow up: ${err.message}`);
+    }
+  };
+
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     try {
       const res = await fetch("/api/admin/orders/update-status", {
@@ -599,6 +611,7 @@ export default function AdminDashboard() {
                     <th className="p-3">Contact</th>
                     <th className="p-3">Source</th>
                     <th className="p-3">Details</th>
+                    <th className="p-3">Follow-up</th>
                     <th className="p-3 text-right">Date</th>
                   </tr>
                 </thead>
@@ -630,6 +643,32 @@ export default function AdminDashboard() {
                             {lead.details.message && (
                               <div className="text-stone-400 italic line-clamp-2">&ldquo;{lead.details.message}&rdquo;</div>
                             )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3 whitespace-nowrap">
+                        {lead.contacted ? (
+                          <span className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-green-50 text-green-700 border border-green-200">
+                            Contacted{lead.contacted_at ? ` · ${new Date(lead.contacted_at).toLocaleDateString("en-IN")}` : ""}
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            {lead.phone && (
+                              <button
+                                type="button"
+                                onClick={() => handleLeadFollowUp(lead.id, false)}
+                                className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-amber-600 text-white hover:bg-amber-700 transition"
+                              >
+                                Send WhatsApp
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleLeadFollowUp(lead.id, true)}
+                              className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-stone-100 text-stone-600 border border-stone-200 hover:bg-stone-200 transition"
+                            >
+                              Mark done
+                            </button>
                           </div>
                         )}
                       </td>

@@ -215,17 +215,19 @@ export default async function StorefrontHome({
 
         {bestsellers.length > 0 && <BestsellersStrip items={bestsellers} />}
 
-        <CatalogSection
-          products={products}
-          count={count}
-          page={page}
-          pageSize={pageSize}
-          categories={categories}
-          category={category}
-          sort={sort}
-          inStockOnly={inStockOnly}
-          heading={categoryContent?.heading}
-        />
+        <div id="shop">
+          <CatalogSection
+            products={products}
+            count={count}
+            page={page}
+            pageSize={pageSize}
+            categories={categories}
+            category={category}
+            sort={sort}
+            inStockOnly={inStockOnly}
+            heading={categoryContent?.heading}
+          />
+        </div>
 
         <RecentlyViewedStrip />
       </div>

@@ -15,6 +15,7 @@ import InstallPrompt from "@/app/components/InstallPrompt";
 import FloatingContactButtons from "@/app/components/FloatingContactButtons";
 import AbandonedCartNudge from "@/app/components/AbandonedCartNudge";
 import MetaPixel from "@/app/components/MetaPixel";
+import WelcomeGaneshaPopup from "@/app/components/WelcomeGaneshaPopup";
 import "./globals.css"; // Imports your global styling configurations
 
 export const metadata: Metadata = {
@@ -48,7 +49,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
@@ -111,34 +112,41 @@ export default function RootLayout({
               state that already persists to localStorage. */}
           <AbandonedCartNudge />
 
+          {/* Cute Ganesha mascot greeting on first homepage visit (or a
+              fresh visit from a tagged lead link) -- see
+              app/components/WelcomeGaneshaPopup.tsx for the trigger/frequency
+              logic. */}
+          <WelcomeGaneshaPopup />
+
           {/* Dynamically loads Razorpay's secure transactional modal overlay system */}
           <Script
             src="https://checkout.razorpay.com/v1/checkout.js"
             strategy="lazyOnload"
           />
 
+          {/* GA4 -- feeds the Google Ads campaign currently running for
+              tohfaonline.com. Purchase conversions are fired separately on
+              the success page using the real order amount (see
+              app/success/page.tsx), not just this page-view tag. This also
+              loads gtag.js and sets up window.gtag, which the Ads config
+              below reuses instead of loading a second copy of the script. */}
+          <GoogleAnalytics gaId="G-VQNDNFET4F" />
+          {/* Google Ads conversion tag (AW-16996304509), provided directly by
+              the user for the live ad campaign. Reuses the dataLayer/gtag
+              already set up above rather than re-loading gtag.js. */}
+          <Script id="google-ads-config" strategy="afterInteractive">
+            {`window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('config', 'AW-16996304509');`}
+          </Script>
+          {/* Meta (Facebook/Instagram) Pixel -- no-ops until
+              NEXT_PUBLIC_META_PIXEL_ID is set. */}
+          <MetaPixel />
+
           {/* Free on the current Vercel plan -- gives real traffic/perf data
               instead of guesswork for what to optimize next. */}
           <Analytics />
         </body>
-        {/* GA4 -- feeds the Google Ads campaign currently running for
-            tohfaonline.com. Purchase conversions are fired separately on
-            the success page using the real order amount (see
-            app/success/page.tsx), not just this page-view tag. This also
-            loads gtag.js and sets up window.gtag, which the Ads config
-            below reuses instead of loading a second copy of the script. */}
-        <GoogleAnalytics gaId="G-VQNDNFET4F" />
-        {/* Google Ads conversion tag (AW-16996304509), provided directly by
-            the user for the live ad campaign. Reuses the dataLayer/gtag
-            already set up above rather than re-loading gtag.js. */}
-        <Script id="google-ads-config" strategy="afterInteractive">
-          {`window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('config', 'AW-16996304509');`}
-        </Script>
-        {/* Meta (Facebook/Instagram) Pixel -- no-ops until
-            NEXT_PUBLIC_META_PIXEL_ID is set. */}
-        <MetaPixel />
       </CategoryDiscountProvider>
       </CatalogLoadingProvider>
       </WishlistProvider>
