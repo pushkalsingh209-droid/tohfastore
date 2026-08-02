@@ -162,6 +162,33 @@ textarea:focus-visible,
   opacity: 1;
 }
 
+/* Homepage hero: a gentle one-time fade-up on load for the text block and
+   a slightly-delayed echo for the product photo -- pure CSS (this content
+   is server-rendered, not client-interactive) so there's no JS/hydration
+   cost, just an `animation-delay` stagger between the two. */
+@keyframes hero-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.hero-fade-up {
+  animation: hero-fade-up 700ms ease-out both;
+}
+.hero-fade-up-delayed {
+  animation: hero-fade-up 700ms ease-out 200ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-fade-up,
+  .hero-fade-up-delayed {
+    animation: none;
+  }
+}
+
 @media print {
   html {
     color-scheme: light;

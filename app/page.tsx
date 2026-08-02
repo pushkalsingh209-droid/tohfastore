@@ -1,9 +1,9 @@
 // app/page.tsx
 import type { Metadata } from "next";
-import Image from "next/image";
 import CatalogSection from "@/app/components/CatalogSection";
 import CategorySlider from "@/app/components/CategorySlider";
 import BestsellersStrip from "@/app/components/BestsellersStrip";
+import HeroProductRotator from "@/app/components/HeroProductRotator";
 import PromoBanner from "@/app/components/PromoBanner";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
 import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
@@ -153,9 +153,9 @@ export default async function StorefrontHome({
             The product photo is text-only on mobile (keeps the critical
             path light) and appears alongside the text from md up, where
             there's room for it. */}
-        <section className="bg-gradient-to-r from-stone-900 via-stone-800 to-amber-950 text-white relative overflow-hidden">
+        <section className="bg-gradient-to-r from-stone-900 via-amber-900 to-[#3d1113] text-white relative overflow-hidden">
           <div className="max-w-7xl mx-auto px-6 py-16 md:py-24 relative z-10 grid md:grid-cols-2 gap-10 md:gap-16 items-center">
-            <div className="text-center md:text-left">
+            <div className="text-center md:text-left hero-fade-up">
               <span className="text-amber-400 uppercase tracking-[0.3em] text-xs font-semibold block mb-3">
                 {categoryContent ? categoryContent.tagline : "Timeless Indian Craftsmanship"}
               </span>
@@ -177,38 +177,49 @@ export default async function StorefrontHome({
                 </a>
                 <a
                   href="#shop-by-category"
-                  className="inline-flex items-center justify-center border border-white/30 hover:border-white/60 text-white text-xs uppercase tracking-wider font-semibold px-6 py-3.5 rounded transition active:scale-[0.99] w-full sm:w-auto"
+                  className="inline-flex items-center justify-center border border-white/40 hover:border-white/70 hover:bg-white/10 text-white text-xs uppercase tracking-wider font-semibold px-6 py-3.5 rounded transition active:scale-[0.99] w-full sm:w-auto"
                 >
                   Browse Categories
                 </a>
               </div>
 
               {totalProductCount > 0 && (
-                <p className="text-stone-400 text-[11px] uppercase tracking-wider font-mono">
-                  {totalProductCount}+ Handcrafted Pieces &middot; Pan-India Delivery &middot; WhatsApp Support
-                </p>
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-5 gap-y-2 text-stone-400 text-[11px] uppercase tracking-wider font-mono">
+                  <span className="inline-flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6M12 2v13m0 0l4-4m-4 4l-4-4" />
+                    </svg>
+                    {totalProductCount}+ Handcrafted Pieces
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16V7a1 1 0 0 1 1-1h9v10H4a1 1 0 0 1-1-1z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10h4l3 3v3h-7v-6z" />
+                      <circle cx="7" cy="18" r="1.6" /><circle cx="17" cy="18" r="1.6" />
+                    </svg>
+                    Pan-India Delivery
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 fill-current" viewBox="0 0 24 24">
+                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-4.846c1.66.986 3.296 1.489 4.974 1.49 5.405 0 9.811-4.366 9.815-9.736.002-2.599-1.002-5.045-2.83-6.876C16.718 2.2 14.28 1.2 11.999 1.2c-5.41 0-9.821 4.366-9.825 9.736a9.617 9.617 0 0 0 1.503 5.123L2.68 20.2l4.411-1.154z" />
+                    </svg>
+                    WhatsApp Support
+                  </span>
+                </div>
               )}
             </div>
 
             {heroProduct && (
-              <div className="hidden md:block relative">
-                <div className="relative aspect-square max-w-sm mx-auto rounded-lg overflow-hidden border border-white/10 shadow-2xl">
-                  <Image
-                    src={heroProduct.product.image_url}
-                    alt={heroProduct.product.name}
-                    fill
-                    sizes="384px"
-                    className="object-cover"
-                    priority
-                  />
-                </div>
-                <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-amber-600 text-stone-950 text-[10px] uppercase tracking-wider font-bold px-4 py-1.5 rounded-full shadow-lg whitespace-nowrap">
-                  {heroProduct.product.name}
-                </span>
+              <div className="hero-fade-up-delayed">
+                {/* A category filter pins this to that one category's photo
+                    (a single-item array trivially disables rotation, since
+                    there's nothing else to cycle through); the unfiltered
+                    homepage rotates across one random pick per category. */}
+                <HeroProductRotator items={category ? [heroProduct] : categorySliderItems} />
               </div>
             )}
           </div>
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#d97706_1px,transparent_1px)] [background-size:16px_16px]"></div>
+          <div className="absolute inset-0 opacity-[0.14] bg-[radial-gradient(#d97706_1px,transparent_1px)] [background-size:16px_16px]"></div>
         </section>
 
         <CategorySlider items={categorySliderItems} priorityFirst />
