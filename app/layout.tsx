@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { CartProvider } from "@/app/context/CartContext";
 import { WishlistProvider } from "@/app/context/WishlistContext";
@@ -151,6 +152,10 @@ export default function RootLayout({
           {/* Free on the current Vercel plan -- gives real traffic/perf data
               instead of guesswork for what to optimize next. */}
           <Analytics />
+          {/* Real-user Core Web Vitals (LCP, CLS, INP, etc.) per page,
+              visible in the Vercel dashboard's Speed Insights tab --
+              same free tier as Analytics above, just a separate script. */}
+          <SpeedInsights />
         </body>
       </CategoryDiscountProvider>
       </CatalogLoadingProvider>
