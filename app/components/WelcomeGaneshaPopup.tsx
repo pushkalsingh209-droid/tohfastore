@@ -17,6 +17,16 @@ import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
 const SHOW_DELAY_MS = 1200; // gives the page a beat to finish its own initial load/paint first
 const ARC_DURATION_MS = 2000; // must match the ganesha-arc keyframe duration in globals.css
 const SHOWN_DURATION_MS = 5000; // how long it stays fully landed before arcing back out
+const MUTED_KEY = "tohfa_welcome_muted";
+
+function isMutedInStorage(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(MUTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 type Phase = "hidden" | "entering" | "shown" | "leaving";
 
@@ -55,6 +65,10 @@ export default function WelcomeGaneshaPopup() {
   const [phase, setPhase] = useState<Phase>("hidden");
   const [greeting, setGreeting] = useState("शुभ आगमन!");
   const [audioBlocked, setAudioBlocked] = useState(false);
+  // Persisted across reloads/sessions -- once muted, it stays muted (no
+  // autoplay attempt, no first-interaction retry, no "Tap to hear" prompt)
+  // until the visitor deliberately unmutes it again from the same toggle.
+  const [muted, setMuted] = useState(isMutedInStorage);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const dismissedRef = useRef(false);
 
@@ -114,6 +128,7 @@ export default function WelcomeGaneshaPopup() {
     if (phase !== "entering") return;
     const t = setTimeout(() => {
       setPhase("shown");
+      if (muted) return;
       // Speak once the body has fully arced in and landed, not before.
       audioRef.current?.play().then(
         () => trackEvent("welcome_popup_voice_autoplayed"),
@@ -121,6 +136,7 @@ export default function WelcomeGaneshaPopup() {
       );
     }, ARC_DURATION_MS);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
   useEffect(() => {
@@ -145,7 +161,7 @@ export default function WelcomeGaneshaPopup() {
   // all -- in practice that's almost always within a second or two, so most
   // visitors hear it without ever noticing the badge or tapping it directly.
   useEffect(() => {
-    if (phase === "hidden" || !audioBlocked) return;
+    if (phase === "hidden" || !audioBlocked || muted) return;
     function retryOnFirstInteraction() {
       audioRef.current?.play().then(
         () => {
@@ -160,7 +176,7 @@ export default function WelcomeGaneshaPopup() {
     return () => {
       events.forEach((event) => window.removeEventListener(event, retryOnFirstInteraction));
     };
-  }, [phase, audioBlocked]);
+  }, [phase, audioBlocked, muted]);
 
   function startLeaving() {
     if (phase === "hidden" || phase === "leaving") return;
@@ -173,6 +189,21 @@ export default function WelcomeGaneshaPopup() {
       audioRef.current?.play().then(() => setAudioBlocked(false)).catch(() => {});
       trackEvent("welcome_popup_voice_played");
     } catch {}
+  }
+
+  function toggleMute() {
+    setMuted((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(MUTED_KEY, next ? "1" : "0");
+      } catch {}
+      if (next) {
+        audioRef.current?.pause();
+        setAudioBlocked(false);
+      }
+      trackEvent(next ? "welcome_popup_muted" : "welcome_popup_unmuted");
+      return next;
+    });
   }
 
   function shopNow() {
@@ -222,6 +253,26 @@ export default function WelcomeGaneshaPopup() {
           >
             <button
               type="button"
+              onClick={toggleMute}
+              aria-label={muted ? "Unmute Ganesha's greeting" : "Mute Ganesha's greeting"}
+              aria-pressed={muted}
+              className="absolute top-1.5 right-7 w-5 h-5 flex items-center justify-center text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+            >
+              {muted ? (
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M3 9v6h4l5 5V4L7 9H3z" />
+                  <path d="M16.5 6.5l4 4m0-4l-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M3 9v6h4l5 5V4L7 9H3z" />
+                  <path d="M16.5 12a4.5 4.5 0 0 0-2.5-4.03v8.06A4.5 4.5 0 0 0 16.5 12z" />
+                  <path d="M19 5.5a9 9 0 0 1 0 13" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                </svg>
+              )}
+            </button>
+            <button
+              type="button"
               onClick={startLeaving}
               aria-label="Dismiss"
               className="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
@@ -230,8 +281,8 @@ export default function WelcomeGaneshaPopup() {
                 <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
               </svg>
             </button>
-            <p className="text-sm font-serif text-stone-900 dark:text-stone-100 pr-4 mb-2">{greeting}</p>
-            {audioBlocked && phase === "shown" && (
+            <p className="text-sm font-serif text-stone-900 dark:text-stone-100 pr-9 mb-2">{greeting}</p>
+            {!muted && audioBlocked && phase === "shown" && (
               <button
                 type="button"
                 onClick={playVoice}
