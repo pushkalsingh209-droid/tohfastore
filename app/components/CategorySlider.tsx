@@ -18,7 +18,17 @@ const AUTO_SCROLL_PX_PER_FRAME = 0.6;
 // touching) pauses it so a card can actually be read and clicked. Clicking
 // routes into that category's existing homepage filter, through the same
 // shared loading overlay as every other category link on the site.
-export default function CategorySlider({ items }: { items: CategorySliderItem[] }) {
+export default function CategorySlider({
+  items,
+  priorityFirst = false,
+}: {
+  items: CategorySliderItem[];
+  // Only true on the homepage, where this is the first image-bearing
+  // element after the (desktop-only) hero banner -- on mobile it's likely
+  // the actual Largest Contentful Paint element. Left false on the product
+  // page, where this slider renders near the bottom, well below the fold.
+  priorityFirst?: boolean;
+}) {
   const router = useRouter();
   const { runTransition } = useCatalogLoading();
   const trackRef = useRef<HTMLDivElement>(null);
@@ -74,7 +84,7 @@ export default function CategorySlider({ items }: { items: CategorySliderItem[] 
         onTouchEnd={resume}
         className="flex gap-4 overflow-x-auto pb-3 -mx-6 px-6"
       >
-        {items.map((item) => (
+        {items.map((item, index) => (
           <a
             key={item.name}
             href={`/?category=${encodeURIComponent(item.name)}`}
@@ -84,6 +94,7 @@ export default function CategorySlider({ items }: { items: CategorySliderItem[] 
             <Image
               src={item.product.image_url}
               alt={item.product.name}
+              priority={priorityFirst && index === 0}
               fill
               sizes="(max-width: 640px) 144px, 176px"
               className="object-cover transition-transform duration-300 group-hover:scale-105"

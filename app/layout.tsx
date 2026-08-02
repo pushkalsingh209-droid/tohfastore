@@ -1,5 +1,6 @@
 // app/layout.tsx
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
@@ -112,11 +113,15 @@ export default function RootLayout({
               state that already persists to localStorage. */}
           <AbandonedCartNudge />
 
-          {/* Cute Ganesha mascot greeting on first homepage visit (or a
-              fresh visit from a tagged lead link) -- see
+          {/* Cute Ganesha mascot greeting on every page load, category
+              filter, and product page visit -- see
               app/components/WelcomeGaneshaPopup.tsx for the trigger/frequency
-              logic. */}
-          <WelcomeGaneshaPopup />
+              logic. Wrapped in Suspense because it reads useSearchParams(),
+              which the App Router requires for pages that would otherwise
+              be statically prerendered. */}
+          <Suspense fallback={null}>
+            <WelcomeGaneshaPopup />
+          </Suspense>
 
           {/* Dynamically loads Razorpay's secure transactional modal overlay system */}
           <Script

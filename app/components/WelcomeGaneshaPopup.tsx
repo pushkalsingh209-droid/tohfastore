@@ -11,7 +11,8 @@
 // a visible speaker badge as the last-resort manual option.
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
 
 const SHOW_DELAY_MS = 1200; // gives the page a beat to finish its own initial load/paint first
 const ARC_DURATION_MS = 2000; // must match the ganesha-arc keyframe duration in globals.css
@@ -39,6 +40,18 @@ function getLeadSource(): string | null {
 export default function WelcomeGaneshaPopup() {
   const pathname = usePathname();
   const router = useRouter();
+  // Category pages aren't a distinct route -- they're the same "/" pathname
+  // filtered via a ?category= query string (see CatalogSection.tsx), which
+  // usePathname() alone can't see. Including the search string here means
+  // switching categories (client-side, no full reload) re-triggers the
+  // popup too, not just a genuine pathname change.
+  const searchParamsKey = useSearchParams().toString();
+  // Category filters/pagination run through this shared transition (see
+  // CatalogLoadingOverlay) instead of a real page reload -- so
+  // document.readyState is already "complete" the moment one starts, and
+  // the window-load check below alone wouldn't wait for that in-app loader
+  // to actually finish before popping up over it.
+  const { isPending: catalogLoading } = useCatalogLoading();
   const [phase, setPhase] = useState<Phase>("hidden");
   const [greeting, setGreeting] = useState("शुभ आगमन!");
   const [audioBlocked, setAudioBlocked] = useState(false);
@@ -52,6 +65,12 @@ export default function WelcomeGaneshaPopup() {
     if (leadSource === "catalogue") setGreeting("शुभ आगमन! Here for something from the catalogue?");
     else if (leadSource === "corporate") setGreeting("शुभ आगमन! Let's find the perfect corporate gift.");
     else setGreeting("शुभ आगमन!");
+
+    // A category/pagination transition is actively loading right now --
+    // don't schedule anything yet. This same effect re-runs the instant
+    // catalogLoading flips back to false (it's a dependency below), and
+    // picks up from there.
+    if (catalogLoading) return;
 
     let timer: ReturnType<typeof setTimeout>;
     function show() {
@@ -77,10 +96,12 @@ export default function WelcomeGaneshaPopup() {
       window.removeEventListener("load", show);
       clearTimeout(timer);
     };
-    // Every route change (and every full reload, which remounts everything)
-    // re-runs this -- fires again each time by design, not just once.
+    // Every route change, every category-filter change, every catalog
+    // transition finishing, and every full reload (which remounts
+    // everything) re-runs this -- fires again each time by design, not
+    // just once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, searchParamsKey, catalogLoading]);
 
   // Phase advancement is driven by fixed timers matching the CSS animation's
   // duration, not the browser's `animationend` event -- that event silently
@@ -157,8 +178,14 @@ export default function WelcomeGaneshaPopup() {
   function shopNow() {
     trackEvent("welcome_popup_shop_now_click");
     startLeaving();
-    if (pathname === "/") {
-      document.getElementById("shop")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Prefer the current page's own shopping section (the catalog grid on
+    // home, the "Customers Also Bought" strip on a product page, etc.) if
+    // it has one -- only a page with no shop-like section of its own
+    // (contact, about, and similar informational pages) falls back to
+    // navigating home.
+    const shopSection = document.getElementById("shop");
+    if (shopSection) {
+      shopSection.scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
       router.push("/#shop");
     }

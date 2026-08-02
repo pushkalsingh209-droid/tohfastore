@@ -211,9 +211,7 @@ export default async function StorefrontHome({
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#d97706_1px,transparent_1px)] [background-size:16px_16px]"></div>
         </section>
 
-        <CategorySlider items={categorySliderItems} />
-
-        {bestsellers.length > 0 && <BestsellersStrip items={bestsellers} />}
+        <CategorySlider items={categorySliderItems} priorityFirst />
 
         <div id="shop">
           <CatalogSection
@@ -228,6 +226,8 @@ export default async function StorefrontHome({
             heading={categoryContent?.heading}
           />
         </div>
+
+        {bestsellers.length > 0 && <BestsellersStrip items={bestsellers} />}
 
         <RecentlyViewedStrip />
       </div>

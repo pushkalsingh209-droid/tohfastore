@@ -303,7 +303,11 @@ export default async function ProductDetailPage({
         )}
       </div>
 
-      {relatedProducts.length > 0 && <BestsellersStrip items={relatedProducts} title="Customers Also Bought" />}
+      {relatedProducts.length > 0 && (
+        <div id="shop">
+          <BestsellersStrip items={relatedProducts} title="Customers Also Bought" />
+        </div>
+      )}
 
       {product && <RecentlyViewedStrip excludeId={product.id} />}
 
