@@ -230,7 +230,11 @@ export default function WelcomeGaneshaPopup() {
     <>
       {/* Always mounted (even while hidden) so the ref is attached before
           any play attempt fires. */}
-      <audio ref={audioRef} src="/audio/welcome.mp3" preload="auto" />
+      {/* preload="none" -- this fires on every page load now, so eagerly
+          buffering the audio file every time (the previous "auto") wasted
+          bandwidth on every visit, including muted ones that never play it
+          at all. The clip is tiny and only needed ~3s after mount anyway. */}
+      <audio ref={audioRef} src="/audio/welcome.mp3" preload="none" />
 
       {phase !== "hidden" && (
         <div className="fixed left-0 top-1/2 -translate-y-1/2 z-40 flex items-center gap-1.5 print:hidden">

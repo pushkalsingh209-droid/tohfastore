@@ -98,9 +98,15 @@ export default async function ProductDetailPage({
 }) {
   const { id } = await params;
   const product = await getProduct(id);
-  const reviews = product ? await getApprovedReviews(product.id) : [];
-  const categorySliderItems = await getCategorySliderItems();
-  const relatedProducts = product ? await getRelatedProducts(product.category, product.id) : [];
+  // getCategorySliderItems doesn't depend on the product at all, and the
+  // other two only need its id/category (not its full shape) -- running
+  // them in parallel instead of sequentially awaiting each in turn shaves
+  // three round trips down to the slowest single one, straight off TTFB.
+  const [reviews, categorySliderItems, relatedProducts] = await Promise.all([
+    product ? getApprovedReviews(product.id) : Promise.resolve([]),
+    getCategorySliderItems(),
+    product ? getRelatedProducts(product.category, product.id) : Promise.resolve([]),
+  ]);
 
   const stock = product ? Number(product.inventory) || 0 : 0;
   const outOfStock = stock <= 0;
@@ -203,6 +209,7 @@ export default async function ProductDetailPage({
                 active={true}
                 zoomable={true}
                 size="detail"
+                priority
               />
             </div>
 
