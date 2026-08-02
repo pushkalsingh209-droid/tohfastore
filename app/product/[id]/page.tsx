@@ -200,7 +200,7 @@ export default async function ProductDetailPage({
         ) : (
           <>
           <RecordProductView id={product.id} name={product.name} price={product.price} image_url={product.image_url} category={product.category} />
-          <div className="flex flex-col md:flex-row gap-8 md:gap-12">
+          <div className="flex flex-col md:flex-row md:items-start gap-8 md:gap-12">
             {/* Gallery */}
             <div className="md:w-1/2 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 shadow-sm bg-white">
               <ProductGallery

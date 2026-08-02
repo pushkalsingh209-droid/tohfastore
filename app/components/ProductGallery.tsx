@@ -123,7 +123,15 @@ export default function ProductGallery({
   }, [phase, active, hasMultiple]);
 
   const heightClass =
-    size === "detail" ? "h-80 sm:h-96 md:h-[28rem]" : size === "frame" ? "h-full" : "h-72";
+    size === "detail" ? "aspect-square" : size === "frame" ? "h-full" : "h-72";
+
+  // "detail" is now a perfect square frame (see heightClass above) -- with
+  // object-contain, a non-square photo would letterbox inside it, leaving
+  // visible empty space above/below or left/right. object-cover fills the
+  // square frame instead (cropping slightly if needed), which is what a
+  // clean square product photo actually wants. Left as object-contain for
+  // "card"/"frame", where showing the whole uncropped photo still matters.
+  const objectFitClass = size === "detail" ? "object-cover" : "object-contain";
 
   const imageSizes =
     size === "detail"
@@ -186,7 +194,7 @@ export default function ProductGallery({
           alt={productName}
           fill
           sizes={imageSizes}
-          className="object-contain"
+          className={objectFitClass}
           priority={priority}
         />
       </div>
@@ -226,10 +234,10 @@ export default function ProductGallery({
         <div className="gallery-zoom-image w-full h-full" style={zoomWrapperStyle}>
           <div className={`flip-card-inner ${isFlipped ? "is-flipped" : ""}`}>
             <div className="flip-face">
-              <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className="object-contain" priority={priority} />
+              <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} priority={priority} />
             </div>
             <div className="flip-face flip-face-back">
-              <Image src={gallery[backIndex]} alt={productName} fill sizes={imageSizes} className="object-contain" />
+              <Image src={gallery[backIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} />
             </div>
           </div>
         </div>
@@ -253,10 +261,10 @@ export default function ProductGallery({
           }}
         >
           <div className="gallery-slide-item relative">
-            <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className="object-contain" />
+            <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} />
           </div>
           <div className="gallery-slide-item relative">
-            <Image src={gallery[incomingIndex]} alt={productName} fill sizes={imageSizes} className="object-contain" />
+            <Image src={gallery[incomingIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} />
           </div>
         </div>
       </div>
