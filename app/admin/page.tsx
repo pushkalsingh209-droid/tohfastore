@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { getAutocompleteMatches, getSuggestions } from "@/app/utils/searchProducts";
 import Pagination from "@/app/components/Pagination";
+import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 
 // All reads/writes below go through /api/admin/* route handlers (protected
 // by middleware.ts's password gate) instead of talking to Supabase directly
@@ -465,6 +466,21 @@ export default function AdminDashboard() {
       setSettings((prev) => ({ ...prev, ...result.settings }));
     } catch (err: any) {
       alert(`Could not update default page size: ${err.message}`);
+    }
+  };
+
+  // Site-wide default look for product photos (the bottom-right filter
+  // toggle on every card/gallery) -- a visitor who taps the toggle
+  // themselves always overrides this for their own view.
+  const handleUpdateDefaultPhotoFilter = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ default_photo_filter: value }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: any) {
+      alert(`Could not update default photo filter: ${err.message}`);
     }
   };
 
@@ -1228,6 +1244,21 @@ export default function AdminDashboard() {
               }}
               className="w-24 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
             />
+          </div>
+          <div className="flex items-center gap-3 flex-wrap mt-4">
+            <label className="text-sm text-stone-700 font-medium">Default product photo look</label>
+            <select
+              value={settings.default_photo_filter ?? "Bright"}
+              onChange={(e) => handleUpdateDefaultPhotoFilter(e.target.value)}
+              className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+            >
+              {PHOTO_FILTER_PRESETS.map((preset) => (
+                <option key={preset.name} value={preset.name}>
+                  {preset.name}
+                </option>
+              ))}
+            </select>
+            <span className="text-stone-400 text-xs">A visitor's own tap on a photo's filter icon always overrides this for their view.</span>
           </div>
         </div>
 

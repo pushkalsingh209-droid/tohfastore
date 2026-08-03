@@ -2,6 +2,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { PHOTO_FILTER_PRESETS, DEFAULT_PHOTO_FILTER_INDEX } from "@/app/utils/photoFilters";
+import { useDefaultPhotoFilterIndex } from "@/app/context/PhotoFilterSettingContext";
 
 interface ProductGalleryProps {
   images: string[];
@@ -38,12 +40,42 @@ export default function ProductGallery({
   const touchHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchMoved = useRef(false);
 
+  // Client-side viewing preference only (not persisted) -- lets a shopper
+  // brighten/warm up a photo that looks dim/dull as shot, without touching
+  // the actual stored file. Each ProductGallery instance (one per product
+  // card, one on the detail page) gets its own independent cycle. Starts on
+  // the hardcoded fallback, then the effect below swaps it for the admin's
+  // configured default once that's fetched (see PhotoFilterSettingContext).
+  const [filterIndex, setFilterIndex] = useState(DEFAULT_PHOTO_FILTER_INDEX);
+  const currentFilter = PHOTO_FILTER_PRESETS[filterIndex];
+  const adminDefaultFilterIndex = useDefaultPhotoFilterIndex();
+  const appliedAdminDefaultRef = useRef(false);
+
+  useEffect(() => {
+    // Only ever apply the admin default once, and only if the visitor
+    // hasn't already cycled the filter themselves (that flag is also set
+    // in cycleFilter below, in case they click before this fetch resolves).
+    if (appliedAdminDefaultRef.current || adminDefaultFilterIndex == null) return;
+    appliedAdminDefaultRef.current = true;
+    setFilterIndex(adminDefaultFilterIndex);
+  }, [adminDefaultFilterIndex]);
+
+  // Pressing the filter button pauses the auto flip/slide (so the photo
+  // being adjusted doesn't change out from under the visitor mid-tap) until
+  // they hover/touch the photo again, same pattern as the zoom pause below.
+  const [filterPaused, setFilterPaused] = useState(false);
+  const filterPausedRef = useRef(false);
+
   const gallery = images.length > 0 ? images : [];
   const hasMultiple = gallery.length > 1;
 
   useEffect(() => {
     isZoomingRef.current = isZooming;
   }, [isZooming]);
+
+  useEffect(() => {
+    filterPausedRef.current = filterPaused;
+  }, [filterPaused]);
 
   // Drives the flip: a single reveal flip for multi-image galleries (which then
   // hand off to the slide effect below), or a repeating flip loop for single-image
@@ -70,7 +102,7 @@ export default function ProductGallery({
 
     const triggerFlip = () => {
       if (cancelled) return;
-      if (isZoomingRef.current) {
+      if (isZoomingRef.current || filterPausedRef.current) {
         loopTimer = setTimeout(triggerFlip, SLIDE_INTERVAL_MS);
         return;
       }
@@ -105,7 +137,7 @@ export default function ProductGallery({
 
     let settleTimer: ReturnType<typeof setTimeout> | undefined;
     const interval = setInterval(() => {
-      if (isZoomingRef.current) return;
+      if (isZoomingRef.current || filterPausedRef.current) return;
       setSlideTransitioning(true);
       setSlideOffset(-100);
       settleTimer = setTimeout(() => {
@@ -142,6 +174,7 @@ export default function ProductGallery({
 
   function handleMouseEnter() {
     if (zoomable) setIsZooming(true);
+    setFilterPaused(false);
   }
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
     if (!zoomable) return;
@@ -155,6 +188,7 @@ export default function ProductGallery({
     if (zoomable) setIsZooming(false);
   }
   function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    setFilterPaused(false);
     if (!zoomable) return;
     touchMoved.current = false;
     const touch = e.touches[0];
@@ -186,6 +220,45 @@ export default function ProductGallery({
     setIsZooming(false);
   }
 
+  // stopPropagation so this never bubbles up into the card's <Link> (which
+  // would navigate away), the zoom-on-hold handlers, or the flip-card's own
+  // click-to-preview logic -- tapping this button only ever cycles the
+  // filter, nothing else.
+  function cycleFilter(e: React.SyntheticEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    appliedAdminDefaultRef.current = true; // a manual pick always wins over the admin default
+    setFilterIndex((i) => (i + 1) % PHOTO_FILTER_PRESETS.length);
+    setFilterPaused(true);
+  }
+
+  const filterButton =
+    size !== "frame" ? (
+      <button
+        type="button"
+        onClick={cycleFilter}
+        onTouchStart={(e) => e.stopPropagation()}
+        onMouseEnter={(e) => e.stopPropagation()}
+        aria-label={`Change photo lighting (currently ${currentFilter.name})`}
+        title={currentFilter.name}
+        className={`absolute z-10 ${
+          size === "detail" ? "bottom-3 right-3 w-9 h-9" : "bottom-1.5 right-1.5 w-6 h-6"
+        } rounded-full bg-black/55 hover:bg-black/70 backdrop-blur-sm text-white flex items-center justify-center shadow transition active:scale-90`}
+      >
+        <svg
+          className={size === "detail" ? "w-4 h-4" : "w-3 h-3"}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" />
+        </svg>
+      </button>
+    ) : null;
+
   if (gallery.length === 0) {
     return (
       <div className={`w-full ${heightClass} bg-white relative overflow-hidden`}>
@@ -195,22 +268,31 @@ export default function ProductGallery({
           fill
           sizes={imageSizes}
           className={objectFitClass}
+          style={{ filter: currentFilter.css }}
           priority={priority}
         />
+        {filterButton}
       </div>
     );
   }
 
-  const zoomHandlers = zoomable
-    ? {
-        onMouseEnter: handleMouseEnter,
-        onMouseMove: handleMouseMove,
-        onMouseLeave: handleMouseLeave,
-        onTouchStart: handleTouchStart,
-        onTouchMove: handleTouchMove,
-        onTouchEnd: handleTouchEnd,
-      }
-    : {};
+  // onMouseEnter/onTouchStart are always attached (not just when zoomable)
+  // since they double as the "hover/touch the photo again" trigger that
+  // resumes the auto flip/slide after the filter button paused it -- the
+  // zoom-specific behavior inside those two handlers still only fires when
+  // `zoomable` is true, per their own internal checks.
+  const zoomHandlers = {
+    onMouseEnter: handleMouseEnter,
+    onTouchStart: handleTouchStart,
+    ...(zoomable
+      ? {
+          onMouseMove: handleMouseMove,
+          onMouseLeave: handleMouseLeave,
+          onTouchMove: handleTouchMove,
+          onTouchEnd: handleTouchEnd,
+        }
+      : {}),
+  };
 
   // Applied to a wrapper *around* whatever content is currently visible, so the
   // zoom scale never fights a sibling translateX (e.g. the slide track).
@@ -234,13 +316,14 @@ export default function ProductGallery({
         <div className="gallery-zoom-image w-full h-full" style={zoomWrapperStyle}>
           <div className={`flip-card-inner ${isFlipped ? "is-flipped" : ""}`}>
             <div className="flip-face">
-              <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} priority={priority} />
+              <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} priority={priority} />
             </div>
             <div className="flip-face flip-face-back">
-              <Image src={gallery[backIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} />
+              <Image src={gallery[backIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
             </div>
           </div>
         </div>
+        {filterButton}
       </div>
     );
   }
@@ -261,13 +344,14 @@ export default function ProductGallery({
           }}
         >
           <div className="gallery-slide-item relative">
-            <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} />
+            <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
           </div>
           <div className="gallery-slide-item relative">
-            <Image src={gallery[incomingIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} />
+            <Image src={gallery[incomingIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
           </div>
         </div>
       </div>
+      {filterButton}
     </div>
   );
 }
