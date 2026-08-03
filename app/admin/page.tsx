@@ -21,6 +21,18 @@ async function apiRequest(url: string, options?: RequestInit) {
   return data;
 }
 
+// Mirrors the exact status values stored in orders.status (and the
+// dropdown options in the orders table) -- "Processing" is the label for
+// what's effectively "received, not yet shipped"; there's no separate
+// "received" status in the data model.
+const ORDER_STATUS_TABS: { key: string; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "processing", label: "Processing" },
+  { key: "shipped", label: "Shipped" },
+  { key: "delivered", label: "Delivered" },
+  { key: "cancelled", label: "Cancelled" },
+];
+
 export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
@@ -63,6 +75,7 @@ export default function AdminDashboard() {
   const [productSearch, setProductSearch] = useState("");
   const [productCategoryFilter, setProductCategoryFilter] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string>("all");
   const [productPage, setProductPage] = useState(1);
   const [productPageSize, setProductPageSize] = useState(10);
   const [orderPage, setOrderPage] = useState(1);
@@ -116,12 +129,26 @@ export default function AdminDashboard() {
     return suggestions.map((s) => byCategory.find((p) => p.id === s.id)).filter(Boolean);
   }, [products, productSearch, productCategoryFilter]);
 
+  // How many orders sit in each status -- shown as a count badge on each
+  // sub-tab. "processing" covers newly-received/not-yet-shipped orders
+  // (there's no separate "received" status stored -- see ORDER_STATUS_TABS).
+  const orderStatusCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: orders.length, processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
+    for (const order of orders) {
+      const status = order.status || "processing";
+      counts[status] = (counts[status] || 0) + 1;
+    }
+    return counts;
+  }, [orders]);
+
   // Live search over already-loaded orders by customer name/email/phone,
-  // Razorpay order id, or payment reference id.
+  // Razorpay order id, or payment reference id -- combined with the
+  // status sub-tab, so a search still respects whichever status is active.
   const visibleOrders = useMemo(() => {
     const query = orderSearch.trim().toLowerCase();
-    if (!query) return orders;
     return orders.filter((order: any) => {
+      if (orderStatusFilter !== "all" && (order.status || "processing") !== orderStatusFilter) return false;
+      if (!query) return true;
       const haystack = [
         order.order_id,
         order.payment_id,
@@ -139,7 +166,7 @@ export default function AdminDashboard() {
         .toLowerCase();
       return haystack.includes(query);
     });
-  }, [orders, orderSearch]);
+  }, [orders, orderSearch, orderStatusFilter]);
 
   // Reset to page 1 whenever the underlying filtered set changes, so a
   // search that narrows the results never leaves the view stranded on a
@@ -150,7 +177,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     setOrderPage(1);
-  }, [orderSearch]);
+  }, [orderSearch, orderStatusFilter]);
 
   const paginatedProducts = useMemo(() => {
     const start = (productPage - 1) * productPageSize;
@@ -949,8 +976,28 @@ export default function AdminDashboard() {
                 <p className="text-stone-500 text-xs mt-1">Real-time purchase streams verified and pushed directly by your Razorpay webhook endpoint script.</p>
               </div>
               <span className="text-xs font-mono font-bold text-stone-500 bg-stone-100 border border-stone-200 rounded px-3 py-1.5 whitespace-nowrap">
-                {orders.length} transaction{orders.length === 1 ? "" : "s"}
+                {visibleOrders.length} {orderStatusFilter === "all" ? "total" : ORDER_STATUS_TABS.find((t) => t.key === orderStatusFilter)?.label} transaction{visibleOrders.length === 1 ? "" : "s"}
               </span>
+            </div>
+
+            {/* Status sub-tabs -- grid on mobile so all 5 fit on a 375px
+                screen without horizontal overflow, same pattern as the
+                main tab bar above. */}
+            <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-1.5 mt-4">
+              {ORDER_STATUS_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setOrderStatusFilter(tab.key)}
+                  className={`sm:flex-shrink-0 px-3 py-2 rounded text-[11px] uppercase tracking-wider font-semibold text-center transition ${
+                    orderStatusFilter === tab.key
+                      ? "bg-amber-600 text-white shadow-sm"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                  }`}
+                >
+                  {tab.label} ({orderStatusCounts[tab.key] ?? 0})
+                </button>
+              ))}
             </div>
 
             <div className="relative mt-4">
@@ -980,13 +1027,18 @@ export default function AdminDashboard() {
           ) : orders.length === 0 ? (
             <p className="text-stone-400 text-sm text-center py-6">No payment captured records generated yet.</p>
           ) : visibleOrders.length === 0 ? (
-            <p className="text-stone-400 text-sm text-center py-6">No transactions match &ldquo;{orderSearch}&rdquo;.</p>
+            <p className="text-stone-400 text-sm text-center py-6">
+              {orderSearch.trim()
+                ? <>No transactions match &ldquo;{orderSearch}&rdquo;{orderStatusFilter !== "all" ? ` in ${orderStatusFilter}` : ""}.</>
+                : `No ${orderStatusFilter} transactions yet.`}
+            </p>
           ) : (
             <>
             <div className="overflow-x-auto">
               <table className="w-full text-left font-sans text-xs sm:text-sm text-stone-600 border-collapse">
                 <thead>
                   <tr className="bg-stone-50 text-stone-700 uppercase font-semibold text-[11px] tracking-wider border-b border-stone-200">
+                    <th className="p-4">#</th>
                     <th className="p-4">Payment Reference ID</th>
                     <th className="p-4">Customer Info</th>
                     <th className="p-4">Purchased Items</th>
@@ -995,8 +1047,11 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
-                  {paginatedOrders.map((order: any) => (
+                  {paginatedOrders.map((order: any, index: number) => (
                     <tr key={order.id} className="hover:bg-stone-50/50 transition">
+                      <td className="p-4 font-mono text-stone-400">
+                        {(orderPage - 1) * orderPageSize + index + 1}
+                      </td>
                       <td className="p-4 font-mono font-bold text-stone-800">
                         {order.payment_id}
                         <span className="block text-[10px] text-stone-400 font-normal mt-1">
