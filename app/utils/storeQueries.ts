@@ -11,6 +11,14 @@
 // wrong -- these caches only affect what's *displayed* before that point.
 import { unstable_cache } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import {
+  DEFAULT_WEIGHT_UNIT,
+  DEFAULT_DIMENSION_UNIT,
+  isWeightUnit,
+  isDimensionUnit,
+  type WeightUnit,
+  type DimensionUnit,
+} from "@/app/utils/productUnits";
 
 // PostgREST's "in"/"not.in" list literal: comma-separated, with any value
 // containing a comma or quote wrapped in double quotes (quotes doubled).
@@ -57,6 +65,32 @@ export const getSiteSettings = unstable_cache(
     }
   },
   ["site-settings"],
+  { revalidate: 60 }
+);
+
+// Site-wide display units for product weight/dimensions -- the stored
+// values are always grams/centimeters (see productUnits.ts); this is only
+// the unit they get converted into for display, admin-configurable via
+// Storefront Settings. Falls back to grams/inches if unset or malformed.
+export const getProductUnitSettings = unstable_cache(
+  async (): Promise<{ weightUnit: WeightUnit; dimensionUnit: DimensionUnit }> => {
+    try {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("key, value")
+        .in("key", ["weight_unit", "dimension_unit"]);
+      if (error || !data) return { weightUnit: DEFAULT_WEIGHT_UNIT, dimensionUnit: DEFAULT_DIMENSION_UNIT };
+      const map: Record<string, string> = {};
+      for (const row of data) map[row.key] = row.value;
+      return {
+        weightUnit: isWeightUnit(map.weight_unit) ? map.weight_unit : DEFAULT_WEIGHT_UNIT,
+        dimensionUnit: isDimensionUnit(map.dimension_unit) ? map.dimension_unit : DEFAULT_DIMENSION_UNIT,
+      };
+    } catch {
+      return { weightUnit: DEFAULT_WEIGHT_UNIT, dimensionUnit: DEFAULT_DIMENSION_UNIT };
+    }
+  },
+  ["product-unit-settings"],
   { revalidate: 60 }
 );
 

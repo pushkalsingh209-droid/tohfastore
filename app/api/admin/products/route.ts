@@ -2,10 +2,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
-// Some Supabase projects may not have the "category"/"images" columns yet
-// (added by a later migration) -- these routes degrade gracefully by
-// retrying without the missing column instead of failing the whole save,
-// matching the pattern already used elsewhere in the admin panel.
+// Some Supabase projects may not have every column yet (added by a later
+// migration the admin hasn't run) -- these routes degrade gracefully by
+// dropping whichever optional column Postgres complains about and retrying,
+// instead of failing the whole save.
+const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color"];
+
 function isMissingColumn(error: any, columnHint: string) {
   const msg = error?.message || "";
   return (
@@ -13,6 +15,48 @@ function isMissingColumn(error: any, columnHint: string) {
     error?.code === "PGRST204" ||
     (new RegExp(columnHint, "i").test(msg) && /(schema cache|does not exist|could not find)/i.test(msg))
   );
+}
+
+async function insertWithFallback(payload: Record<string, any>) {
+  let currentPayload = { ...payload };
+  const droppedColumns: string[] = [];
+  while (true) {
+    const { data, error } = await supabase.from("products").insert([currentPayload]).select();
+    if (!error) return { data, error: null, droppedColumns };
+    const missingCol = OPTIONAL_COLUMNS.find((col) => col in currentPayload && isMissingColumn(error, col));
+    if (!missingCol) return { data, error, droppedColumns };
+    const { [missingCol]: _, ...rest } = currentPayload;
+    currentPayload = rest;
+    droppedColumns.push(missingCol);
+  }
+}
+
+async function updateWithFallback(id: string, payload: Record<string, any>) {
+  let currentPayload = { ...payload };
+  const droppedColumns: string[] = [];
+  while (true) {
+    const { data, error } = await supabase.from("products").update(currentPayload).eq("id", id).select();
+    if (!error) return { data, error: null, droppedColumns };
+    const missingCol = OPTIONAL_COLUMNS.find((col) => col in currentPayload && isMissingColumn(error, col));
+    if (!missingCol) return { data, error, droppedColumns };
+    const { [missingCol]: _, ...rest } = currentPayload;
+    currentPayload = rest;
+    droppedColumns.push(missingCol);
+  }
+}
+
+// null/blank clears the field; a valid positive number sets it. Anything
+// else (negative, non-numeric) is treated as "leave unset" since these are
+// all optional physical specs, not required data.
+function parseOptionalPositiveNumber(value: unknown): number | null {
+  if (value === undefined || value === null || value === "") return null;
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : null;
+}
+
+function parseOptionalText(value: unknown): string | null {
+  const trimmed = String(value ?? "").trim();
+  return trimmed || null;
 }
 
 export async function GET() {
@@ -33,7 +77,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    let payload: any = {
+    const payload: any = {
       name: body.name,
       price: parseFloat(body.price),
       description: body.description,
@@ -43,29 +87,24 @@ export async function POST(req: Request) {
       images: Array.isArray(body.additionalImages)
         ? body.additionalImages.map((u: string) => u.trim()).filter(Boolean)
         : [],
+      weight_g: parseOptionalPositiveNumber(body.weight_g),
+      height_cm: parseOptionalPositiveNumber(body.height_cm),
+      depth_cm: parseOptionalPositiveNumber(body.depth_cm),
+      breadth_cm: parseOptionalPositiveNumber(body.breadth_cm),
+      material: parseOptionalText(body.material),
+      color: parseOptionalText(body.color),
     };
 
-    let gallerySaved = true;
-    let categorySaved = true;
-
-    let { data, error } = await supabase.from("products").insert([payload]).select();
-
-    if (error && isMissingColumn(error, "category")) {
-      categorySaved = false;
-      const { category, ...rest } = payload;
-      payload = rest;
-      ({ data, error } = await supabase.from("products").insert([payload]).select());
-    }
-    if (error && isMissingColumn(error, "images")) {
-      gallerySaved = false;
-      const { images, ...rest } = payload;
-      payload = rest;
-      ({ data, error } = await supabase.from("products").insert([payload]).select());
-    }
-
+    const { data, error, droppedColumns } = await insertWithFallback(payload);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    return NextResponse.json({ product: data?.[0], gallerySaved, categorySaved });
+    return NextResponse.json({
+      product: data?.[0],
+      gallerySaved: !droppedColumns.includes("images"),
+      categorySaved: !droppedColumns.includes("category"),
+      dimensionsSaved: !droppedColumns.some((c) => ["weight_g", "height_cm", "depth_cm", "breadth_cm"].includes(c)),
+      attributesSaved: !droppedColumns.some((c) => ["material", "color"].includes(c)),
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -77,7 +116,7 @@ export async function PATCH(req: Request) {
     const { id, ...fields } = body;
     if (!id) return NextResponse.json({ error: "Missing product id." }, { status: 400 });
 
-    let payload: any = {};
+    const payload: any = {};
     if (fields.name !== undefined) payload.name = fields.name;
     if (fields.price !== undefined) payload.price = parseFloat(fields.price);
     if (fields.description !== undefined) payload.description = fields.description;
@@ -92,28 +131,23 @@ export async function PATCH(req: Request) {
     if (fields.display_order !== undefined) {
       payload.display_order = fields.display_order === null || fields.display_order === "" ? null : parseInt(fields.display_order);
     }
+    if (fields.weight_g !== undefined) payload.weight_g = parseOptionalPositiveNumber(fields.weight_g);
+    if (fields.height_cm !== undefined) payload.height_cm = parseOptionalPositiveNumber(fields.height_cm);
+    if (fields.depth_cm !== undefined) payload.depth_cm = parseOptionalPositiveNumber(fields.depth_cm);
+    if (fields.breadth_cm !== undefined) payload.breadth_cm = parseOptionalPositiveNumber(fields.breadth_cm);
+    if (fields.material !== undefined) payload.material = parseOptionalText(fields.material);
+    if (fields.color !== undefined) payload.color = parseOptionalText(fields.color);
 
-    let gallerySaved = true;
-    let categorySaved = true;
-
-    let { data, error } = await supabase.from("products").update(payload).eq("id", id).select();
-
-    if (error && "category" in payload && isMissingColumn(error, "category")) {
-      categorySaved = false;
-      const { category, ...rest } = payload;
-      payload = rest;
-      ({ data, error } = await supabase.from("products").update(payload).eq("id", id).select());
-    }
-    if (error && "images" in payload && isMissingColumn(error, "images")) {
-      gallerySaved = false;
-      const { images, ...rest } = payload;
-      payload = rest;
-      ({ data, error } = await supabase.from("products").update(payload).eq("id", id).select());
-    }
-
+    const { data, error, droppedColumns } = await updateWithFallback(id, payload);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    return NextResponse.json({ product: data?.[0], gallerySaved, categorySaved });
+    return NextResponse.json({
+      product: data?.[0],
+      gallerySaved: !droppedColumns.includes("images"),
+      categorySaved: !droppedColumns.includes("category"),
+      dimensionsSaved: !droppedColumns.some((c) => ["weight_g", "height_cm", "depth_cm", "breadth_cm"].includes(c)),
+      attributesSaved: !droppedColumns.some((c) => ["material", "color"].includes(c)),
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

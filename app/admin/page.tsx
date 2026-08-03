@@ -5,6 +5,7 @@ import Image from "next/image";
 import { getAutocompleteMatches, getSuggestions } from "@/app/utils/searchProducts";
 import Pagination from "@/app/components/Pagination";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
+import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
 
 // All reads/writes below go through /api/admin/* route handlers (protected
 // by middleware.ts's password gate) instead of talking to Supabase directly
@@ -39,6 +40,12 @@ export default function AdminDashboard() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [colors, setColors] = useState<any[]>([]);
+  const [newColorName, setNewColorName] = useState("");
+  const [colorStatus, setColorStatus] = useState("");
+  const [materials, setMaterials] = useState<any[]>([]);
+  const [newMaterialName, setNewMaterialName] = useState("");
+  const [materialStatus, setMaterialStatus] = useState("");
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [leads, setLeads] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
@@ -66,7 +73,13 @@ export default function AdminDashboard() {
     imageUrl: "",
     inventory: "5",
     category: "",
-    additionalImages: [] as string[]
+    additionalImages: [] as string[],
+    weight_g: "",
+    height_cm: "",
+    depth_cm: "",
+    breadth_cm: "",
+    material: "",
+    color: "",
   });
   
   const [status, setStatus] = useState("");
@@ -87,7 +100,7 @@ export default function AdminDashboard() {
   // them in parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes] = await Promise.allSettled([
+    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes] = await Promise.allSettled([
       apiRequest("/api/admin/products"),
       apiRequest("/api/admin/orders"),
       apiRequest("/api/admin/reviews"),
@@ -96,6 +109,8 @@ export default function AdminDashboard() {
       apiRequest("/api/admin/settings"),
       apiRequest("/api/admin/leads"),
       apiRequest("/api/admin/analytics"),
+      apiRequest("/api/admin/colors"),
+      apiRequest("/api/admin/materials"),
     ]);
     if (productsRes.status === "fulfilled") setProducts(productsRes.value.products);
     if (ordersRes.status === "fulfilled") setOrders(ordersRes.value.orders);
@@ -105,6 +120,8 @@ export default function AdminDashboard() {
     if (settingsRes.status === "fulfilled") setSettings(settingsRes.value.settings);
     if (leadsRes.status === "fulfilled") setLeads(leadsRes.value.leads);
     if (analyticsRes.status === "fulfilled") setAnalytics(analyticsRes.value);
+    if (colorsRes.status === "fulfilled") setColors(colorsRes.value.colors);
+    if (materialsRes.status === "fulfilled") setMaterials(materialsRes.value.materials);
     setLoadingOrders(false);
   };
 
@@ -203,6 +220,12 @@ export default function AdminDashboard() {
       inventory: formData.inventory,
       category: formData.category,
       additionalImages: formData.additionalImages,
+      weight_g: formData.weight_g,
+      height_cm: formData.height_cm,
+      depth_cm: formData.depth_cm,
+      breadth_cm: formData.breadth_cm,
+      material: formData.material,
+      color: formData.color,
     };
 
     try {
@@ -216,17 +239,17 @@ export default function AdminDashboard() {
             body: JSON.stringify(payload),
           });
 
-      const allSaved = result.gallerySaved && result.categorySaved;
+      const allSaved = result.gallerySaved && result.categorySaved && result.dimensionsSaved && result.attributesSaved;
       setStatus(
         allSaved
           ? editingProductId
             ? "Success! Your modifications have been updated live across the storefront."
             : "Success! The premium brass product is live on your storefront catalog."
-          : "Saved, but some new fields (gallery photos/category) don't exist yet in Supabase. Run the migration, then re-save."
+          : "Saved, but some new fields (gallery photos/category/weight & dimensions/material & colour) don't exist yet in Supabase. Run the migration, then re-save."
       );
       if (editingProductId) setEditingProductId(null);
 
-      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [] });
+      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "" });
       fetchData(); // Sync live view structures
     } catch (err: any) {
       setStatus(`Database Exception: ${err.message || "Pipeline connection failed."}`);
@@ -245,7 +268,13 @@ export default function AdminDashboard() {
       imageUrl: product.image_url,
       inventory: product.inventory.toString(),
       category: product.category || "",
-      additionalImages: Array.isArray(product.images) ? product.images : []
+      additionalImages: Array.isArray(product.images) ? product.images : [],
+      weight_g: product.weight_g != null ? String(product.weight_g) : "",
+      height_cm: product.height_cm != null ? String(product.height_cm) : "",
+      depth_cm: product.depth_cm != null ? String(product.depth_cm) : "",
+      breadth_cm: product.breadth_cm != null ? String(product.breadth_cm) : "",
+      material: product.material || "",
+      color: product.color || "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -446,6 +475,44 @@ export default function AdminDashboard() {
     }
   };
 
+  // Adds a new option to the product form's Colour dropdown (backed by the
+  // product_colors table) -- the preset rainbow/metal-tone list is just the
+  // seeded starting point, not a hard limit.
+  const handleAddColor = async () => {
+    if (!newColorName.trim()) return;
+    setColorStatus("Adding colour...");
+    try {
+      const result = await apiRequest("/api/admin/colors", {
+        method: "POST",
+        body: JSON.stringify({ name: newColorName.trim() }),
+      });
+      setColors([...colors, result.color].sort((a, b) => a.name.localeCompare(b.name)));
+      setFormData((prev) => ({ ...prev, color: result.color.name }));
+      setNewColorName("");
+      setColorStatus("");
+    } catch (err: any) {
+      setColorStatus(err.message || "Could not add colour.");
+    }
+  };
+
+  // Same idea for the Material dropdown (backed by product_materials).
+  const handleAddMaterial = async () => {
+    if (!newMaterialName.trim()) return;
+    setMaterialStatus("Adding material...");
+    try {
+      const result = await apiRequest("/api/admin/materials", {
+        method: "POST",
+        body: JSON.stringify({ name: newMaterialName.trim() }),
+      });
+      setMaterials([...materials, result.material].sort((a, b) => a.name.localeCompare(b.name)));
+      setFormData((prev) => ({ ...prev, material: result.material.name }));
+      setNewMaterialName("");
+      setMaterialStatus("");
+    } catch (err: any) {
+      setMaterialStatus(err.message || "Could not add material.");
+    }
+  };
+
   const handleToggleCategoryHome = async (categoryId: number, showOnHome: boolean) => {
     try {
       await apiRequest("/api/admin/categories", {
@@ -511,6 +578,33 @@ export default function AdminDashboard() {
     }
   };
 
+  // Site-wide display units for product weight/dimensions -- the stored
+  // values are always grams/centimeters, this only changes how they're
+  // shown (card + product detail page).
+  const handleUpdateWeightUnit = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ weight_unit: value }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: any) {
+      alert(`Could not update weight unit: ${err.message}`);
+    }
+  };
+
+  const handleUpdateDimensionUnit = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ dimension_unit: value }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: any) {
+      alert(`Could not update dimension unit: ${err.message}`);
+    }
+  };
+
   // A category's own default-page-size override -- blank clears it back
   // to the site-wide default above.
   const handleUpdateCategoryPageSize = async (categoryId: number, value: string) => {
@@ -528,7 +622,7 @@ export default function AdminDashboard() {
 
   const handleCancelEdit = () => {
     setEditingProductId(null);
-    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [] });
+    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "" });
     setStatus("");
   };
 
@@ -822,6 +916,61 @@ export default function AdminDashboard() {
               <div>
                 <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">Initial Stock Allocation</label>
                 <input type="number" required disabled={isSubmitting} value={formData.inventory} onChange={(e) => setFormData({...formData, inventory: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+                Weight & Dimensions <span className="text-stone-400 font-normal normal-case">(all optional — shown on the storefront only for products where they're filled in)</span>
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <input type="number" min={0} step="any" disabled={isSubmitting} placeholder="Weight (g)" value={formData.weight_g} onChange={(e) => setFormData({...formData, weight_g: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+                <input type="number" min={1} max={100} step={1} list="dimension-1-100" disabled={isSubmitting} placeholder="Height (cm)" value={formData.height_cm} onChange={(e) => setFormData({...formData, height_cm: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+                <input type="number" min={1} max={100} step={1} list="dimension-1-100" disabled={isSubmitting} placeholder="Depth (cm)" value={formData.depth_cm} onChange={(e) => setFormData({...formData, depth_cm: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+                <input type="number" min={1} max={100} step={1} list="dimension-1-100" disabled={isSubmitting} placeholder="Breadth (cm)" value={formData.breadth_cm} onChange={(e) => setFormData({...formData, breadth_cm: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+                {/* Shared by all three dimension fields above -- a native
+                    number input with searchable suggestions (type "9" to
+                    jump straight to it) rather than a plain 100-item select,
+                    while still allowing any value outside 1-100 if needed. */}
+                <datalist id="dimension-1-100">
+                  {Array.from({ length: 100 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+                Material & Colour <span className="text-stone-400 font-normal normal-case">(both optional — shown on the product detail page and the card's flip-back, only when filled in)</span>
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                <div>
+                  <select disabled={isSubmitting} value={formData.material} onChange={(e) => setFormData({...formData, material: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+                    <option value="">No material set</option>
+                    {materials.map((m) => (
+                      <option key={m.id} value={m.name}>{m.name}</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2 mt-2">
+                    <input type="text" disabled={isSubmitting} placeholder="Add a new material..." value={newMaterialName} onChange={(e) => setNewMaterialName(e.target.value)} className="flex-grow px-3 py-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-amber-600 bg-white" />
+                    <button type="button" disabled={isSubmitting || !newMaterialName.trim()} onClick={handleAddMaterial} className="px-3 py-2 rounded bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
+                  </div>
+                  {materialStatus && <p className="text-[11px] text-rose-600 mt-1">{materialStatus}</p>}
+                </div>
+                <div>
+                  <select disabled={isSubmitting} value={formData.color} onChange={(e) => setFormData({...formData, color: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+                    <option value="">No colour set</option>
+                    {colors.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2 mt-2">
+                    <input type="text" disabled={isSubmitting} placeholder="Add a new colour..." value={newColorName} onChange={(e) => setNewColorName(e.target.value)} className="flex-grow px-3 py-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-amber-600 bg-white" />
+                    <button type="button" disabled={isSubmitting || !newColorName.trim()} onClick={handleAddColor} className="px-3 py-2 rounded bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
+                  </div>
+                  {colorStatus && <p className="text-[11px] text-rose-600 mt-1">{colorStatus}</p>}
+                </div>
               </div>
             </div>
 
@@ -1314,6 +1463,29 @@ export default function AdminDashboard() {
               ))}
             </select>
             <span className="text-stone-400 text-xs">A visitor's own tap on a photo's filter icon always overrides this for their view.</span>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap mt-4">
+            <label className="text-sm text-stone-700 font-medium">Weight display unit</label>
+            <select
+              value={settings.weight_unit ?? "g"}
+              onChange={(e) => handleUpdateWeightUnit(e.target.value)}
+              className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+            >
+              {WEIGHT_UNITS.map((unit) => (
+                <option key={unit} value={unit}>{unit}</option>
+              ))}
+            </select>
+            <label className="text-sm text-stone-700 font-medium ml-2">Dimension display unit</label>
+            <select
+              value={settings.dimension_unit ?? "cm"}
+              onChange={(e) => handleUpdateDimensionUnit(e.target.value)}
+              className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+            >
+              {DIMENSION_UNITS.map((unit) => (
+                <option key={unit} value={unit}>{unit}</option>
+              ))}
+            </select>
+            <span className="text-stone-400 text-xs w-full">Product weight/dimensions are always entered and stored in grams/centimeters above -- these only control the unit shown to visitors.</span>
           </div>
         </div>
 

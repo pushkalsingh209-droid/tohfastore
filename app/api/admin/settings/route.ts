@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
+import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
 
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 500;
@@ -39,6 +40,22 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: "Invalid default photo filter." }, { status: 400 });
       }
       updates.push({ key: "default_photo_filter", value: filterName });
+    }
+
+    if (body.weight_unit !== undefined) {
+      const unit = String(body.weight_unit);
+      if (!WEIGHT_UNITS.includes(unit as any)) {
+        return NextResponse.json({ error: "Invalid weight unit." }, { status: 400 });
+      }
+      updates.push({ key: "weight_unit", value: unit });
+    }
+
+    if (body.dimension_unit !== undefined) {
+      const unit = String(body.dimension_unit);
+      if (!DIMENSION_UNITS.includes(unit as any)) {
+        return NextResponse.json({ error: "Invalid dimension unit." }, { status: 400 });
+      }
+      updates.push({ key: "dimension_unit", value: unit });
     }
 
     if (updates.length === 0) {

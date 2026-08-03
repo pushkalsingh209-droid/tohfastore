@@ -9,6 +9,9 @@ import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink } from "@/app/utils/whatsapp";
 import TempleCardFrame from "@/app/components/TempleCardFrame";
 import PriceDisplay from "@/app/components/PriceDisplay";
+import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
+import { useProductUnitSettings } from "@/app/context/ProductUnitSettingContext";
+import { formatProductAttributesLine } from "@/app/utils/productAttributes";
 
 const DOUBLE_TAP_WINDOW_MS = 350;
 const LOW_STOCK_THRESHOLD = 3;
@@ -18,6 +21,7 @@ export default function ProductCard({ product, priority = false }: { product: an
   const { isWishlisted, toggleWishlist } = useWishlist();
   const [active, setActive] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
+  const [cardFlipped, setCardFlipped] = useState(false);
   const lastTapRef = useRef(0);
 
   const stock = Number(product.inventory) || 0;
@@ -37,6 +41,9 @@ export default function ProductCard({ product, priority = false }: { product: an
   }, []);
 
   const gallery = getProductGallery(product);
+  const { weightUnit, dimensionUnit } = useProductUnitSettings();
+  const dimensionsLine = formatProductDimensionsLine(product, weightUnit, dimensionUnit);
+  const attributesLine = formatProductAttributesLine(product);
 
   function handleImageClick(e: React.MouseEvent) {
     if (isDesktop) return; // desktop: hover already previews, a plain click navigates
@@ -56,7 +63,9 @@ export default function ProductCard({ product, priority = false }: { product: an
 
   return (
     <TempleCardFrame>
-    <div className="bg-white dark:bg-stone-900 rounded-lg overflow-hidden group shadow-sm hover:shadow-md dark:shadow-stone-950/50 transition duration-300">
+    <div className="card-flip-perspective">
+    <div className={`card-flip-inner ${cardFlipped ? "is-flipped" : ""}`}>
+    <div className="card-flip-face-front bg-white dark:bg-stone-900 rounded-lg overflow-hidden group shadow-sm hover:shadow-md dark:shadow-stone-950/50 transition duration-300">
       <Link
         href={`/product/${product.id}`}
         className="block relative touch-manipulation"
@@ -94,6 +103,12 @@ export default function ProductCard({ product, priority = false }: { product: an
           </span>
         )}
       </Link>
+
+      {dimensionsLine && (
+        <p className="px-6 pt-2 text-[10px] text-stone-400 dark:text-stone-500 text-center line-clamp-2">
+          {dimensionsLine}
+        </p>
+      )}
 
       <div className="p-6">
         <h3 className="font-serif text-lg text-stone-900 dark:text-stone-100 mb-1 group-hover:text-amber-700 dark:group-hover:text-amber-500 transition">
@@ -156,6 +171,52 @@ export default function ProductCard({ product, priority = false }: { product: an
           View details &rsaquo;
         </Link>
       </div>
+
+      {/* Thick, deliberately visible bar -- flips the whole card (slowly)
+          to reveal the full description/dimensions on the back, distinct
+          from the quick internal photo flip inside the gallery above. */}
+      <button
+        type="button"
+        onClick={() => setCardFlipped(true)}
+        aria-label="Flip card to see full details"
+        className="w-full h-[10px] bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 transition cursor-pointer flex items-center justify-center"
+      >
+        <span className="w-8 h-[3px] rounded-full bg-white/70" aria-hidden="true" />
+      </button>
+    </div>
+
+    <div className="card-flip-face-back rounded-lg overflow-hidden bg-white dark:bg-stone-900 shadow-sm dark:shadow-stone-950/50 flex flex-col">
+      {/* The back is clickable through to the product page too (not just
+          the front's image) -- only the flip-back bar below, which sits
+          outside this Link, stays purely a flip control. */}
+      <Link href={`/product/${product.id}`} className="block p-6 flex-1 overflow-y-auto hover:opacity-90 transition">
+        <h3 className="font-serif text-lg text-stone-900 dark:text-stone-100 mb-1">{product.name}</h3>
+        {product.category && (
+          <p className="text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-500 font-semibold mb-3">
+            {product.category}
+          </p>
+        )}
+        <p className="text-stone-600 dark:text-stone-300 text-sm font-light leading-relaxed whitespace-pre-line mb-4">
+          {product.description}
+        </p>
+        {dimensionsLine && (
+          <p className="text-stone-500 dark:text-stone-400 text-xs font-medium">{dimensionsLine}</p>
+        )}
+        {attributesLine && (
+          <p className="text-stone-500 dark:text-stone-400 text-xs font-medium mt-1">{attributesLine}</p>
+        )}
+      </Link>
+      <button
+        type="button"
+        onClick={() => setCardFlipped(false)}
+        aria-label="Flip back"
+        className="w-full h-[10px] bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 transition cursor-pointer flex items-center justify-center flex-shrink-0"
+      >
+        <span className="w-8 h-[3px] rounded-full bg-white/70" aria-hidden="true" />
+      </button>
+    </div>
+
+    </div>
     </div>
     </TempleCardFrame>
   );

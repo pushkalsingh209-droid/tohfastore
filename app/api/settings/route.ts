@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
-const PUBLIC_SETTING_KEYS = ["default_photo_filter"];
+const PUBLIC_SETTING_KEYS = ["default_photo_filter", "weight_unit", "dimension_unit"];
 
 export async function GET() {
   const { data, error } = await supabase

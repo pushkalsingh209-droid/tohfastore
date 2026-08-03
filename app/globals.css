@@ -90,6 +90,41 @@ textarea:focus-visible,
   transform: rotateY(180deg);
 }
 
+/* Whole-card flip (ProductCard's bottom flip bar) -- deliberately slower
+   (1200ms) and a separate set of classes from the photo-gallery flip above
+   (800ms), since this flips the entire card, not just the image. The front
+   face stays in normal flow (not absolutely positioned) so its natural
+   content height drives the card's height; the back face is absolutely
+   positioned to match that same footprint, with its own scroll as a safety
+   net in case its content ever runs longer than the front's. */
+.card-flip-perspective {
+  perspective: 1600px;
+}
+
+.card-flip-inner {
+  position: relative;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 1200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-flip-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.card-flip-face-front {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.card-flip-face-back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
 .gallery-slide-track {
   display: flex;
   width: 100%;

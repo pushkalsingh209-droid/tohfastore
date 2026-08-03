@@ -16,7 +16,9 @@ import PriceDisplay from "@/app/components/PriceDisplay";
 import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink } from "@/app/utils/whatsapp";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
-import { getRelatedProducts } from "@/app/utils/storeQueries";
+import { getRelatedProducts, getProductUnitSettings } from "@/app/utils/storeQueries";
+import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
+import { formatProductAttributesLine } from "@/app/utils/productAttributes";
 
 // The Supabase reads below are cached via unstable_cache (30s) so repeat
 // views of a popular product don't each cost a fresh round trip -- wrapped
@@ -102,16 +104,21 @@ export default async function ProductDetailPage({
   // other two only need its id/category (not its full shape) -- running
   // them in parallel instead of sequentially awaiting each in turn shaves
   // three round trips down to the slowest single one, straight off TTFB.
-  const [reviews, categorySliderItems, relatedProducts] = await Promise.all([
+  const [reviews, categorySliderItems, relatedProducts, unitSettings] = await Promise.all([
     product ? getApprovedReviews(product.id) : Promise.resolve([]),
     getCategorySliderItems(),
     product ? getRelatedProducts(product.category, product.id) : Promise.resolve([]),
+    getProductUnitSettings(),
   ]);
 
   const stock = product ? Number(product.inventory) || 0 : 0;
   const outOfStock = stock <= 0;
   const lowStock = !outOfStock && stock <= 3;
   const whatsappHref = product ? getProductWhatsappLink(product, outOfStock) : "#";
+  const dimensionsLine = product
+    ? formatProductDimensionsLine(product, unitSettings.weightUnit, unitSettings.dimensionUnit)
+    : null;
+  const attributesLine = product ? formatProductAttributesLine(product) : null;
   const averageRating =
     reviews.length > 0 ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length : 0;
 
@@ -243,6 +250,13 @@ export default async function ProductDetailPage({
               >
                 {outOfStock ? "Out of Stock" : lowStock ? `Only ${product.inventory} left!` : `Stock: ${product.inventory} units`}
               </span>
+
+              {(dimensionsLine || attributesLine) && (
+                <div className="mb-6 space-y-1">
+                  {dimensionsLine && <p className="text-stone-500 dark:text-stone-400 text-xs">{dimensionsLine}</p>}
+                  {attributesLine && <p className="text-stone-500 dark:text-stone-400 text-xs">{attributesLine}</p>}
+                </div>
+              )}
 
               <p className="text-stone-600 dark:text-stone-300 text-sm sm:text-base font-light leading-relaxed mb-8 whitespace-pre-line">
                 {product.description}
