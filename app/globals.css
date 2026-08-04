@@ -125,6 +125,124 @@ textarea:focus-visible,
   -webkit-backface-visibility: hidden;
 }
 
+/* Flip-trigger bar: a slow glow pulse so it reads as "tap me" rather than
+   just a decorative stripe -- settles once the visitor has actually
+   flipped a card this session (see FLIPPED_HINT_SEEN_KEY in ProductCard). */
+@keyframes flip-hint-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(180, 83, 9, 0); }
+  50% { box-shadow: 0 0 10px 1px rgba(180, 83, 9, 0.55); }
+}
+.flip-hint {
+  animation: flip-hint-glow 2.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flip-hint {
+    animation: none;
+  }
+}
+
+/* Engraved-plate spec box (ProductCard's flip-back Description/Specifications)
+   -- a <details> styled like a small brass nameplate set into a recessed
+   panel: beveled double-edge border, centered metallic label plate with an
+   engraved-text look, raised rivet studs, warm gradient fill. */
+.spec-plate {
+  position: relative;
+  border: 1px solid var(--spec-plate-line, #cbb789);
+  border-radius: 6px;
+  padding: 22px 16px 16px;
+  background: linear-gradient(165deg, var(--spec-plate-bg-from, #fffdf7) 0%, var(--spec-plate-bg-to, #f4e6c4) 100%);
+  box-shadow:
+    inset 0 1px 0 var(--spec-plate-hi, rgba(255, 255, 255, 0.9)),
+    inset 0 -1px 3px var(--spec-plate-lo, rgba(120, 90, 40, 0.12)),
+    0 1px 2px rgba(61, 17, 19, 0.05);
+}
+.dark .spec-plate {
+  --spec-plate-line: #574632;
+  --spec-plate-bg-from: #2b2119;
+  --spec-plate-bg-to: #221a14;
+  --spec-plate-hi: rgba(255, 255, 255, 0.06);
+  --spec-plate-lo: rgba(0, 0, 0, 0.4);
+}
+.spec-plate > summary {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  list-style: none;
+  cursor: pointer;
+  background: linear-gradient(180deg, #55191c 0%, #3d1113 55%, #2e0c0e 100%);
+  color: #f0d9a8;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 214, 140, 0.12);
+  padding: 5px 18px;
+  border-radius: 3px;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+  transition: background 150ms ease;
+}
+.spec-plate > summary:hover {
+  background: linear-gradient(180deg, #632024 0%, #47161a 55%, #350e10 100%);
+}
+.spec-plate > summary::-webkit-details-marker {
+  display: none;
+}
+.spec-plate > summary:focus-visible {
+  outline: 2px solid #d97706;
+  outline-offset: 2px;
+}
+.spec-plate::before,
+.spec-plate::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f2c14e 0%, #b45309 60%, #7a3706 100%);
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.35);
+}
+.spec-plate::before {
+  left: 7px;
+}
+.spec-plate::after {
+  right: 7px;
+}
+.spec-plate .spec-chev {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 200ms ease;
+  flex-shrink: 0;
+}
+.spec-plate[open] .spec-chev {
+  transform: rotate(-135deg);
+}
+.spec-plate > summary + * {
+  position: relative;
+  margin-top: 4px;
+  padding-top: 10px;
+}
+.spec-plate > summary + *::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -16px;
+  right: -16px;
+  border-top: 1px dashed var(--spec-plate-line, #cbb789);
+  opacity: 0.6;
+}
+
 .gallery-slide-track {
   display: flex;
   width: 100%;

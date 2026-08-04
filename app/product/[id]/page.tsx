@@ -14,9 +14,10 @@ import CategorySlider from "@/app/components/CategorySlider";
 import BestsellersStrip from "@/app/components/BestsellersStrip";
 import PriceDisplay from "@/app/components/PriceDisplay";
 import { getProductGallery } from "@/app/utils/productImages";
-import { getProductWhatsappLink } from "@/app/utils/whatsapp";
+import { getProductWhatsappLink, resolveProductWhatsappNumber } from "@/app/utils/whatsapp";
+import WhatsappEnquiryLink from "@/app/components/WhatsappEnquiryLink";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
-import { getRelatedProducts, getProductUnitSettings } from "@/app/utils/storeQueries";
+import { getRelatedProducts, getProductUnitSettings, getDefaultWhatsappNumber } from "@/app/utils/storeQueries";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
 
@@ -104,17 +105,23 @@ export default async function ProductDetailPage({
   // other two only need its id/category (not its full shape) -- running
   // them in parallel instead of sequentially awaiting each in turn shaves
   // three round trips down to the slowest single one, straight off TTFB.
-  const [reviews, categorySliderItems, relatedProducts, unitSettings] = await Promise.all([
+  const [reviews, categorySliderItems, relatedProducts, unitSettings, defaultWhatsappNumber] = await Promise.all([
     product ? getApprovedReviews(product.id) : Promise.resolve([]),
     getCategorySliderItems(),
     product ? getRelatedProducts(product.category, product.id) : Promise.resolve([]),
     getProductUnitSettings(),
+    getDefaultWhatsappNumber(),
   ]);
 
   const stock = product ? Number(product.inventory) || 0 : 0;
   const outOfStock = stock <= 0;
   const lowStock = !outOfStock && stock <= 3;
-  const whatsappHref = product ? getProductWhatsappLink(product, outOfStock) : "#";
+  const whatsappHref = product
+    ? getProductWhatsappLink(product, outOfStock, defaultWhatsappNumber || undefined)
+    : "#";
+  const whatsappNumberUsed = product
+    ? resolveProductWhatsappNumber(product, outOfStock, defaultWhatsappNumber || undefined)
+    : "";
   const dimensionsLine = product
     ? formatProductDimensionsLine(product, unitSettings.weightUnit, unitSettings.dimensionUnit)
     : null;
@@ -264,10 +271,12 @@ export default async function ProductDetailPage({
 
               <div className="space-y-3 mt-auto">
                 {/* PRIMARY CTA: WhatsApp */}
-                <a
+                <WhatsappEnquiryLink
                   href={whatsappHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  product={product}
+                  outOfStock={outOfStock}
+                  whatsappNumber={whatsappNumberUsed}
+                  source="product_detail"
                   className={`grid grid-cols-[auto_1fr_auto] items-center gap-2 w-full text-white text-sm uppercase tracking-wider font-semibold py-4 px-4 rounded shadow transition active:scale-[0.99] ${
                     outOfStock ? "bg-amber-700 hover:bg-amber-800" : "bg-emerald-600 hover:bg-emerald-700"
                   }`}
@@ -282,7 +291,7 @@ export default async function ProductDetailPage({
                   </svg>
                   <span className="text-center">{outOfStock ? "Chat to Check Availability" : "Chat & Ask For a Discount"}</span>
                   <span aria-hidden="true" className="w-4" />
-                </a>
+                </WhatsappEnquiryLink>
                 <p className="text-center text-[11px] text-stone-400">
                   {outOfStock
                     ? "This item is currently out of stock — reach out to us on WhatsApp to check when it will be available again."

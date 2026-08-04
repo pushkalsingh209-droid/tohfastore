@@ -94,6 +94,28 @@ export const getProductUnitSettings = unstable_cache(
   { revalidate: 60 }
 );
 
+// Admin-configurable default WhatsApp number for product enquiries -- null
+// means "use the hardcoded WHATSAPP_NUMBER fallback in app/utils/whatsapp.ts".
+// Only affects the customer-facing enquiry link; order/business
+// notifications never read this.
+export const getDefaultWhatsappNumber = unstable_cache(
+  async (): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "default_whatsapp_number")
+        .maybeSingle();
+      if (error || !data?.value) return null;
+      return data.value;
+    } catch {
+      return null;
+    }
+  },
+  ["default-whatsapp-number"],
+  { revalidate: 60 }
+);
+
 // A category's own default-page-size override, if an admin set one --
 // null means "use the site-wide default above" instead.
 export const getCategoryDefaultPageSize = unstable_cache(

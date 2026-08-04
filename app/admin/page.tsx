@@ -5,7 +5,7 @@ import Image from "next/image";
 import { getAutocompleteMatches, getSuggestions } from "@/app/utils/searchProducts";
 import Pagination from "@/app/components/Pagination";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
-import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
+import { WEIGHT_UNITS, DIMENSION_UNITS, convertDimensionValue, type DimensionUnit } from "@/app/utils/productUnits";
 
 // All reads/writes below go through /api/admin/* route handlers (protected
 // by middleware.ts's password gate) instead of talking to Supabase directly
@@ -46,9 +46,26 @@ export default function AdminDashboard() {
   const [materials, setMaterials] = useState<any[]>([]);
   const [newMaterialName, setNewMaterialName] = useState("");
   const [materialStatus, setMaterialStatus] = useState("");
+  const [whatsappNumbers, setWhatsappNumbers] = useState<any[]>([]);
+  const [newWhatsappNumber, setNewWhatsappNumber] = useState("");
+  const [newWhatsappLabel, setNewWhatsappLabel] = useState("");
+  const [whatsappNumberStatus, setWhatsappNumberStatus] = useState("");
+  const [reassignMode, setReassignMode] = useState<"number" | "category">("number");
+  const [reassignFrom, setReassignFrom] = useState("");
+  const [reassignCategory, setReassignCategory] = useState("");
+  const [reassignTo, setReassignTo] = useState("");
+  const [reassignStatus, setReassignStatus] = useState("");
+
+  // Quick unit converter helper next to the dimension fields -- a scratch
+  // pad only, doesn't write into formData itself. Defaults to inches since
+  // that's usually what's on a tape measure, converting into the cm the
+  // Height/Depth/Breadth fields actually store.
+  const [converterValue, setConverterValue] = useState("");
+  const [converterUnit, setConverterUnit] = useState<DimensionUnit>("in");
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [leads, setLeads] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
+  const [enquiryAnalytics, setEnquiryAnalytics] = useState<any>(null);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -80,6 +97,7 @@ export default function AdminDashboard() {
     breadth_cm: "",
     material: "",
     color: "",
+    whatsapp_number: "",
   });
   
   const [status, setStatus] = useState("");
@@ -100,7 +118,7 @@ export default function AdminDashboard() {
   // them in parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes] = await Promise.allSettled([
+    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes] = await Promise.allSettled([
       apiRequest("/api/admin/products"),
       apiRequest("/api/admin/orders"),
       apiRequest("/api/admin/reviews"),
@@ -111,6 +129,8 @@ export default function AdminDashboard() {
       apiRequest("/api/admin/analytics"),
       apiRequest("/api/admin/colors"),
       apiRequest("/api/admin/materials"),
+      apiRequest("/api/admin/whatsapp-numbers"),
+      apiRequest("/api/admin/whatsapp-enquiries"),
     ]);
     if (productsRes.status === "fulfilled") setProducts(productsRes.value.products);
     if (ordersRes.status === "fulfilled") setOrders(ordersRes.value.orders);
@@ -122,6 +142,8 @@ export default function AdminDashboard() {
     if (analyticsRes.status === "fulfilled") setAnalytics(analyticsRes.value);
     if (colorsRes.status === "fulfilled") setColors(colorsRes.value.colors);
     if (materialsRes.status === "fulfilled") setMaterials(materialsRes.value.materials);
+    if (whatsappNumbersRes.status === "fulfilled") setWhatsappNumbers(whatsappNumbersRes.value.numbers);
+    if (enquiryAnalyticsRes.status === "fulfilled") setEnquiryAnalytics(enquiryAnalyticsRes.value);
     setLoadingOrders(false);
   };
 
@@ -226,6 +248,7 @@ export default function AdminDashboard() {
       breadth_cm: formData.breadth_cm,
       material: formData.material,
       color: formData.color,
+      whatsapp_number: formData.whatsapp_number,
     };
 
     try {
@@ -239,17 +262,17 @@ export default function AdminDashboard() {
             body: JSON.stringify(payload),
           });
 
-      const allSaved = result.gallerySaved && result.categorySaved && result.dimensionsSaved && result.attributesSaved;
+      const allSaved = result.gallerySaved && result.categorySaved && result.dimensionsSaved && result.attributesSaved && result.whatsappNumberSaved;
       setStatus(
         allSaved
           ? editingProductId
             ? "Success! Your modifications have been updated live across the storefront."
             : "Success! The premium brass product is live on your storefront catalog."
-          : "Saved, but some new fields (gallery photos/category/weight & dimensions/material & colour) don't exist yet in Supabase. Run the migration, then re-save."
+          : "Saved, but some new fields (gallery photos/category/weight & dimensions/material & colour/WhatsApp number) don't exist yet in Supabase. Run the migration, then re-save."
       );
       if (editingProductId) setEditingProductId(null);
 
-      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "" });
+      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "" });
       fetchData(); // Sync live view structures
     } catch (err: any) {
       setStatus(`Database Exception: ${err.message || "Pipeline connection failed."}`);
@@ -275,6 +298,7 @@ export default function AdminDashboard() {
       breadth_cm: product.breadth_cm != null ? String(product.breadth_cm) : "",
       material: product.material || "",
       color: product.color || "",
+      whatsapp_number: product.whatsapp_number || "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -513,6 +537,81 @@ export default function AdminDashboard() {
     }
   };
 
+  // Adds a new number to the pool a product's WhatsApp-enquiry field can be
+  // set to (product_colors/product_materials pattern) -- purely for the
+  // customer-facing "chat about this product" link, never order/business
+  // notifications (those stay on BUSINESS_WHATSAPP_NUMBER regardless).
+  const handleAddWhatsappNumber = async () => {
+    if (!newWhatsappNumber.trim()) return;
+    setWhatsappNumberStatus("Adding number...");
+    try {
+      const result = await apiRequest("/api/admin/whatsapp-numbers", {
+        method: "POST",
+        body: JSON.stringify({ phone_number: newWhatsappNumber.trim(), label: newWhatsappLabel.trim() }),
+      });
+      setWhatsappNumbers([...whatsappNumbers, result.number]);
+      setFormData((prev) => ({ ...prev, whatsapp_number: result.number.phone_number }));
+      setNewWhatsappNumber("");
+      setNewWhatsappLabel("");
+      setWhatsappNumberStatus("");
+    } catch (err: any) {
+      setWhatsappNumberStatus(err.message || "Could not add number.");
+    }
+  };
+
+  // Site-wide default for new/unset products' WhatsApp enquiry link --
+  // reuses the existing settings PATCH endpoint. Clearing it (passing "")
+  // falls back to the hardcoded +91 6302672351 in app/utils/whatsapp.ts.
+  const handleSetDefaultWhatsappNumber = async (number: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ default_whatsapp_number: number }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: any) {
+      alert(`Could not set default WhatsApp number: ${err.message}`);
+    }
+  };
+
+  // Bulk-moves a set of products over to `reassignTo` in one write, filtered
+  // either by their current number (reassignMode "number") or by category
+  // (reassignMode "category") -- confirmed first since it's a multi-row
+  // change.
+  const handleBulkReassignWhatsapp = async () => {
+    if (!reassignTo) {
+      setReassignStatus("Choose a number to switch everything to.");
+      return;
+    }
+    if (reassignMode === "category" && !reassignCategory) {
+      setReassignStatus("Choose a category to switch.");
+      return;
+    }
+    const fromLabel =
+      reassignMode === "category"
+        ? `all "${reassignCategory}" category`
+        : reassignFrom
+        ? whatsappNumbers.find((n) => n.phone_number === reassignFrom)?.label || `+${reassignFrom}`
+        : "products with no number set (default)";
+    const toLabel = whatsappNumbers.find((n) => n.phone_number === reassignTo)?.label || `+${reassignTo}`;
+    if (!window.confirm(`Switch ${fromLabel} products to ${toLabel}? This updates every matching product at once.`)) {
+      return;
+    }
+    setReassignStatus("Switching...");
+    try {
+      const result = await apiRequest("/api/admin/whatsapp-numbers/reassign", {
+        method: "POST",
+        body: JSON.stringify(
+          reassignMode === "category" ? { category: reassignCategory, to: reassignTo } : { from: reassignFrom, to: reassignTo }
+        ),
+      });
+      setReassignStatus(`Done -- ${result.updated} product${result.updated === 1 ? "" : "s"} switched.`);
+      fetchData();
+    } catch (err: any) {
+      setReassignStatus(err.message || "Could not switch products.");
+    }
+  };
+
   const handleToggleCategoryHome = async (categoryId: number, showOnHome: boolean) => {
     try {
       await apiRequest("/api/admin/categories", {
@@ -622,7 +721,7 @@ export default function AdminDashboard() {
 
   const handleCancelEdit = () => {
     setEditingProductId(null);
-    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "" });
+    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "" });
     setStatus("");
   };
 
@@ -719,6 +818,115 @@ export default function AdminDashboard() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* SECTION OVERVIEW: WHATSAPP ENQUIRIES */}
+        <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+          <div className="border-b border-stone-200 pb-4 mb-6">
+            <h2 className="text-xl font-serif text-stone-900">WhatsApp Enquiries</h2>
+            <p className="text-stone-500 text-xs mt-1">Logged whenever a visitor taps a &ldquo;Chat on WhatsApp&rdquo; button on a product card or product page &mdash; counts intent, not confirmed replies.</p>
+          </div>
+
+          {!enquiryAnalytics ? (
+            <p className="text-stone-400 text-sm text-center py-6">Loading analytics...</p>
+          ) : enquiryAnalytics.totalEnquiries === 0 ? (
+            <p className="text-stone-400 text-sm text-center py-6">No WhatsApp enquiries logged yet.</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Total Enquiries</p>
+                  <p className="text-xl font-mono font-bold text-stone-900">{enquiryAnalytics.totalEnquiries}</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">Out-of-Stock Enquiries</p>
+                  <p className="text-xl font-mono font-bold text-amber-800">{enquiryAnalytics.outOfStockEnquiries}</p>
+                  <p className="text-[10px] text-amber-600 mt-0.5">
+                    {enquiryAnalytics.totalEnquiries > 0 ? ((enquiryAnalytics.outOfStockEnquiries / enquiryAnalytics.totalEnquiries) * 100).toFixed(1) : "0"}% of total
+                  </p>
+                </div>
+                <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Top Category</p>
+                  <p className="text-base font-serif font-bold text-stone-900 truncate">{enquiryAnalytics.byCategory[0]?.category || "--"}</p>
+                  <p className="text-[10px] text-stone-400 mt-0.5">{enquiryAnalytics.byCategory[0]?.count || 0} enquiries</p>
+                </div>
+                <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Top Product</p>
+                  <p className="text-base font-serif font-bold text-stone-900 truncate">{enquiryAnalytics.topProducts[0]?.productName || "--"}</p>
+                  <p className="text-[10px] text-stone-400 mt-0.5">{enquiryAnalytics.topProducts[0]?.count || 0} enquiries</p>
+                </div>
+              </div>
+
+              <div className="mb-8">
+                <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">Enquiries &mdash; Last 14 Days</h3>
+                <div className="flex items-end gap-1.5 h-28">
+                  {enquiryAnalytics.dailyTrend.map((d: any) => {
+                    const max = Math.max(...enquiryAnalytics.dailyTrend.map((x: any) => x.count), 1);
+                    const heightPct = Math.max(4, (d.count / max) * 100);
+                    return (
+                      <div key={d.label} className="flex-1 flex flex-col items-center justify-end h-full">
+                        <span className="text-[9px] font-mono text-stone-500 mb-1">{d.count > 0 ? d.count : ""}</span>
+                        <div className="w-full bg-emerald-600 rounded-t transition-all" style={{ height: `${heightPct}%` }} />
+                        <span className="text-[8px] text-stone-400 mt-1.5 whitespace-nowrap">{d.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">By Category</h3>
+                  <div className="space-y-2">
+                    {enquiryAnalytics.byCategory.map((c: any) => (
+                      <div key={c.category} className="flex items-center justify-between text-xs gap-2">
+                        <span className="text-stone-600 truncate">{c.category}</span>
+                        <span className="font-mono font-bold text-stone-900 bg-stone-100 rounded px-2 py-0.5 flex-shrink-0">{c.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">Top Products</h3>
+                  <div className="space-y-2">
+                    {enquiryAnalytics.topProducts.map((p: any) => (
+                      <div key={String(p.productId)} className="flex items-center justify-between text-xs gap-2">
+                        <span className="text-stone-600 truncate">{p.productName}</span>
+                        <span className="font-mono font-bold text-stone-900 bg-stone-100 rounded px-2 py-0.5 flex-shrink-0">{p.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-6 mt-6">
+                <div>
+                  <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">By WhatsApp Number</h3>
+                  <div className="space-y-2">
+                    {enquiryAnalytics.byNumber.map((n: any) => (
+                      <div key={n.whatsappNumber} className="flex items-center justify-between text-xs gap-2">
+                        <span className="text-stone-600 font-mono truncate">{n.whatsappNumber === "unknown" ? "Unknown" : `+${n.whatsappNumber}`}</span>
+                        <span className="font-mono font-bold text-stone-900 bg-stone-100 rounded px-2 py-0.5 flex-shrink-0">{n.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">By Source</h3>
+                  <div className="space-y-2">
+                    {enquiryAnalytics.bySource.map((s: any) => (
+                      <div key={s.source} className="flex items-center justify-between text-xs gap-2">
+                        <span className="text-stone-600 truncate">
+                          {s.source === "card_front" ? "Product Card (Front)" : s.source === "card_back" ? "Product Card (Flipped)" : s.source === "product_detail" ? "Product Detail Page" : s.source}
+                        </span>
+                        <span className="font-mono font-bold text-stone-900 bg-stone-100 rounded px-2 py-0.5 flex-shrink-0">{s.count}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </>
@@ -938,6 +1146,38 @@ export default function AdminDashboard() {
                   ))}
                 </datalist>
               </div>
+
+              {/* Scratch-pad only -- doesn't write into the fields above,
+                  just helps figure out what number to type into them (e.g.
+                  measured 5 inches with a tape, need the cm equivalent). */}
+              <div className="mt-3 p-3 rounded border border-dashed border-stone-300 bg-stone-50 flex flex-wrap items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mr-1">Unit converter</span>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Value"
+                  value={converterValue}
+                  onChange={(e) => setConverterValue(e.target.value)}
+                  className="w-20 px-2 py-1.5 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-white"
+                />
+                <select
+                  value={converterUnit}
+                  onChange={(e) => setConverterUnit(e.target.value as DimensionUnit)}
+                  className="px-2 py-1.5 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-white"
+                >
+                  {DIMENSION_UNITS.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+                <span className="text-stone-400 text-xs">=</span>
+                {DIMENSION_UNITS.filter((u) => u !== converterUnit).map((u) => (
+                  <span key={u} className="text-xs font-mono bg-white border border-stone-200 rounded px-2 py-1.5">
+                    {converterValue.trim() && Number.isFinite(Number(converterValue))
+                      ? convertDimensionValue(Number(converterValue), converterUnit, u)
+                      : "—"} {u}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -972,6 +1212,24 @@ export default function AdminDashboard() {
                   {colorStatus && <p className="text-[11px] text-rose-600 mt-1">{colorStatus}</p>}
                 </div>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+                WhatsApp Number for Enquiries <span className="text-stone-400 font-normal normal-case">(optional — defaults to +91 6302672351 if not set here. Order/business notifications always go to +91 6302672351 regardless of this.)</span>
+              </label>
+              <select disabled={isSubmitting} value={formData.whatsapp_number} onChange={(e) => setFormData({...formData, whatsapp_number: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+                <option value="">Default (+91 6302672351)</option>
+                {whatsappNumbers.map((n) => (
+                  <option key={n.id} value={n.phone_number}>{n.label ? `${n.label} — ` : ""}+{n.phone_number}</option>
+                ))}
+              </select>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <input type="text" disabled={isSubmitting} placeholder="Label (optional, e.g. Sales Team 2)" value={newWhatsappLabel} onChange={(e) => setNewWhatsappLabel(e.target.value)} className="flex-grow min-w-[140px] px-3 py-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-amber-600 bg-white" />
+                <input type="text" disabled={isSubmitting} placeholder="Add a new WhatsApp number..." value={newWhatsappNumber} onChange={(e) => setNewWhatsappNumber(e.target.value)} className="flex-grow min-w-[160px] px-3 py-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-amber-600 bg-white" />
+                <button type="button" disabled={isSubmitting || !newWhatsappNumber.trim()} onClick={handleAddWhatsappNumber} className="px-3 py-2 rounded bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
+              </div>
+              {whatsappNumberStatus && <p className="text-[11px] text-rose-600 mt-1">{whatsappNumberStatus}</p>}
             </div>
 
             <div className="flex justify-end pt-4 border-t border-stone-100">
@@ -1486,6 +1744,135 @@ export default function AdminDashboard() {
               ))}
             </select>
             <span className="text-stone-400 text-xs w-full">Product weight/dimensions are always entered and stored in grams/centimeters above -- these only control the unit shown to visitors.</span>
+          </div>
+        </div>
+
+        {/* SECTION D.0.5: WHATSAPP NUMBERS */}
+        <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+          <div className="border-b border-stone-200 pb-4 mb-6">
+            <h2 className="text-xl font-serif text-stone-900">WhatsApp Numbers</h2>
+            <p className="text-stone-500 text-xs mt-1">
+              For customer product enquiries only ("Chat to Check Availability" / "Chat for Discount") -- order and business
+              notifications always go to +91 6302672351, unaffected by anything here.
+            </p>
+          </div>
+
+          {whatsappNumbers.length === 0 ? (
+            <p className="text-stone-400 text-sm text-center py-4">
+              No extra numbers added yet -- add one from the product form&rsquo;s WhatsApp Number field, or below.
+            </p>
+          ) : (
+            <div className="overflow-x-auto mb-6">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-stone-50 text-stone-700 uppercase font-semibold text-[10px] tracking-wider border-b border-stone-200">
+                    <th className="p-3">Label</th>
+                    <th className="p-3">Number</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {whatsappNumbers.map((n: any) => {
+                    const isDefault = (settings.default_whatsapp_number || "") === n.phone_number;
+                    return (
+                      <tr key={n.id}>
+                        <td className="p-3 text-stone-700">{n.label || <span className="text-stone-300">—</span>}</td>
+                        <td className="p-3 font-mono text-stone-800">+{n.phone_number}</td>
+                        <td className="p-3">
+                          {isDefault && (
+                            <span className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                              ★ Default
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          {!isDefault && (
+                            <button
+                              type="button"
+                              onClick={() => handleSetDefaultWhatsappNumber(n.phone_number)}
+                              className="text-[11px] uppercase font-semibold text-amber-700 hover:text-amber-800"
+                            >
+                              Set as Default
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {settings.default_whatsapp_number && (
+            <p className="text-stone-500 text-xs mb-6">
+              Current default for products with no number of their own: <strong>+{settings.default_whatsapp_number}</strong>.{" "}
+              <button type="button" onClick={() => handleSetDefaultWhatsappNumber("")} className="text-amber-700 hover:text-amber-800 underline">
+                Reset to +91 6302672351
+              </button>
+            </p>
+          )}
+
+          <div className="border-t border-stone-100 pt-6">
+            <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+              Bulk switch <span className="text-stone-400 font-normal normal-case">(move a whole group of products over to another number, all at once)</span>
+            </label>
+
+            <div className="flex gap-1.5 mb-3">
+              <button
+                type="button"
+                onClick={() => setReassignMode("number")}
+                className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold tracking-wider transition ${
+                  reassignMode === "number" ? "bg-amber-600 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+              >
+                By Current Number
+              </button>
+              <button
+                type="button"
+                onClick={() => setReassignMode("category")}
+                className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold tracking-wider transition ${
+                  reassignMode === "category" ? "bg-amber-600 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+              >
+                By Category
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {reassignMode === "number" ? (
+                <select value={reassignFrom} onChange={(e) => setReassignFrom(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+                  <option value="">Products with no number set (default)</option>
+                  {whatsappNumbers.map((n: any) => (
+                    <option key={n.id} value={n.phone_number}>{n.label ? `${n.label} — ` : ""}+{n.phone_number}</option>
+                  ))}
+                </select>
+              ) : (
+                <select value={reassignCategory} onChange={(e) => setReassignCategory(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+                  <option value="">Choose a category...</option>
+                  {categories.map((c: any) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              )}
+              <span className="text-stone-400 text-xs">&rarr;</span>
+              <select value={reassignTo} onChange={(e) => setReassignTo(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+                <option value="">Choose a number...</option>
+                {whatsappNumbers.map((n: any) => (
+                  <option key={n.id} value={n.phone_number}>{n.label ? `${n.label} — ` : ""}+{n.phone_number}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={!reassignTo || (reassignMode === "category" && !reassignCategory)}
+                onClick={handleBulkReassignWhatsapp}
+                className="px-4 py-2 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
+              >
+                Switch All
+              </button>
+            </div>
+            {reassignStatus && <p className="text-[11px] text-stone-500 mt-2">{reassignStatus}</p>}
           </div>
         </div>
 

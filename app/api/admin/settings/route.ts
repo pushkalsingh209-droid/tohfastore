@@ -58,6 +58,17 @@ export async function PATCH(req: Request) {
       updates.push({ key: "dimension_unit", value: unit });
     }
 
+    // Empty clears it back to the hardcoded WHATSAPP_NUMBER fallback in
+    // app/utils/whatsapp.ts -- a set value must be a real digits-only
+    // number (same normalized format as whatsapp_numbers.phone_number).
+    if (body.default_whatsapp_number !== undefined) {
+      const digits = String(body.default_whatsapp_number).replace(/\D/g, "");
+      if (digits && digits.length < 10) {
+        return NextResponse.json({ error: "Invalid default WhatsApp number." }, { status: 400 });
+      }
+      updates.push({ key: "default_whatsapp_number", value: digits });
+    }
+
     if (updates.length === 0) {
       return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
     }

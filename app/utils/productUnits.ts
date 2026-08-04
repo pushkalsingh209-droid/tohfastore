@@ -29,6 +29,14 @@ export function convertCmTo(cm: number, unit: DimensionUnit): number {
   return roundDisplay(cm / CM_PER_UNIT[unit]);
 }
 
+// General any-unit-to-any-unit conversion -- backs the admin form's quick
+// converter helper (e.g. "how many cm is 5 inches?"), independent of the
+// grams/cm the fields themselves always store.
+export function convertDimensionValue(value: number, fromUnit: DimensionUnit, toUnit: DimensionUnit): number {
+  const cm = value * CM_PER_UNIT[fromUnit];
+  return roundDisplay(cm / CM_PER_UNIT[toUnit]);
+}
+
 export function isWeightUnit(value: unknown): value is WeightUnit {
   return typeof value === "string" && (WEIGHT_UNITS as string[]).includes(value);
 }
