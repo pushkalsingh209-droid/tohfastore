@@ -275,6 +275,10 @@ export async function POST(req: Request) {
           "Shipping to:",
           formattedAddress,
           "",
+          "↩️ *Cancellation & Refund Policy:* As each piece is handcrafted, we don't accept returns for change of mind after dispatch. For damaged, defective, or incorrect items, contact us within 48 hours of delivery along with a continuous, unedited unboxing video (starting before the parcel is opened) as proof.",
+          "रद्दीकरण और धनवापसी नीति: डिस्पैच के बाद मन बदलने पर रिटर्न स्वीकार नहीं होगा। क्षतिग्रस्त, दोषपूर्ण या गलत उत्पाद के लिए डिलीवरी के 48 घंटों में बिना एडिट की गई अनबॉक्सिंग वीडियो के साथ संपर्क करें।",
+          `Full policy: ${SITE_URL}/refunds`,
+          "",
           `Any questions? Reply here on WhatsApp (+${businessWhatsappNumber}) any time.`,
         ].join("\n");
       } catch (buildErr) {
@@ -388,9 +392,37 @@ function mrpSavingsRowsHtml(items: any[], categoryDiscounts?: Record<string, num
     <tr><td style="padding:2px 0;color:#15803d;">You Saved</td><td style="padding:2px 0;text-align:right;font-family:monospace;color:#15803d;">&#8377;${(mrpSubtotal - realSubtotal).toLocaleString("en-IN")} (${savingsPercent}% off)</td></tr>`;
 }
 
+// Bilingual Cancellation & Refund Policy block -- customer email copy only
+// (mirrors the same wording shown at checkout and on /refunds), so the
+// return window/unboxing-video terms are part of the order record the
+// customer actually keeps in their inbox, not just a page they might never
+// visit.
+function refundPolicyHtml(): string {
+  return `<div style="margin-top:20px;padding:14px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;">
+    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#92400e;margin:0 0 8px;">Cancellation &amp; Refund Policy</h3>
+    <p style="font-size:12px;color:#78350f;line-height:1.6;margin:0 0 8px;">
+      As each piece is handcrafted, we&rsquo;re unable to accept returns for change of mind once an order has been dispatched. However, if you receive a damaged, defective, or incorrect item, please contact us within 48 hours of delivery, along with a continuous, unedited unboxing video as proof.
+    </p>
+    <p style="font-size:12px;color:#78350f;line-height:1.6;margin:0 0 4px;">The video must:</p>
+    <ul style="font-size:12px;color:#78350f;line-height:1.6;margin:0 0 8px;padding-left:18px;">
+      <li>Start before the parcel is opened, clearly showing the sealed package and shipping label intact.</li>
+      <li>Continue without any pause, cut, or edit through to the item being fully unpacked.</li>
+      <li>Clearly and legibly show the damage, defect, or incorrect item.</li>
+    </ul>
+    <p style="font-size:12px;color:#78350f;line-height:1.6;margin:0 0 10px;">
+      Claims made without a valid unboxing video, or where the video is cut, edited, or doesn&rsquo;t clearly show the parcel being opened for the first time, may not be eligible for a replacement, repair, or refund.
+    </p>
+    <p lang="hi" style="font-size:12px;color:#78350f;line-height:1.6;margin:0;">
+      चूंकि प्रत्येक वस्तु हस्तनिर्मित होती है, डिस्पैच के बाद मन बदलने पर रिटर्न स्वीकार नहीं किया जाएगा। क्षतिग्रस्त, दोषपूर्ण या गलत उत्पाद के लिए डिलीवरी के 48 घंटों के भीतर एक निरंतर, बिना एडिट की गई अनबॉक्सिंग वीडियो के साथ संपर्क करें। पूरी नीति के लिए <a href="${SITE_URL}/refunds" style="color:#b45309;">यहाँ देखें</a>।
+    </p>
+  </div>`;
+}
+
 // Professional HTML order-confirmation template shared by both the business
 // and customer emails -- customer contact details are only shown on the
-// business copy (the customer already knows their own details).
+// business copy (the customer already knows their own details), and the
+// refund policy block only on the customer copy (irrelevant to an internal
+// ops alert).
 function buildOrderEmailHtml(params: {
   heading: string;
   intro: string;
@@ -402,9 +434,10 @@ function buildOrderEmailHtml(params: {
   orderItems: any[];
   gst: ReturnType<typeof calculateOrderGstBreakdown>;
   showCustomerContact: boolean;
+  includeRefundPolicy: boolean;
   categoryDiscounts?: Record<string, number>;
 }): string {
-  const { heading, intro, orderId, customerName, customerPhone, customerEmail, formattedAddress, orderItems, gst, showCustomerContact, categoryDiscounts } = params;
+  const { heading, intro, orderId, customerName, customerPhone, customerEmail, formattedAddress, orderItems, gst, showCustomerContact, includeRefundPolicy, categoryDiscounts } = params;
 
   const gstRows = gst.byRate
     .map(
@@ -454,6 +487,7 @@ function buildOrderEmailHtml(params: {
           ${gstRows}
           <tr><td style="padding:8px 0 0;font-weight:bold;font-size:15px;color:#1c1917;">Total</td><td style="padding:8px 0 0;text-align:right;font-weight:bold;font-size:16px;color:#b45309;font-family:monospace;">&#8377;${gst.totalPrice.toLocaleString("en-IN")}</td></tr>
         </table>
+        ${includeRefundPolicy ? refundPolicyHtml() : ""}
       </div>
       <div style="background:#fafaf9;padding:16px 24px;text-align:center;font-size:11px;color:#a8a29e;border-top:1px solid #e7e5e4;">
         Questions? WhatsApp us at +91 6302672351 or email <a href="mailto:${CONTACT_INBOX}" style="color:#b45309;">${CONTACT_INBOX}</a><br/>
@@ -498,6 +532,7 @@ async function sendOrderEmails(params: {
         orderItems,
         gst,
         showCustomerContact: true,
+        includeRefundPolicy: false,
         categoryDiscounts,
       }),
     }),
@@ -523,6 +558,7 @@ async function sendOrderEmails(params: {
           orderItems,
           gst,
           showCustomerContact: false,
+          includeRefundPolicy: true,
           categoryDiscounts,
         }),
       })

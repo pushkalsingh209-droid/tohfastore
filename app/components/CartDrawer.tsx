@@ -66,6 +66,12 @@ export default function CartDrawer() {
   // Specialized inline validation alert messages state
   const [validationError, setValidationError] = useState("");
 
+  // Explicit consent to the Cancellation & Refund Policy -- shown bilingual
+  // (English/Hindi) and required to check out, so acceptance of the return
+  // window/unboxing-video terms is a proven part of this specific order,
+  // not just something buried on a policy page nobody visited.
+  const [agreedToPolicy, setAgreedToPolicy] = useState(false);
+
   // Coupon code state -- the discount shown here is just a UI preview;
   // /api/razorpay re-validates and re-applies it authoritatively.
   const [couponInput, setCouponInput] = useState("");
@@ -160,6 +166,11 @@ export default function CartDrawer() {
 
     if (!addressState) {
       setValidationError("Please select your state.");
+      return;
+    }
+
+    if (!agreedToPolicy) {
+      setValidationError("Please agree to our Cancellation & Refund Policy to proceed. / कृपया आगे बढ़ने के लिए हमारी रद्दीकरण और धनवापसी नीति से सहमत हों।");
       return;
     }
 
@@ -484,6 +495,64 @@ export default function CartDrawer() {
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
+                  </div>
+
+                  {/* Full bilingual policy text (not just a link) + required
+                      consent -- the customer has to actually read the return
+                      window/unboxing-video terms right here while placing
+                      the order, and acceptance becomes a proven part of this
+                      specific order. */}
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded space-y-3">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wide text-amber-900 dark:text-amber-300">
+                      Cancellation &amp; Refund Policy
+                    </h4>
+
+                    <div className="space-y-1.5 text-[11px] text-amber-900 dark:text-amber-300 leading-relaxed">
+                      <p>
+                        As each piece is handcrafted, we&rsquo;re unable to accept returns for change of mind once an order has been dispatched. However, if you receive a damaged, defective, or incorrect item, please contact us within 48 hours of delivery, along with a continuous, unedited unboxing video as proof.
+                      </p>
+                      <p>The video must:</p>
+                      <ul className="list-disc pl-4 space-y-0.5">
+                        <li>Start before the parcel is opened, clearly showing the sealed package and shipping label intact.</li>
+                        <li>Continue without any pause, cut, or edit through to the item being fully unpacked.</li>
+                        <li>Clearly and legibly show the damage, defect, or incorrect item.</li>
+                      </ul>
+                      <p>
+                        This is required to verify the condition of the product at the time of delivery and to prevent fraudulent claims. Claims made without a valid unboxing video, or where the video is cut, edited, or does not clearly show the parcel being opened for the first time, may not be eligible for a replacement, repair, or refund. Once verified, we will arrange a replacement, repair, or refund as appropriate.
+                      </p>
+                    </div>
+
+                    <div lang="hi" className="space-y-1.5 text-[11px] text-amber-900 dark:text-amber-300 leading-relaxed pt-2 border-t border-amber-200/60 dark:border-amber-800/60">
+                      <p>
+                        चूंकि प्रत्येक वस्तु हस्तनिर्मित होती है, ऑर्डर डिस्पैच होने के बाद केवल मन बदलने पर रिटर्न स्वीकार नहीं किया जाएगा। हालांकि, यदि आपको क्षतिग्रस्त, दोषपूर्ण या गलत उत्पाद प्राप्त होता है, तो कृपया डिलीवरी के 48 घंटों के भीतर, प्रमाण के रूप में एक निरंतर, बिना एडिट की गई अनबॉक्सिंग वीडियो के साथ हमसे संपर्क करें।
+                      </p>
+                      <p>वीडियो में यह होना आवश्यक है:</p>
+                      <ul className="list-disc pl-4 space-y-0.5">
+                        <li>पार्सल खोलने से पहले शुरू हो, जिसमें सीलबंद पैकेट और शिपिंग लेबल स्पष्ट रूप से बरकरार दिखें।</li>
+                        <li>उत्पाद पूरी तरह से खुलने तक बिना किसी रुकावट, कट या एडिट के जारी रहे।</li>
+                        <li>क्षति, खराबी या गलत उत्पाद को स्पष्ट रूप से दिखाए।</li>
+                      </ul>
+                      <p>
+                        यह डिलीवरी के समय उत्पाद की स्थिति सत्यापित करने और धोखाधड़ी वाले दावों को रोकने के लिए आवश्यक है। बिना वैध अनबॉक्सिंग वीडियो के किए गए दावे, या जिन वीडियो को काटा या एडिट किया गया हो, या जो पार्सल को पहली बार खोलते हुए स्पष्ट रूप से न दिखाएं, वे रिप्लेसमेंट, रिपेयर या रिफंड के लिए पात्र नहीं हो सकते। सत्यापन के बाद, हम उचित रिप्लेसमेंट, रिपेयर या रिफंड की व्यवस्था करेंगे।
+                      </p>
+                    </div>
+
+                    <label className="flex items-start gap-2 text-[11px] text-amber-900 dark:text-amber-300 cursor-pointer pt-2 border-t border-amber-200/60 dark:border-amber-800/60">
+                      <input
+                        type="checkbox"
+                        required
+                        checked={agreedToPolicy}
+                        onChange={(e) => setAgreedToPolicy(e.target.checked)}
+                        className="mt-0.5 accent-amber-700 flex-shrink-0"
+                      />
+                      <span>
+                        I have read and agree to the above Cancellation &amp; Refund Policy. / मैंने उपरोक्त रद्दीकरण और धनवापसी नीति पढ़ ली है और सहमत हूं। (
+                        <a href="/refunds" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-amber-700 dark:hover:text-amber-400">
+                          full policy
+                        </a>
+                        )
+                      </span>
+                    </label>
                   </div>
                 </form>
               </>

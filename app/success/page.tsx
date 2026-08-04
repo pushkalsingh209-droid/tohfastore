@@ -116,6 +116,23 @@ export default function CheckoutSuccessPage() {
             </a>
           </div>
 
+          {/* CANCELLATION & REFUND POLICY REMINDER -- bilingual, mirrors the
+              consent note shown at checkout, so the return-window/unboxing-
+              video terms stay visible right after the order is placed too. */}
+          <div className="bg-white dark:bg-stone-900 border border-amber-100 dark:border-amber-800 rounded-lg p-6 shadow-sm print:hidden space-y-2">
+            <h2 className="text-xs uppercase tracking-wider text-stone-500 font-bold font-serif mb-1">
+              Return &amp; Replacement Policy
+            </h2>
+            <p className="text-stone-600 dark:text-stone-400 text-[11px] sm:text-xs leading-relaxed">
+              As each piece is handcrafted, we don&rsquo;t accept returns for change of mind once dispatched. If your order arrives damaged, defective, or incorrect, contact us within 48 hours of delivery along with a continuous, unedited unboxing video showing the sealed parcel being opened and the issue clearly. See the full{" "}
+              <a href="/refunds" className="text-amber-800 dark:text-amber-400 underline font-medium hover:text-amber-700">Cancellation &amp; Refund Policy</a>.
+            </p>
+            <p lang="hi" className="text-stone-600 dark:text-stone-400 text-[11px] sm:text-xs leading-relaxed">
+              चूंकि प्रत्येक वस्तु हस्तनिर्मित होती है, डिस्पैच के बाद केवल मन बदलने पर रिटर्न स्वीकार नहीं किया जाएगा। यदि ऑर्डर क्षतिग्रस्त, दोषपूर्ण या गलत प्राप्त होता है, तो डिलीवरी के 48 घंटों के भीतर एक निरंतर, बिना एडिट की गई अनबॉक्सिंग वीडियो के साथ हमसे संपर्क करें जिसमें पैकेट खुलते हुए और समस्या स्पष्ट रूप से दिखे। पूरी{" "}
+              <a href="/refunds" className="text-amber-800 dark:text-amber-400 underline font-medium hover:text-amber-700">रद्दीकरण और धनवापसी नीति</a> यहाँ देखें।
+            </p>
+          </div>
+
           {/* PRINTABLE INVOICE */}
           {order && gst && (
             <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-6 sm:p-8 shadow-sm print:shadow-none print:border-none">

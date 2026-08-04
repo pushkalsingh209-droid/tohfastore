@@ -350,3 +350,42 @@ textarea:focus-visible,
     background: #fff !important;
   }
 }
+
+/* Google Translate widget (see app/components/GoogleTranslateWidget.tsx) --
+   Google's default rendering is a custom-styled "goog-te-gadget-simple"
+   button (its own logo icon + "Select Language" text + chevron), with the
+   actual native <select class="goog-te-combo"> hidden underneath it for
+   fallback/accessibility only. That's the opposite of what we want here,
+   so this flips it: hide every bit of Google's own chrome (the fancy
+   gadget, its logo, "Powered by" text/link) and force the plain native
+   select back to visible, styled to match the header -- so only a bare
+   language dropdown shows, nothing else. Also hides the disruptive top
+   iframe banner Google injects once a language is selected (it otherwise
+   shoves the entire page down ~40px). */
+.google-translate-widget .goog-te-gadget {
+  font-size: 0 !important;
+}
+.google-translate-widget .goog-te-gadget-simple,
+.google-translate-widget .goog-te-gadget-icon,
+.google-translate-widget .goog-logo-link,
+.google-translate-widget .goog-te-gadget > span,
+.google-translate-widget .goog-te-gadget img {
+  display: none !important;
+}
+.google-translate-widget select.goog-te-combo {
+  display: inline-block !important;
+  visibility: visible !important;
+  font-size: 11px !important;
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--color-stone-300, #d6d3d1);
+  margin: 0 !important;
+  background: transparent;
+  color: inherit;
+}
+.goog-te-banner-frame.skiptranslate {
+  display: none !important;
+}
+body {
+  top: 0 !important;
+}

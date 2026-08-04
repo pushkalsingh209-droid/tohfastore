@@ -9,6 +9,7 @@ import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
 import SearchBar from "@/app/components/SearchBar";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import PageNavLinks from "@/app/components/PageNavLinks";
+import GoogleTranslateWidget from "@/app/components/GoogleTranslateWidget";
 
 export default function HeaderNavbar() {
   const { setIsOpen, cartCount } = useCart();
@@ -216,6 +217,13 @@ export default function HeaderNavbar() {
                 </svg>
                 Chat
               </a>
+            </div>
+
+            {/* Site-wide page translation -- Google's widget (Hindi + other
+                major Indian languages) plus a one-tap way back to English.
+                Rendered here (not per-page) so it works from anywhere. */}
+            <div className="flex-shrink-0">
+              <GoogleTranslateWidget />
             </div>
 
             <PageNavLinks />
