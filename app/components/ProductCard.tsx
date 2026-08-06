@@ -95,7 +95,7 @@ export default function ProductCard({ product, priority = false }: { product: an
         onMouseLeave={() => isDesktop && setActive(false)}
         onClick={handleImageClick}
       >
-        <ProductGallery images={gallery} productName={product.name} active={active} size="card" priority={priority} label={product.label} />
+        <ProductGallery images={gallery} productName={product.name} active={active} size="card" priority={priority} label={product.label} photoFilterOverride={product.photo_filter} />
 
         {/* Cross-cutting classification tag (e.g. "Lightweight Brass",
             "Board Game") -- set from the admin panel, independent of

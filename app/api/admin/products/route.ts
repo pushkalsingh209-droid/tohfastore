@@ -1,12 +1,13 @@
 // app/api/admin/products/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 
 // Some Supabase projects may not have every column yet (added by a later
 // migration the admin hasn't run) -- these routes degrade gracefully by
 // dropping whichever optional column Postgres complains about and retrying,
 // instead of failing the whole save.
-const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg"];
+const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter"];
 
 function isMissingColumn(error: any, columnHint: string) {
   const msg = error?.message || "";
@@ -59,6 +60,14 @@ function parseOptionalText(value: unknown): string | null {
   return trimmed || null;
 }
 
+// Blank/unset means "no override -- fall back to the label's own filter,
+// then the site default"; anything else must be one of the known presets.
+function parseOptionalPhotoFilter(value: unknown): string | null {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return null;
+  return PHOTO_FILTER_PRESETS.some((p) => p.name === trimmed) ? trimmed : null;
+}
+
 export async function GET() {
   // Ordered the same way the storefront's default view is: by the admin's
   // manual display_order (nulls -- not yet assigned -- sort last), then
@@ -96,6 +105,7 @@ export async function POST(req: Request) {
       whatsapp_number: parseOptionalText(body.whatsapp_number),
       label: parseOptionalText(body.label),
       price_per_kg: parseOptionalPositiveNumber(body.price_per_kg),
+      photo_filter: parseOptionalPhotoFilter(body.photo_filter),
     };
 
     const { data, error, droppedColumns } = await insertWithFallback(payload);
@@ -110,6 +120,7 @@ export async function POST(req: Request) {
       whatsappNumberSaved: !droppedColumns.includes("whatsapp_number"),
       labelSaved: !droppedColumns.includes("label"),
       pricePerKgSaved: !droppedColumns.includes("price_per_kg"),
+      photoFilterSaved: !droppedColumns.includes("photo_filter"),
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -146,6 +157,7 @@ export async function PATCH(req: Request) {
     if (fields.whatsapp_number !== undefined) payload.whatsapp_number = parseOptionalText(fields.whatsapp_number);
     if (fields.label !== undefined) payload.label = parseOptionalText(fields.label);
     if (fields.price_per_kg !== undefined) payload.price_per_kg = parseOptionalPositiveNumber(fields.price_per_kg);
+    if (fields.photo_filter !== undefined) payload.photo_filter = parseOptionalPhotoFilter(fields.photo_filter);
 
     const { data, error, droppedColumns } = await updateWithFallback(id, payload);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -159,6 +171,7 @@ export async function PATCH(req: Request) {
       whatsappNumberSaved: !droppedColumns.includes("whatsapp_number"),
       labelSaved: !droppedColumns.includes("label"),
       pricePerKgSaved: !droppedColumns.includes("price_per_kg"),
+      photoFilterSaved: !droppedColumns.includes("photo_filter"),
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -225,6 +225,7 @@ export default async function ProductDetailPage({
                 size="detail"
                 priority
                 label={product.label}
+                photoFilterOverride={product.photo_filter}
               />
             </div>
 

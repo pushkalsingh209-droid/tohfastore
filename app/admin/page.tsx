@@ -372,6 +372,21 @@ export default function AdminDashboard() {
     }
   };
 
+  // Per-product photo filter override -- beats that product's label's own
+  // override, which beats the site-wide default. Blank ("Auto") clears it
+  // back to that fallback chain.
+  const handleInlinePhotoFilterUpdate = async (productId: string, photoFilter: string) => {
+    try {
+      const result = await apiRequest("/api/admin/products", {
+        method: "PATCH",
+        body: JSON.stringify({ id: productId, photo_filter: photoFilter }),
+      });
+      setProducts(products.map((p) => (p.id === productId ? result.product : p)));
+    } catch (err: any) {
+      alert(`Could not update photo filter: ${err.message}`);
+    }
+  };
+
   // Manual storefront position -- lower numbers show first. Left blank
   // (null), a product falls back to sorting last (newest-first among
   // other unassigned products) until an admin gives it a number.
@@ -1610,6 +1625,19 @@ export default function AdminDashboard() {
                       <option value="">No label</option>
                       {labels.map((l) => (
                         <option key={l.id} value={l.name}>{l.name}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={product.photo_filter || ""}
+                      onChange={(e) => handleInlinePhotoFilterUpdate(product.id, e.target.value)}
+                      title="Photo look override for this product (beats its label's look and the site default)"
+                      aria-label={`Photo look for ${product.name}`}
+                      className="px-2 py-2 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-stone-50 max-w-[8rem]"
+                    >
+                      <option value="">Auto (label/default)</option>
+                      {PHOTO_FILTER_PRESETS.map((preset) => (
+                        <option key={preset.name} value={preset.name}>{preset.name}</option>
                       ))}
                     </select>
 
