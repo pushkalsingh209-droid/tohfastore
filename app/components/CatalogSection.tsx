@@ -13,6 +13,8 @@ export default function CatalogSection({
   pageSize,
   categories,
   category,
+  labels,
+  label,
   sort,
   inStockOnly,
   heading,
@@ -23,6 +25,8 @@ export default function CatalogSection({
   pageSize: number;
   categories: string[];
   category: string;
+  labels: string[];
+  label: string;
   sort: string;
   inStockOnly: boolean;
   heading?: string;
@@ -45,11 +49,15 @@ export default function CatalogSection({
   // Shared by the Category/Sort dropdowns so switching either one gets the
   // exact same in-place loading overlay as paging through results, instead
   // of a bare navigation with no feedback.
-  function handleFilterChange(next: { category?: string; sort?: string; inStock?: boolean }) {
+  function handleFilterChange(next: { category?: string; label?: string; sort?: string; inStock?: boolean }) {
     const params = new URLSearchParams(searchParams.toString());
     if (next.category !== undefined) {
       if (next.category) params.set("category", next.category);
       else params.delete("category");
+    }
+    if (next.label !== undefined) {
+      if (next.label) params.set("label", next.label);
+      else params.delete("label");
     }
     if (next.sort !== undefined) {
       if (next.sort && next.sort !== "sequence") params.set("sort", next.sort);
@@ -100,6 +108,8 @@ export default function CatalogSection({
             <CatalogFilters
               categories={categories}
               category={category}
+              labels={labels}
+              label={label}
               sort={sort}
               inStockOnly={inStockOnly}
               onFilterChange={handleFilterChange}

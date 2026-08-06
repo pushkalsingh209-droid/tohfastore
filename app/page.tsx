@@ -18,6 +18,7 @@ import {
   getBestsellers,
   getSiteSettings,
   getCategoryDefaultPageSize,
+  getActiveLabelNames,
 } from "@/app/utils/storeQueries";
 
 // The page still renders per-request (it reads searchParams for pagination/
@@ -25,7 +26,7 @@ import {
 // unstable_cache in app/utils/storeQueries.ts, so this no longer forces a
 // full no-store/no-cache mode on every fetch in the tree.
 
-type HomeSearchParams = { page?: string; pageSize?: string; category?: string; sort?: string; stock?: string };
+type HomeSearchParams = { page?: string; pageSize?: string; category?: string; label?: string; sort?: string; stock?: string };
 
 export async function generateMetadata({
   searchParams,
@@ -64,6 +65,7 @@ export default async function StorefrontHome({
   const sp = await searchParams;
   const requestedPage = Math.max(1, Number(sp.page) || 1);
   const category = sp.category || "";
+  const label = sp.label || "";
   // "sequence" (admin-controlled display_order) is the true default --
   // "newest" is now a distinct, explicit choice rather than the fallback,
   // so people can still browse by recency without losing the admin's
@@ -72,7 +74,7 @@ export default async function StorefrontHome({
   const inStockOnly = sp.stock === "in";
   const categoryContent = category ? getCategoryContent(category) : null;
 
-  const [hiddenCategories, rawPublicCoupons, categorySliderItems, totalProductCount, bestsellers, siteSettings, categoryPageSize] = await Promise.all([
+  const [hiddenCategories, rawPublicCoupons, categorySliderItems, totalProductCount, bestsellers, siteSettings, categoryPageSize, activeLabels] = await Promise.all([
     getHiddenCategoryNames(),
     getPublicCoupons(),
     getCategorySliderItems(),
@@ -80,6 +82,7 @@ export default async function StorefrontHome({
     category ? Promise.resolve([]) : getBestsellers(8),
     getSiteSettings(),
     category ? getCategoryDefaultPageSize(category) : Promise.resolve(null),
+    getActiveLabelNames(),
   ]);
 
   // Priority: an explicit visitor choice (the page-size selector) always
@@ -88,7 +91,7 @@ export default async function StorefrontHome({
   const defaultPageSize = categoryPageSize ?? siteSettings.defaultPageSize;
   const pageSize = PAGE_SIZE_OPTIONS.includes(Number(sp.pageSize)) ? Number(sp.pageSize) : defaultPageSize;
 
-  const { products, count, page } = await getCatalogPage(requestedPage, pageSize, category, sort, hiddenCategories, inStockOnly);
+  const { products, count, page } = await getCatalogPage(requestedPage, pageSize, category, sort, hiddenCategories, inStockOnly, label);
 
   // categorySliderItems already has one entry per distinct category with
   // products, so the filter dropdown's list can be derived from it instead
@@ -232,6 +235,8 @@ export default async function StorefrontHome({
             pageSize={pageSize}
             categories={categories}
             category={category}
+            labels={activeLabels}
+            label={label}
             sort={sort}
             inStockOnly={inStockOnly}
             heading={categoryContent?.heading}

@@ -10,6 +10,7 @@ import { WishlistProvider } from "@/app/context/WishlistContext";
 import { CatalogLoadingProvider } from "@/app/context/CatalogLoadingContext";
 import { CategoryDiscountProvider } from "@/app/context/CategoryDiscountContext";
 import { PhotoFilterSettingProvider } from "@/app/context/PhotoFilterSettingContext";
+import { LabelPhotoFilterProvider } from "@/app/context/LabelPhotoFilterContext";
 import { ProductUnitSettingProvider } from "@/app/context/ProductUnitSettingContext";
 import { DefaultWhatsappNumberProvider } from "@/app/context/DefaultWhatsappNumberContext";
 import CartDrawer from "@/app/components/CartDrawer";
@@ -63,6 +64,7 @@ export default function RootLayout({
       <CatalogLoadingProvider>
       <CategoryDiscountProvider>
       <PhotoFilterSettingProvider>
+      <LabelPhotoFilterProvider>
       <ProductUnitSettingProvider>
       <DefaultWhatsappNumberProvider>
         <body className="bg-[var(--background)] dark:bg-stone-950 text-stone-800 dark:text-stone-200 antialiased min-h-screen flex flex-col transition-colors">
@@ -193,6 +195,7 @@ export default function RootLayout({
         </body>
       </DefaultWhatsappNumberProvider>
       </ProductUnitSettingProvider>
+      </LabelPhotoFilterProvider>
       </PhotoFilterSettingProvider>
       </CategoryDiscountProvider>
       </CatalogLoadingProvider>

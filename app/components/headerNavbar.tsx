@@ -17,6 +17,7 @@ export default function HeaderNavbar() {
   const wishlistCount = wishlist?.length || 0;
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [menuCategories, setMenuCategories] = useState<string[]>([]);
+  const [menuLabels, setMenuLabels] = useState<string[]>([]);
   const router = useRouter();
   const { runTransition } = useCatalogLoading();
 
@@ -41,14 +42,30 @@ export default function HeaderNavbar() {
     };
   }, []);
 
-  function goToCategory(e: React.MouseEvent, name: string) {
+  // Labels (e.g. "Lightweight Brass", "Board Game") show up in the same
+  // menu as their own browsable filter, alongside hidden categories.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/labels")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        setMenuLabels(data.labels || []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function goToFilter(e: React.MouseEvent, param: "category" | "label", value: string) {
     // Let a modified click (open in new tab, etc.) fall through to normal
     // browser handling instead of hijacking it.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     setCategoryMenuOpen(false);
     runTransition(() => {
-      router.push(`/?category=${encodeURIComponent(name)}`, { scroll: false });
+      router.push(`/?${param}=${encodeURIComponent(value)}`, { scroll: false });
     });
   }
 
@@ -173,7 +190,7 @@ export default function HeaderNavbar() {
       <div className="border-t border-stone-100 dark:border-stone-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between gap-3 py-2.5">
-            {menuCategories.length > 0 ? (
+            {menuCategories.length > 0 || menuLabels.length > 0 ? (
               <button
                 type="button"
                 onClick={() => setCategoryMenuOpen((open) => !open)}
@@ -229,16 +246,29 @@ export default function HeaderNavbar() {
             <PageNavLinks />
           </div>
 
-          {categoryMenuOpen && menuCategories.length > 0 && (
+          {categoryMenuOpen && (menuCategories.length > 0 || menuLabels.length > 0) && (
             <div
               id="category-menu-panel"
               className="pb-3 flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-5 text-[11px] uppercase tracking-wider font-medium text-stone-500 dark:text-stone-400"
             >
               {menuCategories.map((name) => (
                 <a
-                  key={name}
+                  key={`category-${name}`}
                   href={`/?category=${encodeURIComponent(name)}`}
-                  onClick={(e) => goToCategory(e, name)}
+                  onClick={(e) => goToFilter(e, "category", name)}
+                  className="py-2 sm:py-0 hover:text-amber-700 dark:hover:text-amber-500 transition"
+                >
+                  {name}
+                </a>
+              ))}
+              {menuCategories.length > 0 && menuLabels.length > 0 && (
+                <span className="hidden sm:block border-l border-stone-200 dark:border-stone-700" aria-hidden="true" />
+              )}
+              {menuLabels.map((name) => (
+                <a
+                  key={`label-${name}`}
+                  href={`/?label=${encodeURIComponent(name)}`}
+                  onClick={(e) => goToFilter(e, "label", name)}
                   className="py-2 sm:py-0 hover:text-amber-700 dark:hover:text-amber-500 transition"
                 >
                   {name}

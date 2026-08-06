@@ -224,6 +224,7 @@ export default async function ProductDetailPage({
                 zoomable={true}
                 size="detail"
                 priority
+                label={product.label}
               />
             </div>
 

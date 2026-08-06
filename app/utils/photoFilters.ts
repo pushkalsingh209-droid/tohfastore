@@ -27,3 +27,11 @@ export const DEFAULT_PHOTO_FILTER_INDEX = Math.max(
   0,
   PHOTO_FILTER_PRESETS.findIndex((p) => p.name === "Bright")
 );
+
+// A product with no label gets this (the unfiltered original photo)
+// regardless of the site-wide default -- only labeled products opt into
+// any styling, via their own label's look or, absent that, the default.
+export const NORMAL_FILTER_INDEX = Math.max(
+  0,
+  PHOTO_FILTER_PRESETS.findIndex((p) => p.name === "Normal")
+);

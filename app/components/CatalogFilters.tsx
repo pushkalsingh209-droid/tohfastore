@@ -55,15 +55,19 @@ function InStockToggle({
 export default function CatalogFilters({
   categories,
   category,
+  labels,
+  label,
   sort,
   inStockOnly,
   onFilterChange,
 }: {
   categories: string[];
   category: string;
+  labels: string[];
+  label: string;
   sort: string;
   inStockOnly: boolean;
-  onFilterChange: (next: { category?: string; sort?: string; inStock?: boolean }) => void;
+  onFilterChange: (next: { category?: string; label?: string; sort?: string; inStock?: boolean }) => void;
 }) {
   if (categories.length === 0) {
     // No categorized products yet -- only offer sorting + stock toggle.
@@ -85,7 +89,7 @@ export default function CatalogFilters({
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between text-xs text-stone-700 dark:text-stone-400">
+    <div className={`grid ${labels.length > 0 ? "grid-cols-2" : "grid-cols-3"} gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between text-xs text-stone-700 dark:text-stone-400`}>
       <div className={GROUP_LEFT}>
         <span>Category</span>
         <select value={category} onChange={(e) => onFilterChange({ category: e.target.value })} className={SELECT_CLASSES}>
@@ -97,6 +101,19 @@ export default function CatalogFilters({
           ))}
         </select>
       </div>
+      {labels.length > 0 && (
+        <div className={GROUP_LEFT}>
+          <span>Label</span>
+          <select value={label} onChange={(e) => onFilterChange({ label: e.target.value })} className={SELECT_CLASSES}>
+            <option value="">All</option>
+            {labels.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <InStockToggle inStockOnly={inStockOnly} onFilterChange={onFilterChange} />
       <div className={GROUP_RIGHT}>
         <span>Sort</span>

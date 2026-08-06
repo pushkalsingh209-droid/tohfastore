@@ -6,7 +6,7 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 // migration the admin hasn't run) -- these routes degrade gracefully by
 // dropping whichever optional column Postgres complains about and retrying,
 // instead of failing the whole save.
-const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number"];
+const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg"];
 
 function isMissingColumn(error: any, columnHint: string) {
   const msg = error?.message || "";
@@ -94,6 +94,8 @@ export async function POST(req: Request) {
       material: parseOptionalText(body.material),
       color: parseOptionalText(body.color),
       whatsapp_number: parseOptionalText(body.whatsapp_number),
+      label: parseOptionalText(body.label),
+      price_per_kg: parseOptionalPositiveNumber(body.price_per_kg),
     };
 
     const { data, error, droppedColumns } = await insertWithFallback(payload);
@@ -106,6 +108,8 @@ export async function POST(req: Request) {
       dimensionsSaved: !droppedColumns.some((c) => ["weight_g", "height_cm", "depth_cm", "breadth_cm"].includes(c)),
       attributesSaved: !droppedColumns.some((c) => ["material", "color"].includes(c)),
       whatsappNumberSaved: !droppedColumns.includes("whatsapp_number"),
+      labelSaved: !droppedColumns.includes("label"),
+      pricePerKgSaved: !droppedColumns.includes("price_per_kg"),
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -140,6 +144,8 @@ export async function PATCH(req: Request) {
     if (fields.material !== undefined) payload.material = parseOptionalText(fields.material);
     if (fields.color !== undefined) payload.color = parseOptionalText(fields.color);
     if (fields.whatsapp_number !== undefined) payload.whatsapp_number = parseOptionalText(fields.whatsapp_number);
+    if (fields.label !== undefined) payload.label = parseOptionalText(fields.label);
+    if (fields.price_per_kg !== undefined) payload.price_per_kg = parseOptionalPositiveNumber(fields.price_per_kg);
 
     const { data, error, droppedColumns } = await updateWithFallback(id, payload);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -151,6 +157,8 @@ export async function PATCH(req: Request) {
       dimensionsSaved: !droppedColumns.some((c) => ["weight_g", "height_cm", "depth_cm", "breadth_cm"].includes(c)),
       attributesSaved: !droppedColumns.some((c) => ["material", "color"].includes(c)),
       whatsappNumberSaved: !droppedColumns.includes("whatsapp_number"),
+      labelSaved: !droppedColumns.includes("label"),
+      pricePerKgSaved: !droppedColumns.includes("price_per_kg"),
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

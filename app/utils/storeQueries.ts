@@ -43,6 +43,46 @@ export const getHiddenCategoryNames = unstable_cache(
   { revalidate: 60 }
 );
 
+// Distinct label names currently in use on products -- backs the header's
+// label menu and the catalog filter dropdown, same shape as the category
+// name derivation elsewhere (only offers labels that actually have
+// products, self-maintaining as products are re-labeled or deleted).
+export const getActiveLabelNames = unstable_cache(
+  async (): Promise<string[]> => {
+    try {
+      const { data, error } = await supabase.from("products").select("label").not("label", "is", null);
+      if (error) return [];
+      return Array.from(new Set((data || []).map((row: any) => row.label).filter(Boolean))).sort();
+    } catch {
+      return [];
+    }
+  },
+  ["active-label-names"],
+  { revalidate: 60 }
+);
+
+// Label -> photo filter preset name, for labels an admin has given their
+// own look (e.g. "Lightweight Brass" -> "Golden"). Only includes labels
+// that actually have an override set; a label absent from this map falls
+// back to the site-wide default photo filter.
+export const getLabelPhotoFilters = unstable_cache(
+  async (): Promise<Record<string, string>> => {
+    try {
+      const { data, error } = await supabase.from("labels").select("name, photo_filter").not("photo_filter", "is", null);
+      if (error) return {};
+      const map: Record<string, string> = {};
+      for (const row of data || []) {
+        if (row.name && row.photo_filter) map[row.name] = row.photo_filter;
+      }
+      return map;
+    } catch {
+      return {};
+    }
+  },
+  ["label-photo-filters"],
+  { revalidate: 60 }
+);
+
 const FALLBACK_DEFAULT_PAGE_SIZE = 10;
 
 // Site-wide default "products per page" an admin can set (e.g. "50 for
@@ -184,12 +224,14 @@ export const getCatalogPage = unstable_cache(
     category: string,
     sort: string,
     hiddenCategories: string[],
-    inStockOnly: boolean = false
+    inStockOnly: boolean = false,
+    label: string = ""
   ) => {
     try {
       let countQuery = supabase.from("products").select("*", { count: "exact", head: true });
       if (category) countQuery = countQuery.eq("category", category);
       else if (hiddenCategories.length > 0) countQuery = countQuery.not("category", "in", notInListLiteral(hiddenCategories));
+      if (label) countQuery = countQuery.eq("label", label);
       if (inStockOnly) countQuery = countQuery.gt("inventory", 0);
       const { count, error: countError } = await countQuery;
 
@@ -209,6 +251,7 @@ export const getCatalogPage = unstable_cache(
       let query = supabase.from("products").select("*");
       if (category) query = query.eq("category", category);
       else if (hiddenCategories.length > 0) query = query.not("category", "in", notInListLiteral(hiddenCategories));
+      if (label) query = query.eq("label", label);
       if (inStockOnly) query = query.gt("inventory", 0);
       if (sort === "price_asc") query = query.order("price", { ascending: true });
       else if (sort === "price_desc") query = query.order("price", { ascending: false });

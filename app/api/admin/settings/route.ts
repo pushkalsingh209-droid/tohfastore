@@ -69,6 +69,17 @@ export async function PATCH(req: Request) {
       updates.push({ key: "default_whatsapp_number", value: digits });
     }
 
+    // Site-wide default ₹/kg for the "Lightweight Brass" price calculator
+    // in the admin's stock tracker -- only used to prefill a product's own
+    // rate when it doesn't have one saved yet, never retroactively applied.
+    if (body.brass_price_per_kg !== undefined) {
+      const rate = Number(body.brass_price_per_kg);
+      if (!Number.isFinite(rate) || rate <= 0) {
+        return NextResponse.json({ error: "Default brass rate must be a positive number." }, { status: 400 });
+      }
+      updates.push({ key: "brass_price_per_kg", value: String(rate) });
+    }
+
     if (updates.length === 0) {
       return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
     }

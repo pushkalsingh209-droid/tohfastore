@@ -95,7 +95,17 @@ export default function ProductCard({ product, priority = false }: { product: an
         onMouseLeave={() => isDesktop && setActive(false)}
         onClick={handleImageClick}
       >
-        <ProductGallery images={gallery} productName={product.name} active={active} size="card" priority={priority} />
+        <ProductGallery images={gallery} productName={product.name} active={active} size="card" priority={priority} label={product.label} />
+
+        {/* Cross-cutting classification tag (e.g. "Lightweight Brass",
+            "Board Game") -- set from the admin panel, independent of
+            category. Opposite corner from the wishlist heart so neither
+            overlaps the other. */}
+        {product.label && (
+          <span className="absolute top-2 left-2 z-10 bg-amber-700/90 dark:bg-amber-600/90 text-white text-[9px] uppercase tracking-wider font-bold px-2 py-1 rounded shadow-sm pointer-events-none">
+            {product.label}
+          </span>
+        )}
 
         {/* Wishlist Heart Toggle */}
         <button

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { getAutocompleteMatches, getSuggestions } from "@/app/utils/searchProducts";
 import Pagination from "@/app/components/Pagination";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
-import { WEIGHT_UNITS, DIMENSION_UNITS, convertDimensionValue, type DimensionUnit } from "@/app/utils/productUnits";
+import { WEIGHT_UNITS, DIMENSION_UNITS, convertDimensionValue, convertCmTo, type DimensionUnit } from "@/app/utils/productUnits";
 
 // All reads/writes below go through /api/admin/* route handlers (protected
 // by middleware.ts's password gate) instead of talking to Supabase directly
@@ -46,6 +46,21 @@ export default function AdminDashboard() {
   const [materials, setMaterials] = useState<any[]>([]);
   const [newMaterialName, setNewMaterialName] = useState("");
   const [materialStatus, setMaterialStatus] = useState("");
+  const [labels, setLabels] = useState<any[]>([]);
+  const [newLabelName, setNewLabelName] = useState("");
+  const [labelStatus, setLabelStatus] = useState("");
+  const [bulkLabel, setBulkLabel] = useState("");
+  const [bulkLabelMode, setBulkLabelMode] = useState<"home" | "category">("home");
+  const [bulkLabelCategory, setBulkLabelCategory] = useState("");
+  const [bulkLabelStatus, setBulkLabelStatus] = useState("");
+  const [trackerBulkLabel, setTrackerBulkLabel] = useState("");
+  const [trackerBulkLabelStatus, setTrackerBulkLabelStatus] = useState("");
+
+  // In-progress edits for the "Lightweight Brass" inline weight/dimensions/
+  // ₹-per-kg row in the stock tracker, keyed by product id -- lets each of
+  // the five fields be edited independently while still PATCHing the full
+  // set together on blur (see handleBrassSpecUpdate).
+  const [brassDrafts, setBrassDrafts] = useState<Record<string, { weight_kg: string; height_in: string; depth_in: string; breadth_in: string; price_per_kg: string }>>({});
   const [whatsappNumbers, setWhatsappNumbers] = useState<any[]>([]);
   const [newWhatsappNumber, setNewWhatsappNumber] = useState("");
   const [newWhatsappLabel, setNewWhatsappLabel] = useState("");
@@ -98,6 +113,7 @@ export default function AdminDashboard() {
     material: "",
     color: "",
     whatsapp_number: "",
+    label: "",
   });
   
   const [status, setStatus] = useState("");
@@ -118,7 +134,7 @@ export default function AdminDashboard() {
   // them in parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes] = await Promise.allSettled([
+    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes] = await Promise.allSettled([
       apiRequest("/api/admin/products"),
       apiRequest("/api/admin/orders"),
       apiRequest("/api/admin/reviews"),
@@ -131,6 +147,7 @@ export default function AdminDashboard() {
       apiRequest("/api/admin/materials"),
       apiRequest("/api/admin/whatsapp-numbers"),
       apiRequest("/api/admin/whatsapp-enquiries"),
+      apiRequest("/api/admin/labels"),
     ]);
     if (productsRes.status === "fulfilled") setProducts(productsRes.value.products);
     if (ordersRes.status === "fulfilled") setOrders(ordersRes.value.orders);
@@ -144,6 +161,7 @@ export default function AdminDashboard() {
     if (materialsRes.status === "fulfilled") setMaterials(materialsRes.value.materials);
     if (whatsappNumbersRes.status === "fulfilled") setWhatsappNumbers(whatsappNumbersRes.value.numbers);
     if (enquiryAnalyticsRes.status === "fulfilled") setEnquiryAnalytics(enquiryAnalyticsRes.value);
+    if (labelsRes.status === "fulfilled") setLabels(labelsRes.value.labels);
     setLoadingOrders(false);
   };
 
@@ -249,6 +267,7 @@ export default function AdminDashboard() {
       material: formData.material,
       color: formData.color,
       whatsapp_number: formData.whatsapp_number,
+      label: formData.label,
     };
 
     try {
@@ -262,17 +281,17 @@ export default function AdminDashboard() {
             body: JSON.stringify(payload),
           });
 
-      const allSaved = result.gallerySaved && result.categorySaved && result.dimensionsSaved && result.attributesSaved && result.whatsappNumberSaved;
+      const allSaved = result.gallerySaved && result.categorySaved && result.dimensionsSaved && result.attributesSaved && result.whatsappNumberSaved && result.labelSaved;
       setStatus(
         allSaved
           ? editingProductId
             ? "Success! Your modifications have been updated live across the storefront."
             : "Success! The premium brass product is live on your storefront catalog."
-          : "Saved, but some new fields (gallery photos/category/weight & dimensions/material & colour/WhatsApp number) don't exist yet in Supabase. Run the migration, then re-save."
+          : "Saved, but some new fields (gallery photos/category/weight & dimensions/material & colour/WhatsApp number/label) don't exist yet in Supabase. Run the migration, then re-save."
       );
       if (editingProductId) setEditingProductId(null);
 
-      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "" });
+      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "" });
       fetchData(); // Sync live view structures
     } catch (err: any) {
       setStatus(`Database Exception: ${err.message || "Pipeline connection failed."}`);
@@ -299,6 +318,7 @@ export default function AdminDashboard() {
       material: product.material || "",
       color: product.color || "",
       whatsapp_number: product.whatsapp_number || "",
+      label: product.label || "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -334,6 +354,21 @@ export default function AdminDashboard() {
       }
     } catch (err: any) {
       alert(`Could not change stock: ${err.message}`);
+    }
+  };
+
+  // Quick per-product label change straight from the stock tracker row --
+  // same PATCH the full Edit Details form uses, just without leaving the
+  // list or repopulating the whole form for a one-field change.
+  const handleInlineLabelUpdate = async (productId: string, label: string) => {
+    try {
+      const result = await apiRequest("/api/admin/products", {
+        method: "PATCH",
+        body: JSON.stringify({ id: productId, label }),
+      });
+      setProducts(products.map((p) => (p.id === productId ? result.product : p)));
+    } catch (err: any) {
+      alert(`Could not update label: ${err.message}`);
     }
   };
 
@@ -537,6 +572,181 @@ export default function AdminDashboard() {
     }
   };
 
+  // Same idea for the Label dropdown (backed by the labels table) -- the
+  // seeded "Lightweight Brass"/"Board Game" pair is just a starting point.
+  const handleAddLabel = async () => {
+    if (!newLabelName.trim()) return;
+    setLabelStatus("Adding label...");
+    try {
+      const result = await apiRequest("/api/admin/labels", {
+        method: "POST",
+        body: JSON.stringify({ name: newLabelName.trim() }),
+      });
+      setLabels([...labels, result.label].sort((a, b) => a.name.localeCompare(b.name)));
+      setFormData((prev) => ({ ...prev, label: result.label.name }));
+      setNewLabelName("");
+      setLabelStatus("");
+    } catch (err: any) {
+      setLabelStatus(err.message || "Could not add label.");
+    }
+  };
+
+  // A label's own photo filter override (e.g. every "Lightweight Brass"
+  // product uses "Golden" regardless of the site-wide default) -- clearing
+  // it ("") falls back to that default for that label's products.
+  const handleUpdateLabelPhotoFilter = async (labelId: number, photoFilter: string) => {
+    try {
+      const result = await apiRequest("/api/admin/labels", {
+        method: "PATCH",
+        body: JSON.stringify({ id: labelId, photo_filter: photoFilter }),
+      });
+      setLabels(labels.map((l) => (l.id === labelId ? result.label : l)));
+    } catch (err: any) {
+      alert(`Could not update label's photo filter: ${err.message}`);
+    }
+  };
+
+  // Bulk-tags every product either in one category, or currently visible on
+  // the homepage (i.e. not in a category the admin has hidden from home),
+  // with the chosen label in a single write -- see
+  // /api/admin/labels/bulk-assign. Confirmed first since it's a multi-row
+  // change.
+  const handleBulkAssignLabel = async () => {
+    if (!bulkLabel) {
+      setBulkLabelStatus("Choose a label to assign.");
+      return;
+    }
+    if (bulkLabelMode === "category" && !bulkLabelCategory) {
+      setBulkLabelStatus("Choose a category to assign.");
+      return;
+    }
+    const scopeLabel = bulkLabelMode === "category" ? `all "${bulkLabelCategory}" category` : "all homepage-visible";
+    if (!window.confirm(`Tag ${scopeLabel} products as "${bulkLabel}"? This updates every matching product at once.`)) {
+      return;
+    }
+    setBulkLabelStatus("Assigning...");
+    try {
+      const result = await apiRequest("/api/admin/labels/bulk-assign", {
+        method: "POST",
+        body: JSON.stringify(
+          bulkLabelMode === "category" ? { label: bulkLabel, mode: "category", category: bulkLabelCategory } : { label: bulkLabel, mode: "home" }
+        ),
+      });
+      setBulkLabelStatus(`Done -- ${result.updated} product${result.updated === 1 ? "" : "s"} tagged.`);
+      fetchData();
+    } catch (err: any) {
+      setBulkLabelStatus(err.message || "Could not assign label.");
+    }
+  };
+
+  // Same bulk-assign-by-category action as the Product Labels panel above,
+  // surfaced right in the stock tracker's own category filter instead --
+  // convenient when you're already filtered down to one category here and
+  // don't want to scroll back up and re-pick it.
+  const handleTrackerBulkAssignLabel = async () => {
+    if (!productCategoryFilter) {
+      setTrackerBulkLabelStatus("Filter by a category above first.");
+      return;
+    }
+    if (!trackerBulkLabel) {
+      setTrackerBulkLabelStatus("Choose a label to assign.");
+      return;
+    }
+    if (!window.confirm(`Tag all "${productCategoryFilter}" category products as "${trackerBulkLabel}"? This updates every matching product at once.`)) {
+      return;
+    }
+    setTrackerBulkLabelStatus("Assigning...");
+    try {
+      const result = await apiRequest("/api/admin/labels/bulk-assign", {
+        method: "POST",
+        body: JSON.stringify({ label: trackerBulkLabel, mode: "category", category: productCategoryFilter }),
+      });
+      setTrackerBulkLabelStatus(`Done -- ${result.updated} product${result.updated === 1 ? "" : "s"} tagged.`);
+      fetchData();
+    } catch (err: any) {
+      setTrackerBulkLabelStatus(err.message || "Could not assign label.");
+    }
+  };
+
+  // Site-wide default ₹/kg for the "Lightweight Brass" price calculator --
+  // only prefills a product's own rate when it doesn't have one saved yet.
+  const handleUpdateBrassPricePerKg = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ brass_price_per_kg: value }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: any) {
+      alert(`Could not update default brass rate: ${err.message}`);
+    }
+  };
+
+  // Falls back to the product's stored weight_g/height_cm/depth_cm/
+  // breadth_cm/price_per_kg (converted to kg/in) -- or the site-wide
+  // default ₹/kg -- until the admin actually edits a field for that row.
+  const defaultBrassDraft = (product: any) => ({
+    weight_kg: product.weight_g != null ? String(product.weight_g / 1000) : "",
+    height_in: product.height_cm != null ? String(convertCmTo(product.height_cm, "in")) : "",
+    depth_in: product.depth_cm != null ? String(convertCmTo(product.depth_cm, "in")) : "",
+    breadth_in: product.breadth_cm != null ? String(convertCmTo(product.breadth_cm, "in")) : "",
+    price_per_kg: product.price_per_kg != null ? String(product.price_per_kg) : settings.brass_price_per_kg || "6000",
+  });
+  const brassDraft = (product: any) => brassDrafts[product.id] ?? defaultBrassDraft(product);
+  const updateBrassDraftField = (product: any, field: keyof ReturnType<typeof defaultBrassDraft>, value: string) => {
+    setBrassDrafts((prev) => ({ ...prev, [product.id]: { ...(prev[product.id] ?? defaultBrassDraft(product)), [field]: value } }));
+  };
+
+  // Drives the "Lightweight Brass" inline weight/dimensions/₹-per-kg row in
+  // the Live Storefront Catalog & Stock Tracker. Weight (kg) and dimensions
+  // (in) are converted to the canonical grams/cm the columns store; the
+  // product's live price only auto-recomputes (weight × rate × 1.20 margin)
+  // when a weight is actually given -- left blank, price is untouched so it
+  // stays whatever was manually entered when the product was added.
+  const handleBrassSpecUpdate = async (
+    productId: string,
+    fields: { weight_kg?: string; height_in?: string; depth_in?: string; breadth_in?: string; price_per_kg?: string }
+  ) => {
+    const toGrams = (kg: string | undefined) => {
+      const num = Number(kg);
+      return kg && Number.isFinite(num) && num > 0 ? num * 1000 : null;
+    };
+    const toCm = (inches: string | undefined) => {
+      const num = Number(inches);
+      return inches && Number.isFinite(num) && num > 0 ? convertDimensionValue(num, "in", "cm") : null;
+    };
+    const weightG = toGrams(fields.weight_kg);
+    const pricePerKg = Number(fields.price_per_kg);
+    const validPricePerKg = Number.isFinite(pricePerKg) && pricePerKg > 0 ? pricePerKg : null;
+
+    const payload: Record<string, any> = {
+      id: productId,
+      weight_g: weightG,
+      height_cm: toCm(fields.height_in),
+      depth_cm: toCm(fields.depth_in),
+      breadth_cm: toCm(fields.breadth_in),
+      price_per_kg: validPricePerKg,
+    };
+    // Only recompute the live price when there's an actual weight to base
+    // it on -- otherwise the manually-entered price is left exactly as-is.
+    if (weightG && validPricePerKg) {
+      payload.price = Math.round((weightG / 1000) * validPricePerKg * 1.2);
+    }
+
+    try {
+      const result = await apiRequest("/api/admin/products", { method: "PATCH", body: JSON.stringify(payload) });
+      setProducts(products.map((p) => (p.id === productId ? result.product : p)));
+      // Clear the draft override so this row's fields re-sync from the
+      // now-updated product instead of staying pinned to what was typed.
+      setBrassDrafts((prev) => {
+        const { [productId]: _, ...rest } = prev;
+        return rest;
+      });
+    } catch (err: any) {
+      alert(`Could not update brass spec: ${err.message}`);
+    }
+  };
+
   // Adds a new number to the pool a product's WhatsApp-enquiry field can be
   // set to (product_colors/product_materials pattern) -- purely for the
   // customer-facing "chat about this product" link, never order/business
@@ -721,7 +931,7 @@ export default function AdminDashboard() {
 
   const handleCancelEdit = () => {
     setEditingProductId(null);
-    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "" });
+    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "" });
     setStatus("");
   };
 
@@ -1073,6 +1283,22 @@ export default function AdminDashboard() {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+                  Label <span className="text-stone-400 font-normal normal-case">(optional — cross-cutting tag, e.g. &ldquo;Lightweight Brass&rdquo;; shown in the category menu and, for &ldquo;Lightweight Brass&rdquo;, unlocks the weight-based price calculator below in the stock tracker)</span>
+                </label>
+                <select disabled={isSubmitting} value={formData.label} onChange={(e) => setFormData({...formData, label: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+                  <option value="">No label set</option>
+                  {labels.map((l) => (
+                    <option key={l.id} value={l.name}>{l.name}</option>
+                  ))}
+                </select>
+                <div className="flex gap-2 mt-2">
+                  <input type="text" disabled={isSubmitting} placeholder="Add a new label..." value={newLabelName} onChange={(e) => setNewLabelName(e.target.value)} className="flex-grow px-3 py-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-amber-600 bg-white" />
+                  <button type="button" disabled={isSubmitting || !newLabelName.trim()} onClick={handleAddLabel} className="px-3 py-2 rounded bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
+                </div>
+                {labelStatus && <p className="text-[11px] text-rose-600 mt-1">{labelStatus}</p>}
+              </div>
             </div>
 
             <div>
@@ -1300,6 +1526,29 @@ export default function AdminDashboard() {
                 ))}
               </select>
             </div>
+
+            {productCategoryFilter && (
+              <div className="flex flex-wrap items-center gap-2 mt-3 p-3 rounded border border-dashed border-amber-300 bg-amber-50">
+                <span className="text-[11px] uppercase tracking-wider text-stone-500 font-semibold whitespace-nowrap">
+                  Tag all &ldquo;{productCategoryFilter}&rdquo; as
+                </span>
+                <select value={trackerBulkLabel} onChange={(e) => setTrackerBulkLabel(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-white">
+                  <option value="">Choose a label...</option>
+                  {labels.map((l) => (
+                    <option key={l.id} value={l.name}>{l.name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!trackerBulkLabel}
+                  onClick={handleTrackerBulkAssignLabel}
+                  className="px-4 py-2 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
+                >
+                  Assign All
+                </button>
+                {trackerBulkLabelStatus && <span className="text-[11px] text-stone-500">{trackerBulkLabelStatus}</span>}
+              </div>
+            )}
           </div>
 
           {products.length === 0 ? (
@@ -1314,7 +1563,8 @@ export default function AdminDashboard() {
             <>
             <div className="divide-y divide-stone-100">
               {paginatedProducts.map((product, index) => (
-                <div key={product.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div key={product.id} className="py-4 flex flex-col gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-grow">
                     <input
                       key={`${product.id}-${product.display_order ?? ""}`}
@@ -1350,10 +1600,90 @@ export default function AdminDashboard() {
                       <button onClick={() => handleStockUpdate(product.id, product.inventory, 1)} className="w-8 h-8 rounded border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 transition">+</button>
                     </div>
 
+                    <select
+                      value={product.label || ""}
+                      onChange={(e) => handleInlineLabelUpdate(product.id, e.target.value)}
+                      title="Label"
+                      aria-label={`Label for ${product.name}`}
+                      className="px-2 py-2 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-stone-50 max-w-[9rem]"
+                    >
+                      <option value="">No label</option>
+                      {labels.map((l) => (
+                        <option key={l.id} value={l.name}>{l.name}</option>
+                      ))}
+                    </select>
+
                     <button type="button" onClick={() => handleEditClick(product)} className="px-4 py-2 border border-amber-600 rounded text-amber-700 hover:bg-amber-50 font-semibold text-xs uppercase shadow-sm transition">
                       Edit Details
                     </button>
                   </div>
+                  </div>
+
+                  {product.label?.trim().toLowerCase() === "lightweight brass" && (() => {
+                    const draft = brassDraft(product);
+                    const weightKg = Number(draft.weight_kg);
+                    const rate = Number(draft.price_per_kg);
+                    const computedPrice = weightKg > 0 && rate > 0 ? Math.round(weightKg * rate * 1.2) : null;
+                    return (
+                      <div className="bg-amber-50 border border-amber-200 rounded px-3 py-2.5 flex flex-wrap items-end gap-3">
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Weight (kg)</label>
+                          <input
+                            type="number" min={0} step="any" placeholder="e.g. 0.5"
+                            value={draft.weight_kg}
+                            onChange={(e) => updateBrassDraftField(product, "weight_kg", e.target.value)}
+                            onBlur={(e) => handleBrassSpecUpdate(product.id, { ...draft, weight_kg: e.target.value })}
+                            className="w-20 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Height (in)</label>
+                          <input
+                            type="number" min={0} step="any" placeholder="H"
+                            value={draft.height_in}
+                            onChange={(e) => updateBrassDraftField(product, "height_in", e.target.value)}
+                            onBlur={(e) => handleBrassSpecUpdate(product.id, { ...draft, height_in: e.target.value })}
+                            className="w-16 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Depth (in)</label>
+                          <input
+                            type="number" min={0} step="any" placeholder="D"
+                            value={draft.depth_in}
+                            onChange={(e) => updateBrassDraftField(product, "depth_in", e.target.value)}
+                            onBlur={(e) => handleBrassSpecUpdate(product.id, { ...draft, depth_in: e.target.value })}
+                            className="w-16 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Breadth (in)</label>
+                          <input
+                            type="number" min={0} step="any" placeholder="B"
+                            value={draft.breadth_in}
+                            onChange={(e) => updateBrassDraftField(product, "breadth_in", e.target.value)}
+                            onBlur={(e) => handleBrassSpecUpdate(product.id, { ...draft, breadth_in: e.target.value })}
+                            className="w-16 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">₹ / kg</label>
+                          <input
+                            type="number" min={0} step="any"
+                            value={draft.price_per_kg}
+                            onChange={(e) => updateBrassDraftField(product, "price_per_kg", e.target.value)}
+                            onBlur={(e) => handleBrassSpecUpdate(product.id, { ...draft, price_per_kg: e.target.value })}
+                            className="w-20 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                          />
+                        </div>
+                        <p className="text-xs font-mono font-semibold text-amber-800 pb-1.5">
+                          {computedPrice !== null
+                            ? <>Rate: ₹{computedPrice.toLocaleString("en-IN")} <span className="text-stone-400 font-normal">(wt × rate × 1.2)</span></>
+                            : <span className="text-stone-400 font-normal">Enter weight to auto-compute the rate — otherwise the manually-set price above is kept.</span>}
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
@@ -1745,6 +2075,24 @@ export default function AdminDashboard() {
             </select>
             <span className="text-stone-400 text-xs w-full">Product weight/dimensions are always entered and stored in grams/centimeters above -- these only control the unit shown to visitors.</span>
           </div>
+          <div className="flex items-center gap-3 flex-wrap mt-4">
+            <label className="text-sm text-stone-700 font-medium">Default Brass Rate (₹/kg)</label>
+            <input
+              type="number"
+              min={0}
+              step="any"
+              key={settings.brass_price_per_kg ?? "6000"}
+              defaultValue={settings.brass_price_per_kg ?? "6000"}
+              onBlur={(e) => {
+                const next = e.target.value.trim();
+                if (next && next !== settings.brass_price_per_kg) handleUpdateBrassPricePerKg(next);
+              }}
+              className="w-28 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+            <span className="text-stone-400 text-xs w-full">
+              Used by the &ldquo;Lightweight Brass&rdquo; price calculator in the stock tracker (weight × rate × 1.20 margin). Raising this only changes the default offered to a product that doesn&rsquo;t have its own rate saved yet -- it never rewrites a product&rsquo;s already-saved rate or price.
+            </span>
+          </div>
         </div>
 
         {/* SECTION D.0.5: WHATSAPP NUMBERS */}
@@ -1873,6 +2221,99 @@ export default function AdminDashboard() {
               </button>
             </div>
             {reassignStatus && <p className="text-[11px] text-stone-500 mt-2">{reassignStatus}</p>}
+          </div>
+        </div>
+
+        {/* SECTION D.0: PRODUCT LABELS */}
+        <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+          <div className="border-b border-stone-200 pb-4 mb-6">
+            <h2 className="text-xl font-serif text-stone-900">Product Labels</h2>
+            <p className="text-stone-500 text-xs mt-1">
+              Manage the labels offered in the product form&rsquo;s dropdown and the storefront&rsquo;s category menu. Tag a whole group of products at once below instead of editing them one by one — e.g. every homepage product as &ldquo;Lightweight Brass&rdquo;, or every &ldquo;Board Games&rdquo; category product as &ldquo;Board Game&rdquo;. &ldquo;Lightweight Brass&rdquo; additionally unlocks the weight-based price calculator in the stock tracker below. Each label can also have its own <strong>photo look</strong> — a product with that label uses it instead of the site-wide default; a product with no label at all always shows the plain, unfiltered photo regardless of the default.
+            </p>
+          </div>
+
+          <div className="space-y-2 mb-6">
+            {labels.map((l) => (
+              <div key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded bg-stone-50 border border-stone-100">
+                <span className="text-xs font-semibold uppercase tracking-wide text-stone-700">{l.name}</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="text-[10px] uppercase tracking-wider text-stone-400">Photo look</span>
+                  <select
+                    value={l.photo_filter || ""}
+                    onChange={(e) => handleUpdateLabelPhotoFilter(l.id, e.target.value)}
+                    className="px-2 py-1.5 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-white"
+                  >
+                    <option value="">Site Default</option>
+                    {PHOTO_FILTER_PRESETS.map((preset) => (
+                      <option key={preset.name} value={preset.name}>{preset.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ))}
+            {labels.length === 0 && <p className="text-stone-400 text-sm">No labels yet — add one below.</p>}
+          </div>
+          <div className="flex gap-2 mb-6">
+            <input type="text" placeholder="Add a new label..." value={newLabelName} onChange={(e) => setNewLabelName(e.target.value)} className="flex-grow px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+            <button type="button" disabled={!newLabelName.trim()} onClick={handleAddLabel} className="px-4 py-2.5 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add Label</button>
+          </div>
+          {labelStatus && <p className="text-[11px] text-rose-600 -mt-4 mb-6">{labelStatus}</p>}
+
+          <div className="border-t border-stone-100 pt-6">
+            <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+              Bulk-assign <span className="text-stone-400 font-normal normal-case">(tag a whole group of products with a label, all at once)</span>
+            </label>
+
+            <div className="flex gap-1.5 mb-3">
+              <button
+                type="button"
+                onClick={() => setBulkLabelMode("home")}
+                className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold tracking-wider transition ${
+                  bulkLabelMode === "home" ? "bg-amber-600 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+              >
+                All Homepage Products
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkLabelMode("category")}
+                className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold tracking-wider transition ${
+                  bulkLabelMode === "category" ? "bg-amber-600 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+              >
+                By Category
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {bulkLabelMode === "category" && (
+                <>
+                  <select value={bulkLabelCategory} onChange={(e) => setBulkLabelCategory(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+                    <option value="">Choose a category...</option>
+                    {categories.map((c: any) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                  <span className="text-stone-400 text-xs">&rarr;</span>
+                </>
+              )}
+              <select value={bulkLabel} onChange={(e) => setBulkLabel(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+                <option value="">Choose a label...</option>
+                {labels.map((l: any) => (
+                  <option key={l.id} value={l.name}>{l.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={!bulkLabel || (bulkLabelMode === "category" && !bulkLabelCategory)}
+                onClick={handleBulkAssignLabel}
+                className="px-4 py-2 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
+              >
+                Assign All
+              </button>
+            </div>
+            {bulkLabelStatus && <p className="text-[11px] text-stone-500 mt-2">{bulkLabelStatus}</p>}
           </div>
         </div>
 

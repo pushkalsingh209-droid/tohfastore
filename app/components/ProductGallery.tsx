@@ -2,8 +2,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { PHOTO_FILTER_PRESETS, DEFAULT_PHOTO_FILTER_INDEX } from "@/app/utils/photoFilters";
+import { PHOTO_FILTER_PRESETS, DEFAULT_PHOTO_FILTER_INDEX, NORMAL_FILTER_INDEX } from "@/app/utils/photoFilters";
 import { useDefaultPhotoFilterIndex } from "@/app/context/PhotoFilterSettingContext";
+import { useLabelPhotoFilters } from "@/app/context/LabelPhotoFilterContext";
 
 interface ProductGalleryProps {
   images: string[];
@@ -12,6 +13,10 @@ interface ProductGalleryProps {
   zoomable?: boolean;
   size?: "card" | "detail" | "frame";
   priority?: boolean;
+  // Drives which photo filter applies -- see the filterIndex/effect below:
+  // this label's own override if an admin set one, else the site-wide
+  // default, else (no label at all) the unfiltered "Normal" look.
+  label?: string | null;
 }
 
 const SLIDE_INTERVAL_MS = 2600;
@@ -27,6 +32,7 @@ export default function ProductGallery({
   zoomable = false,
   size = "card",
   priority = false,
+  label = null,
 }: ProductGalleryProps) {
   const [phase, setPhase] = useState<"idle" | "flipping" | "sliding">("idle");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -43,22 +49,30 @@ export default function ProductGallery({
   // Client-side viewing preference only (not persisted) -- lets a shopper
   // brighten/warm up a photo that looks dim/dull as shot, without touching
   // the actual stored file. Each ProductGallery instance (one per product
-  // card, one on the detail page) gets its own independent cycle. Starts on
-  // the hardcoded fallback, then the effect below swaps it for the admin's
-  // configured default once that's fetched (see PhotoFilterSettingContext).
-  const [filterIndex, setFilterIndex] = useState(DEFAULT_PHOTO_FILTER_INDEX);
+  // card, one on the detail page) gets its own independent cycle. A
+  // labelless product has no styling to wait on, so it starts (and stays)
+  // at "Normal" immediately; a labeled product starts on the hardcoded
+  // fallback, then the effect below resolves it to that label's own photo
+  // filter override if an admin set one, else the site-wide default, once
+  // both have been fetched (see LabelPhotoFilterContext/PhotoFilterSettingContext).
+  const [filterIndex, setFilterIndex] = useState(label ? DEFAULT_PHOTO_FILTER_INDEX : NORMAL_FILTER_INDEX);
   const currentFilter = PHOTO_FILTER_PRESETS[filterIndex];
   const adminDefaultFilterIndex = useDefaultPhotoFilterIndex();
+  const labelPhotoFilters = useLabelPhotoFilters();
   const appliedAdminDefaultRef = useRef(false);
 
   useEffect(() => {
-    // Only ever apply the admin default once, and only if the visitor
-    // hasn't already cycled the filter themselves (that flag is also set
-    // in cycleFilter below, in case they click before this fetch resolves).
-    if (appliedAdminDefaultRef.current || adminDefaultFilterIndex == null) return;
+    // Only ever apply this once, and only if the visitor hasn't already
+    // cycled the filter themselves (that flag is also set in cycleFilter
+    // below, in case they click before this resolves). A labelless product
+    // has nothing to resolve -- it's already showing "Normal" above.
+    if (appliedAdminDefaultRef.current || !label) return;
+    if (adminDefaultFilterIndex == null || labelPhotoFilters == null) return;
+    const overrideName = labelPhotoFilters[label];
+    const overrideIndex = overrideName ? PHOTO_FILTER_PRESETS.findIndex((p) => p.name === overrideName) : -1;
     appliedAdminDefaultRef.current = true;
-    setFilterIndex(adminDefaultFilterIndex);
-  }, [adminDefaultFilterIndex]);
+    setFilterIndex(overrideIndex >= 0 ? overrideIndex : adminDefaultFilterIndex);
+  }, [label, adminDefaultFilterIndex, labelPhotoFilters]);
 
   // Pressing the filter button pauses the auto flip/slide (so the photo
   // being adjusted doesn't change out from under the visitor mid-tap) until
