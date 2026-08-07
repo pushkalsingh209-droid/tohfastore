@@ -156,6 +156,35 @@ export default function ProductGallery({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, gallery.length]);
 
+  // Gates the `flip-3d-live` class (see globals.css) that turns on
+  // transform-style: preserve-3d -- only while a flip is actually happening
+  // or just finished, not permanently. Stays live for one more
+  // FLIP_DURATION_MS after `active` drops so the reverse (un-hover) rotation
+  // still renders correctly in 3D instead of snapping flat mid-transition.
+  const [flip3dLive, setFlip3dLive] = useState(false);
+  useEffect(() => {
+    if (active) {
+      setFlip3dLive(true);
+      return;
+    }
+    const t = setTimeout(() => setFlip3dLive(false), FLIP_DURATION_MS);
+    return () => clearTimeout(t);
+  }, [active]);
+
+  // The flip-back face's <Image> is preloaded ahead of the first flip so the
+  // reveal is instant -- but that means every card, even ones nobody ever
+  // hovers, was mounting (and decoding) a second full-resolution image just
+  // sitting there unused. Gated on "ever activated" (sticky true, not
+  // toggled back off) instead of `active` directly, so the preload still
+  // happens the first time a shopper hovers/taps a card and stays warm for
+  // the rest of that card's life, it just no longer happens for cards
+  // nobody has touched yet -- which, on a long catalog grid, is most of
+  // them at any given moment.
+  const [everActivated, setEverActivated] = useState(active);
+  useEffect(() => {
+    if (active) setEverActivated(true);
+  }, [active]);
+
   // Drives the looping slide auto-advance once the flip has revealed the gallery.
   useEffect(() => {
     if (!active || phase !== "sliding" || !hasMultiple) return;
@@ -339,12 +368,14 @@ export default function ProductGallery({
         {...zoomHandlers}
       >
         <div className="gallery-zoom-image w-full h-full" style={zoomWrapperStyle}>
-          <div className={`flip-card-inner ${isFlipped ? "is-flipped" : ""}`}>
+          <div className={`flip-card-inner ${isFlipped ? "is-flipped" : ""} ${flip3dLive ? "flip-3d-live" : ""}`}>
             <div className="flip-face">
               <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} priority={priority} />
             </div>
             <div className="flip-face flip-face-back">
-              <Image src={gallery[backIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
+              {everActivated && (
+                <Image src={gallery[backIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
+              )}
             </div>
           </div>
         </div>

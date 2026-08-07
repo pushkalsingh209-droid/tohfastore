@@ -26,21 +26,58 @@ export default function HeroProductRotator({ items }: { items: HeroRotatorItem[]
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);
   const pausedRef = useRef(false);
+  const rootRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     if (items.length <= 1) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const interval = setInterval(() => {
+    // Keeps rotating (state update + re-render + fade transition) every
+    // ROTATE_INTERVAL_MS for as long as the homepage is mounted, even once
+    // a shopper has scrolled well past the hero -- pausing while it's
+    // off-screen means that recurring work only happens while it's
+    // actually visible, one less thing competing for frame time during a
+    // long scroll.
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let fadeTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function tick() {
       if (pausedRef.current) return;
       setVisible(false);
-      setTimeout(() => {
+      fadeTimer = setTimeout(() => {
         setIndex((i) => (i + 1) % items.length);
         setVisible(true);
       }, FADE_MS);
-    }, ROTATE_INTERVAL_MS);
+    }
+    function startLoop() {
+      if (intervalId == null) intervalId = setInterval(tick, ROTATE_INTERVAL_MS);
+    }
+    function stopLoop() {
+      if (intervalId != null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      if (fadeTimer != null) {
+        clearTimeout(fadeTimer);
+        fadeTimer = null;
+      }
+    }
 
-    return () => clearInterval(interval);
+    const el = rootRef.current;
+    if (!el) {
+      startLoop();
+      return () => stopLoop();
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) startLoop();
+      else stopLoop();
+    });
+    observer.observe(el);
+
+    return () => {
+      stopLoop();
+      observer.disconnect();
+    };
   }, [items.length]);
 
   const current = items[index % items.length];
@@ -66,6 +103,7 @@ export default function HeroProductRotator({ items }: { items: HeroRotatorItem[]
 
   return (
     <a
+      ref={rootRef}
       href={`/?category=${encodeURIComponent(current.name)}`}
       onClick={goToCategory}
       className="relative block"

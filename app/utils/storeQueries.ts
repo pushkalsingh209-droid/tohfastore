@@ -84,24 +84,46 @@ export const getLabelPhotoFilters = unstable_cache(
 );
 
 const FALLBACK_DEFAULT_PAGE_SIZE = 10;
+const FALLBACK_CATALOG_REVEAL_BATCH_SIZE = 12;
+// Kept in sync with the admin API's own floor in app/api/admin/settings/route.ts
+// -- below this, revealing cards in tiny batches as a shopper scrolls stops
+// being worth the extra IntersectionObserver churn it costs.
+const MIN_CATALOG_REVEAL_BATCH_SIZE = 8;
 
 // Site-wide default "products per page" an admin can set (e.g. "50 for
 // today"), applied whenever a visitor hasn't explicitly picked a size via
-// the page-size selector. Falls back to 10 if the settings row is missing
-// (e.g. migration not yet run) or malformed.
+// the page-size selector. Also carries how many product cards mount at a
+// time as a shopper scrolls the grid (see CatalogSection's progressive
+// reveal) -- distinct from page size: page size is how many products a
+// page *contains*, this is how many of those are ever mounted into the DOM
+// at once. Falls back to defaults if the settings rows are missing (e.g.
+// migration not yet run) or malformed.
 export const getSiteSettings = unstable_cache(
-  async (): Promise<{ defaultPageSize: number }> => {
+  async (): Promise<{ defaultPageSize: number; catalogRevealBatchSize: number }> => {
     try {
       const { data, error } = await supabase
         .from("site_settings")
-        .select("value")
-        .eq("key", "default_page_size")
-        .maybeSingle();
-      if (error || !data) return { defaultPageSize: FALLBACK_DEFAULT_PAGE_SIZE };
-      const parsed = parseInt(data.value, 10);
-      return { defaultPageSize: Number.isFinite(parsed) && parsed > 0 ? parsed : FALLBACK_DEFAULT_PAGE_SIZE };
+        .select("key, value")
+        .in("key", ["default_page_size", "catalog_reveal_batch_size"]);
+      if (error || !data) {
+        return { defaultPageSize: FALLBACK_DEFAULT_PAGE_SIZE, catalogRevealBatchSize: FALLBACK_CATALOG_REVEAL_BATCH_SIZE };
+      }
+
+      const raw: Record<string, string> = {};
+      for (const row of data) raw[row.key] = row.value;
+
+      const parsedPageSize = parseInt(raw.default_page_size, 10);
+      const defaultPageSize = Number.isFinite(parsedPageSize) && parsedPageSize > 0 ? parsedPageSize : FALLBACK_DEFAULT_PAGE_SIZE;
+
+      const parsedBatchSize = parseInt(raw.catalog_reveal_batch_size, 10);
+      const catalogRevealBatchSize =
+        Number.isFinite(parsedBatchSize) && parsedBatchSize >= MIN_CATALOG_REVEAL_BATCH_SIZE
+          ? parsedBatchSize
+          : FALLBACK_CATALOG_REVEAL_BATCH_SIZE;
+
+      return { defaultPageSize, catalogRevealBatchSize };
     } catch {
-      return { defaultPageSize: FALLBACK_DEFAULT_PAGE_SIZE };
+      return { defaultPageSize: FALLBACK_DEFAULT_PAGE_SIZE, catalogRevealBatchSize: FALLBACK_CATALOG_REVEAL_BATCH_SIZE };
     }
   },
   ["site-settings"],

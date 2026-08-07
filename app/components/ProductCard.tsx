@@ -18,6 +18,7 @@ import { useDefaultWhatsappNumber } from "@/app/context/DefaultWhatsappNumberCon
 const DOUBLE_TAP_WINDOW_MS = 350;
 const LOW_STOCK_THRESHOLD = 3;
 const FLIP_HINT_SEEN_KEY = "tohfa_card_flip_seen";
+const CARD_FLIP_DURATION_MS = 1200; // matches .card-flip-inner's transition duration in globals.css
 
 export default function ProductCard({ product, priority = false }: { product: any; priority?: boolean }) {
   const { addToCart, cart } = useCart();
@@ -36,6 +37,22 @@ export default function ProductCard({ product, priority = false }: { product: an
       if (localStorage.getItem(FLIP_HINT_SEEN_KEY) === "1") setShowFlipHint(false);
     } catch {}
   }, []);
+
+  // Gates the `flip-3d-live` class (see globals.css) that turns on
+  // transform-style: preserve-3d -- only while this card is actually
+  // flipped or mid-animation, not for every idle card on the page. Without
+  // this, every product card on a long catalog grid is a permanent GPU
+  // compositing layer even when nobody has ever touched it, which is a big
+  // part of why scrolling the grid feels janky.
+  const [cardFlip3dLive, setCardFlip3dLive] = useState(false);
+  useEffect(() => {
+    if (cardFlipped) {
+      setCardFlip3dLive(true);
+      return;
+    }
+    const t = setTimeout(() => setCardFlip3dLive(false), CARD_FLIP_DURATION_MS);
+    return () => clearTimeout(t);
+  }, [cardFlipped]);
 
   function handleFlipOpen() {
     setCardFlipped(true);
@@ -86,7 +103,7 @@ export default function ProductCard({ product, priority = false }: { product: an
   return (
     <TempleCardFrame>
     <div className="card-flip-perspective">
-    <div className={`card-flip-inner ${cardFlipped ? "is-flipped" : ""}`}>
+    <div className={`card-flip-inner ${cardFlipped ? "is-flipped" : ""} ${cardFlip3dLive ? "flip-3d-live" : ""}`}>
     <div className="card-flip-face-front bg-white dark:bg-stone-900 rounded-lg overflow-hidden group shadow-sm hover:shadow-md dark:shadow-stone-950/50 transition duration-300">
       <Link
         href={`/product/${product.id}`}

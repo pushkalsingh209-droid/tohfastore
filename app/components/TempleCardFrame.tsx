@@ -91,7 +91,7 @@ function LotusCornerMedallion({ size = 20, className = "" }: { size?: number; cl
 export default function TempleCardFrame({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="relative rounded-lg overflow-hidden"
+      className="relative rounded-lg overflow-hidden catalog-card-cv"
       style={{ boxShadow: `0 0 0 1px ${GOLD}` }}
     >
       <EngravedTrimStrip height={6} patternId="card-trim-top" />

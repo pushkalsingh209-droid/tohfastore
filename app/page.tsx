@@ -240,6 +240,7 @@ export default async function StorefrontHome({
             sort={sort}
             inStockOnly={inStockOnly}
             heading={categoryContent?.heading}
+            revealBatchSize={siteSettings.catalogRevealBatchSize}
           />
         </div>
 

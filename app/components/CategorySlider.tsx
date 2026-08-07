@@ -40,7 +40,15 @@ export default function CategorySlider({
     if (!el) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    let frameId: number;
+    // Without this, the loop below ran on every animation frame for as
+    // long as the homepage was mounted -- including while this rail was
+    // scrolled far out of view. Each tick's scrollLeft write + scrollWidth/
+    // clientWidth read forces a layout recalculation, so an invisible
+    // marquee was quietly costing a layout every ~16ms throughout the
+    // entire time a shopper spent scrolling the rest of the page. Now the
+    // rAF loop only actually runs while this element is on screen.
+    let frameId: number | null = null;
+
     function step() {
       if (el && !pausedRef.current) {
         const maxScroll = el.scrollWidth - el.clientWidth;
@@ -52,8 +60,26 @@ export default function CategorySlider({
       }
       frameId = requestAnimationFrame(step);
     }
-    frameId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frameId);
+    function startLoop() {
+      if (frameId == null) frameId = requestAnimationFrame(step);
+    }
+    function stopLoop() {
+      if (frameId != null) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) startLoop();
+      else stopLoop();
+    });
+    observer.observe(el);
+
+    return () => {
+      stopLoop();
+      observer.disconnect();
+    };
   }, []);
 
   if (items.length === 0) return null;

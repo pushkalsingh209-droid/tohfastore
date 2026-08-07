@@ -887,6 +887,21 @@ export default function AdminDashboard() {
     }
   };
 
+  // How many product cards mount at once as a shopper scrolls the catalog
+  // grid, revealing more in batches instead of front-loading the whole page
+  // size -- see CatalogSection's progressive reveal. Floored at 8 server-side.
+  const handleUpdateCatalogRevealBatchSize = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ catalog_reveal_batch_size: value }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: any) {
+      alert(`Could not update cards-per-scroll-batch: ${err.message}`);
+    }
+  };
+
   // Site-wide default look for product photos (the bottom-right filter
   // toggle on every card/gallery) -- a visitor who taps the toggle
   // themselves always overrides this for their own view.
@@ -2064,6 +2079,24 @@ export default function AdminDashboard() {
               }}
               className="w-24 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
             />
+          </div>
+          <div className="flex items-center gap-3 flex-wrap mt-4">
+            <label className="text-sm text-stone-700 font-medium">Cards loaded per scroll batch</label>
+            <input
+              key={settings.catalog_reveal_batch_size ?? ""}
+              type="number"
+              min={8}
+              max={200}
+              defaultValue={settings.catalog_reveal_batch_size ?? "12"}
+              onBlur={(e) => {
+                const next = e.target.value.trim();
+                if (next && next !== settings.catalog_reveal_batch_size) handleUpdateCatalogRevealBatchSize(next);
+              }}
+              className="w-24 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+            <span className="text-stone-400 text-xs w-full">
+              How many product cards mount at once as a shopper scrolls the catalog grid -- more load automatically as they get near the bottom of what's already shown. Lower keeps scrolling smoother on long pages; minimum 8.
+            </span>
           </div>
           <div className="flex items-center gap-3 flex-wrap mt-4">
             <label className="text-sm text-stone-700 font-medium">Default product photo look</label>

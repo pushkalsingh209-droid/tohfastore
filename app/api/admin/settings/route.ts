@@ -13,6 +13,20 @@ function parsePageSize(value: unknown): number | null {
   return num;
 }
 
+// How many product cards mount at a time as a shopper scrolls the catalog
+// grid (see CatalogSection's progressive reveal) -- distinct from page
+// size above. Floored at 8: much lower and the grid is revealing cards in
+// batches so small it's just adding IntersectionObserver churn without
+// meaningfully reducing how many images/layers are ever mounted at once.
+const MIN_CATALOG_REVEAL_BATCH_SIZE = 8;
+const MAX_CATALOG_REVEAL_BATCH_SIZE = 200;
+
+function parseRevealBatchSize(value: unknown): number | null {
+  const num = Number(value);
+  if (!Number.isFinite(num) || !Number.isInteger(num) || num < MIN_CATALOG_REVEAL_BATCH_SIZE || num > MAX_CATALOG_REVEAL_BATCH_SIZE) return null;
+  return num;
+}
+
 export async function GET() {
   const { data, error } = await supabase.from("site_settings").select("key, value");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -32,6 +46,17 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: `Default page size must be a whole number between ${MIN_PAGE_SIZE} and ${MAX_PAGE_SIZE}.` }, { status: 400 });
       }
       updates.push({ key: "default_page_size", value: String(pageSize) });
+    }
+
+    if (body.catalog_reveal_batch_size !== undefined) {
+      const batchSize = parseRevealBatchSize(body.catalog_reveal_batch_size);
+      if (batchSize === null) {
+        return NextResponse.json(
+          { error: `Cards per scroll batch must be a whole number between ${MIN_CATALOG_REVEAL_BATCH_SIZE} and ${MAX_CATALOG_REVEAL_BATCH_SIZE}.` },
+          { status: 400 }
+        );
+      }
+      updates.push({ key: "catalog_reveal_batch_size", value: String(batchSize) });
     }
 
     if (body.default_photo_filter !== undefined) {
