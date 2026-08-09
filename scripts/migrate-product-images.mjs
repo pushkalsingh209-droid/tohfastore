@@ -16,6 +16,12 @@
 // bucket/path -> destination so the separate cleanup script
 // (cleanup-legacy-product-images.mjs) knows what's now safe to delete.
 //
+// Also backfills a small thumbnail (`<dest path>-thumb.webp`, same folder)
+// next to every main image, resolved on read by app/utils/imageThumb.ts --
+// same idea as ensureThumb() below and app/api/admin/upload/route.ts's own
+// thumbnail step for new uploads. A product whose image is already fully
+// migrated still gets checked/backfilled for a missing thumb on a re-run.
+//
 // Usage:
 //   node --env-file=.env.local scripts/migrate-product-images.mjs           (dry run)
 //   node --env-file=.env.local scripts/migrate-product-images.mjs --apply   (does the work)
@@ -33,6 +39,8 @@ const DEST_BUCKET = "brass-images";
 const TEN_YEARS_SECONDS = 315360000;
 const MAX_DIMENSION = 1600;
 const WEBP_QUALITY = 85;
+const THUMB_MAX_DIMENSION = 240;
+const THUMB_WEBP_QUALITY = 80;
 
 const APPLY = process.argv.includes("--apply");
 
@@ -73,23 +81,68 @@ function saveManifest(manifest) {
   fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
 }
 
-async function destAlreadyExists(destPath) {
-  const dir = path.dirname(destPath);
-  const name = path.basename(destPath);
-  const { data, error } = await supabase.storage.from(DEST_BUCKET).list(dir === "." ? "" : dir);
+async function objectExists(bucket, objectPath) {
+  const dir = path.dirname(objectPath);
+  const name = path.basename(objectPath);
+  const { data, error } = await supabase.storage.from(bucket).list(dir === "." ? "" : dir);
   if (error) return false;
   return (data || []).some((f) => f.name === name);
+}
+
+// Matches app/utils/imageThumb.ts's thumbPathFor -- same derivation, kept
+// duplicated here since this script runs standalone outside the Next app.
+function thumbPathFor(mainPath) {
+  return mainPath.replace(/\.[^./]+$/, "-thumb.webp");
+}
+
+// Ensures `<mainPath>-thumb.webp` exists in DEST_BUCKET, generating it from
+// `mainBuffer` if given (the just-produced main image, avoiding a redundant
+// download) or by downloading the already-uploaded main object otherwise
+// (the case for a product that was fully migrated in an earlier run).
+// Best-effort: logs and returns rather than throwing, so a thumb failure
+// never undoes an otherwise-successful main-image migration.
+async function ensureThumb(mainPath, mainBuffer) {
+  const thumbPath = thumbPathFor(mainPath);
+  if (thumbPath === mainPath) return { created: false };
+  if (await objectExists(DEST_BUCKET, thumbPath)) return { created: false };
+
+  let buffer = mainBuffer;
+  if (!buffer) {
+    const { data, error } = await supabase.storage.from(DEST_BUCKET).download(mainPath);
+    if (error) {
+      console.warn(`  thumb: could not download ${mainPath} to derive a thumbnail: ${error.message}`);
+      return { created: false };
+    }
+    buffer = Buffer.from(await data.arrayBuffer());
+  }
+
+  const thumbBuffer = await sharp(buffer)
+    .resize({ width: THUMB_MAX_DIMENSION, height: THUMB_MAX_DIMENSION, fit: "inside", withoutEnlargement: true })
+    .webp({ quality: THUMB_WEBP_QUALITY })
+    .toBuffer();
+
+  if (!APPLY) return { created: true, dryRun: true };
+
+  const { error: uploadError } = await supabase.storage
+    .from(DEST_BUCKET)
+    .upload(thumbPath, thumbBuffer, { contentType: "image/webp", upsert: false });
+  if (uploadError) {
+    console.warn(`  thumb: upload of ${thumbPath} failed: ${uploadError.message}`);
+    return { created: false };
+  }
+  return { created: true };
 }
 
 async function migrateOne(bucket, srcPath) {
   const destPath = destPathFor(bucket, srcPath);
 
-  if (await destAlreadyExists(destPath)) {
+  if (await objectExists(DEST_BUCKET, destPath)) {
     const { data: signedData, error: signError } = await supabase.storage
       .from(DEST_BUCKET)
       .createSignedUrl(destPath, TEN_YEARS_SECONDS);
     if (signError || !signedData) throw new Error(`Re-signing existing ${destPath} failed: ${signError?.message}`);
-    return { destPath, url: signedData.signedUrl, skipped: true };
+    const thumb = await ensureThumb(destPath);
+    return { destPath, url: signedData.signedUrl, skipped: true, thumbCreated: thumb.created && !thumb.dryRun };
   }
 
   const { data: original, error: downloadError } = await supabase.storage.from(bucket).download(srcPath);
@@ -109,7 +162,10 @@ async function migrateOne(bucket, srcPath) {
     .webp({ quality: WEBP_QUALITY })
     .toBuffer();
 
-  if (!APPLY) return { destPath, url: null, dryRun: true, bytesBefore: inputBuffer.length, bytesAfter: outputBuffer.length };
+  if (!APPLY) {
+    await ensureThumb(destPath, outputBuffer); // dry-run only, logs nothing extra
+    return { destPath, url: null, dryRun: true, bytesBefore: inputBuffer.length, bytesAfter: outputBuffer.length };
+  }
 
   const { error: uploadError } = await supabase.storage.from(DEST_BUCKET).upload(destPath, outputBuffer, {
     contentType: "image/webp",
@@ -122,7 +178,8 @@ async function migrateOne(bucket, srcPath) {
     .createSignedUrl(destPath, TEN_YEARS_SECONDS);
   if (signError || !signedData) throw new Error(`Sign ${destPath} failed: ${signError?.message}`);
 
-  return { destPath, url: signedData.signedUrl, bytesBefore: inputBuffer.length, bytesAfter: outputBuffer.length };
+  const thumb = await ensureThumb(destPath, outputBuffer);
+  return { destPath, url: signedData.signedUrl, bytesBefore: inputBuffer.length, bytesAfter: outputBuffer.length, thumbCreated: thumb.created };
 }
 
 async function main() {
@@ -132,7 +189,7 @@ async function main() {
   if (error) throw error;
 
   const manifest = loadManifest();
-  let migrated = 0, skipped = 0, failed = 0, productsUpdated = 0;
+  let migrated = 0, skipped = 0, failed = 0, productsUpdated = 0, thumbsCreated = 0;
   let bytesBefore = 0, bytesAfter = 0;
 
   for (const product of products) {
@@ -145,7 +202,21 @@ async function main() {
         console.warn(`[product ${product.id}] could not parse bucket/path from: ${u}`);
         continue;
       }
-      if (bp.bucket === DEST_BUCKET && bp.path.startsWith("migrated/")) continue; // already migrated
+      if (bp.bucket === DEST_BUCKET && bp.path.startsWith("migrated/")) {
+        // Main image already migrated in an earlier run -- nothing to move,
+        // but still worth checking it has a thumbnail (ensureThumb itself
+        // is a no-op write in dry-run mode, so this is safe either way).
+        try {
+          const thumb = await ensureThumb(bp.path);
+          if (thumb.created) {
+            if (thumb.dryRun) console.log(`[dry-run] thumb needed: ${bp.path} -> ${thumbPathFor(bp.path)}`);
+            else thumbsCreated++;
+          }
+        } catch (err) {
+          console.warn(`[product ${product.id}] thumb backfill failed for ${bp.path}: ${err.message}`);
+        }
+        continue;
+      }
 
       const manifestKey = `${bp.bucket}/${bp.path}`;
       try {
@@ -154,6 +225,7 @@ async function main() {
           console.log(`[dry-run] ${manifestKey} -> ${result.destPath} (${result.bytesBefore}B -> ${result.bytesAfter}B)`);
         } else {
           if (result.skipped) skipped++; else migrated++;
+          if (result.thumbCreated) thumbsCreated++;
           if (result.bytesBefore) { bytesBefore += result.bytesBefore; bytesAfter += result.bytesAfter; }
           manifest[manifestKey] = { destBucket: DEST_BUCKET, destPath: result.destPath, migratedAt: new Date().toISOString() };
           urlToNewUrl.set(u, result.url);
@@ -185,7 +257,7 @@ async function main() {
 
   console.log("\n--- Summary ---");
   console.log(`migrated: ${migrated}, already-migrated (skipped): ${skipped}, failed: ${failed}`);
-  console.log(`products updated: ${productsUpdated}`);
+  console.log(`products updated: ${productsUpdated}, thumbnails created: ${thumbsCreated}`);
   if (bytesAfter > 0) {
     console.log(`size: ${(bytesBefore / 1024 / 1024).toFixed(1)}MB -> ${(bytesAfter / 1024 / 1024).toFixed(1)}MB`);
   }

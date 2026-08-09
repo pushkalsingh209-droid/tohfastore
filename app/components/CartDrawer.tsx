@@ -318,7 +318,7 @@ export default function CartDrawer() {
                   {cart.map((item: any) => (
                     <div key={item.id} className="flex items-center gap-4 pb-2">
                       <div className="relative w-12 h-12 rounded overflow-hidden border dark:border-stone-700 bg-stone-50 flex-shrink-0">
-                        <Image src={item.image_url} alt={item.name} fill sizes="48px" className="object-cover" />
+                        <Image src={item.thumb_url || item.image_url} alt={item.name} fill sizes="48px" className="object-cover" />
                       </div>
                       <div className="flex-grow">
                         <h4 className="font-serif text-xs font-medium text-stone-900 dark:text-stone-100 line-clamp-1">{item.name}</h4>

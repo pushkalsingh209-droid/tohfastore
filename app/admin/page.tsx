@@ -1657,7 +1657,7 @@ export default function AdminDashboard() {
                       className="text-xs font-mono font-bold text-stone-600 w-12 px-1.5 py-1 rounded border border-stone-200 text-right flex-shrink-0 focus:outline-none focus:border-amber-600"
                     />
                     <div className="relative w-14 h-14 rounded overflow-hidden border border-stone-200 bg-stone-50 flex-shrink-0">
-                      <Image src={product.image_url} alt={product.name} fill sizes="56px" className="object-cover" />
+                      <Image src={product.thumb_url || product.image_url} alt={product.name} fill sizes="56px" className="object-cover" />
                     </div>
                     <div>
                       <h3 className="font-serif text-stone-900 text-sm font-medium">{product.name}</h3>

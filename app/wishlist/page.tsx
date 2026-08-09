@@ -29,7 +29,7 @@ export default function WishlistPage() {
             {wishlist.map((product: any) => (
               <div key={product.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden shadow-sm">
                 <Link href={`/product/${product.id}`} className="block relative w-full h-32 sm:h-36 bg-stone-50">
-                  <Image src={product.image_url} alt={product.name} fill sizes="180px" className="object-cover" />
+                  <Image src={product.thumb_url || product.image_url} alt={product.name} fill sizes="180px" className="object-cover" />
                 </Link>
                 <div className="p-3">
                   <Link href={`/product/${product.id}`}>

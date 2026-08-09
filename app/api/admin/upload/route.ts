@@ -9,7 +9,9 @@
 // plain public URL to return instead).
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import sharp from "sharp";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { thumbPathFor } from "@/app/utils/imageThumb";
 
 const BUCKET = "brass-images";
 const TEN_YEARS_SECONDS = 315360000;
@@ -17,6 +19,8 @@ const TEN_YEARS_SECONDS = 315360000;
 // against an uncompressed fallback upload, not the expected case.
 const MAX_BYTES = 4 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/webp", "image/jpeg", "image/png"]);
+const THUMB_MAX_DIMENSION = 240;
+const THUMB_WEBP_QUALITY = 80;
 
 function extensionFor(mimeType: string): string {
   if (mimeType === "image/png") return "png";
@@ -60,6 +64,24 @@ export async function POST(req: Request) {
         { error: signError?.message || "Could not create a URL for the uploaded image." },
         { status: 500 }
       );
+    }
+
+    // Also stash a small thumbnail next to the full image -- resolved on
+    // read by app/utils/imageThumb.ts wherever only a tiny preview is
+    // needed (cart, wishlist, admin list) instead of the full-size photo.
+    // Best-effort: a failure here doesn't fail the upload, it just means
+    // that resolver falls back to the full image for this one product.
+    try {
+      const thumbBuffer = await sharp(buffer)
+        .resize({ width: THUMB_MAX_DIMENSION, height: THUMB_MAX_DIMENSION, fit: "inside", withoutEnlargement: true })
+        .webp({ quality: THUMB_WEBP_QUALITY })
+        .toBuffer();
+      const { error: thumbUploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(thumbPathFor(path), thumbBuffer, { contentType: "image/webp", upsert: false });
+      if (thumbUploadError) console.error("Admin image thumbnail upload failed:", thumbUploadError);
+    } catch (thumbErr) {
+      console.error("Admin image thumbnail generation failed:", thumbErr);
     }
 
     return NextResponse.json({ url: signedData.signedUrl });

@@ -11,6 +11,7 @@
 // wrong -- these caches only affect what's *displayed* before that point.
 import { unstable_cache } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { attachThumbUrls } from "@/app/utils/imageThumb";
 import {
   DEFAULT_WEIGHT_UNIT,
   DEFAULT_DIMENSION_UNIT,
@@ -292,7 +293,7 @@ export const getCatalogPage = unstable_cache(
         console.error("Supabase catalog read exception:", error.message);
         return { products: [], count: totalCount, page };
       }
-      return { products: data || [], count: totalCount, page };
+      return { products: await attachThumbUrls(data || []), count: totalCount, page };
     } catch (err) {
       console.error("Failed to compile database records:", err);
       return { products: [], count: 0, page: 1 };
@@ -323,6 +324,7 @@ export interface BestsellerItem {
   name: string;
   price: number;
   image_url: string;
+  thumb_url?: string;
   inventory: number;
   category: string | null;
   unitsSold: number;
@@ -366,7 +368,8 @@ export const getBestsellers = unstable_cache(
         .in("id", topIds);
       if (productsError || !products) return [];
 
-      return (products as any[])
+      const withThumbs = await attachThumbUrls(products as any[]);
+      return withThumbs
         .map((p) => ({ ...p, unitsSold: soldCount.get(String(p.id)) || 0 }))
         .sort((a, b) => b.unitsSold - a.unitsSold);
     } catch {
@@ -426,10 +429,11 @@ export const getRelatedProducts = unstable_cache(
         }
       }
 
-      return Array.from(productMap.values())
+      const top = Array.from(productMap.values())
         .map((p) => ({ ...p, unitsSold: soldCount.get(String(p.id)) || 0 }))
         .sort((a, b) => b.unitsSold - a.unitsSold)
         .slice(0, limit);
+      return attachThumbUrls(top);
     } catch {
       return [];
     }

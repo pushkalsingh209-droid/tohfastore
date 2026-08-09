@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
+import { attachThumbUrls } from "@/app/utils/imageThumb";
 
 // Some Supabase projects may not have every column yet (added by a later
 // migration the admin hasn't run) -- these routes degrade gracefully by
@@ -79,7 +80,7 @@ export async function GET() {
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ products: data || [] });
+  return NextResponse.json({ products: await attachThumbUrls(data || []) });
 }
 
 export async function POST(req: Request) {

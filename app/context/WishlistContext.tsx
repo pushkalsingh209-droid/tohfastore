@@ -33,7 +33,14 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       persist(wishlist.filter((item) => String(item.id) !== String(product.id)));
     } else {
       persist([
-        { id: product.id, name: product.name, price: product.price, image_url: product.image_url, inventory: product.inventory },
+        {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image_url: product.image_url,
+          thumb_url: product.thumb_url,
+          inventory: product.inventory,
+        },
         ...wishlist,
       ]);
     }
