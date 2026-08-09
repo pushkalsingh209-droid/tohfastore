@@ -5,6 +5,7 @@ import Image from "next/image";
 import { getAutocompleteMatches, getSuggestions } from "@/app/utils/searchProducts";
 import Pagination from "@/app/components/Pagination";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
+import ImageUploadField from "@/app/components/admin/ImageUploadField";
 import { WEIGHT_UNITS, DIMENSION_UNITS, convertDimensionValue, convertCmTo, type DimensionUnit } from "@/app/utils/productUnits";
 
 // All reads/writes below go through /api/admin/* route handlers (protected
@@ -1372,7 +1373,13 @@ export default function AdminDashboard() {
 
             <div>
               <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">Public Image Link (Cover Photo)</label>
-              <input type="url" required disabled={isSubmitting} placeholder="https://gxlervcazzddqcoagewy.supabase.co/storage/v1/object/public/..." value={formData.imageUrl} onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+              <ImageUploadField
+                value={formData.imageUrl}
+                onChange={(url) => setFormData({ ...formData, imageUrl: url })}
+                disabled={isSubmitting}
+                required
+                placeholder="https://gxlervcazzddqcoagewy.supabase.co/storage/v1/object/sign/..."
+              />
             </div>
 
             <div>
@@ -1381,20 +1388,20 @@ export default function AdminDashboard() {
               </label>
               <div className="space-y-2">
                 {formData.additionalImages.map((url, idx) => (
-                  <div key={idx} className="flex gap-2">
-                    <input
-                      type="url"
-                      disabled={isSubmitting}
-                      placeholder="https://... additional product photo"
-                      value={url}
-                      onChange={(e) => handleImageRowChange(idx, e.target.value)}
-                      className="flex-grow px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
-                    />
+                  <div key={idx} className="flex gap-2 items-start">
+                    <div className="flex-grow">
+                      <ImageUploadField
+                        value={url}
+                        onChange={(newUrl) => handleImageRowChange(idx, newUrl)}
+                        disabled={isSubmitting}
+                        placeholder="https://... additional product photo"
+                      />
+                    </div>
                     <button
                       type="button"
                       disabled={isSubmitting}
                       onClick={() => handleRemoveImageRow(idx)}
-                      className="px-3 rounded border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 text-xs font-semibold uppercase transition"
+                      className="px-3 py-3 rounded border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 text-xs font-semibold uppercase transition whitespace-nowrap"
                     >
                       Remove
                     </button>
