@@ -10,6 +10,7 @@ import path from "path";
 import fs from "fs";
 import React from "react";
 import sharp from "sharp";
+import { unstable_cache } from "next/cache";
 import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { calculateSlashedPrice } from "@/app/utils/pricing";
@@ -211,3 +212,16 @@ export async function generateCatalogueBuffer(): Promise<Buffer> {
 
   return renderToBuffer(doc as any);
 }
+
+// The public /api/catalogue download doesn't need a fresh render on every
+// hit -- products don't change minute to minute, and a full render re-fetches
+// and re-encodes every product photo (the slow, expensive part). Cached as
+// base64 (not the raw Buffer) since that's what unstable_cache can safely
+// serialize/restore across invocations. The admin download route calls
+// generateCatalogueBuffer() directly instead, so admins always get the
+// live catalogue rather than up to an hour of staleness.
+export const getCachedCatalogueBase64 = unstable_cache(
+  async () => (await generateCatalogueBuffer()).toString("base64"),
+  ["public-catalogue-pdf"],
+  { revalidate: 3600 }
+);

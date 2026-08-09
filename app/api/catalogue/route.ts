@@ -4,13 +4,14 @@
 // consistent with how gated content typically works for a small business
 // site, not worth the added complexity of signed download tokens here).
 import { NextResponse } from "next/server";
-import { generateCatalogueBuffer } from "@/app/utils/catalogueGenerator";
+import { getCachedCatalogueBase64 } from "@/app/utils/catalogueGenerator";
 
 export const maxDuration = 60;
 
 export async function GET() {
   try {
-    const buffer = await generateCatalogueBuffer();
+    const base64 = await getCachedCatalogueBase64();
+    const buffer = Buffer.from(base64, "base64");
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
