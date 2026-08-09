@@ -21,6 +21,19 @@ import { getRelatedProducts, getProductUnitSettings, getDefaultWhatsappNumber } 
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
 
+// Pre-renders every product page at build time so visits serve a cached
+// page instead of paying a fresh server render each time -- matches the 30s
+// window the data layer below already revalidates on, so admin edits still
+// show up quickly. A product id not in this list (e.g. one added after the
+// last build) still renders on-demand and gets cached from then on, since
+// dynamicParams defaults to true.
+export async function generateStaticParams() {
+  const { data } = await supabase.from("products").select("id");
+  return (data || []).map((product) => ({ id: String(product.id) }));
+}
+
+export const revalidate = 30;
+
 // The Supabase reads below are cached via unstable_cache (30s) so repeat
 // views of a popular product don't each cost a fresh round trip -- wrapped
 // again in React's cache() so generateMetadata and the page component still
