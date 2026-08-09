@@ -35,7 +35,7 @@ export default function AdminLoginPage() {
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-6 border border-stone-200 rounded-lg p-8 bg-white">
         <div>
           <h1 className="text-2xl font-serif text-stone-900 tracking-wide">Tohfa Admin Workspace</h1>
-          <p className="text-stone-500 text-xs mt-1">Sign in with the admin password and your authenticator code.</p>
+          <p className="text-stone-500 text-xs mt-1">Sign in with the admin password and your authenticator code (or a backup code).</p>
         </div>
 
         <div className="space-y-1.5">
@@ -52,18 +52,16 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs uppercase tracking-wider font-semibold text-stone-600">Authenticator code</label>
+          <label className="text-xs uppercase tracking-wider font-semibold text-stone-600">Authenticator or backup code</label>
           <input
             type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={6}
+            autoCapitalize="characters"
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            onChange={(e) => setCode(e.target.value)}
             autoComplete="one-time-code"
             required
-            placeholder="6-digit code"
-            className="w-full border border-stone-300 rounded px-3 py-2 text-sm tracking-[0.3em] focus:outline-none focus:ring-1 focus:ring-stone-500"
+            placeholder="6-digit code or XXXXX-XXXXX"
+            className="w-full border border-stone-300 rounded px-3 py-2 text-sm tracking-[0.15em] focus:outline-none focus:ring-1 focus:ring-stone-500"
           />
         </div>
 

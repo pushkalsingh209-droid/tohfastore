@@ -10,7 +10,7 @@ import { isValidAdminSessionToken, SESSION_COOKIE_NAME } from '@/app/utils/admin
 // what let you obtain one in the first place.
 const PUBLIC_ADMIN_PATHS = new Set(['/admin/login', '/api/admin/login']);
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isAdminPage = pathname.startsWith('/admin');
@@ -24,7 +24,7 @@ export function proxy(request: NextRequest) {
   }
 
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const authed = isValidAdminSessionToken(sessionToken, process.env.ADMIN_SESSION_SECRET);
+  const authed = await isValidAdminSessionToken(sessionToken);
 
   if (authed) {
     return NextResponse.next();

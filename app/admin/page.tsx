@@ -127,14 +127,20 @@ export default function AdminDashboard() {
   const [productPageSize, setProductPageSize] = useState(10);
   const [orderPage, setOrderPage] = useState(1);
   const [orderPageSize, setOrderPageSize] = useState(10);
-  const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "coupons" | "settings" | "reviews">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "coupons" | "settings" | "reviews" | "security">("overview");
+
+  const [loginAttempts, setLoginAttempts] = useState<any[]>([]);
+  const [backupCodesRemaining, setBackupCodesRemaining] = useState<number | null>(null);
+  const [newBackupCodes, setNewBackupCodes] = useState<string[] | null>(null);
+  const [backupCodesStatus, setBackupCodesStatus] = useState("");
+  const [logoutEverywhereStatus, setLogoutEverywhereStatus] = useState("");
 
   // Load inventory data, orders, reviews, coupons, and categories from the
   // protected admin API on mount. The requests are independent, so fetch
   // them in parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes] = await Promise.allSettled([
+    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes, loginAttemptsRes, backupCodesRes] = await Promise.allSettled([
       apiRequest("/api/admin/products"),
       apiRequest("/api/admin/orders"),
       apiRequest("/api/admin/reviews"),
@@ -148,6 +154,8 @@ export default function AdminDashboard() {
       apiRequest("/api/admin/whatsapp-numbers"),
       apiRequest("/api/admin/whatsapp-enquiries"),
       apiRequest("/api/admin/labels"),
+      apiRequest("/api/admin/login-attempts"),
+      apiRequest("/api/admin/backup-codes"),
     ]);
     if (productsRes.status === "fulfilled") setProducts(productsRes.value.products);
     if (ordersRes.status === "fulfilled") setOrders(ordersRes.value.orders);
@@ -162,6 +170,8 @@ export default function AdminDashboard() {
     if (whatsappNumbersRes.status === "fulfilled") setWhatsappNumbers(whatsappNumbersRes.value.numbers);
     if (enquiryAnalyticsRes.status === "fulfilled") setEnquiryAnalytics(enquiryAnalyticsRes.value);
     if (labelsRes.status === "fulfilled") setLabels(labelsRes.value.labels);
+    if (loginAttemptsRes.status === "fulfilled") setLoginAttempts(loginAttemptsRes.value.attempts);
+    if (backupCodesRes.status === "fulfilled") setBackupCodesRemaining(backupCodesRes.value.remaining);
     setLoadingOrders(false);
   };
 
@@ -970,6 +980,33 @@ export default function AdminDashboard() {
     window.location.href = "/admin/login";
   };
 
+  const handleGenerateBackupCodes = async () => {
+    if (backupCodesRemaining !== null && backupCodesRemaining > 0) {
+      const confirmed = window.confirm(`This invalidates your ${backupCodesRemaining} existing unused backup code(s). Continue?`);
+      if (!confirmed) return;
+    }
+    setBackupCodesStatus("Generating...");
+    try {
+      const result = await apiRequest("/api/admin/backup-codes", { method: "POST" });
+      setNewBackupCodes(result.codes);
+      setBackupCodesRemaining(result.codes.length);
+      setBackupCodesStatus("");
+    } catch (err: any) {
+      setBackupCodesStatus(`Error: ${err.message}`);
+    }
+  };
+
+  const handleLogoutEverywhere = async () => {
+    if (!window.confirm("This immediately logs out every active admin session, including this one. Continue?")) return;
+    setLogoutEverywhereStatus("Logging out everywhere...");
+    try {
+      await apiRequest("/api/admin/sessions", { method: "DELETE" });
+      window.location.href = "/admin/login";
+    } catch (err: any) {
+      setLogoutEverywhereStatus(`Error: ${err.message}`);
+    }
+  };
+
   return (
     <div className="bg-[var(--background)] min-h-screen py-12">
       <div className="max-w-5xl mx-auto px-6 space-y-12">
@@ -996,6 +1033,7 @@ export default function AdminDashboard() {
             { key: "coupons", label: "Coupons" },
             { key: "settings", label: "Settings" },
             { key: "reviews", label: "Reviews" },
+            { key: "security", label: "Security" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -2568,6 +2606,96 @@ export default function AdminDashboard() {
               ))}
             </div>
           )}
+        </div>
+        </>
+        )}
+
+        {activeTab === "security" && (
+        <>
+        {/* SECTION F: ADMIN LOGIN SECURITY -- backup codes, active sessions, attempt log */}
+        <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8 space-y-10">
+          <div className="border-b border-stone-200 pb-4">
+            <h2 className="text-xl font-serif text-stone-900">Security</h2>
+            <p className="text-stone-500 text-xs mt-1">Backup codes, active sessions, and recent activity for the admin login.</p>
+          </div>
+
+          <div>
+            <h3 className="text-xs uppercase tracking-wider font-semibold text-stone-600 mb-2">Backup Codes</h3>
+            <p className="text-stone-500 text-xs mb-3">
+              Use a backup code in place of an authenticator code if you lose access to your authenticator app. Generating a new
+              batch invalidates every existing code, used or not.
+            </p>
+            <p className="text-sm text-stone-700 mb-3">
+              {backupCodesRemaining === null ? "Loading..." : `${backupCodesRemaining} unused backup code${backupCodesRemaining === 1 ? "" : "s"} remaining.`}
+            </p>
+            <button
+              type="button"
+              onClick={handleGenerateBackupCodes}
+              className="px-4 py-2 text-xs uppercase tracking-wider font-semibold border border-stone-300 rounded text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
+            >
+              Generate New Backup Codes
+            </button>
+            {backupCodesStatus && <p className="text-xs text-rose-600 mt-2">{backupCodesStatus}</p>}
+
+            {newBackupCodes && (
+              <div className="mt-4 border border-amber-300 bg-amber-50 rounded-lg p-4">
+                <p className="text-xs font-semibold text-amber-800 mb-2">Save these now &mdash; they won&rsquo;t be shown again:</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-sm text-stone-900 mb-3">
+                  {newBackupCodes.map((c) => (
+                    <div key={c} className="bg-white border border-stone-200 rounded px-2 py-1.5 text-center">
+                      {c}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNewBackupCodes(null)}
+                  className="px-3 py-1.5 text-[11px] uppercase font-semibold border border-amber-400 rounded text-amber-800 hover:bg-amber-100 transition"
+                >
+                  I&rsquo;ve saved these
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-xs uppercase tracking-wider font-semibold text-stone-600 mb-2">Active Sessions</h3>
+            <p className="text-stone-500 text-xs mb-3">
+              If a device holding an admin session may have been compromised, log out everywhere &mdash; this immediately
+              invalidates every session, including this one.
+            </p>
+            <button
+              type="button"
+              onClick={handleLogoutEverywhere}
+              className="px-4 py-2 text-xs uppercase tracking-wider font-semibold border border-rose-300 rounded text-rose-600 hover:bg-rose-50 transition"
+            >
+              Log Out Everywhere
+            </button>
+            {logoutEverywhereStatus && <p className="text-xs text-rose-600 mt-2">{logoutEverywhereStatus}</p>}
+          </div>
+
+          <div>
+            <h3 className="text-xs uppercase tracking-wider font-semibold text-stone-600 mb-2">Recent Login Attempts</h3>
+            {loginAttempts.length === 0 ? (
+              <p className="text-stone-400 text-sm">No login attempts recorded yet.</p>
+            ) : (
+              <div className="divide-y divide-stone-100 text-xs">
+                {loginAttempts.map((a: any) => (
+                  <div key={a.id} className="py-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-stone-500">{new Date(a.created_at).toLocaleString()}</span>
+                    <span className="font-mono text-stone-600">{a.ip}</span>
+                    <span
+                      className={`uppercase font-semibold px-2 py-0.5 rounded ${
+                        a.success ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                      }`}
+                    >
+                      {a.success ? "Success" : String(a.reason).replace(/_/g, " ")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         </>
         )}
