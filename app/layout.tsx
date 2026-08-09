@@ -1,6 +1,5 @@
 // app/layout.tsx
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -15,13 +14,10 @@ import { ProductUnitSettingProvider } from "@/app/context/ProductUnitSettingCont
 import { DefaultWhatsappNumberProvider } from "@/app/context/DefaultWhatsappNumberContext";
 import CartDrawer from "@/app/components/CartDrawer";
 import HeaderNavbar from "@/app/components/headerNavbar";
-import CookieConsent from "@/app/components/CookieConsent";
 import CatalogLoadingOverlay from "@/app/components/CatalogLoadingOverlay";
-import InstallPrompt from "@/app/components/InstallPrompt";
 import FloatingContactButtons from "@/app/components/FloatingContactButtons";
-import AbandonedCartNudge from "@/app/components/AbandonedCartNudge";
+import DeferredWidgets from "@/app/components/DeferredWidgets";
 import MetaPixel from "@/app/components/MetaPixel";
-import WelcomeGaneshaPopup from "@/app/components/WelcomeGaneshaPopup";
 import "./globals.css"; // Imports your global styling configurations
 
 export const metadata: Metadata = {
@@ -128,37 +124,24 @@ export default function RootLayout({
             </div>
           </footer>
 
-          {/* Cookie consent banner (bottom of screen, one-time until dismissed) */}
-          <CookieConsent />
-
           {/* Shared loading overlay for pagination, filters, and the header's
               category menu -- one implementation, triggered from anywhere. */}
           <CatalogLoadingOverlay />
 
-          {/* Dismissible "Add to Home Screen" banner, free with the manifest
-              already in place -- only ever appears where the browser itself
-              decides the site is installable. */}
-          <InstallPrompt />
-
           {/* Mobile-only floating WhatsApp/email shortcut -- the header's
               contact row is desktop-only, so this keeps "chat with us" one
-              tap away on the screens where it matters most. */}
+              tap away on the screens where it matters most. Rendered
+              directly (not in DeferredWidgets below): it's a plain server
+              component with no client JS of its own, so there's nothing to
+              defer -- wrapping it in next/dynamic would only add one. */}
           <FloatingContactButtons />
 
-          {/* Client-side-only nudge back to a non-empty cart left closed for
-              a while -- no new backend calls, reuses the existing cart
-              state that already persists to localStorage. */}
-          <AbandonedCartNudge />
-
-          {/* Cute Ganesha mascot greeting on every page load, category
-              filter, and product page visit -- see
-              app/components/WelcomeGaneshaPopup.tsx for the trigger/frequency
-              logic. Wrapped in Suspense because it reads useSearchParams(),
-              which the App Router requires for pages that would otherwise
-              be statically prerendered. */}
-          <Suspense fallback={null}>
-            <WelcomeGaneshaPopup />
-          </Suspense>
+          {/* Cookie consent banner, install prompt, abandoned-cart nudge,
+              and the welcome Ganesha popup -- none of these act before a
+              delay, a browser event, or a client-only check, so none need
+              to be in the page's initial JS bundle. See
+              app/components/DeferredWidgets.tsx. */}
+          <DeferredWidgets />
 
           {/* Dynamically loads Razorpay's secure transactional modal overlay system */}
           <Script
