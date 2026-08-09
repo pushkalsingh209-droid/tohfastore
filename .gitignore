@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# one-off migration manifests (local run state, not source)
+/scripts/.image-migration-manifest.json
