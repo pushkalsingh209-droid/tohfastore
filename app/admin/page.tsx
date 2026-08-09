@@ -965,8 +965,9 @@ export default function AdminDashboard() {
     setStatus("");
   };
 
-  const handleLogout = () => {
-    window.location.href = "https://log:out@localhost:3000/";
+  const handleLogout = async () => {
+    await fetch("/api/admin/logout", { method: "POST" }).catch(() => {});
+    window.location.href = "/admin/login";
   };
 
   return (
