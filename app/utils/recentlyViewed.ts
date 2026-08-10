@@ -7,6 +7,7 @@ export interface RecentlyViewedProduct {
   name: string;
   price: number;
   image_url: string;
+  thumb_url?: string;
   category?: string | null;
 }
 

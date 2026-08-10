@@ -29,7 +29,7 @@ export default function RecentlyViewedStrip({ excludeId }: { excludeId?: string 
             className="flex-shrink-0 w-32 sm:w-36 group"
           >
             <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 bg-white">
-              <Image src={product.image_url} alt={product.name} fill sizes="144px" className="object-cover" />
+              <Image src={product.thumb_url || product.image_url} alt={product.name} fill sizes="144px" className="object-cover" />
             </div>
             <p className="mt-2 text-xs font-serif text-stone-800 dark:text-stone-200 line-clamp-2 group-hover:text-amber-700 dark:group-hover:text-amber-500 transition">
               {product.name}

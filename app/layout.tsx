@@ -12,7 +12,7 @@ import { PhotoFilterSettingProvider } from "@/app/context/PhotoFilterSettingCont
 import { LabelPhotoFilterProvider } from "@/app/context/LabelPhotoFilterContext";
 import { ProductUnitSettingProvider } from "@/app/context/ProductUnitSettingContext";
 import { DefaultWhatsappNumberProvider } from "@/app/context/DefaultWhatsappNumberContext";
-import CartDrawer from "@/app/components/CartDrawer";
+import LazyCartDrawer from "@/app/components/LazyCartDrawer";
 import HeaderNavbar from "@/app/components/headerNavbar";
 import CatalogLoadingOverlay from "@/app/components/CatalogLoadingOverlay";
 import FloatingContactButtons from "@/app/components/FloatingContactButtons";
@@ -82,8 +82,9 @@ export default function RootLayout({
           {/* Main Context Grid Pages (Storefront, Secure Admin Panel, and Checkout Success) */}
           <main id="main-content" className="flex-grow">{children}</main>
 
-          {/* Persistent Sliding Shopping Drawer Overlay Panel */}
-          <CartDrawer />
+          {/* Persistent Sliding Shopping Drawer Overlay Panel -- code-split
+              via next/dynamic, see LazyCartDrawer.tsx. */}
+          <LazyCartDrawer />
 
           {/* Storefront Global Structural Footer */}
           <footer className="bg-stone-900 dark:bg-black text-stone-400 py-12 border-t-4 border-amber-600">
@@ -132,10 +133,11 @@ export default function RootLayout({
 
           {/* Mobile-only floating WhatsApp/email shortcut -- the header's
               contact row is desktop-only, so this keeps "chat with us" one
-              tap away on the screens where it matters most. Rendered
-              directly (not in DeferredWidgets below): it's a plain server
-              component with no client JS of its own, so there's nothing to
-              defer -- wrapping it in next/dynamic would only add one. */}
+              tap away on the screens where it matters most. Now a small
+              Client Component (reads the pathname to clear space for
+              StickyAddToCartBar on a product page) -- still rendered
+              directly rather than via DeferredWidgets, since it's tiny and
+              needs to be visible immediately, not deferred behind a delay. */}
           <FloatingContactButtons />
 
           {/* Cookie consent banner, install prompt, abandoned-cart nudge,
