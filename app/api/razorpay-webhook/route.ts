@@ -57,6 +57,7 @@ export async function POST(req: Request) {
       let totalAmount = paymentEntity.amount / 100;
       let orderItems: any[] = [];
       let couponCode: string | null = null;
+      let verifiedPhone: string | null = null;
       try {
         const [capturedPayment, capturedOrder] = await Promise.all([
           razorpay.payments.fetch(paymentId),
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
         const notes: any = capturedOrder.notes || {};
         orderItems = notes.items ? (typeof notes.items === "string" ? JSON.parse(notes.items) : notes.items) : [];
         couponCode = notes.couponCode || null;
+        verifiedPhone = notes.verifiedPhone || null;
       } catch (verifyErr) {
         console.error("Rejected order webhook: could not verify payment/order with Razorpay.", verifyErr);
         return NextResponse.json({ error: "Payment verification failed." }, { status: 401 });
@@ -80,7 +82,17 @@ export async function POST(req: Request) {
       // display-only fields with no effect on price/stock, so the client's
       // own values are fine to trust here.
       const customerEmail = paymentEntity.email || "customer@example.com";
-      const customerPhone = paymentEntity.contact || "9999999999";
+      // Prefer the number pinned in our own order notes at creation time
+      // (immutable by the client afterward -- see /api/razorpay) over
+      // Razorpay's own payment.contact, which reflects whatever the payer's
+      // checkout session ended up with. Razorpay's contact field isn't
+      // locked from editing inside the checkout modal, so without this, a
+      // shopper could OTP-verify one number to unlock checkout and then
+      // have the order actually recorded (and notified) against a
+      // different, unverified one -- silently defeating the entire point
+      // of the verification step. Falls back to payment.contact only for
+      // orders created before this field existed.
+      const customerPhone = verifiedPhone || paymentEntity.contact || "9999999999";
       let customerName = "Premium Customer";
       let shippingAddress: { line: string; landmark: string; city: string; state: string; pincode: string } | null = null;
       try {

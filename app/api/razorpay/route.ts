@@ -4,6 +4,7 @@ import Razorpay from "razorpay";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { validateAndCalculateDiscount } from "@/app/utils/coupons";
 import { calculateOrderGstBreakdown, GST_RATE } from "@/app/utils/gst";
+import { isVerificationTokenValid, normalizePhoneForRecord } from "@/app/utils/whatsappOtp";
 
 // Interface definition to explicitly type incoming shopping bag artifacts
 interface CartItem {
@@ -35,10 +36,33 @@ export async function POST(req: Request) {
       );
     }
 
-    const { items, couponCode } = await req.json();
+    const { items, couponCode, phone, whatsappVerificationToken } = await req.json();
 
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Your bag is empty." }, { status: 400 });
+    }
+
+    // Server-side enforcement of WhatsApp OTP verification (see
+    // app/utils/whatsappOtp.ts) -- checked here, before a payable Razorpay
+    // order even exists, so this can't be bypassed by skipping the
+    // client-side verification UI in CartDrawer.tsx. Requires the exact
+    // token minted when this phone was verified, not just the phone number
+    // itself -- otherwise knowing/guessing a number someone else happens to
+    // have verified recently (valid up to 60 min) would be enough on its
+    // own to create an order against it.
+    if (
+      typeof phone !== "string" ||
+      typeof whatsappVerificationToken !== "string" ||
+      !(await isVerificationTokenValid(phone, whatsappVerificationToken))
+    ) {
+      // Distinguishable code (not just the message) so the client can react
+      // precisely -- e.g. a verification that was valid when Step 1
+      // completed but has since expired (60 min) shouldn't just alert() and
+      // leave the UI stuck showing "Verified"; see CartDrawer.tsx.
+      return NextResponse.json(
+        { error: "Please verify your WhatsApp number before proceeding.", code: "verification_required" },
+        { status: 400 }
+      );
     }
 
     // 3. Re-price every item from the database instead of trusting the
@@ -83,6 +107,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "One or more items in your bag are no longer available." }, { status: 400 });
     }
 
+    // Reject rather than silently clamp -- the client's own add-to-cart UI
+    // already tries to keep quantity within stock, but nothing server-side
+    // enforced it before now, so a direct call here could otherwise pay for
+    // more units than actually exist. (Doesn't close the narrower race of
+    // two checkouts for the last unit landing at nearly the same instant --
+    // stock itself is only ever decremented post-payment, in the webhook.)
+    for (const item of pricedItems as { id: number | string; name: string; quantity: number }[]) {
+      const product = dbProducts?.find((p: any) => String(p.id) === String(item.id));
+      if (product && item.quantity > Number(product.inventory)) {
+        return NextResponse.json({ error: `Only ${product.inventory} unit(s) of "${item.name}" are available.` }, { status: 400 });
+      }
+    }
+
     const subtotal = (pricedItems as { price: number; quantity: number }[]).reduce(
       (sum, i) => sum + i.price * i.quantity,
       0
@@ -124,6 +161,13 @@ export async function POST(req: Request) {
       notes: {
         items: JSON.stringify(pricedItems),
         couponCode: appliedCouponCode || "",
+        // The OTP-verified number, pinned here at creation time (Razorpay
+        // order notes can't be altered by the client afterward) -- the
+        // webhook trusts this, not Razorpay's own payment.contact, which
+        // reflects whatever the payer's checkout session ends up with and
+        // isn't necessarily the number that was actually verified. See
+        // app/utils/whatsappOtp.ts.
+        verifiedPhone: normalizePhoneForRecord(phone),
       }
     };
 
