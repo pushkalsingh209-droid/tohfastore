@@ -8,7 +8,12 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const VALID_SOURCES = ["catalogue_download", "corporate_gifting"];
+// checkout_started: fired from CartDrawer.tsx once a shopper's WhatsApp
+// number passes OTP verification (Step 1 of checkout) -- gives the admin
+// panel visibility into verified-but-not-yet-completed checkouts, distinct
+// from a fully paid order (which lands in the orders table via
+// /api/razorpay-webhook once payment is captured).
+const VALID_SOURCES = ["catalogue_download", "corporate_gifting", "checkout_started"];
 
 // Warm, source-specific opener sent right after capture -- the goal is to
 // catch the lead while they're still on-site/thinking about the products,
@@ -56,8 +61,12 @@ export async function POST(req: Request) {
 
     // Best-effort auto follow-up -- never blocks the lead submission itself
     // (a WhatsApp/Green API hiccup shouldn't make the visitor's form
-    // submission fail). Only fires when a phone number was captured.
-    if (phone) {
+    // submission fail). Only fires when a phone number was captured, and
+    // never for checkout_started -- that number just received an OTP code
+    // seconds ago, and "thanks for downloading the catalogue" makes no
+    // sense mid-checkout anyway; any follow-up for an abandoned checkout is
+    // a deliberate admin action instead (see the Leads section).
+    if (phone && source !== "checkout_started") {
       try {
         await sendWhatsappMessage(phone, followUpMessage(name, source));
         await supabase.from("leads").update({ contacted: true, contacted_at: new Date().toISOString() }).eq("id", inserted.id);

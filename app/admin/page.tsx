@@ -1235,7 +1235,11 @@ export default function AdminDashboard() {
           <div className="border-b border-stone-200 pb-4 mb-6 flex items-center justify-between flex-wrap gap-3">
             <div>
               <h2 className="text-xl font-serif text-stone-900">Leads</h2>
-              <p className="text-stone-500 text-xs mt-1">Captured from the /catalogue download form and the /corporate gifting inquiry form.</p>
+              <p className="text-stone-500 text-xs mt-1">
+                Captured from the /catalogue download form, the /corporate gifting inquiry form, and shoppers who verify their
+                WhatsApp number at checkout but haven&rsquo;t completed the order yet (a completed order moves to the Orders
+                section instead).
+              </p>
             </div>
             <span className="text-xs font-mono font-bold text-stone-500 bg-stone-100 border border-stone-200 rounded px-3 py-1.5 whitespace-nowrap">
               {leads.length} lead{leads.length === 1 ? "" : "s"}
@@ -1270,10 +1274,12 @@ export default function AdminDashboard() {
                           className={`px-2 py-1 rounded text-[10px] uppercase font-semibold whitespace-nowrap ${
                             lead.source === "corporate_gifting"
                               ? "bg-amber-50 text-amber-700 border border-amber-200"
+                              : lead.source === "checkout_started"
+                              ? "bg-sky-50 text-sky-700 border border-sky-200"
                               : "bg-stone-100 text-stone-600 border border-stone-200"
                           }`}
                         >
-                          {lead.source === "corporate_gifting" ? "Corporate" : "Catalogue"}
+                          {lead.source === "corporate_gifting" ? "Corporate" : lead.source === "checkout_started" ? "Started Checkout" : "Catalogue"}
                         </span>
                       </td>
                       <td className="p-3 text-stone-500 max-w-[240px]">
@@ -1284,6 +1290,16 @@ export default function AdminDashboard() {
                             {lead.details.occasion && <div>Occasion: {lead.details.occasion}</div>}
                             {lead.details.message && (
                               <div className="text-stone-400 italic line-clamp-2">&ldquo;{lead.details.message}&rdquo;</div>
+                            )}
+                            {Array.isArray(lead.details.cartItems) && lead.details.cartItems.length > 0 && (
+                              <div>
+                                <div className="line-clamp-2">
+                                  {lead.details.cartItems.map((i: any) => `${i.name} x${i.quantity}`).join(", ")}
+                                </div>
+                                {typeof lead.details.cartTotal === "number" && (
+                                  <div className="font-mono text-stone-600">Cart: ₹{lead.details.cartTotal.toLocaleString("en-IN")}</div>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}

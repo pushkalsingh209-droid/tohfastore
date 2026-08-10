@@ -12,6 +12,9 @@ function followUpMessage(name: string, source: string): string {
   if (source === "corporate_gifting") {
     return `Hi ${firstName}! Following up on your corporate/bulk gifting inquiry with TOHFA -- happy to help with options and pricing. Reply here on WhatsApp anytime.`;
   }
+  if (source === "checkout_started") {
+    return `Hi ${firstName}! Noticed you were checking out on TOHFA but didn't quite finish -- your bag's still saved if you'd like to complete the order. Let us know here on WhatsApp if you have any questions or need a hand.`;
+  }
   return `Hi ${firstName}! Following up on the TOHFA catalogue you downloaded -- if anything caught your eye, reply here on WhatsApp and we'll help you pick the perfect piece.`;
 }
 
