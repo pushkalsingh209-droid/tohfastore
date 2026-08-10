@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { attachThumbUrls } from "@/app/utils/imageThumb";
+import { sendWhatsappMessage } from "@/app/utils/greenApi";
 
 // Some Supabase projects may not have every column yet (added by a later
 // migration the admin hasn't run) -- these routes degrade gracefully by
@@ -160,8 +161,48 @@ export async function PATCH(req: Request) {
     if (fields.price_per_kg !== undefined) payload.price_per_kg = parseOptionalPositiveNumber(fields.price_per_kg);
     if (fields.photo_filter !== undefined) payload.photo_filter = parseOptionalPhotoFilter(fields.photo_filter);
 
+    // Fetched before the update specifically to detect a 0 -> positive
+    // inventory transition below -- "was this product actually sold out a
+    // moment ago" can't be known any other way once the update itself has
+    // already overwritten it.
+    let previousInventory: number | null = null;
+    if (payload.inventory !== undefined) {
+      const { data: existing } = await supabase.from("products").select("inventory").eq("id", id).maybeSingle();
+      previousInventory = existing ? Number(existing.inventory) : null;
+    }
+
     const { data, error, droppedColumns } = await updateWithFallback(id, payload);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Best-effort back-in-stock notifications -- never blocks the save
+    // itself. Only fires on a genuine 0 -> positive transition (not, say,
+    // 3 -> 5), and only to subscribers still pending (see the unique
+    // partial index in the migration), each marked notified right after
+    // its message goes out so a flaky retry of this same request can't
+    // double-send.
+    if (previousInventory === 0 && Number(payload.inventory) > 0 && data?.[0]) {
+      try {
+        const { data: subscribers } = await supabase
+          .from("stock_alert_subscriptions")
+          .select("id, phone")
+          .eq("product_id", id)
+          .is("notified_at", null);
+        for (const sub of subscribers || []) {
+          try {
+            await sendWhatsappMessage(
+              sub.phone,
+              `Good news! "${data[0].name}" is back in stock on TOHFA -- https://tohfaonline.com/product/${id}`
+            );
+          } catch (waError) {
+            console.error(`Back-in-stock notify failed for subscription ${sub.id}:`, waError);
+            continue; // leave notified_at unset so a later restock retries it
+          }
+          await supabase.from("stock_alert_subscriptions").update({ notified_at: new Date().toISOString() }).eq("id", sub.id);
+        }
+      } catch (notifyErr) {
+        console.error("Back-in-stock notification pass failed:", notifyErr);
+      }
+    }
 
     return NextResponse.json({
       product: data?.[0],

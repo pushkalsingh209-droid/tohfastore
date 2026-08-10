@@ -6,6 +6,7 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import ProductGallery from "@/app/components/ProductGallery";
 import AddToCartButton from "@/app/components/AddToCartButton";
 import WishlistButton from "@/app/components/WishlistButton";
+import NotifyWhenInStockButton from "@/app/components/NotifyWhenInStockButton";
 import ShareButtons from "@/app/components/ShareButtons";
 import ReviewForm from "@/app/components/ReviewForm";
 import RecordProductView from "@/app/components/RecordProductView";
@@ -321,6 +322,7 @@ export default async function ProductDetailPage({
 
                 {/* SECONDARY CTA: Add To Cart — same action/label/style as the main page card */}
                 <AddToCartButton product={product} />
+                {outOfStock && <NotifyWhenInStockButton productId={product.id} />}
                 <WishlistButton product={product} />
                 <ShareButtons productName={product.name} />
               </div>
