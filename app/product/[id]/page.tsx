@@ -199,16 +199,22 @@ export default async function ProductDetailPage({
 
   return (
     <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+      {/* JSON.stringify alone doesn't sanitize against XSS inside a
+          <script> tag (e.g. an admin-entered product name/description
+          containing "</script>" or a "<" sequence) -- escaping "<" to its
+          unicode equivalent is Next's own documented mitigation for
+          JSON-LD script tags, see
+          node_modules/next/dist/docs/01-app/02-guides/json-ld.md. */}
       {productJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd).replace(/</g, "\\u003c") }}
         />
       )}
       {breadcrumbJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }}
         />
       )}
 

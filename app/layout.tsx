@@ -17,6 +17,7 @@ import HeaderNavbar from "@/app/components/headerNavbar";
 import CatalogLoadingOverlay from "@/app/components/CatalogLoadingOverlay";
 import FloatingContactButtons from "@/app/components/FloatingContactButtons";
 import DeferredWidgets from "@/app/components/DeferredWidgets";
+import ResourceHints from "@/app/components/ResourceHints";
 import MetaPixel from "@/app/components/MetaPixel";
 import "./globals.css"; // Imports your global styling configurations
 
@@ -54,6 +55,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <ResourceHints />
       </head>
       <CartProvider>
       <WishlistProvider>
