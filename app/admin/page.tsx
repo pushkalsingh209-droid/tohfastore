@@ -7,6 +7,7 @@ import Pagination from "@/app/components/Pagination";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import ImageUploadField from "@/app/components/admin/ImageUploadField";
 import { WEIGHT_UNITS, DIMENSION_UNITS, convertDimensionValue, convertCmTo, type DimensionUnit } from "@/app/utils/productUnits";
+import { roundUpBrassPrice } from "@/app/utils/pricing";
 
 // All reads/writes below go through /api/admin/* route handlers (protected
 // by middleware.ts's password gate) instead of talking to Supabase directly
@@ -767,8 +768,10 @@ export default function AdminDashboard() {
     };
     // Only recompute the live price when there's an actual weight to base
     // it on -- otherwise the manually-entered price is left exactly as-is.
+    // Rounded UP to a clean figure (see roundUpBrassPrice) rather than left
+    // at an odd exact value like ₹5,041.
     if (weightG && validPricePerKg) {
-      payload.price = Math.round((weightG / 1000) * validPricePerKg * 1.2);
+      payload.price = roundUpBrassPrice((weightG / 1000) * validPricePerKg * 1.2);
     }
 
     try {
@@ -1766,7 +1769,7 @@ export default function AdminDashboard() {
                     const draft = brassDraft(product);
                     const weightKg = Number(draft.weight_kg);
                     const rate = Number(draft.price_per_kg);
-                    const computedPrice = weightKg > 0 && rate > 0 ? Math.round(weightKg * rate * 1.2) : null;
+                    const computedPrice = weightKg > 0 && rate > 0 ? roundUpBrassPrice(weightKg * rate * 1.2) : null;
                     return (
                       <div className="bg-amber-50 border border-amber-200 rounded px-3 py-2.5 flex flex-wrap items-end gap-3">
                         <div>

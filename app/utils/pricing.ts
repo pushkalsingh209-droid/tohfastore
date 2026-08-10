@@ -32,3 +32,16 @@ export function calculateSlashedPrice(
 
   return { originalPrice, salePrice, discountPercent };
 }
+
+// Rounds a weight-derived "Lightweight Brass" price (weight x rate x
+// margin, see the admin stock tracker's brass calculator) UP to a clean,
+// round-looking figure rather than leaving it at an odd exact value like
+// ₹5,041 -- always rounds up (never down, so the computed margin is never
+// eaten into), to the nearest ₹10 under ₹1,000 and the nearest ₹100 at
+// ₹1,000 and above, so a small item doesn't jump disproportionately while
+// a larger one still lands on a clean hundred.
+export function roundUpBrassPrice(price: number): number {
+  if (!Number.isFinite(price) || price <= 0) return price;
+  const step = price < 1000 ? 10 : 100;
+  return Math.ceil(price / step) * step;
+}
