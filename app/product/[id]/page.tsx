@@ -7,6 +7,7 @@ import ProductGallery from "@/app/components/ProductGallery";
 import AddToCartButton from "@/app/components/AddToCartButton";
 import WishlistButton from "@/app/components/WishlistButton";
 import NotifyWhenInStockButton from "@/app/components/NotifyWhenInStockButton";
+import StickyAddToCartBar from "@/app/components/StickyAddToCartBar";
 import ShareButtons from "@/app/components/ShareButtons";
 import ReviewForm from "@/app/components/ReviewForm";
 import RecordProductView from "@/app/components/RecordProductView";
@@ -19,6 +20,7 @@ import { getProductWhatsappLink, resolveProductWhatsappNumber } from "@/app/util
 import WhatsappEnquiryLink from "@/app/components/WhatsappEnquiryLink";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
 import { getRelatedProducts, getProductUnitSettings, getDefaultWhatsappNumber } from "@/app/utils/storeQueries";
+import { getThumbUrl } from "@/app/utils/imageThumb";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
 
@@ -50,7 +52,13 @@ const getProduct = cache(
           .single();
 
         if (error || !data) return null;
-        return data;
+        // Attaches a small-thumbnail URL (see app/utils/imageThumb.ts) --
+        // flows automatically into AddToCartButton/WishlistButton via their
+        // existing product-object spread, and is passed explicitly to
+        // RecordProductView below so the "Recently Viewed" strip elsewhere
+        // on the site can use it instead of the full-size image.
+        const thumb_url = data.image_url ? await getThumbUrl(data.image_url) : undefined;
+        return { ...data, thumb_url };
       } catch (err) {
         console.error("Failed to load product:", err);
         return null;
@@ -199,7 +207,10 @@ export default async function ProductDetailPage({
     : null;
 
   return (
-    <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+    // pb-20 on mobile only -- clears space for StickyAddToCartBar (fixed,
+    // md:hidden) below so it doesn't cover the footer/last content on a
+    // short page; no-op on desktop where that bar never renders.
+    <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors pb-20 md:pb-0">
       {/* JSON.stringify alone doesn't sanitize against XSS inside a
           <script> tag (e.g. an admin-entered product name/description
           containing "</script>" or a "<" sequence) -- escaping "<" to its
@@ -233,7 +244,7 @@ export default async function ProductDetailPage({
           </div>
         ) : (
           <>
-          <RecordProductView id={product.id} name={product.name} price={product.price} image_url={product.image_url} category={product.category} />
+          <RecordProductView id={product.id} name={product.name} price={product.price} image_url={product.image_url} thumb_url={product.thumb_url} category={product.category} />
           <div className="flex flex-col md:flex-row md:items-start gap-8 md:gap-12">
             {/* Gallery */}
             <div className="md:w-1/2 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 shadow-sm bg-white">
@@ -388,6 +399,8 @@ export default async function ProductDetailPage({
           </div>
         </div>
       </footer>
+
+      {product && <StickyAddToCartBar product={product} />}
     </div>
   );
 }

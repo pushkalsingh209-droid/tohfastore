@@ -3,13 +3,21 @@
 // keep that row from crowding), so mobile gets its own always-visible
 // shortcut instead -- a small floating WhatsApp + email pair, the pattern
 // most e-commerce sites use to keep contact one tap away.
+"use client";
+import { usePathname } from "next/navigation";
 import { WHATSAPP_NUMBER } from "@/app/utils/whatsapp";
 
 const GENERAL_INQUIRY_MESSAGE = "Hi! I want to enquire about Tohfa products.";
 
 export default function FloatingContactButtons() {
+  // A product page also shows StickyAddToCartBar (fixed, bottom-0, mobile-
+  // only) -- lifted clear of it there so the two don't overlap; bottom-4
+  // everywhere else, same as before this existed.
+  const pathname = usePathname();
+  const isProductPage = pathname?.startsWith("/product/");
+
   return (
-    <div className="md:hidden fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2.5 print:hidden">
+    <div className={`md:hidden fixed ${isProductPage ? "bottom-20" : "bottom-4"} right-4 z-40 flex flex-col items-end gap-2.5 print:hidden`}>
       <a
         href="mailto:contact@tohfaonline.com"
         aria-label="Email TOHFA"

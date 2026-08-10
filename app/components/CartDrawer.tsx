@@ -283,11 +283,22 @@ export default function CartDrawer() {
   const cityInputRef = useRef<HTMLInputElement | null>(null);
   const stateSelectRef = useRef<HTMLSelectElement | null>(null);
   const policyCheckboxRef = useRef<HTMLInputElement | null>(null);
+  const validationErrorRef = useRef<HTMLDivElement | null>(null);
 
   function focusInvalidField(field: string, ref: React.RefObject<HTMLElement | null>) {
     setInvalidField(field);
     ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     ref.current?.focus();
+  }
+
+  // For errors that aren't about one specific field (SDK/network failures,
+  // order-creation errors, an unexpected exception) -- inline instead of a
+  // jarring native alert(), and scrolled into view since these can happen
+  // after the shopper has already scrolled well past the banner's position
+  // near the top of the form.
+  function showGeneralError(message: string) {
+    setValidationError(message);
+    setTimeout(() => validationErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
   }
 
   // Swapped into a field's border classes when it's currently invalid --
@@ -452,7 +463,7 @@ export default function CartDrawer() {
     try {
       const isSDKLoaded = await initializeRazorpaySDK();
       if (!isSDKLoaded) {
-        alert("Razorpay SDK failed to load. Check your internet connection.");
+        showGeneralError("Could not load the payment gateway. Please check your internet connection and try again.");
         setLoading(false);
         return;
       }
@@ -492,7 +503,7 @@ export default function CartDrawer() {
           setTimeout(() => phoneInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
           return;
         }
-        alert(`Backend Error: ${data.error || "Failed to create order ID."}`);
+        showGeneralError(data.error || "Could not start the order. Please try again.");
         setLoading(false);
         return;
       }
@@ -614,7 +625,7 @@ export default function CartDrawer() {
       rzp.open();
 
     } catch (err: any) {
-      alert(`Runtime Exception: ${err.message}`);
+      showGeneralError(err.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -735,7 +746,10 @@ export default function CartDrawer() {
                 <form id="checkout-contact-form" onSubmit={handleRazorpayPayment} className="space-y-3 pt-2">
                   {/* Inline Error UI Warning Block */}
                   {validationError && (
-                    <div className="p-3 text-[11px] font-medium bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 text-rose-800 dark:text-rose-400 rounded">
+                    <div
+                      ref={validationErrorRef}
+                      className="p-3 text-[11px] font-medium bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 text-rose-800 dark:text-rose-400 rounded"
+                    >
                       ⚠️ {validationError}
                     </div>
                   )}
