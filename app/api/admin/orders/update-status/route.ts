@@ -39,11 +39,21 @@ export async function POST(req: Request) {
         const customerPhone = order.customer_details?.contact;
 
         if (greenApiUrl && greenApiIdInstance && greenApiTokenInstance && customerPhone) {
+          // Delivered also carries a review request -- linking to the
+          // first item's product page, where the review form already
+          // lives (see app/product/[id]/page.tsx). Kept to one item even
+          // for a multi-item order rather than listing every link, so the
+          // message stays short enough to actually read on WhatsApp.
+          const firstItem = Array.isArray(order.items) ? order.items[0] : null;
+          const reviewLine = firstItem?.id
+            ? `\n\nWe'd love your feedback! Leave a review here: https://tohfaonline.com/product/${firstItem.id}`
+            : "";
+
           const message =
             status === "shipped"
               ? `Good news! Your Tohfa order ${order.order_id} has shipped and is on its way.` +
                 (order.awb_number ? ` Tracking No: ${order.awb_number}` : "")
-              : `Your Tohfa order ${order.order_id} has been delivered. Thank you for shopping with us!`;
+              : `Your Tohfa order ${order.order_id} has been delivered. Thank you for shopping with us!${reviewLine}`;
 
           const chatId = customerPhone.startsWith("91") ? `${customerPhone}@c.us` : `91${customerPhone}@c.us`;
 
