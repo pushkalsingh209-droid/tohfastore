@@ -135,6 +135,8 @@ export default function AdminDashboard() {
   const [newBackupCodes, setNewBackupCodes] = useState<string[] | null>(null);
   const [backupCodesStatus, setBackupCodesStatus] = useState("");
   const [logoutEverywhereStatus, setLogoutEverywhereStatus] = useState("");
+  const [totpQr, setTotpQr] = useState<{ secret: string; qrSvg: string } | null>(null);
+  const [totpQrStatus, setTotpQrStatus] = useState("");
 
   // Load inventory data, orders, reviews, coupons, and categories from the
   // protected admin API on mount. The requests are independent, so fetch
@@ -994,6 +996,21 @@ export default function AdminDashboard() {
       setBackupCodesStatus("");
     } catch (err: any) {
       setBackupCodesStatus(`Error: ${err.message}`);
+    }
+  };
+
+  // Re-renders a QR code for the *existing* ADMIN_TOTP_SECRET on demand --
+  // doesn't rotate or change anything server-side, just gives a scan-to-add
+  // path for a new phone/authenticator app instead of copying the raw
+  // secret out of Vercel's dashboard.
+  const handleShowTotpQr = async () => {
+    setTotpQrStatus("Loading...");
+    try {
+      const result = await apiRequest("/api/admin/totp-qr");
+      setTotpQr({ secret: result.secret, qrSvg: result.qrSvg });
+      setTotpQrStatus("");
+    } catch (err: any) {
+      setTotpQrStatus(`Error: ${err.message}`);
     }
   };
 
@@ -2663,6 +2680,45 @@ export default function AdminDashboard() {
                 </button>
               </div>
             )}
+          </div>
+
+          <div>
+            <h3 className="text-xs uppercase tracking-wider font-semibold text-stone-600 mb-2">Authenticator App Setup</h3>
+            <p className="text-stone-500 text-xs mb-3">
+              Lost access to your authenticator (new phone, reinstalled app)? This re-displays a QR code for the same
+              secret it was originally set up with &mdash; scanning it adds a working entry to a new device without
+              changing anything here. Doesn&rsquo;t rotate the secret, so any authenticator still holding the old entry
+              keeps working too.
+            </p>
+            {!totpQr ? (
+              <button
+                type="button"
+                onClick={handleShowTotpQr}
+                disabled={totpQrStatus === "Loading..."}
+                className="px-4 py-2 text-xs uppercase tracking-wider font-semibold border border-stone-300 rounded text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition disabled:opacity-50"
+              >
+                {totpQrStatus === "Loading..." ? "Loading..." : "Show Setup QR Code"}
+              </button>
+            ) : (
+              <div className="border border-stone-200 bg-stone-50 rounded-lg p-4 max-w-xs">
+                <div
+                  className="bg-white rounded p-2 w-40 h-40 mx-auto"
+                  dangerouslySetInnerHTML={{ __html: totpQr.qrSvg }}
+                />
+                <p className="text-[11px] text-stone-500 mt-3 mb-1">Can&rsquo;t scan? Enter this setup key manually:</p>
+                <p className="font-mono text-xs bg-white border border-stone-200 rounded px-2 py-1.5 text-center break-all text-stone-900">
+                  {totpQr.secret}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setTotpQr(null)}
+                  className="mt-3 w-full px-3 py-1.5 text-[11px] uppercase font-semibold border border-stone-300 rounded text-stone-600 hover:bg-stone-100 transition"
+                >
+                  Hide
+                </button>
+              </div>
+            )}
+            {totpQrStatus && totpQrStatus !== "Loading..." && <p className="text-xs text-rose-600 mt-2">{totpQrStatus}</p>}
           </div>
 
           <div>
