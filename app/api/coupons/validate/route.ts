@@ -2,6 +2,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { validateAndCalculateDiscount } from "@/app/utils/coupons";
+import { isRateLimited, recordRateLimitEvent } from "@/app/utils/rateLimit";
+import { getClientIp } from "@/app/utils/clientIp";
+
+const RATE_LIMIT_BUCKET = "coupon-validate";
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX_ATTEMPTS = 20; // generous for genuine typos, tight enough to block code enumeration
 
 // Public endpoint used only to preview a discount in the cart UI before
 // checkout. This is NOT the source of truth for the amount actually
@@ -9,6 +15,12 @@ import { validateAndCalculateDiscount } from "@/app/utils/coupons";
 // from the database again when the real order is created.
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    if (await isRateLimited(RATE_LIMIT_BUCKET, ip, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_ATTEMPTS)) {
+      return NextResponse.json({ error: "Too many attempts. Please try again in a few minutes." }, { status: 429 });
+    }
+    await recordRateLimitEvent(RATE_LIMIT_BUCKET, ip);
+
     const { couponCode, subtotal } = await req.json();
     const parsedSubtotal = Number(subtotal);
 
