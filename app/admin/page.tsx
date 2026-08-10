@@ -427,6 +427,16 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteLead = async (leadId: number, leadName: string) => {
+    if (!window.confirm(`Delete the lead from "${leadName}"? This can't be undone.`)) return;
+    try {
+      await apiRequest("/api/admin/leads", { method: "DELETE", body: JSON.stringify({ id: leadId }) });
+      setLeads(leads.filter((l) => l.id !== leadId));
+    } catch (err: any) {
+      alert(`Could not delete lead: ${err.message}`);
+    }
+  };
+
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     try {
       const res = await fetch("/api/admin/orders/update-status", {
@@ -1259,6 +1269,7 @@ export default function AdminDashboard() {
                     <th className="p-3">Details</th>
                     <th className="p-3">Follow-up</th>
                     <th className="p-3 text-right">Date</th>
+                    <th className="p-3"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
@@ -1332,6 +1343,16 @@ export default function AdminDashboard() {
                       </td>
                       <td className="p-3 text-right text-stone-400 font-mono whitespace-nowrap">
                         {new Date(lead.created_at).toLocaleDateString("en-IN")}
+                      </td>
+                      <td className="p-3 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLead(lead.id, lead.name)}
+                          aria-label={`Delete lead from ${lead.name}`}
+                          className="px-2 py-1 rounded text-[10px] uppercase font-semibold text-rose-700 border border-rose-200 hover:bg-rose-50 transition"
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   ))}
