@@ -14,6 +14,8 @@ import { unstable_cache } from "next/cache";
 import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { calculateSlashedPrice } from "@/app/utils/pricing";
+import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
+import { getProductUnitSettings } from "@/app/utils/storeQueries";
 
 // Product photos are uploaded at full resolution for the storefront, but a
 // catalogue card only ever displays one at ~150pt wide -- embedding the
@@ -85,6 +87,7 @@ const styles = StyleSheet.create({
   cardPrice: { fontSize: 10, color: AMBER, fontWeight: 700 },
   cardOriginalPrice: { fontSize: 7, color: "#a8a29e", textDecoration: "line-through" },
   cardBadge: { fontSize: 6, color: "#15803d", fontWeight: 700, textTransform: "uppercase" },
+  cardDimensions: { fontSize: 6.5, color: "#78716c", marginTop: 3 },
   cardStock: { fontSize: 7, color: "#b91c1c", marginTop: 2, textTransform: "uppercase" },
 
   footer: {
@@ -113,12 +116,17 @@ function Footer({ pageLabel }: { pageLabel: string }) {
 export async function generateCatalogueBuffer(): Promise<Buffer> {
   const { data: products, error } = await supabase
     .from("products")
-    .select("id, name, price, category, image_url, inventory, display_order, created_at")
+    .select("id, name, price, category, image_url, inventory, display_order, created_at, weight_g, height_cm, depth_cm, breadth_cm")
     .order("category", { ascending: true, nullsFirst: false })
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
+
+  // Same admin-configurable weight/dimension display units the storefront
+  // itself uses (see ProductCard/product detail page), so the catalogue's
+  // "Wt: 250 g  •  H 12 × D 8 cm" line matches what a shopper sees on-site.
+  const unitSettings = await getProductUnitSettings();
 
   // Category discount % map -- drives the "MRP Rs. X, Y% off" shown per
   // card below. Best-effort: an empty map just means plain prices.
@@ -185,6 +193,7 @@ export async function generateCatalogueBuffer(): Promise<Buffer> {
           ...grouped.get(category)!.map((product) => {
             const thumb = thumbnails.get(product.id);
             const slashed = calculateSlashedPrice(Number(product.price), categoryDiscounts[product.category]);
+            const dimensionsLine = formatProductDimensionsLine(product, unitSettings.weightUnit, unitSettings.dimensionUnit);
             return React.createElement(
               View,
               { key: product.id, style: styles.card, wrap: false },
@@ -199,6 +208,7 @@ export async function generateCatalogueBuffer(): Promise<Buffer> {
                   : null
               ),
               slashed ? React.createElement(Text, { style: styles.cardBadge }, `${slashed.discountPercent}% off`) : null,
+              dimensionsLine ? React.createElement(Text, { style: styles.cardDimensions }, dimensionsLine) : null,
               Number(product.inventory) <= 0
                 ? React.createElement(Text, { style: styles.cardStock }, "Out of Stock")
                 : null
