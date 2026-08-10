@@ -63,6 +63,46 @@ export default function CartDrawer() {
     };
   }, [pincode]);
 
+  // Confirms the entered number is actually registered on WhatsApp before
+  // checkout, since order updates are sent via WhatsApp only (see
+  // handleRazorpayPayment below) -- via Green API's checkWhatsapp, no
+  // message sent. Tracks which digits a given status belongs to
+  // (whatsappCheckedPhone) so a stale "invalid" from a since-edited number
+  // never blocks a resubmit. "unknown" (Green API not configured, or the
+  // check itself errored) is treated as pass -- this only ever blocks on a
+  // confirmed non-WhatsApp number, never on an infrastructure hiccup.
+  const [whatsappCheckStatus, setWhatsappCheckStatus] = useState<"idle" | "checking" | "valid" | "invalid" | "unknown">("idle");
+  const [whatsappCheckedPhone, setWhatsappCheckedPhone] = useState("");
+  const whatsappCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (whatsappCheckRef.current) clearTimeout(whatsappCheckRef.current);
+    if (!/^[6-9]\d{9}$/.test(customerPhone)) {
+      setWhatsappCheckStatus("idle");
+      return;
+    }
+    setWhatsappCheckStatus("checking");
+    whatsappCheckRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/check-whatsapp-number", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: customerPhone }),
+        });
+        const data = await res.json();
+        setWhatsappCheckedPhone(customerPhone);
+        if (!res.ok || data.exists === null || data.exists === undefined) setWhatsappCheckStatus("unknown");
+        else setWhatsappCheckStatus(data.exists ? "valid" : "invalid");
+      } catch {
+        setWhatsappCheckedPhone(customerPhone);
+        setWhatsappCheckStatus("unknown");
+      }
+    }, 600);
+    return () => {
+      if (whatsappCheckRef.current) clearTimeout(whatsappCheckRef.current);
+    };
+  }, [customerPhone]);
+
   // Specialized inline validation alert messages state
   const [validationError, setValidationError] = useState("");
 
@@ -80,6 +120,30 @@ export default function CartDrawer() {
   const [applyingCoupon, setApplyingCoupon] = useState(false);
 
   const router = useRouter();
+
+  const initializeRazorpaySDK = () => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // Opening the cart drawer is a strong purchase-intent signal that
+  // typically precedes several seconds of form-filling before "Proceed to
+  // Payment" is even clicked -- preloading Razorpay's checkout.js here
+  // (rather than only on-demand at submit time, or waiting on layout.tsx's
+  // own lazyOnload <Script>, which can still be mid-fetch by then) means
+  // the SDK is already warm for virtually everyone by the time they submit.
+  useEffect(() => {
+    if (isOpen) initializeRazorpaySDK();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -115,20 +179,6 @@ export default function CartDrawer() {
     setCouponError("");
   };
 
-  const initializeRazorpaySDK = () => {
-    return new Promise((resolve) => {
-      if ((window as any).Razorpay) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
   const handleRazorpayPayment = async (e: React.FormEvent) => {
     e.preventDefault(); 
     setValidationError(""); // Reset active error nodes
@@ -146,6 +196,15 @@ export default function CartDrawer() {
 
     if (!phoneRegex.test(cleanPhone)) {
       setValidationError("Please enter a valid 10-digit Indian Mobile or WhatsApp number (e.g. 9876543210).");
+      return;
+    }
+
+    // Only ever blocks on a *confirmed* non-WhatsApp number for this exact
+    // phone -- a still-pending/unresolved check (still "checking", or the
+    // number was edited after its last check) is treated as pass, so a slow
+    // or unconfigured check never blocks a legitimate order.
+    if (whatsappCheckStatus === "invalid" && whatsappCheckedPhone === cleanPhone) {
+      setValidationError("This number doesn't appear to be registered on WhatsApp. Order updates (confirmation, dispatch, delivery) are sent via WhatsApp only -- please double-check the number.");
       return;
     }
 
@@ -206,77 +265,81 @@ export default function CartDrawer() {
         name: "TOHFA",
         description: "Premium Brass Handicrafts & Luxury Gifts",
         order_id: data.orderId,
-        handler: async function (response: any) {
-          try {
-            // Direct Backup Method ensures instantaneous logging to database pipelines
-            await fetch("/api/razorpay-webhook", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                event: "payment.captured",
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                payload: {
-                  payment: {
-                    entity: {
-                      order_id: data.orderId,
-                      id: response.razorpay_payment_id,
-                      amount: data.amount,
-                      email: customerEmail,
-                      contact: cleanPhone // Pass perfectly clean digits array forward
-                    }
-                  },
-                  // Only display-only fields travel through this body -- items,
-                  // price, and coupon are read server-side from the real
-                  // Razorpay order notes set in /api/razorpay, not from here.
-                  order: {
-                    entity: {
-                      notes: {
-                        customer_name: customerName,
-                        shipping_address: {
-                          line: addressLine.trim(),
-                          landmark: landmark.trim(),
-                          city: city.trim(),
-                          state: addressState,
-                          pincode,
-                        }
+        handler: function (response: any) {
+          // Direct Backup Method -- fire-and-forget. /success reads the
+          // order purely from sessionStorage (stashed right below, from
+          // data already on hand client-side), so nothing on that page
+          // actually depends on this call having finished. Not awaiting it
+          // keeps the customer from waiting on the DB insert + stock
+          // deduction + WhatsApp/email chain this triggers server-side
+          // between "payment succeeds" and landing on the confirmation
+          // page -- the client-side navigation below doesn't cancel an
+          // in-flight fetch the way a full page unload would.
+          fetch("/api/razorpay-webhook", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              event: "payment.captured",
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              payload: {
+                payment: {
+                  entity: {
+                    order_id: data.orderId,
+                    id: response.razorpay_payment_id,
+                    amount: data.amount,
+                    email: customerEmail,
+                    contact: cleanPhone // Pass perfectly clean digits array forward
+                  }
+                },
+                // Only display-only fields travel through this body -- items,
+                // price, and coupon are read server-side from the real
+                // Razorpay order notes set in /api/razorpay, not from here.
+                order: {
+                  entity: {
+                    notes: {
+                      customer_name: customerName,
+                      shipping_address: {
+                        line: addressLine.trim(),
+                        landmark: landmark.trim(),
+                        city: city.trim(),
+                        state: addressState,
+                        pincode,
                       }
                     }
                   }
                 }
-              }),
-            });
+              }
+            }),
+          }).catch((e) => console.error("Direct backend log pipeline tracing bottleneck:", e));
+
+          try {
+            sessionStorage.setItem(
+              "tohfa_last_order",
+              JSON.stringify({
+                orderId: data.orderId,
+                paymentId: response.razorpay_payment_id,
+                date: new Date().toISOString(),
+                customerName,
+                customerPhone: cleanPhone,
+                customerEmail,
+                items: cart.map((item: any) => ({ name: item.name, price: item.price, quantity: item.quantity, category: item.category })),
+                subtotal: cartTotal,
+                discount: appliedCoupon?.discount || 0,
+                couponCode: appliedCoupon?.code || null,
+                total: data.amount / 100,
+                // Computed server-side in /api/razorpay from each item's own
+                // category GST rate -- the invoice displays this directly
+                // instead of re-deriving it client-side with a flat rate.
+                gst: data.gst,
+              })
+            );
           } catch (e) {
-            console.error("Direct backend log pipeline tracing bottleneck:", e);
-          } finally {
-            try {
-              sessionStorage.setItem(
-                "tohfa_last_order",
-                JSON.stringify({
-                  orderId: data.orderId,
-                  paymentId: response.razorpay_payment_id,
-                  date: new Date().toISOString(),
-                  customerName,
-                  customerPhone: cleanPhone,
-                  customerEmail,
-                  items: cart.map((item: any) => ({ name: item.name, price: item.price, quantity: item.quantity, category: item.category })),
-                  subtotal: cartTotal,
-                  discount: appliedCoupon?.discount || 0,
-                  couponCode: appliedCoupon?.code || null,
-                  total: data.amount / 100,
-                  // Computed server-side in /api/razorpay from each item's own
-                  // category GST rate -- the invoice displays this directly
-                  // instead of re-deriving it client-side with a flat rate.
-                  gst: data.gst,
-                })
-              );
-            } catch (e) {
-              console.error("Could not stash invoice data:", e);
-            }
-            setIsOpen(false);
-            router.push("/success");
+            console.error("Could not stash invoice data:", e);
           }
+          setIsOpen(false);
+          router.push("/success");
         },
         prefill: {
           name: customerName,
@@ -425,6 +488,15 @@ export default function CartDrawer() {
                       className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700 font-mono tracking-wide"
                     />
                     <span className="text-[9px] text-stone-400 block mt-1">Enter your active WhatsApp number (10 digits, no country code or spaces) &mdash; this is where we'll send order updates.</span>
+                    {whatsappCheckStatus === "checking" && (
+                      <span className="text-[9px] text-stone-400 block mt-1">Checking WhatsApp&hellip;</span>
+                    )}
+                    {whatsappCheckStatus === "invalid" && whatsappCheckedPhone === customerPhone && (
+                      <span className="text-[9px] text-rose-500 block mt-1">This number doesn&rsquo;t appear to be on WhatsApp &mdash; double-check it, since order updates go there only.</span>
+                    )}
+                    {whatsappCheckStatus === "valid" && whatsappCheckedPhone === customerPhone && (
+                      <span className="text-[9px] text-emerald-600 block mt-1">&#10003; Verified on WhatsApp</span>
+                    )}
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">Address (House/Flat No., Street, Area)</label>

@@ -44,3 +44,43 @@ export async function sendWhatsappMessage(phone: string, message: string, imageU
     throw new Error(`WhatsApp (Green API) send failed: ${chatId} ${await res.text()}`);
   }
 }
+
+// Checks whether a number is actually registered on WhatsApp, via Green
+// API's checkWhatsapp endpoint -- no message sent, so no cost and no
+// checkout friction. Used to catch typos/fake numbers before checkout,
+// since order updates are sent via WhatsApp only (see CartDrawer.tsx).
+//
+// Returns null (not false) whenever the check itself couldn't be
+// performed -- Green API not configured, network error, unexpected
+// response shape -- so callers can fail open (let checkout proceed)
+// instead of blocking a sale on an infrastructure hiccup unrelated to
+// whether the number is actually valid.
+export async function checkWhatsappNumber(phone: string): Promise<boolean | null> {
+  const greenApiUrl = process.env.GREEN_API_URL;
+  const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
+  const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
+  if (!greenApiUrl || !greenApiIdInstance || !greenApiTokenInstance) return null;
+
+  const digits = phone.replace(/\D/g, "");
+  const phoneNumber = digits.startsWith("91") ? digits : `91${digits}`;
+
+  try {
+    const res = await fetch(
+      `${greenApiUrl}/waInstance${greenApiIdInstance}/checkWhatsapp/${greenApiTokenInstance}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: Number(phoneNumber) }),
+      }
+    );
+    if (!res.ok) {
+      console.error("WhatsApp (Green API) checkWhatsapp failed:", res.status, await res.text());
+      return null;
+    }
+    const data = await res.json();
+    return typeof data.existsWhatsapp === "boolean" ? data.existsWhatsapp : null;
+  } catch (err) {
+    console.error("WhatsApp (Green API) checkWhatsapp errored:", err);
+    return null;
+  }
+}
