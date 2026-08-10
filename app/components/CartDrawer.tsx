@@ -577,6 +577,17 @@ export default function CartDrawer() {
           } catch (e) {
             console.error("Could not stash invoice data:", e);
           }
+          // Reset the coupon now that it's actually been spent on this
+          // order -- CartDrawer stays mounted across navigation (it's part
+          // of the persistent layout, not remounted per page), so without
+          // this an applied coupon would silently carry into the next
+          // cart/order. Harmless for a still-valid multi-use coupon, but
+          // for one that just hit its usage limit on *this* order, it
+          // otherwise resurfaces as a confusing "coupon invalid" error on
+          // a completely new order that never asked for it.
+          setAppliedCoupon(null);
+          setCouponInput("");
+          setCouponError("");
           setIsOpen(false);
           router.push("/success");
         },
