@@ -37,6 +37,15 @@ export function convertDimensionValue(value: number, fromUnit: DimensionUnit, to
   return roundDisplay(cm / CM_PER_UNIT[toUnit]);
 }
 
+// Same idea for weight -- backs the admin form's selectable input unit
+// (g/kg/lb), converting what an admin typed into the canonical grams
+// stored in the database, and back again when populating the form from an
+// existing product.
+export function convertWeightValue(value: number, fromUnit: WeightUnit, toUnit: WeightUnit): number {
+  const grams = value * GRAMS_PER_UNIT[fromUnit];
+  return roundDisplay(grams / GRAMS_PER_UNIT[toUnit]);
+}
+
 export function isWeightUnit(value: unknown): value is WeightUnit {
   return typeof value === "string" && (WEIGHT_UNITS as string[]).includes(value);
 }

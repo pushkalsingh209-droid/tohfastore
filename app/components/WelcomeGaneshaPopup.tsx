@@ -28,8 +28,8 @@ const DEFAULT_COOLDOWN_MS = 10 * 60 * 1000;
 // How long the floating manual-trigger button stays as a full "Show
 // Ganesha" pill before collapsing down to a plain arrow, to keep it from
 // permanently occupying screen space during the (potentially hours-long)
-// cooldown.
-const BUTTON_COLLAPSE_DELAY_MS = 10000;
+// cooldown. Fallback only -- see collapseDelayMs below.
+const DEFAULT_BUTTON_COLLAPSE_DELAY_MS = 5000;
 
 function isMutedInStorage(): boolean {
   if (typeof window === "undefined") return false;
@@ -107,16 +107,17 @@ export default function WelcomeGaneshaPopup() {
   const [inCooldown, setInCooldown] = useState(false);
   // Whether the floating manual-trigger button is collapsed down to a
   // plain arrow -- starts expanded (full "Show Ganesha" pill) and
-  // auto-collapses after BUTTON_COLLAPSE_DELAY_MS; clicking the collapsed
-  // arrow re-expands it (see expandTrigger below).
+  // auto-collapses after collapseDelayMs (admin-configurable, see below);
+  // clicking the collapsed arrow re-expands it (see expandTrigger below).
   const [buttonCollapsed, setButtonCollapsed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const dismissedRef = useRef(false);
   // Admin-configurable in Storefront Settings; defaults apply until that
   // setting has loaded.
-  const { cooldownMinutes, maxAutoShows } = useGaneshaPopupSettings();
+  const { cooldownMinutes, maxAutoShows, collapseDelaySeconds } = useGaneshaPopupSettings();
   const cooldownMs = cooldownMinutes > 0 ? cooldownMinutes * 60 * 1000 : DEFAULT_COOLDOWN_MS;
   const effectiveMaxAutoShows = maxAutoShows > 0 ? maxAutoShows : DEFAULT_MAX_AUTO_SHOWS;
+  const collapseDelayMs = collapseDelaySeconds > 0 ? collapseDelaySeconds * 1000 : DEFAULT_BUTTON_COLLAPSE_DELAY_MS;
 
   useEffect(() => {
     dismissedRef.current = false;
@@ -273,14 +274,15 @@ export default function WelcomeGaneshaPopup() {
   }, [inCooldown, phase]);
 
   // Auto-collapses the expanded trigger down to a plain arrow after
-  // BUTTON_COLLAPSE_DELAY_MS -- re-armed any time it re-expands, whether
-  // from the effect above or from expandTrigger() (the arrow being
-  // clicked), so it always gets another 10s visible before collapsing again.
+  // collapseDelayMs (admin-configurable, 2-60s) -- re-armed any time it
+  // re-expands, whether from the effect above or from expandTrigger() (the
+  // arrow being clicked), so it always gets another full delay visible
+  // before collapsing again.
   useEffect(() => {
     if (buttonCollapsed || !inCooldown || phase !== "hidden") return;
-    const t = setTimeout(() => setButtonCollapsed(true), BUTTON_COLLAPSE_DELAY_MS);
+    const t = setTimeout(() => setButtonCollapsed(true), collapseDelayMs);
     return () => clearTimeout(t);
-  }, [buttonCollapsed, inCooldown, phase]);
+  }, [buttonCollapsed, inCooldown, phase, collapseDelayMs]);
 
   // The floating "Show Ganesha" button during the cooldown --
   // shows the popup once per click, immediately (no SHOW_DELAY_MS wait,
@@ -435,8 +437,9 @@ export default function WelcomeGaneshaPopup() {
           screen -- lets a visitor bring the mascot back on demand instead
           of waiting out the cooldown, without that click counting
           toward/against it. Starts as a full "Show Ganesha" pill, then
-          collapses to a plain arrow after BUTTON_COLLAPSE_DELAY_MS so it
-          doesn't sit there for the whole (potentially hours-long) cooldown
+          collapses to a plain arrow after collapseDelayMs (admin-
+          configurable, 2-60s) so it doesn't sit there for the whole
+          (potentially hours-long) cooldown
           -- clicking the arrow re-expands it rather than triggering the
           popup directly, so the label is visible again before committing. */}
       {inCooldown && phase === "hidden" && (

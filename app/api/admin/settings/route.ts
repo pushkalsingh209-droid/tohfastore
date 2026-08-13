@@ -30,6 +30,23 @@ function parseGaneshaMaxAutoShows(value: unknown): number | null {
   return num;
 }
 
+// How long the floating "Show Ganesha" manual-trigger button stays
+// expanded (full pill) before collapsing to a plain arrow.
+const MIN_GANESHA_COLLAPSE_DELAY_SECONDS = 2;
+const MAX_GANESHA_COLLAPSE_DELAY_SECONDS = 60;
+
+function parseGaneshaCollapseDelaySeconds(value: unknown): number | null {
+  const num = Number(value);
+  if (
+    !Number.isFinite(num) ||
+    !Number.isInteger(num) ||
+    num < MIN_GANESHA_COLLAPSE_DELAY_SECONDS ||
+    num > MAX_GANESHA_COLLAPSE_DELAY_SECONDS
+  )
+    return null;
+  return num;
+}
+
 function parsePageSize(value: unknown): number | null {
   const num = Number(value);
   if (!Number.isFinite(num) || !Number.isInteger(num) || num < MIN_PAGE_SIZE || num > MAX_PAGE_SIZE) return null;
@@ -168,6 +185,19 @@ export async function PATCH(req: Request) {
         );
       }
       updates.push({ key: "ganesha_max_auto_shows", value: String(count) });
+    }
+
+    if (body.ganesha_collapse_delay_seconds !== undefined) {
+      const seconds = parseGaneshaCollapseDelaySeconds(body.ganesha_collapse_delay_seconds);
+      if (seconds === null) {
+        return NextResponse.json(
+          {
+            error: `Ganesha popup trigger collapse delay must be a whole number of seconds between ${MIN_GANESHA_COLLAPSE_DELAY_SECONDS} and ${MAX_GANESHA_COLLAPSE_DELAY_SECONDS}.`,
+          },
+          { status: 400 }
+        );
+      }
+      updates.push({ key: "ganesha_collapse_delay_seconds", value: String(seconds) });
     }
 
     if (updates.length === 0) {

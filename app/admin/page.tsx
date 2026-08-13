@@ -6,7 +6,17 @@ import { getAutocompleteMatches, getSuggestions } from "@/app/utils/searchProduc
 import Pagination from "@/app/components/Pagination";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import ImageUploadField from "@/app/components/admin/ImageUploadField";
-import { WEIGHT_UNITS, DIMENSION_UNITS, convertDimensionValue, convertCmTo, type DimensionUnit } from "@/app/utils/productUnits";
+import {
+  WEIGHT_UNITS,
+  DIMENSION_UNITS,
+  convertDimensionValue,
+  convertWeightValue,
+  convertCmTo,
+  isWeightUnit,
+  isDimensionUnit,
+  type WeightUnit,
+  type DimensionUnit,
+} from "@/app/utils/productUnits";
 import { roundUpBrassPrice } from "@/app/utils/pricing";
 import { CHAT_LABEL_KINDS, DEFAULT_CHAT_LABELS, MAX_CHAT_LABEL_LENGTH, type ChatLabelKind } from "@/app/utils/chatLabels";
 
@@ -36,6 +46,34 @@ const ORDER_STATUS_TABS: { key: string; label: string }[] = [
   { key: "delivered", label: "Delivered" },
   { key: "cancelled", label: "Cancelled" },
 ];
+
+// Which unit an admin types weight/dimensions in, remembered per-browser --
+// distinct from the storefront's own weight_unit/dimension_unit site
+// setting (which controls what *customers* see). Values are always
+// converted to and stored as canonical grams/centimeters regardless of
+// this choice; it only changes what's typed and shown while editing.
+const ADMIN_WEIGHT_INPUT_UNIT_KEY = "tohfa_admin_weight_input_unit";
+const ADMIN_DIMENSION_INPUT_UNIT_KEY = "tohfa_admin_dimension_input_unit";
+
+function loadStoredWeightInputUnit(): WeightUnit {
+  if (typeof window === "undefined") return "g";
+  try {
+    const stored = localStorage.getItem(ADMIN_WEIGHT_INPUT_UNIT_KEY);
+    return isWeightUnit(stored) ? stored : "g";
+  } catch {
+    return "g";
+  }
+}
+
+function loadStoredDimensionInputUnit(): DimensionUnit {
+  if (typeof window === "undefined") return "cm";
+  try {
+    const stored = localStorage.getItem(ADMIN_DIMENSION_INPUT_UNIT_KEY);
+    return isDimensionUnit(stored) ? stored : "cm";
+  } catch {
+    return "cm";
+  }
+}
 
 export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([]);
@@ -128,7 +166,60 @@ export default function AdminDashboard() {
     whatsapp_number: "",
     label: "",
   });
-  
+
+  // Which unit formData.weight_g/height_cm/depth_cm/breadth_cm are
+  // currently typed/displayed in (despite the canonical g/cm field names)
+  // -- see ADMIN_WEIGHT_INPUT_UNIT_KEY above. Converted to actual grams/cm
+  // only at submit time (toCanonicalWeight/toCanonicalDimension below).
+  const [weightInputUnit, setWeightInputUnit] = useState<WeightUnit>(loadStoredWeightInputUnit);
+  const [dimensionInputUnit, setDimensionInputUnit] = useState<DimensionUnit>(loadStoredDimensionInputUnit);
+
+  // Converts formData's current weight/dimension strings (in whichever
+  // unit was just deselected) into the newly-chosen unit, so switching
+  // units mid-edit doesn't silently reinterpret an already-typed number.
+  const handleWeightUnitChange = (newUnit: WeightUnit) => {
+    setFormData((prev) => {
+      const num = Number(prev.weight_g);
+      if (!prev.weight_g.trim() || !Number.isFinite(num)) return prev;
+      return { ...prev, weight_g: String(convertWeightValue(num, weightInputUnit, newUnit)) };
+    });
+    setWeightInputUnit(newUnit);
+    try {
+      localStorage.setItem(ADMIN_WEIGHT_INPUT_UNIT_KEY, newUnit);
+    } catch {}
+  };
+
+  const handleDimensionUnitChange = (newUnit: DimensionUnit) => {
+    setFormData((prev) => {
+      const convert = (value: string) => {
+        const num = Number(value);
+        return value.trim() && Number.isFinite(num) ? String(convertDimensionValue(num, dimensionInputUnit, newUnit)) : value;
+      };
+      return { ...prev, height_cm: convert(prev.height_cm), depth_cm: convert(prev.depth_cm), breadth_cm: convert(prev.breadth_cm) };
+    });
+    setDimensionInputUnit(newUnit);
+    try {
+      localStorage.setItem(ADMIN_DIMENSION_INPUT_UNIT_KEY, newUnit);
+    } catch {}
+  };
+
+  // formData/specDrafts hold weight/dimension values in whichever unit is
+  // currently selected above -- these convert a single field's string back
+  // to canonical grams/cm right before it's sent to the API. Blank/invalid
+  // input passes through unchanged (handled separately by each caller).
+  const toCanonicalWeight = (value: string | undefined): string => {
+    const trimmed = (value ?? "").trim();
+    if (!trimmed) return value ?? "";
+    const num = Number(trimmed);
+    return Number.isFinite(num) ? String(convertWeightValue(num, weightInputUnit, "g")) : (value ?? "");
+  };
+  const toCanonicalDimension = (value: string | undefined): string => {
+    const trimmed = (value ?? "").trim();
+    if (!trimmed) return value ?? "";
+    const num = Number(trimmed);
+    return Number.isFinite(num) ? String(convertDimensionValue(num, dimensionInputUnit, "cm")) : (value ?? "");
+  };
+
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -287,10 +378,12 @@ export default function AdminDashboard() {
       inventory: formData.inventory,
       category: formData.category,
       additionalImages: formData.additionalImages,
-      weight_g: formData.weight_g,
-      height_cm: formData.height_cm,
-      depth_cm: formData.depth_cm,
-      breadth_cm: formData.breadth_cm,
+      // formData holds these in weightInputUnit/dimensionInputUnit, not
+      // necessarily grams/cm -- convert to canonical right before sending.
+      weight_g: toCanonicalWeight(formData.weight_g),
+      height_cm: toCanonicalDimension(formData.height_cm),
+      depth_cm: toCanonicalDimension(formData.depth_cm),
+      breadth_cm: toCanonicalDimension(formData.breadth_cm),
       material: formData.material,
       color: formData.color,
       whatsapp_number: formData.whatsapp_number,
@@ -338,10 +431,13 @@ export default function AdminDashboard() {
       inventory: product.inventory.toString(),
       category: product.category || "",
       additionalImages: Array.isArray(product.images) ? product.images : [],
-      weight_g: product.weight_g != null ? String(product.weight_g) : "",
-      height_cm: product.height_cm != null ? String(product.height_cm) : "",
-      depth_cm: product.depth_cm != null ? String(product.depth_cm) : "",
-      breadth_cm: product.breadth_cm != null ? String(product.breadth_cm) : "",
+      // Stored canonical grams/cm, converted into whichever unit is
+      // currently selected for display/editing (see weightInputUnit/
+      // dimensionInputUnit above).
+      weight_g: product.weight_g != null ? String(convertWeightValue(product.weight_g, "g", weightInputUnit)) : "",
+      height_cm: product.height_cm != null ? String(convertDimensionValue(product.height_cm, "cm", dimensionInputUnit)) : "",
+      depth_cm: product.depth_cm != null ? String(convertDimensionValue(product.depth_cm, "cm", dimensionInputUnit)) : "",
+      breadth_cm: product.breadth_cm != null ? String(convertDimensionValue(product.breadth_cm, "cm", dimensionInputUnit)) : "",
       material: product.material || "",
       color: product.color || "",
       whatsapp_number: product.whatsapp_number || "",
@@ -806,14 +902,15 @@ export default function AdminDashboard() {
   // at all) -- optional weight/dimensions plus a plain, manually-entered
   // price. Deliberately no weight x rate x margin auto-calculation here --
   // that stays exclusive to "Lightweight Brass" above; editing weight/
-  // dimensions on a regular product never touches its price. Units match
-  // the main product form directly (grams/cm), not the brass block's kg/in,
-  // since there's no unit-conversion reason to differ for a plain product.
+  // dimensions on a regular product never touches its price. Uses the same
+  // admin-selected weightInputUnit/dimensionInputUnit as the main product
+  // form above (not the brass block's fixed kg/in), converting the
+  // product's stored canonical grams/cm into that unit for display.
   const defaultSpecDraft = (product: any) => ({
-    weight_g: product.weight_g != null ? String(product.weight_g) : "",
-    height_cm: product.height_cm != null ? String(product.height_cm) : "",
-    depth_cm: product.depth_cm != null ? String(product.depth_cm) : "",
-    breadth_cm: product.breadth_cm != null ? String(product.breadth_cm) : "",
+    weight_g: product.weight_g != null ? String(convertWeightValue(product.weight_g, "g", weightInputUnit)) : "",
+    height_cm: product.height_cm != null ? String(convertDimensionValue(product.height_cm, "cm", dimensionInputUnit)) : "",
+    depth_cm: product.depth_cm != null ? String(convertDimensionValue(product.depth_cm, "cm", dimensionInputUnit)) : "",
+    breadth_cm: product.breadth_cm != null ? String(convertDimensionValue(product.breadth_cm, "cm", dimensionInputUnit)) : "",
     price: product.price != null ? String(product.price) : "",
   });
   const specDraft = (product: any) => specDrafts[product.id] ?? defaultSpecDraft(product);
@@ -830,12 +927,16 @@ export default function AdminDashboard() {
       return value && Number.isFinite(num) && num > 0 ? num : null;
     };
 
+    // fields arrive in weightInputUnit/dimensionInputUnit (see
+    // defaultSpecDraft above) -- convert back to canonical grams/cm before
+    // sending, same as the main product form's toCanonicalWeight/
+    // toCanonicalDimension.
     const payload: Record<string, any> = {
       id: productId,
-      weight_g: toOptionalPositive(fields.weight_g),
-      height_cm: toOptionalPositive(fields.height_cm),
-      depth_cm: toOptionalPositive(fields.depth_cm),
-      breadth_cm: toOptionalPositive(fields.breadth_cm),
+      weight_g: toOptionalPositive(toCanonicalWeight(fields.weight_g)),
+      height_cm: toOptionalPositive(toCanonicalDimension(fields.height_cm)),
+      depth_cm: toOptionalPositive(toCanonicalDimension(fields.depth_cm)),
+      breadth_cm: toOptionalPositive(toCanonicalDimension(fields.breadth_cm)),
     };
     // Unlike weight/dimensions (blank = intentionally cleared), price is
     // never nulled out by leaving the field blank -- a $0/blank price is
@@ -1063,6 +1164,20 @@ export default function AdminDashboard() {
       setSettings((prev) => ({ ...prev, ...result.settings }));
     } catch (err: any) {
       alert(`Could not update Ganesha popup auto-show count: ${err.message}`);
+    }
+  };
+
+  // How long the floating "Show Ganesha" trigger stays expanded (full
+  // pill) before collapsing to a plain arrow -- 2 to 60 seconds.
+  const handleUpdateGaneshaCollapseDelaySeconds = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ ganesha_collapse_delay_seconds: Number(value) }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: any) {
+      alert(`Could not update Ganesha popup trigger collapse delay: ${err.message}`);
     }
   };
 
@@ -1636,15 +1751,88 @@ export default function AdminDashboard() {
               <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
                 Weight & Dimensions <span className="text-stone-400 font-normal normal-case">(all optional — shown on the storefront only for products where they're filled in)</span>
               </label>
+
+              {/* Changes what unit you type into the fields below (and how
+                  an existing product's saved values are shown when you
+                  click Edit) -- always converted to and saved as canonical
+                  grams/centimeters regardless of this choice. Remembered on
+                  this device via localStorage, separate from the
+                  storefront's own weight/dimension *display* unit setting. */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 text-xs">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-stone-500">Enter weight in</span>
+                  <select
+                    value={weightInputUnit}
+                    onChange={(e) => handleWeightUnitChange(e.target.value as WeightUnit)}
+                    className="px-2 py-1 rounded border border-stone-300 bg-white focus:outline-none focus:border-amber-600"
+                  >
+                    {WEIGHT_UNITS.map((u) => (
+                      <option key={u} value={u}>{u === "lb" ? "lbs" : u}</option>
+                    ))}
+                  </select>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-stone-500">dimensions in</span>
+                  <select
+                    value={dimensionInputUnit}
+                    onChange={(e) => handleDimensionUnitChange(e.target.value as DimensionUnit)}
+                    className="px-2 py-1 rounded border border-stone-300 bg-white focus:outline-none focus:border-amber-600"
+                  >
+                    {DIMENSION_UNITS.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </span>
+              </div>
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <input type="number" min={0} step="any" disabled={isSubmitting} placeholder="Weight (g)" value={formData.weight_g} onChange={(e) => setFormData({...formData, weight_g: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
-                <input type="number" min={1} max={100} step={1} list="dimension-1-100" disabled={isSubmitting} placeholder="Height (cm)" value={formData.height_cm} onChange={(e) => setFormData({...formData, height_cm: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
-                <input type="number" min={1} max={100} step={1} list="dimension-1-100" disabled={isSubmitting} placeholder="Depth (cm)" value={formData.depth_cm} onChange={(e) => setFormData({...formData, depth_cm: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
-                <input type="number" min={1} max={100} step={1} list="dimension-1-100" disabled={isSubmitting} placeholder="Breadth (cm)" value={formData.breadth_cm} onChange={(e) => setFormData({...formData, breadth_cm: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+                <input type="number" min={0} step="any" disabled={isSubmitting} placeholder={`Weight (${weightInputUnit})`} value={formData.weight_g} onChange={(e) => setFormData({...formData, weight_g: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+                {/* The 1-100 range + suggestion list below only made sense
+                    for whole centimeters -- other units (a fraction of a
+                    metre, tens of millimetres, etc.) fall back to a plain
+                    unrestricted number input instead. */}
+                <input
+                  type="number"
+                  min={dimensionInputUnit === "cm" ? 1 : 0}
+                  max={dimensionInputUnit === "cm" ? 100 : undefined}
+                  step={dimensionInputUnit === "cm" ? 1 : "any"}
+                  list={dimensionInputUnit === "cm" ? "dimension-1-100" : undefined}
+                  disabled={isSubmitting}
+                  placeholder={`Height (${dimensionInputUnit})`}
+                  value={formData.height_cm}
+                  onChange={(e) => setFormData({...formData, height_cm: e.target.value})}
+                  className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+                />
+                <input
+                  type="number"
+                  min={dimensionInputUnit === "cm" ? 1 : 0}
+                  max={dimensionInputUnit === "cm" ? 100 : undefined}
+                  step={dimensionInputUnit === "cm" ? 1 : "any"}
+                  list={dimensionInputUnit === "cm" ? "dimension-1-100" : undefined}
+                  disabled={isSubmitting}
+                  placeholder={`Depth (${dimensionInputUnit})`}
+                  value={formData.depth_cm}
+                  onChange={(e) => setFormData({...formData, depth_cm: e.target.value})}
+                  className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+                />
+                <input
+                  type="number"
+                  min={dimensionInputUnit === "cm" ? 1 : 0}
+                  max={dimensionInputUnit === "cm" ? 100 : undefined}
+                  step={dimensionInputUnit === "cm" ? 1 : "any"}
+                  list={dimensionInputUnit === "cm" ? "dimension-1-100" : undefined}
+                  disabled={isSubmitting}
+                  placeholder={`Breadth (${dimensionInputUnit})`}
+                  value={formData.breadth_cm}
+                  onChange={(e) => setFormData({...formData, breadth_cm: e.target.value})}
+                  className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+                />
                 {/* Shared by all three dimension fields above -- a native
                     number input with searchable suggestions (type "9" to
                     jump straight to it) rather than a plain 100-item select,
-                    while still allowing any value outside 1-100 if needed. */}
+                    while still allowing any value outside 1-100 if needed.
+                    Only wired up (via the `list` prop above) while the
+                    dimension unit is "cm", where a 1-100 range is sensible. */}
                 <datalist id="dimension-1-100">
                   {Array.from({ length: 100 }, (_, i) => i + 1).map((n) => (
                     <option key={n} value={n} />
@@ -1770,6 +1958,38 @@ export default function AdminDashboard() {
                   Catalogue PDF
                 </a>
               </div>
+            </div>
+
+            {/* Same weightInputUnit/dimensionInputUnit as the product form
+                above -- changing it here applies there too, and vice versa,
+                since it's one shared per-device preference. Only affects
+                the plain (non-"Lightweight Brass") spec editor below; the
+                brass calculator keeps its own fixed kg/in. */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 text-xs">
+              <span className="flex items-center gap-1.5">
+                <span className="text-stone-500">Weight input unit</span>
+                <select
+                  value={weightInputUnit}
+                  onChange={(e) => handleWeightUnitChange(e.target.value as WeightUnit)}
+                  className="px-2 py-1 rounded border border-stone-300 bg-white focus:outline-none focus:border-amber-600"
+                >
+                  {WEIGHT_UNITS.map((u) => (
+                    <option key={u} value={u}>{u === "lb" ? "lbs" : u}</option>
+                  ))}
+                </select>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="text-stone-500">Dimension input unit</span>
+                <select
+                  value={dimensionInputUnit}
+                  onChange={(e) => handleDimensionUnitChange(e.target.value as DimensionUnit)}
+                  className="px-2 py-1 rounded border border-stone-300 bg-white focus:outline-none focus:border-amber-600"
+                >
+                  {DIMENSION_UNITS.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </span>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 mt-4">
@@ -1992,7 +2212,7 @@ export default function AdminDashboard() {
                     return (
                       <div className="bg-stone-50 border border-stone-200 rounded px-3 py-2.5 flex flex-wrap items-end gap-3">
                         <div>
-                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Weight (g)</label>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Weight ({weightInputUnit === "lb" ? "lbs" : weightInputUnit})</label>
                           <input
                             type="number" min={0} step="any" placeholder="Optional"
                             value={draft.weight_g}
@@ -2002,7 +2222,7 @@ export default function AdminDashboard() {
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Height (cm)</label>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Height ({dimensionInputUnit})</label>
                           <input
                             type="number" min={0} step="any" placeholder="H"
                             value={draft.height_cm}
@@ -2012,7 +2232,7 @@ export default function AdminDashboard() {
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Depth (cm)</label>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Depth ({dimensionInputUnit})</label>
                           <input
                             type="number" min={0} step="any" placeholder="D"
                             value={draft.depth_cm}
@@ -2022,7 +2242,7 @@ export default function AdminDashboard() {
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Breadth (cm)</label>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Breadth ({dimensionInputUnit})</label>
                           <input
                             type="number" min={0} step="any" placeholder="B"
                             value={draft.breadth_cm}
@@ -2501,8 +2721,22 @@ export default function AdminDashboard() {
               }}
               className="w-24 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
             />
+            <label className="text-sm text-stone-700 font-medium ml-2">Trigger collapse delay (seconds)</label>
+            <input
+              type="number"
+              min={2}
+              max={60}
+              step={1}
+              key={settings.ganesha_collapse_delay_seconds ?? "5"}
+              defaultValue={settings.ganesha_collapse_delay_seconds ?? "5"}
+              onBlur={(e) => {
+                const next = e.target.value.trim();
+                if (next && next !== settings.ganesha_collapse_delay_seconds) handleUpdateGaneshaCollapseDelaySeconds(next);
+              }}
+              className="w-20 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
             <span className="text-stone-400 text-xs w-full">
-              The mascot popup auto-shows on a visitor&rsquo;s 1st, 2nd, ... page load/reload up to the count above (1-10, default 2), then stays quiet for the cooldown length before the cycle repeats. A floating &ldquo;Show Ganesha&rdquo; button lets a visitor bring it back manually during the quiet window -- it collapses to a small arrow after 10 seconds and expands again on tap. Cooldown range: 5 minutes to 720 minutes (12 hours).
+              The mascot popup auto-shows on a visitor&rsquo;s 1st, 2nd, ... page load/reload up to the count above (1-10, default 2), then stays quiet for the cooldown length before the cycle repeats. A floating &ldquo;Show Ganesha&rdquo; button lets a visitor bring it back manually during the quiet window -- it collapses to a small arrow after the trigger delay above (2-60 seconds, default 5) and expands again on tap. Cooldown range: 5 minutes to 720 minutes (12 hours).
             </span>
           </div>
         </div>
@@ -2823,43 +3057,49 @@ export default function AdminDashboard() {
             <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form's dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category's products appear in the homepage's default view (they're still reachable by selecting the category directly). GST % is set per category and used to break down the final bill. &ldquo;% Off&rdquo; shows a struck-through original price everywhere on the site (product price you set stays the real price charged -- this is display only). &ldquo;Products/page&rdquo; overrides the site-wide default just for that category&rsquo;s own page -- leave blank to use the default above.</p>
           </div>
 
-          <form onSubmit={handleCreateCategory} className="flex gap-3 mb-4">
+          {/* Mobile-first: the name input takes its own full-width row, and
+              the GST/Discount/Add controls wrap onto as many rows as a
+              narrow screen needs instead of being squeezed into one
+              unbroken (and on mobile, overflowing) row. */}
+          <form onSubmit={handleCreateCategory} className="flex flex-col sm:flex-row gap-3 mb-4">
             <input
               type="text"
               placeholder="e.g., Wall Decor"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
-              className="flex-grow px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+              className="w-full sm:flex-grow px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
             />
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                title="GST %"
-                value={newCategoryGstRate}
-                onChange={(e) => setNewCategoryGstRate(e.target.value)}
-                className="w-20 px-3 py-2.5 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
-              />
-              <span className="text-xs text-stone-500 whitespace-nowrap">% GST</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  title="GST %"
+                  value={newCategoryGstRate}
+                  onChange={(e) => setNewCategoryGstRate(e.target.value)}
+                  className="w-20 px-3 py-2.5 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
+                />
+                <span className="text-xs text-stone-500 whitespace-nowrap">% GST</span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  step="0.01"
+                  title="Discount % (used to show a struck-through original price)"
+                  value={newCategoryDiscountPercent}
+                  onChange={(e) => setNewCategoryDiscountPercent(e.target.value)}
+                  className="w-20 px-3 py-2.5 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
+                />
+                <span className="text-xs text-stone-500 whitespace-nowrap">% Off</span>
+              </div>
+              <button type="submit" className="px-4 py-2.5 rounded bg-stone-950 hover:bg-amber-800 text-white font-medium text-xs uppercase tracking-wider shadow transition whitespace-nowrap">
+                Add
+              </button>
             </div>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <input
-                type="number"
-                min="0"
-                max="99"
-                step="0.01"
-                title="Discount % (used to show a struck-through original price)"
-                value={newCategoryDiscountPercent}
-                onChange={(e) => setNewCategoryDiscountPercent(e.target.value)}
-                className="w-20 px-3 py-2.5 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
-              />
-              <span className="text-xs text-stone-500 whitespace-nowrap">% Off</span>
-            </div>
-            <button type="submit" className="px-4 py-2.5 rounded bg-stone-950 hover:bg-amber-800 text-white font-medium text-xs uppercase tracking-wider shadow transition whitespace-nowrap">
-              Add
-            </button>
           </form>
 
           {categoryStatus && <p className="text-xs text-stone-500 mb-4">{categoryStatus}</p>}
@@ -2869,9 +3109,13 @@ export default function AdminDashboard() {
           ) : (
             <div className="divide-y divide-stone-100">
               {categories.map((cat: any) => (
-                <div key={cat.id} className="py-3 flex items-center justify-between gap-3 flex-wrap">
+                // Mobile-first: name stacks above its controls instead of
+                // sharing a row with them (nowhere near enough width for
+                // both on a phone screen), and the controls themselves wrap
+                // onto multiple lines rather than overflowing off-screen.
+                <div key={cat.id} className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
                   <span className="text-sm text-stone-800 font-medium">{cat.name}</span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <div className="flex items-center gap-1.5" title="GST % for this category's products">
                       <input
                         key={`${cat.id}-${cat.gst_rate}`}
