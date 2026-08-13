@@ -8,14 +8,25 @@ import { MAX_CHAT_LABEL_LENGTH } from "@/app/utils/chatLabels";
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 500;
 
-// The Ganesha popup's post-3-auto-shows quiet window -- admin-tunable from
-// 5 minutes up to a full 12 hours, see WelcomeGaneshaPopup.tsx.
+// The Ganesha popup's post-cap quiet window -- admin-tunable from 5 minutes
+// up to a full 12 hours, see WelcomeGaneshaPopup.tsx.
 const MIN_GANESHA_COOLDOWN_MINUTES = 5;
 const MAX_GANESHA_COOLDOWN_MINUTES = 12 * 60;
 
 function parseGaneshaCooldownMinutes(value: unknown): number | null {
   const num = Number(value);
   if (!Number.isFinite(num) || !Number.isInteger(num) || num < MIN_GANESHA_COOLDOWN_MINUTES || num > MAX_GANESHA_COOLDOWN_MINUTES) return null;
+  return num;
+}
+
+// How many times the Ganesha popup auto-shows (1st load, 2nd, ...) before
+// the cooldown above kicks in.
+const MIN_GANESHA_MAX_AUTO_SHOWS = 1;
+const MAX_GANESHA_MAX_AUTO_SHOWS = 10;
+
+function parseGaneshaMaxAutoShows(value: unknown): number | null {
+  const num = Number(value);
+  if (!Number.isFinite(num) || !Number.isInteger(num) || num < MIN_GANESHA_MAX_AUTO_SHOWS || num > MAX_GANESHA_MAX_AUTO_SHOWS) return null;
   return num;
 }
 
@@ -146,6 +157,17 @@ export async function PATCH(req: Request) {
         );
       }
       updates.push({ key: "ganesha_cooldown_minutes", value: String(minutes) });
+    }
+
+    if (body.ganesha_max_auto_shows !== undefined) {
+      const count = parseGaneshaMaxAutoShows(body.ganesha_max_auto_shows);
+      if (count === null) {
+        return NextResponse.json(
+          { error: `Ganesha popup auto-show count must be a whole number between ${MIN_GANESHA_MAX_AUTO_SHOWS} and ${MAX_GANESHA_MAX_AUTO_SHOWS}.` },
+          { status: 400 }
+        );
+      }
+      updates.push({ key: "ganesha_max_auto_shows", value: String(count) });
     }
 
     if (updates.length === 0) {

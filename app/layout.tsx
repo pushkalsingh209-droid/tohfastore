@@ -11,7 +11,7 @@ import { CategoryDiscountProvider } from "@/app/context/CategoryDiscountContext"
 import { PhotoFilterSettingProvider } from "@/app/context/PhotoFilterSettingContext";
 import { LabelPhotoFilterProvider } from "@/app/context/LabelPhotoFilterContext";
 import { ProductUnitSettingProvider } from "@/app/context/ProductUnitSettingContext";
-import { GaneshaCooldownSettingProvider } from "@/app/context/GaneshaCooldownSettingContext";
+import { GaneshaPopupSettingProvider } from "@/app/context/GaneshaPopupSettingContext";
 import { ChatLabelSettingProvider } from "@/app/context/ChatLabelSettingContext";
 import { DefaultWhatsappNumberProvider } from "@/app/context/DefaultWhatsappNumberContext";
 import LazyCartDrawer from "@/app/components/LazyCartDrawer";
@@ -66,7 +66,7 @@ export default function RootLayout({
       <PhotoFilterSettingProvider>
       <LabelPhotoFilterProvider>
       <ProductUnitSettingProvider>
-      <GaneshaCooldownSettingProvider>
+      <GaneshaPopupSettingProvider>
       <ChatLabelSettingProvider>
       <DefaultWhatsappNumberProvider>
         <body className="bg-[var(--background)] dark:bg-stone-950 text-stone-800 dark:text-stone-200 antialiased min-h-screen flex flex-col transition-colors">
@@ -186,7 +186,7 @@ export default function RootLayout({
         </body>
       </DefaultWhatsappNumberProvider>
       </ChatLabelSettingProvider>
-      </GaneshaCooldownSettingProvider>
+      </GaneshaPopupSettingProvider>
       </ProductUnitSettingProvider>
       </LabelPhotoFilterProvider>
       </PhotoFilterSettingProvider>

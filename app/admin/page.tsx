@@ -1038,7 +1038,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // How long the Ganesha popup stays quiet after its 3 auto-shows before
+  // How long the Ganesha popup stays quiet after its auto-shows before
   // the cycle repeats -- 5 minutes to 12 hours (720 min).
   const handleUpdateGaneshaCooldownMinutes = async (value: string) => {
     try {
@@ -1049,6 +1049,20 @@ export default function AdminDashboard() {
       setSettings((prev) => ({ ...prev, ...result.settings }));
     } catch (err: any) {
       alert(`Could not update Ganesha popup cooldown: ${err.message}`);
+    }
+  };
+
+  // How many times the Ganesha popup auto-shows (1st load, 2nd, ...)
+  // before the cooldown above kicks in -- 1 to 10.
+  const handleUpdateGaneshaMaxAutoShows = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ ganesha_max_auto_shows: Number(value) }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: any) {
+      alert(`Could not update Ganesha popup auto-show count: ${err.message}`);
     }
   };
 
@@ -2459,7 +2473,21 @@ export default function AdminDashboard() {
             </span>
           </div>
           <div className="flex items-center gap-3 flex-wrap mt-4">
-            <label className="text-sm text-stone-700 font-medium">Ganesha popup cooldown (minutes)</label>
+            <label className="text-sm text-stone-700 font-medium">Ganesha popup auto-shows</label>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              step={1}
+              key={settings.ganesha_max_auto_shows ?? "2"}
+              defaultValue={settings.ganesha_max_auto_shows ?? "2"}
+              onBlur={(e) => {
+                const next = e.target.value.trim();
+                if (next && next !== settings.ganesha_max_auto_shows) handleUpdateGaneshaMaxAutoShows(next);
+              }}
+              className="w-20 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+            <label className="text-sm text-stone-700 font-medium ml-2">Cooldown (minutes)</label>
             <input
               type="number"
               min={5}
@@ -2474,7 +2502,7 @@ export default function AdminDashboard() {
               className="w-24 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
             />
             <span className="text-stone-400 text-xs w-full">
-              The mascot popup auto-shows on a visitor&rsquo;s 1st, 2nd, and 3rd page load/reload, then stays quiet for this long before the cycle repeats. A floating &ldquo;Show Ganesha&rdquo; button lets a visitor bring it back manually during the quiet window. Range: 5 minutes to 720 minutes (12 hours).
+              The mascot popup auto-shows on a visitor&rsquo;s 1st, 2nd, ... page load/reload up to the count above (1-10, default 2), then stays quiet for the cooldown length before the cycle repeats. A floating &ldquo;Show Ganesha&rdquo; button lets a visitor bring it back manually during the quiet window -- it collapses to a small arrow after 10 seconds and expands again on tap. Cooldown range: 5 minutes to 720 minutes (12 hours).
             </span>
           </div>
         </div>

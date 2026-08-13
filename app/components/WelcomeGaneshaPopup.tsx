@@ -13,18 +13,23 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
-import { useGaneshaCooldownMinutes } from "@/app/context/GaneshaCooldownSettingContext";
+import { useGaneshaPopupSettings } from "@/app/context/GaneshaPopupSettingContext";
 
 const SHOW_DELAY_MS = 1200; // gives the page a beat to finish its own initial load/paint first
 const ARC_DURATION_MS = 2000; // must match the ganesha-arc keyframe duration in globals.css
 const SHOWN_DURATION_MS = 5000; // how long it stays fully landed before arcing back out
 const MUTED_KEY = "tohfa_welcome_muted";
 const FREQ_KEY = "tohfa_ganesha_freq";
-const MAX_AUTO_SHOWS = 3; // auto-pops on the 1st, 2nd, and 3rd reload/navigation
-// Admin-configurable (5min-12hr, see Storefront Settings) via
-// useGaneshaCooldownMinutes below -- this is only the fallback before that
-// setting has loaded.
+// Admin-configurable (1-10 shows, 5min-12hr cooldown, see Storefront
+// Settings) via useGaneshaPopupSettings below -- these are only the
+// fallbacks before that setting has loaded.
+const DEFAULT_MAX_AUTO_SHOWS = 2;
 const DEFAULT_COOLDOWN_MS = 10 * 60 * 1000;
+// How long the floating manual-trigger button stays as a full "Show
+// Ganesha" pill before collapsing down to a plain arrow, to keep it from
+// permanently occupying screen space during the (potentially hours-long)
+// cooldown.
+const BUTTON_COLLAPSE_DELAY_MS = 10000;
 
 function isMutedInStorage(): boolean {
   if (typeof window === "undefined") return false;
@@ -96,16 +101,22 @@ export default function WelcomeGaneshaPopup() {
   // autoplay attempt, no first-interaction retry, no "Tap to hear" prompt)
   // until the visitor deliberately unmutes it again from the same toggle.
   const [muted, setMuted] = useState(isMutedInStorage);
-  // Whether the 3-auto-shows cap has been hit and the (admin-configurable)
+  // Whether the auto-shows cap has been hit and the (admin-configurable)
   // quiet window is currently active -- drives the floating manual-trigger
   // button (only rendered while this is true and nothing is on-screen).
   const [inCooldown, setInCooldown] = useState(false);
+  // Whether the floating manual-trigger button is collapsed down to a
+  // plain arrow -- starts expanded (full "Show Ganesha" pill) and
+  // auto-collapses after BUTTON_COLLAPSE_DELAY_MS; clicking the collapsed
+  // arrow re-expands it (see expandTrigger below).
+  const [buttonCollapsed, setButtonCollapsed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const dismissedRef = useRef(false);
-  // Admin-configurable in Storefront Settings (5min-12hr); defaults to 10
-  // minutes until that setting has loaded.
-  const cooldownMinutes = useGaneshaCooldownMinutes();
+  // Admin-configurable in Storefront Settings; defaults apply until that
+  // setting has loaded.
+  const { cooldownMinutes, maxAutoShows } = useGaneshaPopupSettings();
   const cooldownMs = cooldownMinutes > 0 ? cooldownMinutes * 60 * 1000 : DEFAULT_COOLDOWN_MS;
+  const effectiveMaxAutoShows = maxAutoShows > 0 ? maxAutoShows : DEFAULT_MAX_AUTO_SHOWS;
 
   useEffect(() => {
     dismissedRef.current = false;
@@ -121,12 +132,12 @@ export default function WelcomeGaneshaPopup() {
     // picks up from there.
     if (catalogLoading) return;
 
-    // Frequency gate: auto-show on each of the first MAX_AUTO_SHOWS
+    // Frequency gate: auto-show on each of the first effectiveMaxAutoShows
     // reloads/navigations, then go quiet for cooldownMs -- a reload or
     // navigation during the cooldown just surfaces the floating manual-
     // trigger button (below) instead of the popup itself. Once the
     // cooldown has actually elapsed, the count resets and the same
-    // 3-auto-shows-then-cooldown cycle starts over.
+    // auto-shows-then-cooldown cycle starts over.
     const freq = loadFreqState();
     const now = Date.now();
     if (freq.cooldownUntil && now >= freq.cooldownUntil) {
@@ -135,7 +146,7 @@ export default function WelcomeGaneshaPopup() {
     }
     const cooling = !!(freq.cooldownUntil && now < freq.cooldownUntil);
     setInCooldown(cooling);
-    if (cooling || freq.count >= MAX_AUTO_SHOWS) {
+    if (cooling || freq.count >= effectiveMaxAutoShows) {
       if (!cooling) {
         // Count reached the cap without a cooldown timestamp (e.g. storage
         // edited/corrupted) -- start the cooldown now instead of auto-
@@ -157,7 +168,7 @@ export default function WelcomeGaneshaPopup() {
         const nextCount = freq.count + 1;
         const nextState: FreqState = {
           count: nextCount,
-          cooldownUntil: nextCount >= MAX_AUTO_SHOWS ? Date.now() + cooldownMs : null,
+          cooldownUntil: nextCount >= effectiveMaxAutoShows ? Date.now() + cooldownMs : null,
         };
         saveFreqState(nextState);
         if (nextState.cooldownUntil) setInCooldown(true);
@@ -181,11 +192,11 @@ export default function WelcomeGaneshaPopup() {
     // Every route change, every category-filter change, every catalog
     // transition finishing, and every full reload (which remounts
     // everything) re-runs this -- fires again each time by design, not
-    // just once, until the frequency gate above kicks in. cooldownMs is
-    // included so this re-evaluates once the real admin-configured value
-    // replaces the DEFAULT_COOLDOWN_MS fallback shortly after mount.
+    // just once, until the frequency gate above kicks in. cooldownMs and
+    // effectiveMaxAutoShows are included so this re-evaluates once the
+    // real admin-configured values replace the defaults shortly after mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, searchParamsKey, catalogLoading, cooldownMs]);
+  }, [pathname, searchParamsKey, catalogLoading, cooldownMs, effectiveMaxAutoShows]);
 
   // Phase advancement is driven by fixed timers matching the CSS animation's
   // duration, not the browser's `animationend` event -- that event silently
@@ -254,6 +265,23 @@ export default function WelcomeGaneshaPopup() {
     setPhase("leaving");
   }
 
+  // Whenever the floating trigger becomes visible -- the cooldown just
+  // started, or a manual show just finished and it reappeared -- it starts
+  // out expanded (the full "Show Ganesha" pill).
+  useEffect(() => {
+    if (inCooldown && phase === "hidden") setButtonCollapsed(false);
+  }, [inCooldown, phase]);
+
+  // Auto-collapses the expanded trigger down to a plain arrow after
+  // BUTTON_COLLAPSE_DELAY_MS -- re-armed any time it re-expands, whether
+  // from the effect above or from expandTrigger() (the arrow being
+  // clicked), so it always gets another 10s visible before collapsing again.
+  useEffect(() => {
+    if (buttonCollapsed || !inCooldown || phase !== "hidden") return;
+    const t = setTimeout(() => setButtonCollapsed(true), BUTTON_COLLAPSE_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [buttonCollapsed, inCooldown, phase]);
+
   // The floating "Show Ganesha" button during the cooldown --
   // shows the popup once per click, immediately (no SHOW_DELAY_MS wait,
   // since this is already a deliberate user action) and without touching
@@ -265,6 +293,14 @@ export default function WelcomeGaneshaPopup() {
     setAudioBlocked(false);
     setPhase("entering");
     trackEvent("welcome_popup_shown_manual");
+  }
+
+  // Re-expands the collapsed arrow back into the full "Show Ganesha" pill
+  // -- a separate click from manualShow itself, so a visitor sees the
+  // label again before committing to bringing the mascot back.
+  function expandTrigger() {
+    setButtonCollapsed(false);
+    trackEvent("welcome_popup_trigger_expanded");
   }
 
   function playVoice() {
@@ -396,19 +432,36 @@ export default function WelcomeGaneshaPopup() {
 
       {/* Manual re-trigger, visible only during the post-cap cooldown
           (admin-configurable length) and only while nothing else is on
-          screen -- lets a
-          visitor bring the mascot back on demand instead of waiting out
-          the cooldown, without that click counting toward/against it. */}
+          screen -- lets a visitor bring the mascot back on demand instead
+          of waiting out the cooldown, without that click counting
+          toward/against it. Starts as a full "Show Ganesha" pill, then
+          collapses to a plain arrow after BUTTON_COLLAPSE_DELAY_MS so it
+          doesn't sit there for the whole (potentially hours-long) cooldown
+          -- clicking the arrow re-expands it rather than triggering the
+          popup directly, so the label is visible again before committing. */}
       {inCooldown && phase === "hidden" && (
-        <button
-          type="button"
-          onClick={manualShow}
-          aria-label="Show Ganesha's greeting again"
-          className="fixed left-0 bottom-28 z-40 flex items-center gap-1.5 bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-700 rounded-r-full shadow-lg pl-1.5 pr-3 py-1.5 text-xs font-semibold text-amber-800 dark:text-amber-400 hover:pr-4 transition-all print:hidden"
-        >
-          <img src="/ganesha.jpg" alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-          Show Ganesha
-        </button>
+        buttonCollapsed ? (
+          <button
+            type="button"
+            onClick={expandTrigger}
+            aria-label="Show the Ganesha greeting options"
+            className="fixed left-0 bottom-28 z-40 flex items-center justify-center w-7 h-11 bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-700 border-l-0 rounded-r-full shadow-lg text-amber-700 dark:text-amber-400 hover:w-9 transition-all print:hidden"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
+            </svg>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={manualShow}
+            aria-label="Show Ganesha's greeting again"
+            className="fixed left-0 bottom-28 z-40 flex items-center gap-1.5 bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-700 rounded-r-full shadow-lg pl-1.5 pr-3 py-1.5 text-xs font-semibold text-amber-800 dark:text-amber-400 hover:pr-4 transition-all print:hidden"
+          >
+            <img src="/ganesha.jpg" alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+            Show Ganesha
+          </button>
+        )
       )}
     </>
   );

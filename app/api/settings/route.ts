@@ -12,6 +12,7 @@ const PUBLIC_SETTING_KEYS = [
   "dimension_unit",
   "default_whatsapp_number",
   "ganesha_cooldown_minutes",
+  "ganesha_max_auto_shows",
   "chat_label_in_stock",
   "chat_label_out_of_stock",
 ];
