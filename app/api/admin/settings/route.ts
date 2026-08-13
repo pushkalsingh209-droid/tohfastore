@@ -3,9 +3,21 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
+import { MAX_CHAT_LABEL_LENGTH } from "@/app/utils/chatLabels";
 
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 500;
+
+// The Ganesha popup's post-3-auto-shows quiet window -- admin-tunable from
+// 5 minutes up to a full 12 hours, see WelcomeGaneshaPopup.tsx.
+const MIN_GANESHA_COOLDOWN_MINUTES = 5;
+const MAX_GANESHA_COOLDOWN_MINUTES = 12 * 60;
+
+function parseGaneshaCooldownMinutes(value: unknown): number | null {
+  const num = Number(value);
+  if (!Number.isFinite(num) || !Number.isInteger(num) || num < MIN_GANESHA_COOLDOWN_MINUTES || num > MAX_GANESHA_COOLDOWN_MINUTES) return null;
+  return num;
+}
 
 function parsePageSize(value: unknown): number | null {
   const num = Number(value);
@@ -103,6 +115,37 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: "Default brass rate must be a positive number." }, { status: 400 });
       }
       updates.push({ key: "brass_price_per_kg", value: String(rate) });
+    }
+
+    // Which chat_button_labels preset is currently shown on product cards
+    // -- stored as plain text (not a foreign key), same as
+    // default_whatsapp_number, so deleting a preset never breaks whichever
+    // one is active.
+    if (body.chat_label_in_stock !== undefined) {
+      const trimmed = String(body.chat_label_in_stock).trim();
+      if (!trimmed || trimmed.length > MAX_CHAT_LABEL_LENGTH) {
+        return NextResponse.json({ error: `In-stock chat label must be 1-${MAX_CHAT_LABEL_LENGTH} characters.` }, { status: 400 });
+      }
+      updates.push({ key: "chat_label_in_stock", value: trimmed });
+    }
+
+    if (body.chat_label_out_of_stock !== undefined) {
+      const trimmed = String(body.chat_label_out_of_stock).trim();
+      if (!trimmed || trimmed.length > MAX_CHAT_LABEL_LENGTH) {
+        return NextResponse.json({ error: `Out-of-stock chat label must be 1-${MAX_CHAT_LABEL_LENGTH} characters.` }, { status: 400 });
+      }
+      updates.push({ key: "chat_label_out_of_stock", value: trimmed });
+    }
+
+    if (body.ganesha_cooldown_minutes !== undefined) {
+      const minutes = parseGaneshaCooldownMinutes(body.ganesha_cooldown_minutes);
+      if (minutes === null) {
+        return NextResponse.json(
+          { error: `Ganesha popup cooldown must be a whole number of minutes between ${MIN_GANESHA_COOLDOWN_MINUTES} and ${MAX_GANESHA_COOLDOWN_MINUTES}.` },
+          { status: 400 }
+        );
+      }
+      updates.push({ key: "ganesha_cooldown_minutes", value: String(minutes) });
     }
 
     if (updates.length === 0) {

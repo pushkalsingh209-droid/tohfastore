@@ -14,6 +14,7 @@ import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { useProductUnitSettings } from "@/app/context/ProductUnitSettingContext";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
 import { useDefaultWhatsappNumber } from "@/app/context/DefaultWhatsappNumberContext";
+import { useChatLabels } from "@/app/context/ChatLabelSettingContext";
 
 const DOUBLE_TAP_WINDOW_MS = 350;
 const LOW_STOCK_THRESHOLD = 3;
@@ -83,6 +84,7 @@ export default function ProductCard({ product, priority = false }: { product: an
   const dimensionsLine = formatProductDimensionsLine(product, weightUnit, dimensionUnit);
   const attributesLine = formatProductAttributesLine(product);
   const defaultWhatsappNumber = useDefaultWhatsappNumber();
+  const chatLabels = useChatLabels();
 
   function handleImageClick(e: React.MouseEvent) {
     if (isDesktop) return; // desktop: hover already previews, a plain click navigates
@@ -212,7 +214,7 @@ export default function ProductCard({ product, priority = false }: { product: an
           <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
             <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-4.846c1.66.986 3.296 1.489 4.974 1.49 5.405 0 9.811-4.366 9.815-9.736.002-2.599-1.002-5.045-2.83-6.876C16.718 2.2 14.28 1.2 11.999 1.2c-5.41 0-9.821 4.366-9.825 9.736a9.617 9.617 0 0 0 1.503 5.123L2.68 20.2l4.411-1.154z" />
           </svg>
-          <span className="text-center">{outOfStock ? "Chat to Check Availability" : "Chat for Discount"}</span>
+          <span className="text-center">{outOfStock ? chatLabels.out_of_stock : chatLabels.in_stock}</span>
           <span aria-hidden="true" className="w-3.5" />
         </a>
 
@@ -300,7 +302,7 @@ export default function ProductCard({ product, priority = false }: { product: an
           <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
             <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-4.846c1.66.986 3.296 1.489 4.974 1.49 5.405 0 9.811-4.366 9.815-9.736.002-2.599-1.002-5.045-2.83-6.876C16.718 2.2 14.28 1.2 11.999 1.2c-5.41 0-9.821 4.366-9.825 9.736a9.617 9.617 0 0 0 1.503 5.123L2.68 20.2l4.411-1.154z" />
           </svg>
-          <span className="text-center">{outOfStock ? "Chat to Check Availability" : "Chat for Discount"}</span>
+          <span className="text-center">{outOfStock ? chatLabels.out_of_stock : chatLabels.in_stock}</span>
           <span aria-hidden="true" className="w-3.5" />
         </a>
 

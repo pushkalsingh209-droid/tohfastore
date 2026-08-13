@@ -6,7 +6,15 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
-const PUBLIC_SETTING_KEYS = ["default_photo_filter", "weight_unit", "dimension_unit", "default_whatsapp_number"];
+const PUBLIC_SETTING_KEYS = [
+  "default_photo_filter",
+  "weight_unit",
+  "dimension_unit",
+  "default_whatsapp_number",
+  "ganesha_cooldown_minutes",
+  "chat_label_in_stock",
+  "chat_label_out_of_stock",
+];
 
 export async function GET() {
   const { data, error } = await supabase

@@ -2,6 +2,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
+import { usePathname } from "next/navigation";
 
 // None of these need to be in the initial JS bundle -- each only acts after
 // a delay, a browser event, or a scroll/localStorage check, never before
@@ -16,6 +17,12 @@ const AbandonedCartNudge = dynamic(() => import("@/app/components/AbandonedCartN
 const WelcomeGaneshaPopup = dynamic(() => import("@/app/components/WelcomeGaneshaPopup"), { ssr: false });
 
 export default function DeferredWidgets() {
+  // The Ganesha mascot is a storefront greeting -- it has no business
+  // popping up over the admin dashboard, so it's gated out of /admin*
+  // entirely rather than just visually hidden there.
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith("/admin");
+
   return (
     <>
       <CookieConsent />
@@ -24,9 +31,11 @@ export default function DeferredWidgets() {
       {/* Still wrapped in its own Suspense: WelcomeGaneshaPopup reads
           useSearchParams(), and dynamic()'s own internal Suspense boundary
           only covers the chunk load, not hooks inside the loaded component. */}
-      <Suspense fallback={null}>
-        <WelcomeGaneshaPopup />
-      </Suspense>
+      {!isAdminRoute && (
+        <Suspense fallback={null}>
+          <WelcomeGaneshaPopup />
+        </Suspense>
+      )}
     </>
   );
 }

@@ -45,6 +45,6 @@ export function getProductWhatsappLink(
       )}) shows out of stock -- could you let me know if/when it's available?`
     : `Hi! I'm interested in "${product.name}" (₹${Number(product.price).toLocaleString(
         "en-IN"
-      )}). Could you share more details or a possible discount?`;
+      )}). Could you share more details about it?`;
   return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 }

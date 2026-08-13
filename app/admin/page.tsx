@@ -8,6 +8,7 @@ import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import ImageUploadField from "@/app/components/admin/ImageUploadField";
 import { WEIGHT_UNITS, DIMENSION_UNITS, convertDimensionValue, convertCmTo, type DimensionUnit } from "@/app/utils/productUnits";
 import { roundUpBrassPrice } from "@/app/utils/pricing";
+import { CHAT_LABEL_KINDS, DEFAULT_CHAT_LABELS, MAX_CHAT_LABEL_LENGTH, type ChatLabelKind } from "@/app/utils/chatLabels";
 
 // All reads/writes below go through /api/admin/* route handlers (protected
 // by middleware.ts's password gate) instead of talking to Supabase directly
@@ -63,6 +64,10 @@ export default function AdminDashboard() {
   // the five fields be edited independently while still PATCHing the full
   // set together on blur (see handleBrassSpecUpdate).
   const [brassDrafts, setBrassDrafts] = useState<Record<string, { weight_kg: string; height_in: string; depth_in: string; breadth_in: string; price_per_kg: string }>>({});
+  // Same idea, for every other (non-"Lightweight Brass") product's plain
+  // weight/dimensions/price inline editor -- see defaultSpecDraft/
+  // handleSpecUpdate below.
+  const [specDrafts, setSpecDrafts] = useState<Record<string, { weight_g: string; height_cm: string; depth_cm: string; breadth_cm: string; price: string }>>({});
   const [whatsappNumbers, setWhatsappNumbers] = useState<any[]>([]);
   const [newWhatsappNumber, setNewWhatsappNumber] = useState("");
   const [newWhatsappLabel, setNewWhatsappLabel] = useState("");
@@ -72,6 +77,12 @@ export default function AdminDashboard() {
   const [reassignCategory, setReassignCategory] = useState("");
   const [reassignTo, setReassignTo] = useState("");
   const [reassignStatus, setReassignStatus] = useState("");
+  // Preset "Chat for ..." button labels (chat_button_labels table) --
+  // separate saved lists for in-stock/out-of-stock, switched via the
+  // chat_label_in_stock/chat_label_out_of_stock settings. See ProductCard.tsx.
+  const [chatLabelPresets, setChatLabelPresets] = useState<any[]>([]);
+  const [newChatLabelText, setNewChatLabelText] = useState<Record<ChatLabelKind, string>>({ in_stock: "", out_of_stock: "" });
+  const [chatLabelStatus, setChatLabelStatus] = useState("");
 
   // Quick unit converter helper next to the dimension fields -- a scratch
   // pad only, doesn't write into formData itself. Defaults to inches since
@@ -144,7 +155,7 @@ export default function AdminDashboard() {
   // them in parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes, loginAttemptsRes, backupCodesRes] = await Promise.allSettled([
+    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes, loginAttemptsRes, backupCodesRes, chatLabelsRes] = await Promise.allSettled([
       apiRequest("/api/admin/products"),
       apiRequest("/api/admin/orders"),
       apiRequest("/api/admin/reviews"),
@@ -160,6 +171,7 @@ export default function AdminDashboard() {
       apiRequest("/api/admin/labels"),
       apiRequest("/api/admin/login-attempts"),
       apiRequest("/api/admin/backup-codes"),
+      apiRequest("/api/admin/chat-labels"),
     ]);
     if (productsRes.status === "fulfilled") setProducts(productsRes.value.products);
     if (ordersRes.status === "fulfilled") setOrders(ordersRes.value.orders);
@@ -176,6 +188,7 @@ export default function AdminDashboard() {
     if (labelsRes.status === "fulfilled") setLabels(labelsRes.value.labels);
     if (loginAttemptsRes.status === "fulfilled") setLoginAttempts(loginAttemptsRes.value.attempts);
     if (backupCodesRes.status === "fulfilled") setBackupCodesRemaining(backupCodesRes.value.remaining);
+    if (chatLabelsRes.status === "fulfilled") setChatLabelPresets(chatLabelsRes.value.labels);
     setLoadingOrders(false);
   };
 
@@ -788,6 +801,61 @@ export default function AdminDashboard() {
     }
   };
 
+  // Same inline convenience as the brass calculator above, extended to
+  // every other product (any category/label, including ones with no label
+  // at all) -- optional weight/dimensions plus a plain, manually-entered
+  // price. Deliberately no weight x rate x margin auto-calculation here --
+  // that stays exclusive to "Lightweight Brass" above; editing weight/
+  // dimensions on a regular product never touches its price. Units match
+  // the main product form directly (grams/cm), not the brass block's kg/in,
+  // since there's no unit-conversion reason to differ for a plain product.
+  const defaultSpecDraft = (product: any) => ({
+    weight_g: product.weight_g != null ? String(product.weight_g) : "",
+    height_cm: product.height_cm != null ? String(product.height_cm) : "",
+    depth_cm: product.depth_cm != null ? String(product.depth_cm) : "",
+    breadth_cm: product.breadth_cm != null ? String(product.breadth_cm) : "",
+    price: product.price != null ? String(product.price) : "",
+  });
+  const specDraft = (product: any) => specDrafts[product.id] ?? defaultSpecDraft(product);
+  const updateSpecDraftField = (product: any, field: keyof ReturnType<typeof defaultSpecDraft>, value: string) => {
+    setSpecDrafts((prev) => ({ ...prev, [product.id]: { ...(prev[product.id] ?? defaultSpecDraft(product)), [field]: value } }));
+  };
+
+  const handleSpecUpdate = async (
+    productId: string,
+    fields: { weight_g?: string; height_cm?: string; depth_cm?: string; breadth_cm?: string; price?: string }
+  ) => {
+    const toOptionalPositive = (value: string | undefined) => {
+      const num = Number(value);
+      return value && Number.isFinite(num) && num > 0 ? num : null;
+    };
+
+    const payload: Record<string, any> = {
+      id: productId,
+      weight_g: toOptionalPositive(fields.weight_g),
+      height_cm: toOptionalPositive(fields.height_cm),
+      depth_cm: toOptionalPositive(fields.depth_cm),
+      breadth_cm: toOptionalPositive(fields.breadth_cm),
+    };
+    // Unlike weight/dimensions (blank = intentionally cleared), price is
+    // never nulled out by leaving the field blank -- a $0/blank price is
+    // never a valid state, so an empty field just leaves it unchanged
+    // rather than being treated as "clear this".
+    const priceNum = Number(fields.price);
+    if (Number.isFinite(priceNum) && priceNum > 0) payload.price = priceNum;
+
+    try {
+      const result = await apiRequest("/api/admin/products", { method: "PATCH", body: JSON.stringify(payload) });
+      setProducts(products.map((p) => (p.id === productId ? result.product : p)));
+      setSpecDrafts((prev) => {
+        const { [productId]: _, ...rest } = prev;
+        return rest;
+      });
+    } catch (err: any) {
+      alert(`Could not update product details: ${err.message}`);
+    }
+  };
+
   // Adds a new number to the pool a product's WhatsApp-enquiry field can be
   // set to (product_colors/product_materials pattern) -- purely for the
   // customer-facing "chat about this product" link, never order/business
@@ -967,6 +1035,70 @@ export default function AdminDashboard() {
       setSettings((prev) => ({ ...prev, ...result.settings }));
     } catch (err: any) {
       alert(`Could not update dimension unit: ${err.message}`);
+    }
+  };
+
+  // How long the Ganesha popup stays quiet after its 3 auto-shows before
+  // the cycle repeats -- 5 minutes to 12 hours (720 min).
+  const handleUpdateGaneshaCooldownMinutes = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ ganesha_cooldown_minutes: Number(value) }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: any) {
+      alert(`Could not update Ganesha popup cooldown: ${err.message}`);
+    }
+  };
+
+  // Saves a new preset to the chosen kind's list (does not activate it --
+  // use handleSetActiveChatLabel for that). Server-side length validation
+  // mirrors MAX_CHAT_LABEL_LENGTH; this just avoids a round-trip for the
+  // common case of hitting the input's own maxLength.
+  const handleAddChatLabel = async (kind: ChatLabelKind) => {
+    const text = newChatLabelText[kind].trim();
+    if (!text) return;
+    if (text.length > MAX_CHAT_LABEL_LENGTH) {
+      setChatLabelStatus(`Label must be ${MAX_CHAT_LABEL_LENGTH} characters or fewer.`);
+      return;
+    }
+    setChatLabelStatus("Adding label...");
+    try {
+      const result = await apiRequest("/api/admin/chat-labels", {
+        method: "POST",
+        body: JSON.stringify({ kind, label: text }),
+      });
+      setChatLabelPresets((prev) => [...prev, result.label]);
+      setNewChatLabelText((prev) => ({ ...prev, [kind]: "" }));
+      setChatLabelStatus("");
+    } catch (err: any) {
+      setChatLabelStatus(err.message || "Could not add label.");
+    }
+  };
+
+  const handleDeleteChatLabel = async (id: number) => {
+    try {
+      await apiRequest("/api/admin/chat-labels", { method: "DELETE", body: JSON.stringify({ id }) });
+      setChatLabelPresets((prev) => prev.filter((l) => l.id !== id));
+    } catch (err: any) {
+      alert(`Could not delete label: ${err.message}`);
+    }
+  };
+
+  // Switches which saved preset is currently shown on the storefront for
+  // this kind (in-stock / out-of-stock) -- stored as plain text in
+  // site_settings, so deleting the preset later never breaks this.
+  const handleSetActiveChatLabel = async (kind: ChatLabelKind, text: string) => {
+    try {
+      const settingKey = kind === "in_stock" ? "chat_label_in_stock" : "chat_label_out_of_stock";
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ [settingKey]: text }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: any) {
+      alert(`Could not switch chat label: ${err.message}`);
     }
   };
 
@@ -1722,7 +1854,12 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-0 pt-3 sm:pt-0">
+                  {/* flex-wrap: without it, these 4 controls (stock
+                      stepper, 2 selects, Edit Details) overflow past a
+                      mobile viewport's width with nothing to scroll them
+                      into view, making Edit Details unreachable -- this was
+                      the actual "can't edit products on mobile" bug. */}
+                  <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 sm:gap-6 border-t sm:border-0 pt-3 sm:pt-0">
                     <div className="flex items-center gap-2">
                       <button onClick={() => handleStockUpdate(product.id, product.inventory, -1)} className="w-8 h-8 rounded border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 transition">-</button>
                       <div className="w-12 text-center">
@@ -1827,6 +1964,70 @@ export default function AdminDashboard() {
                             ? <>Rate: ₹{computedPrice.toLocaleString("en-IN")} <span className="text-stone-400 font-normal">(wt × rate × 1.2)</span></>
                             : <span className="text-stone-400 font-normal">Enter weight to auto-compute the rate — otherwise the manually-set price above is kept.</span>}
                         </p>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Same inline convenience as the brass block above, for
+                      every other product regardless of category/label
+                      (including ones on the home page with no label at
+                      all) -- plain optional weight/dimensions plus a
+                      manually-entered price, with no auto-calculation. */}
+                  {product.label?.trim().toLowerCase() !== "lightweight brass" && (() => {
+                    const draft = specDraft(product);
+                    return (
+                      <div className="bg-stone-50 border border-stone-200 rounded px-3 py-2.5 flex flex-wrap items-end gap-3">
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Weight (g)</label>
+                          <input
+                            type="number" min={0} step="any" placeholder="Optional"
+                            value={draft.weight_g}
+                            onChange={(e) => updateSpecDraftField(product, "weight_g", e.target.value)}
+                            onBlur={(e) => handleSpecUpdate(product.id, { ...draft, weight_g: e.target.value })}
+                            className="w-20 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Height (cm)</label>
+                          <input
+                            type="number" min={0} step="any" placeholder="H"
+                            value={draft.height_cm}
+                            onChange={(e) => updateSpecDraftField(product, "height_cm", e.target.value)}
+                            onBlur={(e) => handleSpecUpdate(product.id, { ...draft, height_cm: e.target.value })}
+                            className="w-16 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Depth (cm)</label>
+                          <input
+                            type="number" min={0} step="any" placeholder="D"
+                            value={draft.depth_cm}
+                            onChange={(e) => updateSpecDraftField(product, "depth_cm", e.target.value)}
+                            onBlur={(e) => handleSpecUpdate(product.id, { ...draft, depth_cm: e.target.value })}
+                            className="w-16 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Breadth (cm)</label>
+                          <input
+                            type="number" min={0} step="any" placeholder="B"
+                            value={draft.breadth_cm}
+                            onChange={(e) => updateSpecDraftField(product, "breadth_cm", e.target.value)}
+                            onBlur={(e) => handleSpecUpdate(product.id, { ...draft, breadth_cm: e.target.value })}
+                            className="w-16 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Price (₹)</label>
+                          <input
+                            type="number" min={0} step="any"
+                            value={draft.price}
+                            onChange={(e) => updateSpecDraftField(product, "price", e.target.value)}
+                            onBlur={(e) => handleSpecUpdate(product.id, { ...draft, price: e.target.value })}
+                            className="w-24 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                          />
+                        </div>
+                        <p className="text-[10px] text-stone-400 pb-1.5">Weight/dimensions optional — leave blank to clear.</p>
                       </div>
                     );
                   })()}
@@ -2257,6 +2458,25 @@ export default function AdminDashboard() {
               Used by the &ldquo;Lightweight Brass&rdquo; price calculator in the stock tracker (weight × rate × 1.20 margin). Raising this only changes the default offered to a product that doesn&rsquo;t have its own rate saved yet -- it never rewrites a product&rsquo;s already-saved rate or price.
             </span>
           </div>
+          <div className="flex items-center gap-3 flex-wrap mt-4">
+            <label className="text-sm text-stone-700 font-medium">Ganesha popup cooldown (minutes)</label>
+            <input
+              type="number"
+              min={5}
+              max={720}
+              step={1}
+              key={settings.ganesha_cooldown_minutes ?? "10"}
+              defaultValue={settings.ganesha_cooldown_minutes ?? "10"}
+              onBlur={(e) => {
+                const next = e.target.value.trim();
+                if (next && next !== settings.ganesha_cooldown_minutes) handleUpdateGaneshaCooldownMinutes(next);
+              }}
+              className="w-24 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+            <span className="text-stone-400 text-xs w-full">
+              The mascot popup auto-shows on a visitor&rsquo;s 1st, 2nd, and 3rd page load/reload, then stays quiet for this long before the cycle repeats. A floating &ldquo;Show Ganesha&rdquo; button lets a visitor bring it back manually during the quiet window. Range: 5 minutes to 720 minutes (12 hours).
+            </span>
+          </div>
         </div>
 
         {/* SECTION D.0.5: WHATSAPP NUMBERS */}
@@ -2264,7 +2484,7 @@ export default function AdminDashboard() {
           <div className="border-b border-stone-200 pb-4 mb-6">
             <h2 className="text-xl font-serif text-stone-900">WhatsApp Numbers</h2>
             <p className="text-stone-500 text-xs mt-1">
-              For customer product enquiries only ("Chat to Check Availability" / "Chat for Discount") -- order and business
+              For customer product enquiries only ("Chat to Check Availability" / "Chat for More Info") -- order and business
               notifications always go to +91 6302672351, unaffected by anything here.
             </p>
           </div>
@@ -2386,6 +2606,93 @@ export default function AdminDashboard() {
             </div>
             {reassignStatus && <p className="text-[11px] text-stone-500 mt-2">{reassignStatus}</p>}
           </div>
+        </div>
+
+        {/* SECTION D.0.6: CHAT BUTTON LABELS */}
+        <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+          <div className="border-b border-stone-200 pb-4 mb-6">
+            <h2 className="text-xl font-serif text-stone-900">Chat Button Labels</h2>
+            <p className="text-stone-500 text-xs mt-1">
+              The text on each product card&rsquo;s WhatsApp button (shown on the product detail page too). Save a few options
+              per stock state below and switch the active one any time -- max {MAX_CHAT_LABEL_LENGTH} characters each.
+            </p>
+          </div>
+
+          {CHAT_LABEL_KINDS.map((kind) => {
+            const activeSettingKey = kind === "in_stock" ? "chat_label_in_stock" : "chat_label_out_of_stock";
+            const activeLabel = settings[activeSettingKey] || DEFAULT_CHAT_LABELS[kind];
+            const presets = chatLabelPresets.filter((l: any) => l.kind === kind);
+            const draft = newChatLabelText[kind];
+            return (
+              <div key={kind} className={kind === "out_of_stock" ? "mt-8 pt-8 border-t border-stone-100" : ""}>
+                <h3 className="text-sm font-semibold text-stone-700 mb-3">
+                  {kind === "in_stock" ? "In-Stock Products" : "Out-of-Stock Products"}
+                  <span className="ml-2 font-normal text-stone-400">
+                    currently: &ldquo;{activeLabel}&rdquo;
+                  </span>
+                </h3>
+
+                {presets.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    {presets.map((l: any) => {
+                      const isActive = activeLabel === l.label;
+                      return (
+                        <div key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded bg-stone-50 border border-stone-100">
+                          <span className="text-xs text-stone-700">{l.label}</span>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            {isActive ? (
+                              <span className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                ★ Active
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleSetActiveChatLabel(kind, l.label)}
+                                className="text-[11px] uppercase font-semibold text-amber-700 hover:text-amber-800"
+                              >
+                                Use This
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteChatLabel(l.id)}
+                              aria-label={`Delete "${l.label}" preset`}
+                              className="text-stone-300 hover:text-red-600"
+                            >
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input
+                    type="text"
+                    maxLength={MAX_CHAT_LABEL_LENGTH}
+                    placeholder={`e.g. "${DEFAULT_CHAT_LABELS[kind]}"`}
+                    value={draft}
+                    onChange={(e) => setNewChatLabelText((prev) => ({ ...prev, [kind]: e.target.value.slice(0, MAX_CHAT_LABEL_LENGTH) }))}
+                    className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50 w-60"
+                  />
+                  <span className="text-[11px] text-stone-400 font-mono w-12">{draft.length}/{MAX_CHAT_LABEL_LENGTH}</span>
+                  <button
+                    type="button"
+                    disabled={!draft.trim()}
+                    onClick={() => handleAddChatLabel(kind)}
+                    className="px-3 py-2 rounded bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          {chatLabelStatus && <p className="text-[11px] text-stone-500 mt-4">{chatLabelStatus}</p>}
         </div>
 
         {/* SECTION D.0: PRODUCT LABELS */}

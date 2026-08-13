@@ -13,11 +13,18 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
+import { useGaneshaCooldownMinutes } from "@/app/context/GaneshaCooldownSettingContext";
 
 const SHOW_DELAY_MS = 1200; // gives the page a beat to finish its own initial load/paint first
 const ARC_DURATION_MS = 2000; // must match the ganesha-arc keyframe duration in globals.css
 const SHOWN_DURATION_MS = 5000; // how long it stays fully landed before arcing back out
 const MUTED_KEY = "tohfa_welcome_muted";
+const FREQ_KEY = "tohfa_ganesha_freq";
+const MAX_AUTO_SHOWS = 3; // auto-pops on the 1st, 2nd, and 3rd reload/navigation
+// Admin-configurable (5min-12hr, see Storefront Settings) via
+// useGaneshaCooldownMinutes below -- this is only the fallback before that
+// setting has loaded.
+const DEFAULT_COOLDOWN_MS = 10 * 60 * 1000;
 
 function isMutedInStorage(): boolean {
   if (typeof window === "undefined") return false;
@@ -29,6 +36,26 @@ function isMutedInStorage(): boolean {
 }
 
 type Phase = "hidden" | "entering" | "shown" | "leaving";
+
+type FreqState = { count: number; cooldownUntil: number | null };
+
+function loadFreqState(): FreqState {
+  if (typeof window === "undefined") return { count: 0, cooldownUntil: null };
+  try {
+    const raw = localStorage.getItem(FREQ_KEY);
+    if (!raw) return { count: 0, cooldownUntil: null };
+    const parsed = JSON.parse(raw);
+    return { count: Number(parsed.count) || 0, cooldownUntil: parsed.cooldownUntil ?? null };
+  } catch {
+    return { count: 0, cooldownUntil: null };
+  }
+}
+
+function saveFreqState(state: FreqState) {
+  try {
+    localStorage.setItem(FREQ_KEY, JSON.stringify(state));
+  } catch {}
+}
 
 function trackEvent(name: string) {
   try {
@@ -69,8 +96,16 @@ export default function WelcomeGaneshaPopup() {
   // autoplay attempt, no first-interaction retry, no "Tap to hear" prompt)
   // until the visitor deliberately unmutes it again from the same toggle.
   const [muted, setMuted] = useState(isMutedInStorage);
+  // Whether the 3-auto-shows cap has been hit and the (admin-configurable)
+  // quiet window is currently active -- drives the floating manual-trigger
+  // button (only rendered while this is true and nothing is on-screen).
+  const [inCooldown, setInCooldown] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const dismissedRef = useRef(false);
+  // Admin-configurable in Storefront Settings (5min-12hr); defaults to 10
+  // minutes until that setting has loaded.
+  const cooldownMinutes = useGaneshaCooldownMinutes();
+  const cooldownMs = cooldownMinutes > 0 ? cooldownMinutes * 60 * 1000 : DEFAULT_COOLDOWN_MS;
 
   useEffect(() => {
     dismissedRef.current = false;
@@ -86,6 +121,32 @@ export default function WelcomeGaneshaPopup() {
     // picks up from there.
     if (catalogLoading) return;
 
+    // Frequency gate: auto-show on each of the first MAX_AUTO_SHOWS
+    // reloads/navigations, then go quiet for cooldownMs -- a reload or
+    // navigation during the cooldown just surfaces the floating manual-
+    // trigger button (below) instead of the popup itself. Once the
+    // cooldown has actually elapsed, the count resets and the same
+    // 3-auto-shows-then-cooldown cycle starts over.
+    const freq = loadFreqState();
+    const now = Date.now();
+    if (freq.cooldownUntil && now >= freq.cooldownUntil) {
+      freq.count = 0;
+      freq.cooldownUntil = null;
+    }
+    const cooling = !!(freq.cooldownUntil && now < freq.cooldownUntil);
+    setInCooldown(cooling);
+    if (cooling || freq.count >= MAX_AUTO_SHOWS) {
+      if (!cooling) {
+        // Count reached the cap without a cooldown timestamp (e.g. storage
+        // edited/corrupted) -- start the cooldown now instead of auto-
+        // showing indefinitely.
+        freq.cooldownUntil = now + cooldownMs;
+        saveFreqState(freq);
+        setInCooldown(true);
+      }
+      return;
+    }
+
     let timer: ReturnType<typeof setTimeout>;
     function show() {
       timer = setTimeout(() => {
@@ -93,6 +154,13 @@ export default function WelcomeGaneshaPopup() {
         setAudioBlocked(false);
         setPhase("entering");
         trackEvent("welcome_popup_shown");
+        const nextCount = freq.count + 1;
+        const nextState: FreqState = {
+          count: nextCount,
+          cooldownUntil: nextCount >= MAX_AUTO_SHOWS ? Date.now() + cooldownMs : null,
+        };
+        saveFreqState(nextState);
+        if (nextState.cooldownUntil) setInCooldown(true);
       }, SHOW_DELAY_MS);
     }
 
@@ -113,9 +181,11 @@ export default function WelcomeGaneshaPopup() {
     // Every route change, every category-filter change, every catalog
     // transition finishing, and every full reload (which remounts
     // everything) re-runs this -- fires again each time by design, not
-    // just once.
+    // just once, until the frequency gate above kicks in. cooldownMs is
+    // included so this re-evaluates once the real admin-configured value
+    // replaces the DEFAULT_COOLDOWN_MS fallback shortly after mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, searchParamsKey, catalogLoading]);
+  }, [pathname, searchParamsKey, catalogLoading, cooldownMs]);
 
   // Phase advancement is driven by fixed timers matching the CSS animation's
   // duration, not the browser's `animationend` event -- that event silently
@@ -182,6 +252,19 @@ export default function WelcomeGaneshaPopup() {
     if (phase === "hidden" || phase === "leaving") return;
     dismissedRef.current = true;
     setPhase("leaving");
+  }
+
+  // The floating "Show Ganesha" button during the cooldown --
+  // shows the popup once per click, immediately (no SHOW_DELAY_MS wait,
+  // since this is already a deliberate user action) and without touching
+  // the auto-show count/cooldown, so the cooldown keeps counting down
+  // regardless of how many times it's manually triggered in the meantime.
+  function manualShow() {
+    if (phase !== "hidden") return;
+    dismissedRef.current = false;
+    setAudioBlocked(false);
+    setPhase("entering");
+    trackEvent("welcome_popup_shown_manual");
   }
 
   function playVoice() {
@@ -309,6 +392,23 @@ export default function WelcomeGaneshaPopup() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Manual re-trigger, visible only during the post-cap cooldown
+          (admin-configurable length) and only while nothing else is on
+          screen -- lets a
+          visitor bring the mascot back on demand instead of waiting out
+          the cooldown, without that click counting toward/against it. */}
+      {inCooldown && phase === "hidden" && (
+        <button
+          type="button"
+          onClick={manualShow}
+          aria-label="Show Ganesha's greeting again"
+          className="fixed left-0 bottom-28 z-40 flex items-center gap-1.5 bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-700 rounded-r-full shadow-lg pl-1.5 pr-3 py-1.5 text-xs font-semibold text-amber-800 dark:text-amber-400 hover:pr-4 transition-all print:hidden"
+        >
+          <img src="/ganesha.jpg" alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+          Show Ganesha
+        </button>
       )}
     </>
   );
