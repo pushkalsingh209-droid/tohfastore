@@ -21,7 +21,7 @@ export default function AddToCartButton({ product }: { product: any }) {
           : "bg-stone-900 hover:bg-amber-700 text-white active:scale-95"
       }`}
     >
-      {outOfStock ? "Out of Stock" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
+      {outOfStock ? "Sold Out" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
     </button>
   );
 }

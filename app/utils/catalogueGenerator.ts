@@ -210,7 +210,7 @@ export async function generateCatalogueBuffer(): Promise<Buffer> {
               slashed ? React.createElement(Text, { style: styles.cardBadge }, `${slashed.discountPercent}% off`) : null,
               dimensionsLine ? React.createElement(Text, { style: styles.cardDimensions }, dimensionsLine) : null,
               Number(product.inventory) <= 0
-                ? React.createElement(Text, { style: styles.cardStock }, "Out of Stock")
+                ? React.createElement(Text, { style: styles.cardStock }, "Sold Out")
                 : null
             );
           })

@@ -5,10 +5,20 @@ import Script from "next/script";
 // No-ops entirely until NEXT_PUBLIC_META_PIXEL_ID is set -- get this from
 // Meta Events Manager (business.facebook.com > Events Manager > your
 // pixel > Settings), then add it to .env.local and Vercel's project env
-// vars, same as the other tracking IDs.
+// vars, same as the other tracking IDs. Supports more than one pixel --
+// comma-separate multiple IDs (e.g. "111111,222222") -- every fbq() call
+// site in the app (PageView here, the Purchase event in metaPixel.ts, the
+// custom welcome-popup events) then fires for all of them automatically,
+// since fbq('init', id) registers each one and a bare fbq('track', ...)
+// multiplexes across every registered pixel.
 export default function MetaPixel() {
-  const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
-  if (!pixelId) return null;
+  const pixelIds = (process.env.NEXT_PUBLIC_META_PIXEL_ID || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  if (pixelIds.length === 0) return null;
+
+  const initCalls = pixelIds.map((id) => `fbq('init', '${id}');`).join("\n        ");
 
   return (
     <>
@@ -21,17 +31,20 @@ export default function MetaPixel() {
         t.src=v;s=b.getElementsByTagName(e)[0];
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init', '${pixelId}');
+        ${initCalls}
         fbq('track', 'PageView');`}
       </Script>
       <noscript>
-        <img
-          height="1"
-          width="1"
-          style={{ display: "none" }}
-          src={`https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`}
-          alt=""
-        />
+        {pixelIds.map((id) => (
+          <img
+            key={id}
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            src={`https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1`}
+            alt=""
+          />
+        ))}
       </noscript>
     </>
   );

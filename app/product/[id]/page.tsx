@@ -12,6 +12,9 @@ import ShareButtons from "@/app/components/ShareButtons";
 import ReviewForm from "@/app/components/ReviewForm";
 import RecordProductView from "@/app/components/RecordProductView";
 import BackToCollectionsLink from "@/app/components/BackToCollectionsLink";
+import TrustBadges from "@/app/components/TrustBadges";
+import StockStatusBadge from "@/app/components/StockStatusBadge";
+import RecentViewersNote from "@/app/components/RecentViewersNote";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
 import CategorySlider from "@/app/components/CategorySlider";
 import BestsellersStrip from "@/app/components/BestsellersStrip";
@@ -20,7 +23,7 @@ import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink, resolveProductWhatsappNumber } from "@/app/utils/whatsapp";
 import WhatsappEnquiryLink from "@/app/components/WhatsappEnquiryLink";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
-import { getRelatedProducts, getProductUnitSettings, getDefaultWhatsappNumber } from "@/app/utils/storeQueries";
+import { getRelatedProducts, getProductUnitSettings, getDefaultWhatsappNumber, getSoldCounts, getRecentViewCount } from "@/app/utils/storeQueries";
 import { getThumbUrl } from "@/app/utils/imageThumb";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
@@ -57,9 +60,15 @@ const getProduct = cache(
         // flows automatically into AddToCartButton/WishlistButton via their
         // existing product-object spread, and is passed explicitly to
         // RecordProductView below so the "Recently Viewed" strip elsewhere
-        // on the site can use it instead of the full-size image.
-        const thumb_url = data.image_url ? await getThumbUrl(data.image_url) : undefined;
-        return { ...data, thumb_url };
+        // on the site can use it instead of the full-size image. Run
+        // alongside the sold-count lookup (independent of each other) --
+        // sequentially awaiting both here would chain two network round
+        // trips into one when there's no reason they can't overlap.
+        const [thumb_url, soldCounts] = await Promise.all([
+          data.image_url ? getThumbUrl(data.image_url) : Promise.resolve(undefined),
+          getSoldCounts(),
+        ]);
+        return { ...data, thumb_url, sold_count: soldCounts[String(data.id)] || 0 };
       } catch (err) {
         console.error("Failed to load product:", err);
         return null;
@@ -128,12 +137,13 @@ export default async function ProductDetailPage({
   // other two only need its id/category (not its full shape) -- running
   // them in parallel instead of sequentially awaiting each in turn shaves
   // three round trips down to the slowest single one, straight off TTFB.
-  const [reviews, categorySliderItems, relatedProducts, unitSettings, defaultWhatsappNumber] = await Promise.all([
+  const [reviews, categorySliderItems, relatedProducts, unitSettings, defaultWhatsappNumber, recentViewCount] = await Promise.all([
     product ? getApprovedReviews(product.id) : Promise.resolve([]),
     getCategorySliderItems(),
     product ? getRelatedProducts(product.category, product.id) : Promise.resolve([]),
     getProductUnitSettings(),
     getDefaultWhatsappNumber(),
+    product ? getRecentViewCount(String(product.id)) : Promise.resolve(0),
   ]);
 
   const stock = product ? Number(product.inventory) || 0 : 0;
@@ -282,13 +292,15 @@ export default async function ProductDetailPage({
                   className="text-amber-700 dark:text-amber-500 font-bold font-mono text-2xl"
                 />
               </div>
-              <span
-                className={`text-[11px] uppercase font-medium mb-6 ${
-                  outOfStock || lowStock ? "text-rose-600 font-bold" : "text-stone-400"
-                }`}
-              >
-                {outOfStock ? "Out of Stock" : lowStock ? `Only ${product.inventory} left!` : `Stock: ${product.inventory} units`}
-              </span>
+              <div className="mb-6 space-y-2">
+                <StockStatusBadge
+                  outOfStock={outOfStock}
+                  lowStock={lowStock}
+                  inventory={product.inventory}
+                  soldCount={product.sold_count}
+                />
+                <RecentViewersNote count={recentViewCount} />
+              </div>
 
               {(dimensionsLine || attributesLine) && (
                 <div className="mb-6 space-y-1">
@@ -331,6 +343,9 @@ export default async function ProductDetailPage({
                 {/* SECONDARY CTA: Add To Cart — same action/label/style as the main page card */}
                 <AddToCartButton product={product} />
                 {outOfStock && <NotifyWhenInStockButton productId={product.id} />}
+
+                <TrustBadges />
+
                 <WishlistButton product={product} />
                 <ShareButtons productName={product.name} />
               </div>

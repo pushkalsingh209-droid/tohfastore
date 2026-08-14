@@ -15,6 +15,7 @@ import { useProductUnitSettings } from "@/app/context/ProductUnitSettingContext"
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
 import { useDefaultWhatsappNumber } from "@/app/context/DefaultWhatsappNumberContext";
 import { useChatLabels } from "@/app/context/ChatLabelSettingContext";
+import StockStatusBadge from "@/app/components/StockStatusBadge";
 
 const DOUBLE_TAP_WINDOW_MS = 350;
 const LOW_STOCK_THRESHOLD = 3;
@@ -171,13 +172,7 @@ export default function ProductCard({ product, priority = false }: { product: an
         <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
           <div className="flex flex-col">
             <PriceDisplay price={Number(product.price)} category={product.category} />
-            <span
-              className={`text-[10px] uppercase font-medium ${
-                outOfStock || lowStock ? "text-rose-600 font-bold" : "text-stone-400"
-              }`}
-            >
-              {outOfStock ? "Out of Stock" : lowStock ? `Only ${product.inventory} left!` : `Stock: ${product.inventory} units`}
-            </span>
+            <StockStatusBadge outOfStock={outOfStock} lowStock={lowStock} inventory={product.inventory} soldCount={product.sold_count} />
           </div>
           <button
             onClick={handleAddToCart}
@@ -188,7 +183,7 @@ export default function ProductCard({ product, priority = false }: { product: an
                 : "bg-stone-900 hover:bg-amber-700 text-white active:scale-95"
             }`}
           >
-            {outOfStock ? "Out of Stock" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
+            {outOfStock ? "Sold Out" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
           </button>
         </div>
 
@@ -267,13 +262,7 @@ export default function ProductCard({ product, priority = false }: { product: an
         <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
           <div className="flex flex-col">
             <PriceDisplay price={Number(product.price)} category={product.category} />
-            <span
-              className={`text-[10px] uppercase font-medium ${
-                outOfStock || lowStock ? "text-rose-600 font-bold" : "text-stone-400"
-              }`}
-            >
-              {outOfStock ? "Out of Stock" : lowStock ? `Only ${product.inventory} left!` : `Stock: ${product.inventory} units`}
-            </span>
+            <StockStatusBadge outOfStock={outOfStock} lowStock={lowStock} inventory={product.inventory} soldCount={product.sold_count} />
           </div>
           <button
             onClick={handleAddToCart}
@@ -284,7 +273,7 @@ export default function ProductCard({ product, priority = false }: { product: an
                 : "bg-stone-900 hover:bg-amber-700 text-white active:scale-95"
             }`}
           >
-            {outOfStock ? "Out of Stock" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
+            {outOfStock ? "Sold Out" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
           </button>
         </div>
 

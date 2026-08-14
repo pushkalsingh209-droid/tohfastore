@@ -293,7 +293,9 @@ export const getCatalogPage = unstable_cache(
         console.error("Supabase catalog read exception:", error.message);
         return { products: [], count: totalCount, page };
       }
-      return { products: await attachThumbUrls(data || []), count: totalCount, page };
+      const [withThumbs, soldCounts] = await Promise.all([attachThumbUrls(data || []), getSoldCounts()]);
+      const products = withThumbs.map((p: any) => ({ ...p, sold_count: soldCounts[String(p.id)] || 0 }));
+      return { products, count: totalCount, page };
     } catch (err) {
       console.error("Failed to compile database records:", err);
       return { products: [], count: 0, page: 1 };
@@ -317,6 +319,71 @@ export const getTotalProductCount = unstable_cache(
   },
   ["total-product-count"],
   { revalidate: 300 }
+);
+
+// Real per-product units-sold tally, from actual order line items (same
+// "scan the last 300 orders" approach as getBestsellers/getRelatedProducts
+// below -- kept as its own independent cached query, mirroring how those
+// two already each do their own tally rather than sharing one, so this
+// stays simple and isolated). Excludes cancelled orders -- unlike
+// bestsellers/related-products (which just rank relative popularity, where
+// a cancelled order slipping in barely matters), this number is displayed
+// to customers as a literal count, so it needs to actually be right.
+// Returned as a plain id->count object (not a Map) since unstable_cache
+// results get serialized. Naturally correlates with price on its own -- an
+// expensive item just sells less often, no need to encode that separately.
+export const getSoldCounts = unstable_cache(
+  async (): Promise<Record<string, number>> => {
+    try {
+      const { data: orders, error } = await supabase
+        .from("orders")
+        .select("items")
+        .neq("status", "cancelled")
+        .order("created_at", { ascending: false })
+        .limit(300);
+      if (error || !orders) return {};
+
+      const soldCount: Record<string, number> = {};
+      for (const order of orders as any[]) {
+        const items = Array.isArray(order.items) ? order.items : [];
+        for (const item of items) {
+          if (!item?.id) continue;
+          const key = String(item.id);
+          soldCount[key] = (soldCount[key] || 0) + (Number(item.quantity) || 0);
+        }
+      }
+      return soldCount;
+    } catch {
+      return {};
+    }
+  },
+  ["sold-counts"],
+  { revalidate: 300 }
+);
+
+// How many distinct visitors have viewed a product recently -- real data
+// from product_views (see supabase/migrations/0034_add_product_views.sql
+// and /api/track-view), not a fabricated number. A short revalidate window
+// keeps it feeling current without querying on every single request.
+const RECENT_VIEW_WINDOW_MS = 3 * 60 * 60 * 1000; // 3 hours
+
+export const getRecentViewCount = unstable_cache(
+  async (productId: string): Promise<number> => {
+    try {
+      const cutoff = new Date(Date.now() - RECENT_VIEW_WINDOW_MS).toISOString();
+      const { count, error } = await supabase
+        .from("product_views")
+        .select("*", { count: "exact", head: true })
+        .eq("product_id", productId)
+        .gte("viewed_at", cutoff);
+      if (error) return 0;
+      return count || 0;
+    } catch {
+      return 0;
+    }
+  },
+  ["recent-view-count"],
+  { revalidate: 60 }
 );
 
 export interface BestsellerItem {
