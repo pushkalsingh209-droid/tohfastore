@@ -6,6 +6,9 @@ import { getAutocompleteMatches, getSuggestions } from "@/app/utils/searchProduc
 import Pagination from "@/app/components/Pagination";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import ImageUploadField from "@/app/components/admin/ImageUploadField";
+import GroupStatsPanel from "@/app/components/admin/GroupStatsPanel";
+import InventoryInsightsPanel from "@/app/components/admin/InventoryInsightsPanel";
+import FinanceInsightsPanel from "@/app/components/admin/FinanceInsightsPanel";
 import {
   WEIGHT_UNITS,
   DIMENSION_UNITS,
@@ -46,6 +49,45 @@ const ORDER_STATUS_TABS: { key: string; label: string }[] = [
   { key: "delivered", label: "Delivered" },
   { key: "cancelled", label: "Cancelled" },
 ];
+
+// Matches ProductCard.tsx's LOW_STOCK_THRESHOLD -- so a product flagged
+// "low stock" in the Product Statistics panel is the same one showing
+// "Only N left!" to a customer on the storefront, not a different cutoff.
+const LOW_STOCK_THRESHOLD = 3;
+
+// Shared by the label-wise and category-wise Product Statistics panels
+// (see GroupStatsPanel) -- groups `products` by whatever `keyFn` returns
+// and tallies count/units/value/stock-status per group plus overall
+// totals, so the two panels can never compute this differently from each
+// other. Module-level (not a hook) since it's a pure function of its args.
+function computeGroupStats(products: any[], keyFn: (p: any) => string) {
+  const byKey = new Map<string, { key: string; count: number; units: number; value: number; outOfStock: number; lowStock: number }>();
+  const totals = { productCount: products.length, totalUnits: 0, totalValue: 0, outOfStockCount: 0, lowStockCount: 0 };
+
+  for (const p of products) {
+    const key = keyFn(p);
+    const inventory = Number(p.inventory) || 0;
+    const price = Number(p.price) || 0;
+    const value = inventory * price;
+    const isOutOfStock = inventory <= 0;
+    const isLowStock = !isOutOfStock && inventory <= LOW_STOCK_THRESHOLD;
+
+    if (!byKey.has(key)) byKey.set(key, { key, count: 0, units: 0, value: 0, outOfStock: 0, lowStock: 0 });
+    const entry = byKey.get(key)!;
+    entry.count += 1;
+    entry.units += inventory;
+    entry.value += value;
+    if (isOutOfStock) entry.outOfStock += 1;
+    else if (isLowStock) entry.lowStock += 1;
+
+    totals.totalUnits += inventory;
+    totals.totalValue += value;
+    if (isOutOfStock) totals.outOfStockCount += 1;
+    else if (isLowStock) totals.lowStockCount += 1;
+  }
+
+  return { rows: Array.from(byKey.values()).sort((a, b) => b.value - a.value), totals };
+}
 
 // Which unit an admin types weight/dimensions in, remembered per-browser --
 // distinct from the storefront's own weight_unit/dimension_unit site
@@ -101,7 +143,7 @@ export default function AdminDashboard() {
   // ₹-per-kg row in the stock tracker, keyed by product id -- lets each of
   // the five fields be edited independently while still PATCHing the full
   // set together on blur (see handleBrassSpecUpdate).
-  const [brassDrafts, setBrassDrafts] = useState<Record<string, { weight_kg: string; height_in: string; depth_in: string; breadth_in: string; price_per_kg: string }>>({});
+  const [brassDrafts, setBrassDrafts] = useState<Record<string, { weight_kg: string; height_in: string; depth_in: string; breadth_in: string; price_per_kg: string; cost_price_per_kg: string }>>({});
   // Same idea, for every other (non-"Lightweight Brass") product's plain
   // weight/dimensions/price inline editor -- see defaultSpecDraft/
   // handleSpecUpdate below.
@@ -165,6 +207,7 @@ export default function AdminDashboard() {
     color: "",
     whatsapp_number: "",
     label: "",
+    cost_price: "",
   });
 
   // Which unit formData.weight_g/height_cm/depth_cm/breadth_cm are
@@ -304,6 +347,41 @@ export default function AdminDashboard() {
     return suggestions.map((s) => byCategory.find((p) => p.id === s.id)).filter(Boolean);
   }, [products, productSearch, productCategoryFilter]);
 
+  // Label-wise and category-wise stock/value breakdowns for the Product
+  // Statistics panels -- always computed from the full `products` list
+  // (not visibleProducts), since a search/category filter shouldn't change
+  // what the totals mean. "Value" is inventory x selling price -- the
+  // store doesn't track a cost/purchase price on most products, so this is
+  // working capital tied up at retail price, not true margin/profit (see
+  // costMarginStats below for the cost-price-based figures). Grouping key
+  // is free text either way (label isn't a foreign key -- see
+  // 0021_add_product_labels.sql -- and category has no separate table), so
+  // a blank one just falls into "No Label"/"Uncategorized" here rather
+  // than being dropped.
+  const labelStats = useMemo(
+    () => computeGroupStats(products, (p: any) => (p.label && String(p.label).trim()) || "No Label"),
+    [products]
+  );
+  const categoryStats = useMemo(() => computeGroupStats(products, (p: any) => p.category || "Uncategorized"), [products]);
+
+  // Real per-product units-sold tally from the admin's own full order
+  // history (not just the storefront's last-300-orders cache) -- backs
+  // Top Value Products, Dead Stock, and cost/margin stats below. Excludes
+  // cancelled orders, same reasoning as storeQueries.ts's getSoldCounts.
+  const soldCountByProductId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const order of orders as any[]) {
+      if (order.status === "cancelled") continue;
+      const items = Array.isArray(order.items) ? order.items : [];
+      for (const item of items) {
+        if (!item?.id) continue;
+        const key = String(item.id);
+        map.set(key, (map.get(key) || 0) + (Number(item.quantity) || 0));
+      }
+    }
+    return map;
+  }, [orders]);
+
   // How many orders sit in each status -- shown as a count badge on each
   // sub-tab. "processing" covers newly-received/not-yet-shipped orders
   // (there's no separate "received" status stored -- see ORDER_STATUS_TABS).
@@ -388,6 +466,7 @@ export default function AdminDashboard() {
       color: formData.color,
       whatsapp_number: formData.whatsapp_number,
       label: formData.label,
+      cost_price: formData.cost_price,
     };
 
     try {
@@ -411,7 +490,7 @@ export default function AdminDashboard() {
       );
       if (editingProductId) setEditingProductId(null);
 
-      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "" });
+      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "", cost_price: "" });
       fetchData(); // Sync live view structures
     } catch (err: any) {
       setStatus(`Database Exception: ${err.message || "Pipeline connection failed."}`);
@@ -442,6 +521,7 @@ export default function AdminDashboard() {
       color: product.color || "",
       whatsapp_number: product.whatsapp_number || "",
       label: product.label || "",
+      cost_price: product.cost_price != null ? String(product.cost_price) : "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -507,6 +587,21 @@ export default function AdminDashboard() {
       setProducts(products.map((p) => (p.id === productId ? result.product : p)));
     } catch (err: any) {
       alert(`Could not update photo filter: ${err.message}`);
+    }
+  };
+
+  // Quick per-product cost price entry straight from the stock tracker --
+  // optional, powers the Cost & Margin stats, works the same regardless of
+  // label/category so it's available on every row, not just brass items.
+  const handleInlineCostPriceUpdate = async (productId: string, costPrice: string) => {
+    try {
+      const result = await apiRequest("/api/admin/products", {
+        method: "PATCH",
+        body: JSON.stringify({ id: productId, cost_price: costPrice }),
+      });
+      setProducts(products.map((p) => (p.id === productId ? result.product : p)));
+    } catch (err: any) {
+      alert(`Could not update cost price: ${err.message}`);
     }
   };
 
@@ -839,6 +934,10 @@ export default function AdminDashboard() {
     depth_in: product.depth_cm != null ? String(convertCmTo(product.depth_cm, "in")) : "",
     breadth_in: product.breadth_cm != null ? String(convertCmTo(product.breadth_cm, "in")) : "",
     price_per_kg: product.price_per_kg != null ? String(product.price_per_kg) : settings.brass_price_per_kg || "6000",
+    // No site-wide fallback (unlike price_per_kg above) -- cost varies too
+    // much supplier-to-supplier to guess a default, so this stays blank
+    // until the admin actually enters one.
+    cost_price_per_kg: product.cost_price_per_kg != null ? String(product.cost_price_per_kg) : "",
   });
   const brassDraft = (product: any) => brassDrafts[product.id] ?? defaultBrassDraft(product);
   const updateBrassDraftField = (product: any, field: keyof ReturnType<typeof defaultBrassDraft>, value: string) => {
@@ -850,10 +949,14 @@ export default function AdminDashboard() {
   // (in) are converted to the canonical grams/cm the columns store; the
   // product's live price only auto-recomputes (weight × rate × 1.20 margin)
   // when a weight is actually given -- left blank, price is untouched so it
-  // stays whatever was manually entered when the product was added.
+  // stays whatever was manually entered when the product was added. Cost
+  // works the same way but without the margin: weight × cost_price_per_kg,
+  // only recomputed when both are given -- left blank, cost_price stays
+  // whatever was entered manually (see the standalone Cost ₹ field, or
+  // Edit Details), never silently cleared.
   const handleBrassSpecUpdate = async (
     productId: string,
-    fields: { weight_kg?: string; height_in?: string; depth_in?: string; breadth_in?: string; price_per_kg?: string }
+    fields: { weight_kg?: string; height_in?: string; depth_in?: string; breadth_in?: string; price_per_kg?: string; cost_price_per_kg?: string }
   ) => {
     const toGrams = (kg: string | undefined) => {
       const num = Number(kg);
@@ -866,6 +969,8 @@ export default function AdminDashboard() {
     const weightG = toGrams(fields.weight_kg);
     const pricePerKg = Number(fields.price_per_kg);
     const validPricePerKg = Number.isFinite(pricePerKg) && pricePerKg > 0 ? pricePerKg : null;
+    const costPricePerKg = Number(fields.cost_price_per_kg);
+    const validCostPricePerKg = Number.isFinite(costPricePerKg) && costPricePerKg > 0 ? costPricePerKg : null;
 
     const payload: Record<string, any> = {
       id: productId,
@@ -874,6 +979,7 @@ export default function AdminDashboard() {
       depth_cm: toCm(fields.depth_in),
       breadth_cm: toCm(fields.breadth_in),
       price_per_kg: validPricePerKg,
+      cost_price_per_kg: validCostPricePerKg,
     };
     // Only recompute the live price when there's an actual weight to base
     // it on -- otherwise the manually-entered price is left exactly as-is.
@@ -881,6 +987,11 @@ export default function AdminDashboard() {
     // at an odd exact value like ₹5,041.
     if (weightG && validPricePerKg) {
       payload.price = roundUpBrassPrice((weightG / 1000) * validPricePerKg * 1.2);
+    }
+    // Same idea for cost, no margin and no rounding -- an admin's actual
+    // cost figure shouldn't get silently rounded up.
+    if (weightG && validCostPricePerKg) {
+      payload.cost_price = (weightG / 1000) * validCostPricePerKg;
     }
 
     try {
@@ -1248,7 +1359,7 @@ export default function AdminDashboard() {
 
   const handleCancelEdit = () => {
     setEditingProductId(null);
-    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "" });
+    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "", cost_price: "" });
     setStatus("");
   };
 
@@ -1394,6 +1505,9 @@ export default function AdminDashboard() {
             </>
           )}
         </div>
+
+        {/* SECTION OVERVIEW: FINANCE INSIGHTS */}
+        <FinanceInsightsPanel orders={orders} products={products} />
 
         {/* SECTION OVERVIEW: WHATSAPP ENQUIRIES */}
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
@@ -1659,6 +1773,12 @@ export default function AdminDashboard() {
               <div>
                 <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">Price (INR ₹)</label>
                 <input type="number" required disabled={isSubmitting} placeholder="e.g., 3500" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+                  Cost Price (INR ₹) <span className="text-stone-400 font-normal normal-case">(optional -- what you paid, powers margin/profit stats; never shown to customers)</span>
+                </label>
+                <input type="number" min={0} step="any" disabled={isSubmitting} placeholder="e.g., 1800" value={formData.cost_price} onChange={(e) => setFormData({...formData, cost_price: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
@@ -1933,6 +2053,29 @@ export default function AdminDashboard() {
           </form>
         </div>
 
+        {/* SECTION A.5: PRODUCT STATISTICS -- LABEL-WISE */}
+        <GroupStatsPanel
+          title="Product Statistics — By Label"
+          groupLabel="Label"
+          rows={labelStats.rows}
+          totals={labelStats.totals}
+          lowStockThreshold={LOW_STOCK_THRESHOLD}
+        />
+
+        {/* SECTION A.6: PRODUCT STATISTICS -- CATEGORY-WISE */}
+        <GroupStatsPanel
+          title="Product Statistics — By Category"
+          groupLabel="Category"
+          rows={categoryStats.rows}
+          totals={categoryStats.totals}
+          lowStockThreshold={LOW_STOCK_THRESHOLD}
+          valueBarColorClass="bg-emerald-600"
+          unitsBarColorClass="bg-indigo-600"
+        />
+
+        {/* SECTION A.7: TOP VALUE, DEAD STOCK, STOCK AGING, COST & MARGIN */}
+        <InventoryInsightsPanel products={products} soldCountByProductId={soldCountByProductId} />
+
         {/* SECTION B: ACTIVE PRODUCT INVENTORY BALANCES TUNER */}
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
@@ -2104,6 +2247,25 @@ export default function AdminDashboard() {
                       <button onClick={() => handleStockUpdate(product.id, product.inventory, 1)} className="w-8 h-8 rounded border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 transition">+</button>
                     </div>
 
+                    <div className="flex flex-col items-start flex-shrink-0">
+                      <label className="text-[9px] uppercase tracking-wider text-stone-400 font-semibold mb-0.5">Cost ₹</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="any"
+                        placeholder="e.g. 1800"
+                        key={`${product.id}-${product.cost_price ?? ""}`}
+                        defaultValue={product.cost_price ?? ""}
+                        onBlur={(e) => {
+                          const next = e.target.value.trim();
+                          if (next !== String(product.cost_price ?? "")) handleInlineCostPriceUpdate(product.id, next);
+                        }}
+                        title="Cost/purchase price -- optional, powers margin stats, never shown to customers"
+                        aria-label={`Cost price for ${product.name}`}
+                        className="w-20 px-2 py-1.5 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-stone-50"
+                      />
+                    </div>
+
                     <select
                       value={product.label || ""}
                       onChange={(e) => handleInlineLabelUpdate(product.id, e.target.value)}
@@ -2141,6 +2303,8 @@ export default function AdminDashboard() {
                     const weightKg = Number(draft.weight_kg);
                     const rate = Number(draft.price_per_kg);
                     const computedPrice = weightKg > 0 && rate > 0 ? roundUpBrassPrice(weightKg * rate * 1.2) : null;
+                    const costRate = Number(draft.cost_price_per_kg);
+                    const computedCost = weightKg > 0 && costRate > 0 ? weightKg * costRate : null;
                     return (
                       <div className="bg-amber-50 border border-amber-200 rounded px-3 py-2.5 flex flex-wrap items-end gap-3">
                         <div>
@@ -2193,11 +2357,28 @@ export default function AdminDashboard() {
                             className="w-20 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
                           />
                         </div>
-                        <p className="text-xs font-mono font-semibold text-amber-800 pb-1.5">
-                          {computedPrice !== null
-                            ? <>Rate: ₹{computedPrice.toLocaleString("en-IN")} <span className="text-stone-400 font-normal">(wt × rate × 1.2)</span></>
-                            : <span className="text-stone-400 font-normal">Enter weight to auto-compute the rate — otherwise the manually-set price above is kept.</span>}
-                        </p>
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Cost ₹ / kg</label>
+                          <input
+                            type="number" min={0} step="any" placeholder="Optional"
+                            value={draft.cost_price_per_kg}
+                            onChange={(e) => updateBrassDraftField(product, "cost_price_per_kg", e.target.value)}
+                            onBlur={(e) => handleBrassSpecUpdate(product.id, { ...draft, cost_price_per_kg: e.target.value })}
+                            className="w-20 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-0.5 pb-1.5">
+                          <p className="text-xs font-mono font-semibold text-amber-800">
+                            {computedPrice !== null
+                              ? <>Rate: ₹{computedPrice.toLocaleString("en-IN")} <span className="text-stone-400 font-normal">(wt × rate × 1.2)</span></>
+                              : <span className="text-stone-400 font-normal">Enter weight to auto-compute the rate — otherwise the manually-set price above is kept.</span>}
+                          </p>
+                          <p className="text-xs font-mono font-semibold text-stone-600">
+                            {computedCost !== null
+                              ? <>Cost: ₹{computedCost.toLocaleString("en-IN", { maximumFractionDigits: 2 })} <span className="text-stone-400 font-normal">(wt × cost rate)</span></>
+                              : <span className="text-stone-400 font-normal">Enter a cost ₹/kg to auto-compute cost -- otherwise the manually-set Cost ₹ field is kept.</span>}
+                          </p>
+                        </div>
                       </div>
                     );
                   })()}

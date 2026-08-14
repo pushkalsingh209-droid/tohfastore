@@ -9,7 +9,7 @@ import { sendWhatsappMessage } from "@/app/utils/greenApi";
 // migration the admin hasn't run) -- these routes degrade gracefully by
 // dropping whichever optional column Postgres complains about and retrying,
 // instead of failing the whole save.
-const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter"];
+const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg"];
 
 function isMissingColumn(error: any, columnHint: string) {
   const msg = error?.message || "";
@@ -108,6 +108,11 @@ export async function POST(req: Request) {
       label: parseOptionalText(body.label),
       price_per_kg: parseOptionalPositiveNumber(body.price_per_kg),
       photo_filter: parseOptionalPhotoFilter(body.photo_filter),
+      cost_price: parseOptionalPositiveNumber(body.cost_price),
+      cost_price_per_kg: parseOptionalPositiveNumber(body.cost_price_per_kg),
+      // A brand-new product published with stock already on hand counts as
+      // restocked right now -- that's when this capital actually got tied up.
+      last_restocked_at: Number(body.inventory) > 0 ? new Date().toISOString() : null,
     };
 
     const { data, error, droppedColumns } = await insertWithFallback(payload);
@@ -123,6 +128,8 @@ export async function POST(req: Request) {
       labelSaved: !droppedColumns.includes("label"),
       pricePerKgSaved: !droppedColumns.includes("price_per_kg"),
       photoFilterSaved: !droppedColumns.includes("photo_filter"),
+      costPriceSaved: !droppedColumns.includes("cost_price"),
+      costPricePerKgSaved: !droppedColumns.includes("cost_price_per_kg"),
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -160,15 +167,26 @@ export async function PATCH(req: Request) {
     if (fields.label !== undefined) payload.label = parseOptionalText(fields.label);
     if (fields.price_per_kg !== undefined) payload.price_per_kg = parseOptionalPositiveNumber(fields.price_per_kg);
     if (fields.photo_filter !== undefined) payload.photo_filter = parseOptionalPhotoFilter(fields.photo_filter);
+    if (fields.cost_price !== undefined) payload.cost_price = parseOptionalPositiveNumber(fields.cost_price);
+    if (fields.cost_price_per_kg !== undefined) payload.cost_price_per_kg = parseOptionalPositiveNumber(fields.cost_price_per_kg);
 
     // Fetched before the update specifically to detect a 0 -> positive
     // inventory transition below -- "was this product actually sold out a
     // moment ago" can't be known any other way once the update itself has
-    // already overwritten it.
+    // already overwritten it. Also backs the restock-timestamp logic right
+    // below: any increase (not just from 0) counts as a restock.
     let previousInventory: number | null = null;
     if (payload.inventory !== undefined) {
       const { data: existing } = await supabase.from("products").select("inventory").eq("id", id).maybeSingle();
       previousInventory = existing ? Number(existing.inventory) : null;
+    }
+
+    // A genuine stock increase (stepper "+", a restock via Edit Details,
+    // etc.) stamps last_restocked_at -- backs the Stock Aging stat. A
+    // decrease (a sale, a correction) never touches it, since that's not a
+    // restock.
+    if (payload.inventory !== undefined && previousInventory !== null && Number(payload.inventory) > previousInventory) {
+      payload.last_restocked_at = new Date().toISOString();
     }
 
     const { data, error, droppedColumns } = await updateWithFallback(id, payload);
@@ -214,6 +232,8 @@ export async function PATCH(req: Request) {
       labelSaved: !droppedColumns.includes("label"),
       pricePerKgSaved: !droppedColumns.includes("price_per_kg"),
       photoFilterSaved: !droppedColumns.includes("photo_filter"),
+      costPriceSaved: !droppedColumns.includes("cost_price"),
+      costPricePerKgSaved: !droppedColumns.includes("cost_price_per_kg"),
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
