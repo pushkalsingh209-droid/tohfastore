@@ -21,10 +21,13 @@ import FloatingContactButtons from "@/app/components/FloatingContactButtons";
 import DeferredWidgets from "@/app/components/DeferredWidgets";
 import ResourceHints from "@/app/components/ResourceHints";
 import MetaPixel from "@/app/components/MetaPixel";
+import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 import "./globals.css"; // Imports your global styling configurations
 
+const SITE_URL = "https://tohfaonline.com";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://tohfaonline.com"),
+  metadataBase: new URL(SITE_URL),
   title: "Tohfa | Luxury Gift Paradise & Handicrafts",
   description: "Exquisite handcrafted brass decor, vintage utensils, and premium corporate gifting items.",
   manifest: "/manifest.json",
@@ -32,6 +35,35 @@ export const metadata: Metadata = {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     apple: [{ url: "/icon.svg", type: "image/svg+xml" }],
   },
+  // Falls through to any page that doesn't set its own more specific
+  // openGraph (a product photo, a category's representative product) --
+  // without this, sharing the homepage or a static page like /about on
+  // WhatsApp showed no preview thumbnail at all.
+  openGraph: {
+    siteName: "TOHFA",
+    type: "website",
+    images: [DEFAULT_OG_IMAGE],
+  },
+};
+
+// Declares TOHFA as a real business entity (not just a page) to search
+// engines, and links the two social profiles already in the footer below
+// as the same entity's official accounts -- helps Google associate them
+// with brand search results instead of treating each as unrelated.
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "TOHFA",
+  url: SITE_URL,
+  logo: `${SITE_URL}/logo-mark.png`,
+  sameAs: ["https://www.instagram.com/tohfaforu/", "https://www.facebook.com/profile.php?id=61574670900294"],
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "TOHFA",
+  url: SITE_URL,
 };
 
 // Runs before paint so the page never flashes the wrong theme: reads a
@@ -58,6 +90,19 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ResourceHints />
+        {/* JSON.stringify alone doesn't sanitize "<" inside a <script> tag --
+            escaping it to its unicode equivalent is Next's own documented
+            mitigation, see node_modules/next/dist/docs/01-app/02-guides/json-ld.md.
+            Both objects here are static constants (no user input), so this
+            is belt-and-suspenders rather than a real current risk. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd).replace(/</g, "\\u003c") }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd).replace(/</g, "\\u003c") }}
+        />
       </head>
       <CartProvider>
       <WishlistProvider>

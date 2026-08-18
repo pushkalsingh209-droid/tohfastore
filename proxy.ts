@@ -5,19 +5,16 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isValidAdminSessionToken, SESSION_COOKIE_NAME } from '@/app/utils/adminSession';
+import { supabaseAdmin as supabase } from '@/app/utils/supabaseAdmin';
+import { findCategoryBySlug, categoryHref, productIdFromParam, productHref } from '@/app/utils/slug';
 
 // The only admin paths reachable without an admin_session cookie -- they're
 // what let you obtain one in the first place.
 const PUBLIC_ADMIN_PATHS = new Set(['/admin/login', '/api/admin/login']);
 
-export async function proxy(request: NextRequest) {
+async function handleAdminAuth(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
-
-  const isAdminPage = pathname.startsWith('/admin');
   const isAdminApi = pathname.startsWith('/api/admin');
-  if (!isAdminPage && !isAdminApi) {
-    return NextResponse.next();
-  }
 
   if (PUBLIC_ADMIN_PATHS.has(pathname)) {
     return NextResponse.next();
@@ -37,7 +34,110 @@ export async function proxy(request: NextRequest) {
   return NextResponse.redirect(new URL('/admin/login', request.url));
 }
 
-// Run on the admin dashboard and any admin-only API route
+// Guaranteed to never match a real route -- rewriting here (instead of
+// calling notFound() from the page itself) hands rendering to Next's own
+// built-in unmatched-route 404 handling, which returns a genuine HTTP 404
+// instead of the streamed-200-with-noindex fallback the page would produce
+// on its own (see the long comment below).
+const PROXY_NOT_FOUND_PATH = '/__proxy_not_found__';
+
+async function getAllCategoryNames(): Promise<string[]> {
+  const { data, error } = await supabase.from('categories').select('name');
+  if (error) return [];
+  return (data || []).map((row: any) => row.name).filter(Boolean);
+}
+
+// Old "/?category=X" links (bookmarks, shared links, search-engine index)
+// now belong at "/collections/<slug>" -- mirrors the redirect already in
+// app/page.tsx, just running here first so it's a real 308 instead of that
+// page's streamed meta-refresh fallback.
+async function handleLegacyCategoryQuery(request: NextRequest): Promise<NextResponse> {
+  const categoryParam = request.nextUrl.searchParams.get('category') || '';
+  const allCategoryNames = await getAllCategoryNames();
+  if (!allCategoryNames.includes(categoryParam)) {
+    return NextResponse.next();
+  }
+
+  const url = request.nextUrl.clone();
+  url.pathname = categoryHref(categoryParam);
+  url.searchParams.delete('category');
+  return NextResponse.redirect(url, 308);
+}
+
+// Mirrors the canonicalization in app/product/[id]/page.tsx, running here
+// first so it's a real 308. A minimal id+name lookup (indexed primary key,
+// two columns) rather than the page's own full `select *` -- kept cheap
+// since this runs on every /product/:id request.
+async function handleProductPath(request: NextRequest, idParam: string): Promise<NextResponse> {
+  const numericId = productIdFromParam(idParam);
+  if (!/^\d+$/.test(numericId)) return NextResponse.next();
+
+  const { data, error } = await supabase.from('products').select('id, name').eq('id', numericId).maybeSingle();
+  if (error || !data) return NextResponse.next();
+
+  const canonical = productHref(data);
+  if (`/product/${idParam}` === canonical) return NextResponse.next();
+
+  const url = request.nextUrl.clone();
+  url.pathname = canonical;
+  return NextResponse.redirect(url, 308);
+}
+
+// Mirrors the resolution in app/collections/[category]/page.tsx, running
+// here first so both the redirect and the not-found case get real status
+// codes instead of that page's streamed fallbacks.
+async function handleCollectionPath(request: NextRequest, slugParam: string): Promise<NextResponse> {
+  const allCategoryNames = await getAllCategoryNames();
+  const category = findCategoryBySlug(allCategoryNames, slugParam);
+
+  if (!category) {
+    const url = request.nextUrl.clone();
+    url.pathname = PROXY_NOT_FOUND_PATH;
+    return NextResponse.rewrite(url);
+  }
+
+  const canonical = categoryHref(category);
+  if (`/collections/${slugParam}` === canonical) return NextResponse.next();
+
+  const url = request.nextUrl.clone();
+  url.pathname = canonical;
+  return NextResponse.redirect(url, 308);
+}
+
+// This site has a root app/loading.tsx (for the navigation loading
+// spinner), which forces every route to stream. Next can't change a
+// response's HTTP status once streaming has started, so redirect()/
+// notFound() calls inside those pages degrade to a client-side meta-refresh
+// tag / a 200-with-noindex instead of a real 301/308/404 (see
+// node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/loading.md#status-codes).
+// Both still work correctly for real visitors and crawlers, but a genuine
+// HTTP status is a stronger SEO signal, so the common cases are handled
+// here first -- before anything streams -- with the page-level checks left
+// in place underneath as a fallback for any request this doesn't cover.
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+    return handleAdminAuth(request);
+  }
+
+  if (pathname === '/' && request.nextUrl.searchParams.has('category')) {
+    return handleLegacyCategoryQuery(request);
+  }
+
+  const productMatch = pathname.match(/^\/product\/([^/]+)$/);
+  if (productMatch) {
+    return handleProductPath(request, productMatch[1]);
+  }
+
+  const collectionMatch = pathname.match(/^\/collections\/([^/]+)$/);
+  if (collectionMatch) {
+    return handleCollectionPath(request, collectionMatch[1]);
+  }
+
+  return NextResponse.next();
+}
+
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*'],
+  matcher: ['/admin/:path*', '/api/admin/:path*', '/', '/product/:path*', '/collections/:path*'],
 };

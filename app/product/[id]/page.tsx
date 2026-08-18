@@ -29,6 +29,7 @@ import { getThumbUrl } from "@/app/utils/imageThumb";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
 import { productHref, productIdFromParam, categoryHref } from "@/app/utils/slug";
+import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 import { permanentRedirect } from "next/navigation";
 
 // Pre-renders every product page at build time so visits serve a cached
@@ -124,7 +125,11 @@ export async function generateMetadata({
     openGraph: {
       title: product.name,
       description,
-      images: product.image_url ? [{ url: product.image_url }] : undefined,
+      // Falls back to the site's default (see DEFAULT_OG_IMAGE) rather than
+      // omitting images -- a page-level "openGraph" fully replaces the root
+      // layout's, it doesn't merge into it, so leaving this undefined would
+      // mean no preview image at all instead of falling through.
+      images: [product.image_url ? { url: product.image_url } : DEFAULT_OG_IMAGE],
     },
   };
 }

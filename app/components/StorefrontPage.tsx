@@ -28,6 +28,7 @@ import {
   getCategoryImage,
 } from "@/app/utils/storeQueries";
 import { productHref, categoryHref } from "@/app/utils/slug";
+import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 
 export interface StorefrontFilters {
   page?: string;
@@ -40,10 +41,25 @@ export interface StorefrontFilters {
 export async function getStorefrontMetadata(category: string): Promise<Metadata> {
   const content = category ? getCategoryContent(category) : null;
   const canonical = categoryHref(category);
-  // Only category pages get an OG image here -- the homepage has no single
-  // representative product to show and isn't part of this recommendation.
-  const image = category ? await getCategoryImage(category) : null;
-  const openGraphImages = image ? [{ url: image }] : undefined;
+
+  // The homepage sets no openGraph of its own at all, so it inherits the
+  // root layout's (title/siteName/type/default image) untouched -- there's
+  // no single representative product to show instead.
+  if (!category) {
+    return {
+      title: "TOHFA | Luxury Gift Paradise & Handicrafts",
+      description:
+        "Exquisite handcrafted brass decor, vintage utensils, and premium corporate gifting items -- plus pocket temples, pan stands, board games, polyresin decor, and UV resin earrings.",
+      alternates: { canonical },
+    };
+  }
+
+  // Metadata merges shallowly between layout and page (see DEFAULT_OG_IMAGE's
+  // comment) -- a category page below always sets its own "openGraph", so it
+  // must supply a real image itself rather than counting on the layout's
+  // default to show through.
+  const categoryImage = await getCategoryImage(category);
+  const images = [categoryImage ? { url: categoryImage } : DEFAULT_OG_IMAGE];
 
   if (!content) {
     return {
@@ -51,7 +67,7 @@ export async function getStorefrontMetadata(category: string): Promise<Metadata>
       description:
         "Exquisite handcrafted brass decor, vintage utensils, and premium corporate gifting items -- plus pocket temples, pan stands, board games, polyresin decor, and UV resin earrings.",
       alternates: { canonical },
-      ...(openGraphImages ? { openGraph: { images: openGraphImages } } : {}),
+      openGraph: { images },
     };
   }
 
@@ -62,7 +78,7 @@ export async function getStorefrontMetadata(category: string): Promise<Metadata>
     openGraph: {
       title: content.metaTitle,
       description: content.metaDescription,
-      images: openGraphImages,
+      images,
     },
   };
 }
