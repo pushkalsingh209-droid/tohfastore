@@ -3,7 +3,19 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import StorefrontPage, { getStorefrontMetadata, type StorefrontFilters } from "@/app/components/StorefrontPage";
 import { getAllCategoryNames } from "@/app/utils/storeQueries";
-import { categoryHref, findCategoryBySlug } from "@/app/utils/slug";
+import { categoryHref, findCategoryBySlug, slugify } from "@/app/utils/slug";
+
+// This route also reads searchParams (page/sort/label/stock), which forces
+// every render dynamic regardless of this list -- Next has no partial-
+// prerendering here without opting into Cache Components (a bigger,
+// separate config change; see next.config.ts). So this doesn't make the
+// route static, but it does mean a category rename/deletion shows up as a
+// build failure instead of silently 404ing in production, and the very
+// first visitor after a deploy doesn't pay for an extra resolve step.
+export async function generateStaticParams() {
+  const allCategoryNames = await getAllCategoryNames();
+  return allCategoryNames.map((name) => ({ category: slugify(name) }));
+}
 
 export async function generateMetadata({
   params,

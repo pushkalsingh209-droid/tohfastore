@@ -11,6 +11,7 @@ import BestsellersStrip from "@/app/components/BestsellersStrip";
 import HeroProductRotator from "@/app/components/HeroProductRotator";
 import PromoBanner from "@/app/components/PromoBanner";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
+import Breadcrumbs from "@/app/components/Breadcrumbs";
 import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
 import { getCategoryContent } from "@/app/utils/categoryContent";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
@@ -24,6 +25,7 @@ import {
   getSiteSettings,
   getCategoryDefaultPageSize,
   getActiveLabelNames,
+  getCategoryImage,
 } from "@/app/utils/storeQueries";
 import { productHref, categoryHref } from "@/app/utils/slug";
 
@@ -38,6 +40,10 @@ export interface StorefrontFilters {
 export async function getStorefrontMetadata(category: string): Promise<Metadata> {
   const content = category ? getCategoryContent(category) : null;
   const canonical = categoryHref(category);
+  // Only category pages get an OG image here -- the homepage has no single
+  // representative product to show and isn't part of this recommendation.
+  const image = category ? await getCategoryImage(category) : null;
+  const openGraphImages = image ? [{ url: image }] : undefined;
 
   if (!content) {
     return {
@@ -45,6 +51,7 @@ export async function getStorefrontMetadata(category: string): Promise<Metadata>
       description:
         "Exquisite handcrafted brass decor, vintage utensils, and premium corporate gifting items -- plus pocket temples, pan stands, board games, polyresin decor, and UV resin earrings.",
       alternates: { canonical },
+      ...(openGraphImages ? { openGraph: { images: openGraphImages } } : {}),
     };
   }
 
@@ -55,6 +62,7 @@ export async function getStorefrontMetadata(category: string): Promise<Metadata>
     openGraph: {
       title: content.metaTitle,
       description: content.metaDescription,
+      images: openGraphImages,
     },
   };
 }
@@ -115,6 +123,7 @@ export default async function StorefrontPage({
       position: index + 1,
       url: `https://tohfaonline.com${productHref(product)}`,
       name: product.name,
+      image: product.image_url || undefined,
     })),
   };
 
@@ -226,6 +235,12 @@ export default async function StorefrontPage({
           </div>
           <div className="absolute inset-0 opacity-[0.14] bg-[radial-gradient(#d97706_1px,transparent_1px)] [background-size:16px_16px]"></div>
         </section>
+
+        {category && (
+          <div className="max-w-7xl mx-auto px-6 pt-6">
+            <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: categoryContent?.heading || category }]} />
+          </div>
+        )}
 
         <CategorySlider items={categorySliderItems} priorityFirst />
 

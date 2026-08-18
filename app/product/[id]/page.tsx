@@ -12,6 +12,7 @@ import ShareButtons from "@/app/components/ShareButtons";
 import ReviewForm from "@/app/components/ReviewForm";
 import RecordProductView from "@/app/components/RecordProductView";
 import BackToCollectionsLink from "@/app/components/BackToCollectionsLink";
+import Breadcrumbs from "@/app/components/Breadcrumbs";
 import TrustBadges from "@/app/components/TrustBadges";
 import StockStatusBadge from "@/app/components/StockStatusBadge";
 import RecentViewersNote from "@/app/components/RecentViewersNote";
@@ -266,6 +267,13 @@ export default async function ProductDetailPage({
           </div>
         ) : (
           <>
+          <Breadcrumbs
+            items={[
+              { label: "Home", href: "/" },
+              ...(product.category ? [{ label: product.category, href: categoryHref(product.category) }] : []),
+              { label: product.name },
+            ]}
+          />
           <RecordProductView id={product.id} name={product.name} price={product.price} image_url={product.image_url} thumb_url={product.thumb_url} category={product.category} />
           <div className="flex flex-col md:flex-row md:items-start gap-8 md:gap-12">
             {/* Gallery */}

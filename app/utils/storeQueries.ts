@@ -44,6 +44,34 @@ export const getAllCategoryNames = unstable_cache(
   { revalidate: 60 }
 );
 
+// One representative in-stock product image per category, for the category
+// page's Open Graph preview image (e.g. sharing a /collections/<slug> link
+// on WhatsApp). Deterministic (admin's display_order, not re-rolled) --
+// unlike categorySliderItems' per-request random pick, a share preview
+// shouldn't change every time the link is unfurled.
+export const getCategoryImage = unstable_cache(
+  async (categoryName: string): Promise<string | null> => {
+    try {
+      if (!categoryName) return null;
+      const { data, error } = await supabase
+        .from("products")
+        .select("image_url")
+        .eq("category", categoryName)
+        .gt("inventory", 0)
+        .not("image_url", "is", null)
+        .order("display_order", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data.image_url || null;
+    } catch {
+      return null;
+    }
+  },
+  ["category-image"],
+  { revalidate: 60 }
+);
+
 // Categories an admin has marked "hidden from home" -- their products drop
 // out of the homepage's default (unfiltered) view but stay reachable by
 // selecting the category directly.
