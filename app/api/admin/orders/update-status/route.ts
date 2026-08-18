@@ -1,6 +1,7 @@
 // app/api/admin/orders/update-status/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { productHref } from "@/app/utils/slug";
 
 const VALID_STATUSES = ["processing", "shipped", "delivered", "cancelled"];
 
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
           // message stays short enough to actually read on WhatsApp.
           const firstItem = Array.isArray(order.items) ? order.items[0] : null;
           const reviewLine = firstItem?.id
-            ? `\n\nWe'd love your feedback! Leave a review here: https://tohfaonline.com/product/${firstItem.id}`
+            ? `\n\nWe'd love your feedback! Leave a review here: https://tohfaonline.com${productHref(firstItem)}`
             : "";
 
           const message =

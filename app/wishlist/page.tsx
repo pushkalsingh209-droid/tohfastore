@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useWishlist } from "@/app/context/WishlistContext";
 import { useCart } from "@/app/context/CartContext";
 import PriceDisplay from "@/app/components/PriceDisplay";
+import { productHref } from "@/app/utils/slug";
 
 export default function WishlistPage() {
   const { wishlist, removeFromWishlist } = useWishlist();
@@ -28,11 +29,11 @@ export default function WishlistPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
             {wishlist.map((product: any) => (
               <div key={product.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden shadow-sm">
-                <Link href={`/product/${product.id}`} className="block relative w-full h-32 sm:h-36 bg-stone-50">
+                <Link href={productHref(product)} className="block relative w-full h-32 sm:h-36 bg-stone-50">
                   <Image src={product.thumb_url || product.image_url} alt={product.name} fill sizes="180px" className="object-cover" />
                 </Link>
                 <div className="p-3">
-                  <Link href={`/product/${product.id}`}>
+                  <Link href={productHref(product)}>
                     <h3 className="font-serif text-xs sm:text-sm text-stone-900 dark:text-stone-100 line-clamp-2 mb-1 hover:text-amber-700 dark:hover:text-amber-500 transition">
                       {product.name}
                     </h3>

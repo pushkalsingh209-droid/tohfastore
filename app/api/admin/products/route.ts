@@ -4,6 +4,7 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { attachThumbUrls } from "@/app/utils/imageThumb";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import { productHref } from "@/app/utils/slug";
 
 // Some Supabase projects may not have every column yet (added by a later
 // migration the admin hasn't run) -- these routes degrade gracefully by
@@ -209,7 +210,7 @@ export async function PATCH(req: Request) {
           try {
             await sendWhatsappMessage(
               sub.phone,
-              `Good news! "${data[0].name}" is back in stock on TOHFA -- https://tohfaonline.com/product/${id}`
+              `Good news! "${data[0].name}" is back in stock on TOHFA -- https://tohfaonline.com${productHref(data[0])}`
             );
           } catch (waError) {
             console.error(`Back-in-stock notify failed for subscription ${sub.id}:`, waError);

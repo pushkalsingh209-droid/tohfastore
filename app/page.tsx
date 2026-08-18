@@ -20,6 +20,7 @@ import {
   getCategoryDefaultPageSize,
   getActiveLabelNames,
 } from "@/app/utils/storeQueries";
+import { productHref } from "@/app/utils/slug";
 
 // The page still renders per-request (it reads searchParams for pagination/
 // category/sort), but the expensive Supabase reads behind it are cached via
@@ -111,7 +112,7 @@ export default async function StorefrontHome({
     itemListElement: products.map((product: any, index: number) => ({
       "@type": "ListItem",
       position: index + 1,
-      url: `https://tohfaonline.com/product/${product.id}`,
+      url: `https://tohfaonline.com${productHref(product)}`,
       name: product.name,
     })),
   };

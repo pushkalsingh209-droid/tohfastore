@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getRecentlyViewed, type RecentlyViewedProduct } from "@/app/utils/recentlyViewed";
 import PriceDisplay from "@/app/components/PriceDisplay";
+import { productHref } from "@/app/utils/slug";
 
 export default function RecentlyViewedStrip({ excludeId }: { excludeId?: string | number }) {
   const [items, setItems] = useState<RecentlyViewedProduct[]>([]);
@@ -25,7 +26,7 @@ export default function RecentlyViewedStrip({ excludeId }: { excludeId?: string 
         {items.map((product) => (
           <Link
             key={product.id}
-            href={`/product/${product.id}`}
+            href={productHref(product)}
             className="flex-shrink-0 w-32 sm:w-36 group"
           >
             <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 bg-white">

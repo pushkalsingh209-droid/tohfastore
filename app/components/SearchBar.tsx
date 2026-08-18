@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { getAutocompleteMatches, getSuggestions, SearchableProduct } from "@/app/utils/searchProducts";
 import { detectLanguageSwitchCommand, setPageLanguage } from "@/app/utils/googleTranslate";
+import { productHref } from "@/app/utils/slug";
 
 // BCP-47 speech-recognition locales Chrome/Edge support for major Indian
 // languages -- lets a visitor speak their search (or a "switch to Hindi"
@@ -120,11 +121,11 @@ export default function SearchBar() {
   const suggestions = noExactMatches ? getSuggestions(products, query) : [];
   const results = noExactMatches ? suggestions : matches;
 
-  function goToProduct(id: string) {
+  function goToProduct(product: SearchableProduct) {
     setQuery("");
     setIsOpen(false);
     setActiveIndex(-1);
-    router.push(`/product/${id}`);
+    router.push(productHref(product));
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -139,7 +140,7 @@ export default function SearchBar() {
     } else if (e.key === "Enter") {
       e.preventDefault();
       const target = results[activeIndex >= 0 ? activeIndex : 0];
-      if (target) goToProduct(target.id);
+      if (target) goToProduct(target);
     } else if (e.key === "Escape") {
       setIsOpen(false);
     }
@@ -232,7 +233,7 @@ export default function SearchBar() {
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => goToProduct(p.id)}
+                  onClick={() => goToProduct(p)}
                   className={`block w-full text-left px-4 py-2.5 text-sm transition ${
                     idx === activeIndex ? "bg-amber-50 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400" : "hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300"
                   }`}

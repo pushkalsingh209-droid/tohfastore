@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { BestsellerItem } from "@/app/utils/storeQueries";
 import PriceDisplay from "@/app/components/PriceDisplay";
+import { productHref } from "@/app/utils/slug";
 
 // Lightweight cards (not the full ProductCard with its own gallery/cart
 // button) so this reads as a quick "what's trending" rail rather than a
@@ -31,7 +32,7 @@ export default function BestsellersStrip({
         {items.map((product, index) => (
           <Link
             key={product.id}
-            href={`/product/${product.id}`}
+            href={productHref(product)}
             className="group flex-shrink-0 w-36 sm:w-44"
           >
             <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 bg-white">

@@ -7,6 +7,7 @@ import { isValidPaymentSignature } from "@/app/utils/razorpaySignature";
 import { calculateOrderGstBreakdown, BUSINESS_GSTIN } from "@/app/utils/gst";
 import { calculateSlashedPrice } from "@/app/utils/pricing";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import { productHref } from "@/app/utils/slug";
 
 const CONTACT_INBOX = "contact@tohfaonline.com";
 
@@ -363,7 +364,7 @@ function escapeHtml(value: unknown): string {
 function buildItemRowsHtml(items: any[], categoryDiscounts?: Record<string, number>): string {
   return items
     .map((item) => {
-      const productUrl = `${SITE_URL}/product/${item.id}`;
+      const productUrl = `${SITE_URL}${productHref(item)}`;
       const lineTotalNum = Number(item.price) * Number(item.quantity);
       const lineTotal = lineTotalNum.toLocaleString("en-IN");
       const slashed = categoryDiscounts ? calculateSlashedPrice(lineTotalNum, categoryDiscounts[item.category]) : null;

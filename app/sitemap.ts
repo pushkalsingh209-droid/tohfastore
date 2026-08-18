@@ -2,6 +2,7 @@
 import type { MetadataRoute } from "next";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { CATEGORY_CONTENT } from "@/app/utils/categoryContent";
+import { productHref } from "@/app/utils/slug";
 
 const SITE_URL = "https://tohfaonline.com";
 
@@ -26,10 +27,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let productEntries: MetadataRoute.Sitemap = [];
   try {
-    const { data, error } = await supabase.from("products").select("id, created_at");
+    const { data, error } = await supabase.from("products").select("id, name, created_at");
     if (!error && data) {
       productEntries = data.map((product: any) => ({
-        url: `${SITE_URL}/product/${product.id}`,
+        url: `${SITE_URL}${productHref(product)}`,
         lastModified: product.created_at ? new Date(product.created_at) : new Date(),
         changeFrequency: "weekly",
         priority: 0.8,

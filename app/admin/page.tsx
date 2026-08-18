@@ -1,7 +1,8 @@
 // app/admin/page.tsx
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import Image from "next/image";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { getAutocompleteMatches, getSuggestions } from "@/app/utils/searchProducts";
 import Pagination from "@/app/components/Pagination";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
@@ -42,6 +43,13 @@ async function apiRequest(url: string, options?: RequestInit) {
 // dropdown options in the orders table) -- "Processing" is the label for
 // what's effectively "received, not yet shipped"; there's no separate
 // "received" status in the data model.
+// Mirrors the tab keys used by the section tabs below and by the "?tab="
+// URL param that keeps them in sync -- so a shared/bookmarked/refreshed
+// admin link lands back on the same section instead of always resetting to
+// Overview.
+const ADMIN_TABS = ["overview", "products", "orders", "coupons", "settings", "reviews", "security"] as const;
+type AdminTab = (typeof ADMIN_TABS)[number];
+
 const ORDER_STATUS_TABS: { key: string; label: string }[] = [
   { key: "all", label: "All" },
   { key: "processing", label: "Processing" },
@@ -117,7 +125,10 @@ function loadStoredDimensionInputUnit(): DimensionUnit {
   }
 }
 
-export default function AdminDashboard() {
+function AdminDashboard() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -274,7 +285,25 @@ export default function AdminDashboard() {
   const [productPageSize, setProductPageSize] = useState(10);
   const [orderPage, setOrderPage] = useState(1);
   const [orderPageSize, setOrderPageSize] = useState(10);
-  const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "coupons" | "settings" | "reviews" | "security">("overview");
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTabState] = useState<AdminTab>(
+    ADMIN_TABS.includes(tabParam as AdminTab) ? (tabParam as AdminTab) : "overview"
+  );
+  // Keeps activeTab following the URL (e.g. browser back/forward between
+  // tabs) instead of only the reverse -- setActiveTab below is what pushes
+  // a tab switch out to the URL in the first place.
+  useEffect(() => {
+    const urlTab = ADMIN_TABS.includes(tabParam as AdminTab) ? (tabParam as AdminTab) : "overview";
+    setActiveTabState((current) => (current === urlTab ? current : urlTab));
+  }, [tabParam]);
+  function setActiveTab(tab: AdminTab) {
+    setActiveTabState(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "overview") params.delete("tab");
+    else params.set("tab", tab);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
 
   const [loginAttempts, setLoginAttempts] = useState<any[]>([]);
   const [backupCodesRemaining, setBackupCodesRemaining] = useState<number | null>(null);
@@ -1441,7 +1470,7 @@ export default function AdminDashboard() {
             <button
               key={tab.key}
               type="button"
-              onClick={() => setActiveTab(tab.key as typeof activeTab)}
+              onClick={() => setActiveTab(tab.key as AdminTab)}
               className={`sm:flex-shrink-0 px-3 py-2.5 rounded text-[11px] sm:text-xs uppercase tracking-wider font-semibold text-center transition ${
                 activeTab === tab.key
                   ? "bg-amber-600 text-white shadow-sm"
@@ -3565,5 +3594,13 @@ export default function AdminDashboard() {
 
       </div>
     </div>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminDashboard />
+    </Suspense>
   );
 }

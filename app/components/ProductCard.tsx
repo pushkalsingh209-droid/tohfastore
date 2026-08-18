@@ -16,6 +16,7 @@ import { formatProductAttributesLine } from "@/app/utils/productAttributes";
 import { useDefaultWhatsappNumber } from "@/app/context/DefaultWhatsappNumberContext";
 import { useChatLabels } from "@/app/context/ChatLabelSettingContext";
 import StockStatusBadge from "@/app/components/StockStatusBadge";
+import { productHref } from "@/app/utils/slug";
 
 const DOUBLE_TAP_WINDOW_MS = 350;
 const LOW_STOCK_THRESHOLD = 3;
@@ -109,7 +110,7 @@ export default function ProductCard({ product, priority = false }: { product: an
     <div className={`card-flip-inner ${cardFlipped ? "is-flipped" : ""} ${cardFlip3dLive ? "flip-3d-live" : ""}`}>
     <div className="card-flip-face-front bg-white dark:bg-stone-900 rounded-lg overflow-hidden group shadow-sm hover:shadow-md dark:shadow-stone-950/50 transition duration-300">
       <Link
-        href={`/product/${product.id}`}
+        href={productHref(product)}
         className="block relative touch-manipulation"
         onMouseEnter={() => isDesktop && setActive(true)}
         onMouseLeave={() => isDesktop && setActive(false)}
@@ -214,7 +215,7 @@ export default function ProductCard({ product, priority = false }: { product: an
         </a>
 
         <Link
-          href={`/product/${product.id}`}
+          href={productHref(product)}
           className="block mt-3 text-[11px] uppercase tracking-wider font-semibold text-amber-700 hover:text-amber-800 transition text-center"
         >
           View details &rsaquo;
@@ -320,7 +321,7 @@ export default function ProductCard({ product, priority = false }: { product: an
         )}
 
         <Link
-          href={`/product/${product.id}`}
+          href={productHref(product)}
           className="block text-center text-[11px] uppercase tracking-wider font-semibold text-amber-700 hover:text-amber-800 dark:text-amber-500 dark:hover:text-amber-400 transition"
         >
           View Full Details &rsaquo;

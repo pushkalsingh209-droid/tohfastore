@@ -27,6 +27,8 @@ import { getRelatedProducts, getProductUnitSettings, getDefaultWhatsappNumber, g
 import { getThumbUrl } from "@/app/utils/imageThumb";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
+import { productHref, productIdFromParam } from "@/app/utils/slug";
+import { permanentRedirect } from "next/navigation";
 
 // Pre-renders every product page at build time so visits serve a cached
 // page instead of paying a fresh server render each time -- matches the 30s
@@ -35,8 +37,8 @@ import { formatProductAttributesLine } from "@/app/utils/productAttributes";
 // last build) still renders on-demand and gets cached from then on, since
 // dynamicParams defaults to true.
 export async function generateStaticParams() {
-  const { data } = await supabase.from("products").select("id");
-  return (data || []).map((product) => ({ id: String(product.id) }));
+  const { data } = await supabase.from("products").select("id, name");
+  return (data || []).map((product) => ({ id: productHref(product).replace("/product/", "") }));
 }
 
 export const revalidate = 30;
@@ -104,7 +106,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const product = await getProduct(id);
+  const product = await getProduct(productIdFromParam(id));
 
   if (!product) {
     return { title: "Artifact Not Found | TOHFA" };
@@ -117,7 +119,7 @@ export async function generateMetadata({
   return {
     title: `${product.name} | TOHFA`,
     description,
-    alternates: { canonical: `/product/${id}` },
+    alternates: { canonical: productHref(product) },
     openGraph: {
       title: product.name,
       description,
@@ -132,7 +134,18 @@ export default async function ProductDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = await getProduct(id);
+  const product = await getProduct(productIdFromParam(id));
+
+  // Canonicalizes old/bare/mistyped links (e.g. "/product/123" or a stale
+  // slug after the product was renamed) onto the current "id-slug" URL, so
+  // there's exactly one indexable URL per product instead of the same page
+  // serving under several.
+  if (product) {
+    const canonical = productHref(product);
+    if (`/product/${id}` !== canonical) {
+      permanentRedirect(canonical);
+    }
+  }
   // getCategorySliderItems doesn't depend on the product at all, and the
   // other two only need its id/category (not its full shape) -- running
   // them in parallel instead of sequentially awaiting each in turn shaves
@@ -183,7 +196,7 @@ export default async function ProductDetailPage({
           : {}),
         offers: {
           "@type": "Offer",
-          url: `https://tohfaonline.com/product/${product.id}`,
+          url: `https://tohfaonline.com${productHref(product)}`,
           priceCurrency: "INR",
           price: Number(product.price),
           availability: outOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
@@ -211,7 +224,7 @@ export default async function ProductDetailPage({
             "@type": "ListItem",
             position: product.category ? 3 : 2,
             name: product.name,
-            item: `https://tohfaonline.com/product/${product.id}`,
+            item: `https://tohfaonline.com${productHref(product)}`,
           },
         ],
       }
