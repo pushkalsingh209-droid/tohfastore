@@ -473,6 +473,9 @@ export default function CartDrawer() {
       // phone + whatsappVerificationToken are also independently re-checked
       // there against the OTP verification record (see /api/razorpay and
       // app/utils/whatsappOtp.ts) -- not just trusted because this UI says so.
+      // customerName/shippingAddress are pinned into the Razorpay order's
+      // own notes there too, so the webhook has them regardless of which
+      // path delivers the payment-captured event (see the handler below).
       const res = await fetch("/api/razorpay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -481,6 +484,14 @@ export default function CartDrawer() {
           couponCode: appliedCoupon?.code || undefined,
           phone: cleanPhone,
           whatsappVerificationToken: otpVerificationToken,
+          customerName,
+          shippingAddress: {
+            line: addressLine.trim(),
+            landmark: landmark.trim(),
+            city: city.trim(),
+            state: addressState,
+            pincode,
+          },
         }),
       });
       
@@ -516,15 +527,25 @@ export default function CartDrawer() {
         description: "Premium Brass Handicrafts & Luxury Gifts",
         order_id: data.orderId,
         handler: function (response: any) {
-          // Direct Backup Method -- fire-and-forget. /success reads the
+          // Fast-path only -- this is no longer the only thing that records
+          // the order. Razorpay's own Dashboard webhook (server-to-server,
+          // see app/api/razorpay-webhook/route.ts) delivers the same
+          // payment.captured event independently, with retries, so a
+          // customer closing this tab or losing signal right after paying
+          // no longer means the order silently never gets recorded. This
+          // call just gets *this* customer their confirmation sooner than
+          // waiting on Razorpay's own webhook delivery. /success reads the
           // order purely from sessionStorage (stashed right below, from
           // data already on hand client-side), so nothing on that page
-          // actually depends on this call having finished. Not awaiting it
-          // keeps the customer from waiting on the DB insert + stock
-          // deduction + WhatsApp/email chain this triggers server-side
-          // between "payment succeeds" and landing on the confirmation
-          // page -- the client-side navigation below doesn't cancel an
-          // in-flight fetch the way a full page unload would.
+          // actually depends on this call having finished -- not awaiting it
+          // avoids blocking the redirect on the DB insert + stock deduction
+          // + WhatsApp/email chain this triggers server-side.
+          //
+          // Only the IDs travel through this body -- everything else
+          // (items, price, coupon, customer name, shipping address) is read
+          // server-side from the real Razorpay order notes set in
+          // /api/razorpay, identically to how the Dashboard webhook reads
+          // them, so both paths produce the exact same order record.
           fetch("/api/razorpay-webhook", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -533,36 +554,8 @@ export default function CartDrawer() {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              payload: {
-                payment: {
-                  entity: {
-                    order_id: data.orderId,
-                    id: response.razorpay_payment_id,
-                    amount: data.amount,
-                    email: customerEmail,
-                    contact: cleanPhone // Pass perfectly clean digits array forward
-                  }
-                },
-                // Only display-only fields travel through this body -- items,
-                // price, and coupon are read server-side from the real
-                // Razorpay order notes set in /api/razorpay, not from here.
-                order: {
-                  entity: {
-                    notes: {
-                      customer_name: customerName,
-                      shipping_address: {
-                        line: addressLine.trim(),
-                        landmark: landmark.trim(),
-                        city: city.trim(),
-                        state: addressState,
-                        pincode,
-                      }
-                    }
-                  }
-                }
-              }
             }),
-          }).catch((e) => console.error("Direct backend log pipeline tracing bottleneck:", e));
+          }).catch((e) => console.error("Fast-path order confirmation call failed (Razorpay's own webhook will still deliver it):", e));
 
           try {
             sessionStorage.setItem(

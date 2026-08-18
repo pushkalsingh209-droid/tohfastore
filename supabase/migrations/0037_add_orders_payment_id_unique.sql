@@ -1,0 +1,13 @@
+-- Run this in the Supabase SQL editor.
+-- Now that /api/razorpay-webhook can legitimately be called twice for the
+-- same payment (Razorpay's own server-to-server webhook AND the client's
+-- fast-path fire-and-forget call, see app/api/razorpay-webhook/route.ts),
+-- the existing SELECT-then-INSERT idempotency guard isn't atomic -- two
+-- near-simultaneous calls could both pass the check and insert duplicate
+-- orders, double-deducting stock. A real unique constraint closes that race
+-- at the database level regardless of application-code timing.
+--
+-- If this fails with a duplicate-key error, there are already two or more
+-- orders sharing a payment_id -- find and resolve them first with:
+--   select payment_id, count(*) from orders group by payment_id having count(*) > 1;
+alter table orders add constraint orders_payment_id_key unique (payment_id);

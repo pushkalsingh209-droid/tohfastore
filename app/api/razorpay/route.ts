@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { items, couponCode, phone, whatsappVerificationToken } = await req.json();
+    const { items, couponCode, phone, whatsappVerificationToken, customerName, shippingAddress } = await req.json();
 
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Your bag is empty." }, { status: 400 });
@@ -168,6 +168,20 @@ export async function POST(req: Request) {
         // isn't necessarily the number that was actually verified. See
         // app/utils/whatsappOtp.ts.
         verifiedPhone: normalizePhoneForRecord(phone),
+        // Pinned here (not just sent in the client's post-payment webhook
+        // call) so a genuine Razorpay Dashboard webhook -- which only ever
+        // knows the payment/order IDs, not anything from that client call
+        // -- can independently fetch the full order details straight from
+        // Razorpay's own records via razorpay.orders.fetch(). Display-only,
+        // like the rest of notes; never used for pricing.
+        customerName: String(customerName || "").trim().slice(0, 200),
+        shippingAddress: JSON.stringify({
+          line: String(shippingAddress?.line || "").trim().slice(0, 300),
+          landmark: String(shippingAddress?.landmark || "").trim().slice(0, 200),
+          city: String(shippingAddress?.city || "").trim().slice(0, 100),
+          state: String(shippingAddress?.state || "").trim().slice(0, 100),
+          pincode: String(shippingAddress?.pincode || "").trim().slice(0, 10),
+        }),
       }
     };
 
