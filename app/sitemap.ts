@@ -1,8 +1,8 @@
 // app/sitemap.ts
 import type { MetadataRoute } from "next";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
-import { CATEGORY_CONTENT } from "@/app/utils/categoryContent";
-import { productHref } from "@/app/utils/slug";
+import { getAllCategoryNames } from "@/app/utils/storeQueries";
+import { productHref, categoryHref } from "@/app/utils/slug";
 
 const SITE_URL = "https://tohfaonline.com";
 
@@ -17,9 +17,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // One URL per category so each gets crawled and indexed on its own --
-  // matches the ?category= filter every category link on the site uses.
-  const categoryEntries: MetadataRoute.Sitemap = Object.keys(CATEGORY_CONTENT).map((name) => ({
-    url: `${SITE_URL}/?category=${encodeURIComponent(name)}`,
+  // every admin-managed category, not just the ones with hand-written SEO
+  // copy (see categoryContent.ts), since every category still has its own
+  // real /collections/<slug> URL.
+  const allCategoryNames = await getAllCategoryNames();
+  const categoryEntries: MetadataRoute.Sitemap = allCategoryNames.map((name) => ({
+    url: `${SITE_URL}${categoryHref(name)}`,
     lastModified: new Date(),
     changeFrequency: "weekly",
     priority: 0.7,

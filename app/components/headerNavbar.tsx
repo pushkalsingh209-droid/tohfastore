@@ -10,6 +10,7 @@ import SearchBar from "@/app/components/SearchBar";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import PageNavLinks from "@/app/components/PageNavLinks";
 import GoogleTranslateWidget from "@/app/components/GoogleTranslateWidget";
+import { categoryHref } from "@/app/utils/slug";
 
 export default function HeaderNavbar() {
   const { setIsOpen, cartCount } = useCart();
@@ -48,7 +49,7 @@ export default function HeaderNavbar() {
     e.preventDefault();
     setCategoryMenuOpen(false);
     runTransition(() => {
-      router.push(`/?category=${encodeURIComponent(name)}`, { scroll: false });
+      router.push(categoryHref(name), { scroll: false });
     });
   }
 
@@ -237,7 +238,7 @@ export default function HeaderNavbar() {
               {menuCategories.map((name) => (
                 <a
                   key={name}
-                  href={`/?category=${encodeURIComponent(name)}`}
+                  href={categoryHref(name)}
                   onClick={(e) => goToCategory(e, name)}
                   className="py-2 sm:py-0 hover:text-amber-700 dark:hover:text-amber-500 transition"
                 >

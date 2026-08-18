@@ -27,7 +27,7 @@ import { getRelatedProducts, getProductUnitSettings, getDefaultWhatsappNumber, g
 import { getThumbUrl } from "@/app/utils/imageThumb";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
-import { productHref, productIdFromParam } from "@/app/utils/slug";
+import { productHref, productIdFromParam, categoryHref } from "@/app/utils/slug";
 import { permanentRedirect } from "next/navigation";
 
 // Pre-renders every product page at build time so visits serve a cached
@@ -216,7 +216,7 @@ export default async function ProductDetailPage({
                   "@type": "ListItem",
                   position: 2,
                   name: product.category,
-                  item: `https://tohfaonline.com/?category=${encodeURIComponent(product.category)}`,
+                  item: `https://tohfaonline.com${categoryHref(product.category)}`,
                 },
               ]
             : []),

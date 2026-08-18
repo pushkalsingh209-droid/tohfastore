@@ -1,7 +1,7 @@
 // app/utils/categoryContent.ts
 // Hand-written copy per category, keyed to the exact category name stored in
-// Supabase. Used to give each category's filtered homepage view (e.g.
-// /?category=Pocket+Temples) its own H1, intro copy, and SEO metadata --
+// Supabase. Used to give each category's own page (e.g.
+// /collections/pocket-temples) its own H1, intro copy, and SEO metadata --
 // distinct content per category avoids duplicate-content SEO issues and
 // gives each product line its own keyword coverage.
 //

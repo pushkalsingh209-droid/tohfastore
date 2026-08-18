@@ -7,6 +7,7 @@ import TempleCardFrame from "@/app/components/TempleCardFrame";
 import CatalogPagination from "@/app/components/CatalogPagination";
 import CatalogFilters from "@/app/components/CatalogFilters";
 import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
+import { categoryHref } from "@/app/utils/slug";
 
 // How far above the viewport a card needs to have scrolled (in px) before
 // its contents are actually unmounted, and how early (also in px) they get
@@ -199,13 +200,13 @@ export default function CatalogSection({
 
   // Shared by the Category/Sort dropdowns so switching either one gets the
   // exact same in-place loading overlay as paging through results, instead
-  // of a bare navigation with no feedback.
+  // of a bare navigation with no feedback. Category lives in the URL path
+  // (/collections/<slug>, or "/" for none) rather than a query param, so
+  // changing it means navigating to a different pathname -- everything else
+  // (label/sort/stock/page) stays a query param on top of that.
   function handleFilterChange(next: { category?: string; label?: string; sort?: string; inStock?: boolean }) {
     const params = new URLSearchParams(searchParams.toString());
-    if (next.category !== undefined) {
-      if (next.category) params.set("category", next.category);
-      else params.delete("category");
-    }
+    params.delete("category");
     if (next.label !== undefined) {
       if (next.label) params.set("label", next.label);
       else params.delete("label");
@@ -219,9 +220,10 @@ export default function CatalogSection({
       else params.delete("stock");
     }
     params.set("page", "1");
+    const targetPathname = next.category !== undefined ? categoryHref(next.category) : pathname;
     document.getElementById("signature-collection")?.scrollIntoView({ behavior: "auto", block: "start" });
     runTransition(() => {
-      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+      router.push(`${targetPathname}?${params.toString()}`, { scroll: false });
     });
   }
 

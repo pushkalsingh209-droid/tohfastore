@@ -82,11 +82,11 @@ function getLeadSource(): string | null {
 export default function WelcomeGaneshaPopup() {
   const pathname = usePathname();
   const router = useRouter();
-  // Category pages aren't a distinct route -- they're the same "/" pathname
-  // filtered via a ?category= query string (see CatalogSection.tsx), which
-  // usePathname() alone can't see. Including the search string here means
-  // switching categories (client-side, no full reload) re-triggers the
-  // popup too, not just a genuine pathname change.
+  // Sort/label/stock/page filters (see CatalogSection.tsx) stay query
+  // params on top of whichever pathname (/ or /collections/<slug>) is
+  // active, which usePathname() alone can't see. Including the search
+  // string here means switching one of those filters (client-side, no full
+  // reload) re-triggers the popup too, not just a genuine pathname change.
   const searchParamsKey = useSearchParams().toString();
   // Category filters/pagination run through this shared transition (see
   // CatalogLoadingOverlay) instead of a real page reload -- so

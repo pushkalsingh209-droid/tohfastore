@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
+import { categoryHref } from "@/app/utils/slug";
 
 interface CategorySliderItem {
   name: string;
@@ -95,7 +96,7 @@ export default function CategorySlider({
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     runTransition(() => {
-      router.push(`/?category=${encodeURIComponent(name)}`, { scroll: false });
+      router.push(categoryHref(name), { scroll: false });
     });
   }
 
@@ -113,7 +114,7 @@ export default function CategorySlider({
         {items.map((item, index) => (
           <a
             key={item.name}
-            href={`/?category=${encodeURIComponent(item.name)}`}
+            href={categoryHref(item.name)}
             onClick={(e) => goToCategory(e, item.name)}
             className="group relative flex-shrink-0 w-36 sm:w-44 aspect-[3/4] rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900"
           >

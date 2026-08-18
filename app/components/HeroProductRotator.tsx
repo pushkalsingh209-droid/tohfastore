@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
+import { categoryHref } from "@/app/utils/slug";
 
 interface HeroRotatorItem {
   name: string;
@@ -97,14 +98,14 @@ export default function HeroProductRotator({ items }: { items: HeroRotatorItem[]
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     runTransition(() => {
-      router.push(`/?category=${encodeURIComponent(current.name)}`, { scroll: false });
+      router.push(categoryHref(current.name), { scroll: false });
     });
   }
 
   return (
     <a
       ref={rootRef}
-      href={`/?category=${encodeURIComponent(current.name)}`}
+      href={categoryHref(current.name)}
       onClick={goToCategory}
       className="relative block"
       onMouseEnter={pause}

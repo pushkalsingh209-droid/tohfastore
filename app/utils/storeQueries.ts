@@ -27,6 +27,23 @@ function notInListLiteral(values: string[]): string {
   return `(${values.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")})`;
 }
 
+// Every admin-managed category name, shown-on-home or not -- backs
+// /collections/<slug> URL resolution (see findCategoryBySlug), which has to
+// recognize hidden categories too since they stay directly reachable.
+export const getAllCategoryNames = unstable_cache(
+  async (): Promise<string[]> => {
+    try {
+      const { data, error } = await supabase.from("categories").select("name");
+      if (error) return [];
+      return (data || []).map((row: any) => row.name).filter(Boolean);
+    } catch {
+      return [];
+    }
+  },
+  ["all-category-names"],
+  { revalidate: 60 }
+);
+
 // Categories an admin has marked "hidden from home" -- their products drop
 // out of the homepage's default (unfiltered) view but stay reachable by
 // selecting the category directly.
