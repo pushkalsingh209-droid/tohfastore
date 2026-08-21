@@ -180,8 +180,21 @@ export default function HeaderNavbar() {
                 onClick={() => setCategoryMenuOpen((open) => !open)}
                 aria-expanded={categoryMenuOpen}
                 aria-controls="category-menu-panel"
-                className="flex items-center gap-2 text-[11px] uppercase tracking-wider font-semibold text-stone-600 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition flex-shrink-0"
+                className="relative flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold text-amber-800 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 rounded pl-2.5 pr-3 py-1.5 shadow-sm transition active:scale-95 flex-shrink-0"
               >
+                {/* Everything else in this bar is plain text (contact info)
+                    or already a filled pill (Chat) -- giving this the same
+                    treatment plus a "new" dot marks it as the other thing
+                    here worth clicking, not just more static text. These
+                    categories only surface here (the admin marked them
+                    "hidden from home"), so unlike the hero's category link,
+                    this one genuinely has content nowhere else on the page. */}
+                {!categoryMenuOpen && (
+                  <>
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping motion-reduce:hidden" aria-hidden="true" />
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500" aria-hidden="true" />
+                  </>
+                )}
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   {categoryMenuOpen ? (
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
@@ -190,6 +203,9 @@ export default function HeaderNavbar() {
                   )}
                 </svg>
                 Categories
+                <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-amber-600 dark:bg-amber-500 text-white dark:text-stone-950 text-[9px] font-bold">
+                  {menuCategories.length}
+                </span>
               </button>
             ) : (
               <span />

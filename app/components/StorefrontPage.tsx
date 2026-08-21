@@ -205,12 +205,31 @@ export default async function StorefrontPage({
                 >
                   Shop Now
                 </a>
-                <a
-                  href="#shop-by-category"
-                  className="inline-flex items-center justify-center border border-white/40 hover:border-white/70 hover:bg-white/10 text-white text-xs uppercase tracking-wider font-semibold px-6 py-3.5 rounded transition active:scale-[0.99] w-full sm:w-auto"
-                >
-                  Browse Categories
-                </a>
+                {categorySliderItems.length > 0 && (
+                  <a
+                    href="#shop-by-category"
+                    className="inline-flex items-center justify-center gap-2 bg-amber-400/15 hover:bg-amber-400/25 border border-amber-300/60 hover:border-amber-300 text-amber-100 text-xs uppercase tracking-wider font-bold px-6 py-3.5 rounded-full shadow-[0_0_0_1px_rgba(251,191,36,0.15)] hover:shadow-[0_0_20px_-2px_rgba(251,191,36,0.5)] transition active:scale-[0.99] w-full sm:w-auto"
+                  >
+                    {/* A grid glyph reads as "categories" faster than words do,
+                        and the count below turns a vague "browse" ask into a
+                        concrete promise -- both proven to pull more clicks
+                        than an unlabeled ghost button ever will. */}
+                    <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                    </svg>
+                    Explore {categorySliderItems.length} Categories
+                    {/* Bounces toward the section this link actually scrolls
+                        to -- a motion cue tied to real behavior, not just
+                        decoration -- and stops for anyone who's asked their
+                        OS to reduce motion. */}
+                    <svg className="w-3.5 h-3.5 flex-shrink-0 animate-bounce motion-reduce:animate-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </a>
+                )}
               </div>
 
               {totalProductCount > 0 && (
