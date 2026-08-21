@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
   },
   coverLogo: { width: 96, height: 96, marginBottom: 20, borderRadius: 20 },
   coverBrand: { fontSize: 32, color: "#e8c468", letterSpacing: 6, fontWeight: 700 },
-  coverTagline: { fontSize: 10, color: "#d9c9ab", letterSpacing: 3, marginTop: 6, textTransform: "uppercase" },
+  coverTagline: { fontSize: 11, color: "#d9c9ab", letterSpacing: 1, marginTop: 6, fontStyle: "italic" },
   coverTitle: { fontSize: 18, color: "#f6eedd", marginTop: 40 },
   coverDate: { fontSize: 9, color: "#a98d63", marginTop: 8 },
   coverContact: {
@@ -170,7 +170,7 @@ export async function generateCatalogueBuffer(): Promise<Buffer> {
       { size: "A4", style: styles.coverPage },
       React.createElement(Image, { src: logoBuffer, style: styles.coverLogo }),
       React.createElement(Text, { style: styles.coverBrand }, "TOHFA"),
-      React.createElement(Text, { style: styles.coverTagline }, "Luxury Gift Paradise"),
+      React.createElement(Text, { style: styles.coverTagline }, "Crafted Traditions. Timeless Gifts."),
       React.createElement(Text, { style: styles.coverTitle }, "Product Catalogue"),
       React.createElement(Text, { style: styles.coverDate }, `Generated on ${generatedOn}`),
       React.createElement(

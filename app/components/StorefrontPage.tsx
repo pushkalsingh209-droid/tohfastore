@@ -47,7 +47,7 @@ export async function getStorefrontMetadata(category: string): Promise<Metadata>
   // no single representative product to show instead.
   if (!category) {
     return {
-      title: "TOHFA | Luxury Gift Paradise & Handicrafts",
+      title: "TOHFA | Crafted Traditions, Timeless Gifts",
       description:
         "Exquisite handcrafted brass decor, vintage utensils, and premium corporate gifting items -- plus pocket temples, pan stands, board games, polyresin decor, and UV resin earrings.",
       alternates: { canonical },
@@ -63,7 +63,7 @@ export async function getStorefrontMetadata(category: string): Promise<Metadata>
 
   if (!content) {
     return {
-      title: "TOHFA | Luxury Gift Paradise & Handicrafts",
+      title: "TOHFA | Crafted Traditions, Timeless Gifts",
       description:
         "Exquisite handcrafted brass decor, vintage utensils, and premium corporate gifting items -- plus pocket temples, pan stands, board games, polyresin decor, and UV resin earrings.",
       alternates: { canonical },

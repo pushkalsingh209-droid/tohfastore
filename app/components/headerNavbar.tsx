@@ -58,7 +58,7 @@ export default function HeaderNavbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 md:h-20 flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
 
         <div className="flex items-center justify-between md:justify-start md:gap-8">
-          {/* Brand mark + wordmark -- the same gift-knot mark used on the
+          {/* Brand mark + wordmark -- the same gift-box mark used on the
               favicon, WhatsApp profile photo, and order-confirmation email
               header, so the brand reads as one consistent sender across
               channels instead of looking like a different business emailed
@@ -77,17 +77,17 @@ export default function HeaderNavbar() {
                   of the darker maroon used on the favicon/email/WhatsApp
                   asset. */}
               <rect width="200" height="200" rx="40" className="fill-amber-700 dark:fill-amber-500" />
-              <path d="M 100 118 L 88 168 L 100 158 L 112 168 Z" fill="url(#brassGradHeader)" />
-              <path
-                d="M 100 112 C 60 112 45 78 72 62 C 92 50 100 78 100 100 C 100 78 108 50 128 62 C 155 78 140 112 100 112 Z"
-                fill="url(#brassGradHeader)"
-              />
-              <circle cx="100" cy="106" r="11" className="fill-amber-700 dark:fill-amber-500" />
-              <circle cx="100" cy="106" r="11" fill="none" stroke="url(#brassGradHeader)" strokeWidth="3" />
+              <rect x="48" y="100" width="104" height="62" rx="8" fill="url(#brassGradHeader)" />
+              <rect x="40" y="82" width="120" height="20" rx="8" fill="#FFF0CF" />
+              <rect x="93" y="82" width="14" height="80" className="fill-amber-700 dark:fill-amber-500" />
+              <rect x="36" y="89" width="128" height="6" className="fill-amber-700 dark:fill-amber-500" />
+              <path d="M 100 80 C 78 80 68 64 82 54 C 94 47 100 62 100 78 Z" fill="url(#brassGradHeader)" />
+              <path d="M 100 80 C 122 80 132 64 118 54 C 106 47 100 62 100 78 Z" fill="url(#brassGradHeader)" />
+              <rect x="93" y="73" width="14" height="13" rx="4" className="fill-amber-700 dark:fill-amber-500" stroke="url(#brassGradHeader)" strokeWidth="2.5" />
             </svg>
             <div className="flex flex-col">
               <span className="text-xl md:text-2xl font-serif tracking-widest text-amber-700 dark:text-amber-500 font-bold group-hover:text-amber-800 dark:group-hover:text-amber-400 transition">TOHFA</span>
-              <span className="text-[9px] md:text-[10px] uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400 -mt-1">Luxury Gift Paradise</span>
+              <span className="text-[9px] md:text-[10px] italic tracking-wide leading-tight text-stone-500 dark:text-stone-400 -mt-1 max-w-[130px] sm:max-w-none">Crafted Traditions. Timeless Gifts.</span>
             </div>
           </a>
 

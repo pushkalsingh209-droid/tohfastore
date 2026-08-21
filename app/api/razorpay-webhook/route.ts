@@ -506,7 +506,7 @@ function buildOrderEmailHtml(params: {
       <div style="background:linear-gradient(to right, #241010, #481416, #3d1113);padding:24px;text-align:center;">
         <img src="${SITE_URL}/logo-mark.png" width="44" height="44" alt="TOHFA" style="display:block;margin:0 auto 10px;border-radius:10px;" />
         <div style="color:#e8c468;font-size:20px;font-weight:bold;letter-spacing:3px;">TOHFA</div>
-        <div style="color:#d9c9ab;font-size:10px;text-transform:uppercase;letter-spacing:2px;margin-top:4px;">Luxury Gift Paradise</div>
+        <div style="color:#d9c9ab;font-size:10px;font-style:italic;letter-spacing:1px;margin-top:4px;">Crafted Traditions. Timeless Gifts.</div>
       </div>
       <div style="padding:24px;">
         <h2 style="color:#b45309;font-size:18px;margin:0 0 8px;">${escapeHtml(heading)}</h2>

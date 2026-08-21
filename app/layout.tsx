@@ -1,5 +1,5 @@
 // app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -22,18 +22,21 @@ import DeferredWidgets from "@/app/components/DeferredWidgets";
 import ResourceHints from "@/app/components/ResourceHints";
 import MetaPixel from "@/app/components/MetaPixel";
 import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
+import { APPLE_SPLASH_SCREENS } from "@/app/utils/appleSplashScreens";
 import "./globals.css"; // Imports your global styling configurations
 
 const SITE_URL = "https://tohfaonline.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Tohfa | Luxury Gift Paradise & Handicrafts",
+  title: "Tohfa | Crafted Traditions, Timeless Gifts",
   description: "Exquisite handcrafted brass decor, vintage utensils, and premium corporate gifting items.",
-  manifest: "/manifest.json",
+  // app/manifest.ts and app/apple-icon.tsx are auto-detected file
+  // conventions -- Next injects their <link> tags itself. The SVG favicon
+  // below is additive: modern browsers that support SVG favicons prefer
+  // its crisp scaling over the generated app/icon.tsx PNGs.
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/icon.svg", type: "image/svg+xml" }],
   },
   // Falls through to any page that doesn't set its own more specific
   // openGraph (a product photo, a category's representative product) --
@@ -44,6 +47,19 @@ export const metadata: Metadata = {
     type: "website",
     images: [DEFAULT_OG_IMAGE],
   },
+  appleWebApp: {
+    capable: true,
+    title: "TOHFA",
+    statusBarStyle: "black-translucent",
+    startupImage: APPLE_SPLASH_SCREENS,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#3d1113" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c0a09" },
+  ],
 };
 
 // Declares TOHFA as a real business entity (not just a page) to search
@@ -138,7 +154,8 @@ export default function RootLayout({
           {/* Storefront Global Structural Footer */}
           <footer className="bg-stone-900 dark:bg-black text-stone-400 py-12 border-t-4 border-amber-600">
             <div className="max-w-7xl mx-auto px-6 text-center text-sm">
-              <p className="font-serif text-amber-500 text-lg mb-2 tracking-wider">Tohfa Premium Handicrafts</p>
+              <p className="font-serif text-amber-500 text-lg mb-1 tracking-wider">Tohfa Premium Handicrafts</p>
+              <p className="italic text-amber-600/80 dark:text-amber-500/70 text-xs mb-3">Crafted Traditions. Timeless Gifts.</p>
               <p className="text-stone-500 text-xs font-light max-w-md mx-auto mb-4">
                 Supplying premium lightweight brassware statement designs, artifact boxes, and corporate luxury gifting models globally.
               </p>
@@ -171,7 +188,7 @@ export default function RootLayout({
               </div>
 
               <p className="text-stone-600 text-[11px] uppercase tracking-wider font-light">
-                &copy; {new Date().getFullYear()} Luxury Gift Paradise. All Rights Reserved.
+                &copy; {new Date().getFullYear()} TOHFA. All Rights Reserved.
               </p>
             </div>
           </footer>
