@@ -23,7 +23,18 @@ const LOW_STOCK_THRESHOLD = 3;
 const FLIP_HINT_SEEN_KEY = "tohfa_card_flip_seen";
 const CARD_FLIP_DURATION_MS = 1200; // matches .card-flip-inner's transition duration in globals.css
 
-export default function ProductCard({ product, priority = false }: { product: any; priority?: boolean }) {
+export default function ProductCard({
+  product,
+  priority = false,
+  liveInventory,
+}: {
+  product: any;
+  priority?: boolean;
+  // Real-time stock for this product, fetched once by the grid (see
+  // CatalogSection). Undefined until it arrives / if the fetch failed, in
+  // which case the card uses the server-rendered figure below.
+  liveInventory?: number;
+}) {
   const { addToCart, cart } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
   const [active, setActive] = useState(false);
@@ -65,7 +76,7 @@ export default function ProductCard({ product, priority = false }: { product: an
     } catch {}
   }
 
-  const stock = Number(product.inventory) || 0;
+  const stock = typeof liveInventory === "number" ? liveInventory : Number(product.inventory) || 0;
   const cartQty = cart?.find((item: any) => item.id === product.id)?.quantity || 0;
   const outOfStock = stock <= 0;
   const lowStock = !outOfStock && stock <= LOW_STOCK_THRESHOLD;
@@ -173,7 +184,7 @@ export default function ProductCard({ product, priority = false }: { product: an
         <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
           <div className="flex flex-col">
             <PriceDisplay price={Number(product.price)} category={product.category} />
-            <StockStatusBadge outOfStock={outOfStock} lowStock={lowStock} inventory={product.inventory} soldCount={product.sold_count} />
+            <StockStatusBadge outOfStock={outOfStock} lowStock={lowStock} inventory={stock} soldCount={product.sold_count} />
           </div>
           <button
             onClick={handleAddToCart}
@@ -263,7 +274,7 @@ export default function ProductCard({ product, priority = false }: { product: an
         <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
           <div className="flex flex-col">
             <PriceDisplay price={Number(product.price)} category={product.category} />
-            <StockStatusBadge outOfStock={outOfStock} lowStock={lowStock} inventory={product.inventory} soldCount={product.sold_count} />
+            <StockStatusBadge outOfStock={outOfStock} lowStock={lowStock} inventory={stock} soldCount={product.sold_count} />
           </div>
           <button
             onClick={handleAddToCart}

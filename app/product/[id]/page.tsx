@@ -14,9 +14,9 @@ import RecordProductView from "@/app/components/RecordProductView";
 import BackToCollectionsLink from "@/app/components/BackToCollectionsLink";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
 import TrustBadges from "@/app/components/TrustBadges";
-import StockStatusBadge from "@/app/components/StockStatusBadge";
-import RecentViewersNote from "@/app/components/RecentViewersNote";
+import RecentViewersNoteLive from "@/app/components/RecentViewersNoteLive";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
+import { LiveStockProvider, LiveStockStatusBadge } from "@/app/components/LiveStock";
 import CategorySlider from "@/app/components/CategorySlider";
 import BestsellersStrip from "@/app/components/BestsellersStrip";
 import PriceDisplay from "@/app/components/PriceDisplay";
@@ -24,7 +24,7 @@ import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink, resolveProductWhatsappNumber } from "@/app/utils/whatsapp";
 import WhatsappEnquiryLink from "@/app/components/WhatsappEnquiryLink";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
-import { getRelatedProducts, getProductUnitSettings, getDefaultWhatsappNumber, getSoldCounts, getRecentViewCount } from "@/app/utils/storeQueries";
+import { getRelatedProducts, getProductUnitSettings, getDefaultWhatsappNumber, getSoldCounts } from "@/app/utils/storeQueries";
 import { getThumbUrl } from "@/app/utils/imageThumb";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
@@ -39,15 +39,19 @@ import { permanentRedirect } from "next/navigation";
 // revalidate window below -- that window is only a safety net (deliberately
 // wide, since Vercel bills every background regeneration, tag-triggered or
 // not, as one "ISR write" against a metered monthly quota, and this route
-// alone has one cache entry per product). A product id not in this list
-// (e.g. one added after the last build) still renders on-demand and gets
-// cached from then on, since dynamicParams defaults to true.
+// alone has one cache entry per product). Live stock is deliberately NOT
+// baked into this cached HTML: the buy-box controls fetch the real count
+// client-side from /api/stock/[id] on mount (see app/components/LiveStock.tsx),
+// so a sale never has to regenerate this page and the window below can stay
+// a full day. A product id not in this list (e.g. one added after the last
+// build) still renders on-demand and gets cached from then on, since
+// dynamicParams defaults to true.
 export async function generateStaticParams() {
   const { data } = await supabase.from("products").select("id, name").eq("hidden", false);
   return (data || []).map((product) => ({ id: productHref(product).replace("/product/", "") }));
 }
 
-export const revalidate = 300;
+export const revalidate = 86400;
 
 // The Supabase reads below are cached via unstable_cache so repeat views of
 // a popular product don't each cost a fresh round trip -- wrapped again in
@@ -84,7 +88,11 @@ const getProduct = cache(
       }
     },
     ["product-by-id"],
-    { tags: ["products"], revalidate: 300 }
+    // Matches the route's own revalidate -- a shorter window here would just
+    // drag the whole page's regeneration cadence back down (and with it the
+    // ISR-write rate). Admin edits still land immediately via the
+    // revalidateTag("products") calls in the admin routes.
+    { tags: ["products"], revalidate: 86400 }
   )
 );
 
@@ -104,7 +112,7 @@ const getApprovedReviews = unstable_cache(
     }
   },
   ["approved-reviews"],
-  { tags: ["reviews"], revalidate: 300 }
+  { tags: ["reviews"], revalidate: 86400 }
 );
 
 export async function generateMetadata({
@@ -161,13 +169,15 @@ export default async function ProductDetailPage({
   // other two only need its id/category (not its full shape) -- running
   // them in parallel instead of sequentially awaiting each in turn shaves
   // three round trips down to the slowest single one, straight off TTFB.
-  const [reviews, categorySliderItems, relatedProducts, unitSettings, defaultWhatsappNumber, recentViewCount] = await Promise.all([
+  // (The recent-viewers count is no longer fetched here -- its 60s refresh
+  // window used to drag this whole static route down to a 60s ISR
+  // revalidate. It's read client-side now: see RecentViewersNoteLive.)
+  const [reviews, categorySliderItems, relatedProducts, unitSettings, defaultWhatsappNumber] = await Promise.all([
     product ? getApprovedReviews(product.id) : Promise.resolve([]),
     getCategorySliderItems(),
     product ? getRelatedProducts(product.category, product.id) : Promise.resolve([]),
     getProductUnitSettings(),
     getDefaultWhatsappNumber(),
-    product ? getRecentViewCount(String(product.id)) : Promise.resolve(0),
   ]);
 
   const stock = product ? Number(product.inventory) || 0 : 0;
@@ -300,7 +310,11 @@ export default async function ProductDetailPage({
               />
             </div>
 
-            {/* Details + CTAs */}
+            {/* Details + CTAs -- wrapped so the stock badge, Add-to-Cart button
+                and restock prompt below read live inventory fetched
+                client-side (see app/components/LiveStock.tsx), not the
+                possibly day-stale figure this page was rendered with. */}
+            <LiveStockProvider productId={product.id} initialInventory={stock}>
             <div className="md:w-1/2 flex flex-col">
               <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 dark:text-stone-100 mb-2 leading-snug">
                 {product.name}
@@ -324,13 +338,13 @@ export default async function ProductDetailPage({
                 />
               </div>
               <div className="mb-6 space-y-2">
-                <StockStatusBadge
-                  outOfStock={outOfStock}
-                  lowStock={lowStock}
-                  inventory={product.inventory}
+                <LiveStockStatusBadge
+                  initialOutOfStock={outOfStock}
+                  initialLowStock={lowStock}
+                  initialInventory={Number(product.inventory) || 0}
                   soldCount={product.sold_count}
                 />
-                <RecentViewersNote count={recentViewCount} />
+                <RecentViewersNoteLive productId={product.id} />
               </div>
 
               {(dimensionsLine || attributesLine) && (
@@ -373,7 +387,10 @@ export default async function ProductDetailPage({
 
                 {/* SECONDARY CTA: Add To Cart — same action/label/style as the main page card */}
                 <AddToCartButton product={product} />
-                {outOfStock && <NotifyWhenInStockButton productId={product.id} />}
+                {/* Mounted unconditionally now -- it hides itself unless the
+                    live stock count says out of stock (see LiveStock.tsx),
+                    so an item selling out mid-cache still grows a prompt. */}
+                <NotifyWhenInStockButton productId={product.id} initialOutOfStock={outOfStock} />
 
                 <TrustBadges />
 
@@ -381,6 +398,7 @@ export default async function ProductDetailPage({
                 <ShareButtons productName={product.name} />
               </div>
             </div>
+            </LiveStockProvider>
           </div>
 
           {/* Customer Reviews */}

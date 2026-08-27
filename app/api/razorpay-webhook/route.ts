@@ -167,9 +167,16 @@ export async function POST(req: Request) {
         throw new Error(`Supabase Exception: ${dbError.message}`);
       }
 
-      // A new order changes getSoldCounts/getBestsellers/getRelatedProducts
-      // -- see the "tags" note atop storeQueries.ts.
-      revalidateTag("orders", "max");
+      // Deliberately NOT calling revalidateTag("orders") here. It does change
+      // getSoldCounts/getBestsellers/getRelatedProducts, but that tag is read
+      // during the render of every product page and every catalog page, so
+      // firing it on each sale scheduled a regeneration of the whole storefront
+      // per order -- the single biggest source of metered Vercel ISR writes.
+      // Those figures (the "N sold" line, the bestsellers strip) are fine a
+      // little stale and still refresh on their own 1h safety-net window (see
+      // storeQueries.ts). Live stock, the one thing that genuinely can't be
+      // stale, is now read client-side per request from /api/stock/[id]
+      // instead (see app/components/LiveStock.tsx).
 
       // 1a. If a coupon was applied, count this verified, paid order against
       // its usage limit now (not at order-creation time, so abandoned/failed
@@ -224,9 +231,11 @@ export async function POST(req: Request) {
               console.error("Low-stock alert failed:", lowStockErr);
             }
           }
-          // Stock/availability just changed on every purchased product --
-          // see the "tags" note atop storeQueries.ts.
-          revalidateTag("products", "max");
+          // Deliberately NOT calling revalidateTag("products") here either --
+          // same reason as the "orders" tag above. The product page's stock
+          // figure is no longer trusted as fresh anyway; the buy box reads
+          // /api/stock/[id] live on mount. Admin edits still revalidate this
+          // tag from the admin routes, which is the only place it's needed.
         }
       } catch (stockError) {
         console.error("Stock deduction after sale failed:", stockError);

@@ -1,14 +1,30 @@
 // app/components/NotifyWhenInStockButton.tsx
 "use client";
 import { useState } from "react";
+import { useLiveStock } from "@/app/components/LiveStock";
 
-// Only rendered for an out-of-stock product (see app/product/[id]/page.tsx)
-// -- no OTP verification here, unlike checkout: this is a low-stakes
-// courtesy notification, not an order, so requiring a full verification
-// round trip would be disproportionate friction for "let me know if this
-// comes back." See app/api/stock-alerts/route.ts and the notify-on-restock
-// trigger in app/api/admin/products/route.ts.
-export default function NotifyWhenInStockButton({ productId }: { productId: number }) {
+// Shown only for an out-of-stock product. It's now mounted unconditionally
+// by the product page and gates itself on live stock instead (see
+// app/components/LiveStock.tsx), so an item that sells out while the
+// statically-rendered page is cached still gets a restock prompt rather
+// than the page needing to regenerate to grow one. `initialOutOfStock` is
+// the value the page was rendered with, used until the live count arrives.
+//
+// No OTP verification here, unlike checkout: this is a low-stakes courtesy
+// notification, not an order, so requiring a full verification round trip
+// would be disproportionate friction for "let me know if this comes back."
+// See app/api/stock-alerts/route.ts and the notify-on-restock trigger in
+// app/api/admin/products/route.ts.
+export default function NotifyWhenInStockButton({
+  productId,
+  initialOutOfStock = true,
+}: {
+  productId: number;
+  initialOutOfStock?: boolean;
+}) {
+  const liveStock = useLiveStock();
+  const outOfStock = liveStock ? liveStock.outOfStock : initialOutOfStock;
+
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
@@ -36,6 +52,10 @@ export default function NotifyWhenInStockButton({ productId }: { productId: numb
       setError(err.message || "Could not save your request.");
     }
   }
+
+  // Back in stock (per the live count) before anyone asked to be notified --
+  // nothing to show. Kept after the hooks above so hook order stays stable.
+  if (!outOfStock && status === "idle") return null;
 
   if (status === "done") {
     return (

@@ -92,6 +92,29 @@ export default function CatalogSection({
 
   const visibleProducts = products.slice(0, visibleCount);
 
+  // Live stock for every product on this page, fetched once (never cached)
+  // so the grid's "Add to Cart" buttons reflect real inventory instead of
+  // the figure baked into the now day-cached page HTML. One request per
+  // page of cards; on failure each card just falls back to its server-
+  // rendered count. The definitive guard is still server-side in
+  // /api/razorpay -- this only keeps a shopper from getting as far as the
+  // address form for something that's already gone.
+  const [liveStock, setLiveStock] = useState<Record<string, { inventory: number }>>({});
+  useEffect(() => {
+    const ids = products.map((p) => p.id).filter((id) => id != null);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    fetch(`/api/stock?ids=${ids.join(",")}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data && typeof data === "object" && !data.error) setLiveStock(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [products]);
+
   // The other half of virtualizing the grid: cards revealed earlier don't
   // stay mounted forever as a shopper keeps scrolling down. Once a card is
   // comfortably above the viewport (see UNMOUNT_TOP_MARGIN_PX), its actual
@@ -325,7 +348,11 @@ export default function CatalogSection({
                     style={!mounted && cachedHeight ? { minHeight: cachedHeight } : undefined}
                   >
                     {mounted ? (
-                      <ProductCard product={product} priority={index === 0} />
+                      <ProductCard
+                        product={product}
+                        priority={index === 0}
+                        liveInventory={liveStock[String(product.id)]?.inventory}
+                      />
                     ) : (
                       <TempleCardFrame>
                         <div />
