@@ -70,10 +70,15 @@ export async function POST(req: Request) {
     // create a real, payable Razorpay order for far less than the cart is
     // actually worth while still claiming the full item list at checkout.
     const itemIds = (items as CartItem[]).map((i) => i.id).filter(Boolean);
+    // hidden=false so a product an admin has hidden can't be paid for even
+    // via a direct API call with a known id -- it simply won't be found
+    // below, which the existing "no longer available" rejection already
+    // handles the same as a deleted product.
     const { data: dbProducts, error: productErr } = await supabase
       .from("products")
       .select("id, name, price, inventory, category, image_url")
-      .in("id", itemIds);
+      .in("id", itemIds)
+      .eq("hidden", false);
 
     if (productErr) {
       return NextResponse.json({ error: "Could not verify cart items." }, { status: 500 });

@@ -117,6 +117,7 @@ export async function generateCatalogueBuffer(): Promise<Buffer> {
   const { data: products, error } = await supabase
     .from("products")
     .select("id, name, price, category, image_url, inventory, display_order, created_at, weight_g, height_cm, depth_cm, breadth_cm")
+    .eq("hidden", false)
     .order("category", { ascending: true, nullsFirst: false })
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: false });

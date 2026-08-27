@@ -20,6 +20,7 @@ export async function getCategorySliderItems(): Promise<CategorySliderItem[]> {
       .select("id, name, image_url, category")
       .not("category", "is", null)
       .not("image_url", "is", null)
+      .eq("hidden", false)
       .gt("inventory", 0);
     if (error || !data) return [];
 

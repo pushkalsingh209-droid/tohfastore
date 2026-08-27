@@ -30,7 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let productEntries: MetadataRoute.Sitemap = [];
   try {
-    const { data, error } = await supabase.from("products").select("id, name, created_at");
+    const { data, error } = await supabase.from("products").select("id, name, created_at").eq("hidden", false);
     if (!error && data) {
       productEntries = data.map((product: any) => ({
         url: `${SITE_URL}${productHref(product)}`,

@@ -10,7 +10,7 @@ import { productHref } from "@/app/utils/slug";
 // migration the admin hasn't run) -- these routes degrade gracefully by
 // dropping whichever optional column Postgres complains about and retrying,
 // instead of failing the whole save.
-const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg"];
+const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg", "hidden"];
 
 function isMissingColumn(error: any, columnHint: string) {
   const msg = error?.message || "";
@@ -114,6 +114,7 @@ export async function POST(req: Request) {
       // A brand-new product published with stock already on hand counts as
       // restocked right now -- that's when this capital actually got tied up.
       last_restocked_at: Number(body.inventory) > 0 ? new Date().toISOString() : null,
+      hidden: Boolean(body.hidden),
     };
 
     const { data, error, droppedColumns } = await insertWithFallback(payload);
@@ -131,6 +132,7 @@ export async function POST(req: Request) {
       photoFilterSaved: !droppedColumns.includes("photo_filter"),
       costPriceSaved: !droppedColumns.includes("cost_price"),
       costPricePerKgSaved: !droppedColumns.includes("cost_price_per_kg"),
+      hiddenSaved: !droppedColumns.includes("hidden"),
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -170,6 +172,7 @@ export async function PATCH(req: Request) {
     if (fields.photo_filter !== undefined) payload.photo_filter = parseOptionalPhotoFilter(fields.photo_filter);
     if (fields.cost_price !== undefined) payload.cost_price = parseOptionalPositiveNumber(fields.cost_price);
     if (fields.cost_price_per_kg !== undefined) payload.cost_price_per_kg = parseOptionalPositiveNumber(fields.cost_price_per_kg);
+    if (fields.hidden !== undefined) payload.hidden = Boolean(fields.hidden);
 
     // Fetched before the update specifically to detect a 0 -> positive
     // inventory transition below -- "was this product actually sold out a
@@ -235,6 +238,7 @@ export async function PATCH(req: Request) {
       photoFilterSaved: !droppedColumns.includes("photo_filter"),
       costPriceSaved: !droppedColumns.includes("cost_price"),
       costPricePerKgSaved: !droppedColumns.includes("cost_price_per_kg"),
+      hiddenSaved: !droppedColumns.includes("hidden"),
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -99,7 +99,7 @@ export default function SearchBar() {
 
   useEffect(() => {
     async function loadProducts() {
-      const { data, error } = await supabase.from("products").select("id, name").order("name");
+      const { data, error } = await supabase.from("products").select("id, name").eq("hidden", false).order("name");
       if (!error && data) setProducts(data);
     }
     loadProducts();

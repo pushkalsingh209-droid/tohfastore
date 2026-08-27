@@ -57,6 +57,7 @@ export const getCategoryImage = unstable_cache(
         .from("products")
         .select("image_url")
         .eq("category", categoryName)
+        .eq("hidden", false)
         .gt("inventory", 0)
         .not("image_url", "is", null)
         .order("display_order", { ascending: true })
@@ -296,7 +297,7 @@ export const getCatalogPage = unstable_cache(
     label: string = ""
   ) => {
     try {
-      let countQuery = supabase.from("products").select("*", { count: "exact", head: true });
+      let countQuery = supabase.from("products").select("*", { count: "exact", head: true }).eq("hidden", false);
       if (category) countQuery = countQuery.eq("category", category);
       else if (hiddenCategories.length > 0) countQuery = countQuery.not("category", "in", notInListLiteral(hiddenCategories));
       if (label) countQuery = countQuery.eq("label", label);
@@ -316,7 +317,7 @@ export const getCatalogPage = unstable_cache(
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
 
-      let query = supabase.from("products").select("*");
+      let query = supabase.from("products").select("*").eq("hidden", false);
       if (category) query = query.eq("category", category);
       else if (hiddenCategories.length > 0) query = query.not("category", "in", notInListLiteral(hiddenCategories));
       if (label) query = query.eq("label", label);
@@ -356,7 +357,7 @@ export const getCatalogPage = unstable_cache(
 export const getTotalProductCount = unstable_cache(
   async (): Promise<number> => {
     try {
-      const { count } = await supabase.from("products").select("*", { count: "exact", head: true });
+      const { count } = await supabase.from("products").select("*", { count: "exact", head: true }).eq("hidden", false);
       return count || 0;
     } catch {
       return 0;
@@ -477,7 +478,8 @@ export const getBestsellers = unstable_cache(
       const { data: products, error: productsError } = await supabase
         .from("products")
         .select("id, name, price, image_url, inventory, category")
-        .in("id", topIds);
+        .in("id", topIds)
+        .eq("hidden", false);
       if (productsError || !products) return [];
 
       const withThumbs = await attachThumbUrls(products as any[]);
@@ -523,7 +525,8 @@ export const getRelatedProducts = unstable_cache(
         const { data: ranked } = await supabase
           .from("products")
           .select("id, name, price, image_url, inventory, category")
-          .in("id", rankedIds);
+          .in("id", rankedIds)
+          .eq("hidden", false);
         for (const p of (ranked as any[]) || []) {
           if (p.category === category) productMap.set(String(p.id), p);
         }
@@ -534,6 +537,7 @@ export const getRelatedProducts = unstable_cache(
           .from("products")
           .select("id, name, price, image_url, inventory, category")
           .eq("category", category)
+          .eq("hidden", false)
           .neq("id", excludeId)
           .limit(limit * 2);
         for (const p of (fallback as any[]) || []) {

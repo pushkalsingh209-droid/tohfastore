@@ -634,6 +634,24 @@ function AdminDashboard() {
     }
   };
 
+  // Hide/unhide a product from the storefront without deleting it -- the
+  // server (storeQueries.ts, product detail page, sitemap, search,
+  // catalogue PDF, and the Razorpay order-creation guard) all filter on
+  // this same `hidden` flag, so toggling it here is the single switch that
+  // both removes it from every public listing and blocks it from being
+  // ordered even via a direct link or API call.
+  const handleInlineHiddenToggle = async (productId: string, hidden: boolean) => {
+    try {
+      const result = await apiRequest("/api/admin/products", {
+        method: "PATCH",
+        body: JSON.stringify({ id: productId, hidden }),
+      });
+      setProducts(products.map((p) => (p.id === productId ? result.product : p)));
+    } catch (err: any) {
+      alert(`Could not update visibility: ${err.message}`);
+    }
+  };
+
   // Manual storefront position -- lower numbers show first. Left blank
   // (null), a product falls back to sorting last (newest-first among
   // other unassigned products) until an admin gives it a number.
@@ -2234,7 +2252,7 @@ function AdminDashboard() {
             <>
             <div className="divide-y divide-stone-100">
               {paginatedProducts.map((product, index) => (
-                <div key={product.id} className="py-4 flex flex-col gap-3">
+                <div key={product.id} className={`py-4 flex flex-col gap-3 ${product.hidden ? "opacity-60" : ""}`}>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-grow">
                     <input
@@ -2255,7 +2273,14 @@ function AdminDashboard() {
                       <Image src={product.thumb_url || product.image_url} alt={product.name} fill sizes="56px" className="object-cover" />
                     </div>
                     <div>
-                      <h3 className="font-serif text-stone-900 text-sm font-medium">{product.name}</h3>
+                      <h3 className="font-serif text-stone-900 text-sm font-medium flex items-center gap-2">
+                        {product.name}
+                        {product.hidden && (
+                          <span className="text-[9px] uppercase tracking-wider font-semibold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded">
+                            Hidden
+                          </span>
+                        )}
+                      </h3>
                       <p className="text-amber-800 text-xs font-mono font-bold">₹{Number(product.price).toLocaleString("en-IN")}</p>
                     </div>
                   </div>
@@ -2320,6 +2345,19 @@ function AdminDashboard() {
                         <option key={preset.name} value={preset.name}>{preset.name}</option>
                       ))}
                     </select>
+
+                    <button
+                      type="button"
+                      onClick={() => handleInlineHiddenToggle(product.id, !product.hidden)}
+                      title={product.hidden ? "Unhide -- makes this product visible and orderable on the storefront again" : "Hide -- removes this product from the storefront and blocks it from being ordered, without deleting it"}
+                      className={`px-4 py-2 rounded font-semibold text-xs uppercase shadow-sm transition border ${
+                        product.hidden
+                          ? "border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                          : "border-stone-400 text-stone-600 hover:bg-stone-100"
+                      }`}
+                    >
+                      {product.hidden ? "Unhide" : "Hide"}
+                    </button>
 
                     <button type="button" onClick={() => handleEditClick(product)} className="px-4 py-2 border border-amber-600 rounded text-amber-700 hover:bg-amber-50 font-semibold text-xs uppercase shadow-sm transition">
                       Edit Details

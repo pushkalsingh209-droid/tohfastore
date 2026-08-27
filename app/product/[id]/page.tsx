@@ -39,7 +39,7 @@ import { permanentRedirect } from "next/navigation";
 // last build) still renders on-demand and gets cached from then on, since
 // dynamicParams defaults to true.
 export async function generateStaticParams() {
-  const { data } = await supabase.from("products").select("id, name");
+  const { data } = await supabase.from("products").select("id, name").eq("hidden", false);
   return (data || []).map((product) => ({ id: productHref(product).replace("/product/", "") }));
 }
 
@@ -57,6 +57,7 @@ const getProduct = cache(
           .from("products")
           .select("*")
           .eq("id", id)
+          .eq("hidden", false)
           .single();
 
         if (error || !data) return null;
