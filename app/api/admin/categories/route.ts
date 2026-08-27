@@ -1,5 +1,6 @@
 // app/api/admin/categories/route.ts
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
 export async function GET() {
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    revalidateTag("categories", "max");
     return NextResponse.json({ category: data?.[0] });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -107,6 +109,7 @@ export async function PATCH(req: Request) {
     const { data, error } = await supabase.from("categories").update(updates).eq("id", id).select();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    revalidateTag("categories", "max");
     return NextResponse.json({ category: data?.[0] });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -121,6 +124,7 @@ export async function DELETE(req: Request) {
     const { error } = await supabase.from("categories").delete().eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    revalidateTag("categories", "max");
     return NextResponse.json({ status: "deleted" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

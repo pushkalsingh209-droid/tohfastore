@@ -3,12 +3,23 @@
 // varies by a few filter params) -- wrapped in unstable_cache so a burst of
 // homepage/category traffic hits Supabase once per revalidate window instead
 // of once per request. This is the main lever for staying inside Supabase's
-// and Vercel's free-tier request quotas as traffic grows, at the cost of
-// admin changes (new stock, a new coupon) taking up to the window to show
-// publicly -- an acceptable tradeoff for a catalog that doesn't change by
-// the second. Checkout itself always re-reads live data server-side, so
-// nothing here can let a stale price or an exhausted coupon actually charge
-// wrong -- these caches only affect what's *displayed* before that point.
+// and Vercel's free-tier request quotas as traffic grows. Checkout itself
+// always re-reads live data server-side, so nothing here can let a stale
+// price or an exhausted coupon actually charge wrong -- these caches only
+// affect what's *displayed* before that point.
+//
+// Each entry also carries a `tags` option, and every admin route that
+// mutates the underlying table calls revalidateTag() right after a
+// successful write (see e.g. app/api/admin/products/route.ts) -- so an
+// admin edit shows up immediately via on-demand revalidation, not by
+// waiting out the window below. The `revalidate` numbers here are only a
+// safety net for the (hopefully rare) case a mutation path is ever missed;
+// they're deliberately wide, since Vercel bills every background
+// regeneration -- whether triggered by a real edit or just this window
+// elapsing under ordinary traffic -- as one "ISR write" against a metered
+// monthly quota, and a large catalog getting steady traffic across many
+// distinct cache keys (every sort/filter/page combo, every product's own
+// detail page) adds those up fast at a short window.
 import { unstable_cache } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { attachThumbUrls } from "@/app/utils/imageThumb";
@@ -41,7 +52,7 @@ export const getAllCategoryNames = unstable_cache(
     }
   },
   ["all-category-names"],
-  { revalidate: 60 }
+  { tags: ["categories"], revalidate: 3600 }
 );
 
 // One representative in-stock product image per category, for the category
@@ -70,7 +81,7 @@ export const getCategoryImage = unstable_cache(
     }
   },
   ["category-image"],
-  { revalidate: 60 }
+  { tags: ["products"], revalidate: 3600 }
 );
 
 // Categories an admin has marked "hidden from home" -- their products drop
@@ -87,7 +98,7 @@ export const getHiddenCategoryNames = unstable_cache(
     }
   },
   ["hidden-category-names"],
-  { revalidate: 60 }
+  { tags: ["categories"], revalidate: 3600 }
 );
 
 // Distinct label names currently in use on products -- backs the header's
@@ -105,7 +116,7 @@ export const getActiveLabelNames = unstable_cache(
     }
   },
   ["active-label-names"],
-  { revalidate: 60 }
+  { tags: ["products"], revalidate: 3600 }
 );
 
 // Label -> photo filter preset name, for labels an admin has given their
@@ -127,7 +138,7 @@ export const getLabelPhotoFilters = unstable_cache(
     }
   },
   ["label-photo-filters"],
-  { revalidate: 60 }
+  { tags: ["labels"], revalidate: 3600 }
 );
 
 const FALLBACK_DEFAULT_PAGE_SIZE = 10;
@@ -174,7 +185,7 @@ export const getSiteSettings = unstable_cache(
     }
   },
   ["site-settings"],
-  { revalidate: 60 }
+  { tags: ["site-settings"], revalidate: 3600 }
 );
 
 // Site-wide display units for product weight/dimensions -- the stored
@@ -200,7 +211,7 @@ export const getProductUnitSettings = unstable_cache(
     }
   },
   ["product-unit-settings"],
-  { revalidate: 60 }
+  { tags: ["site-settings"], revalidate: 3600 }
 );
 
 // Admin-configurable default WhatsApp number for product enquiries -- null
@@ -222,7 +233,7 @@ export const getDefaultWhatsappNumber = unstable_cache(
     }
   },
   ["default-whatsapp-number"],
-  { revalidate: 60 }
+  { tags: ["site-settings"], revalidate: 3600 }
 );
 
 // A category's own default-page-size override, if an admin set one --
@@ -243,7 +254,7 @@ export const getCategoryDefaultPageSize = unstable_cache(
     }
   },
   ["category-default-page-size"],
-  { revalidate: 60 }
+  { tags: ["categories"], revalidate: 3600 }
 );
 
 // Active, non-expired, not-maxed-out coupons an admin has marked "public" --
@@ -266,7 +277,7 @@ export const getPublicCoupons = unstable_cache(
     }
   },
   ["public-coupons"],
-  { revalidate: 30 }
+  { tags: ["coupons"], revalidate: 3600 }
 );
 
 export function filterLivePublicCoupons(coupons: any[]) {
@@ -348,7 +359,7 @@ export const getCatalogPage = unstable_cache(
     }
   },
   ["catalog-page"],
-  { revalidate: 30 }
+  { tags: ["products"], revalidate: 300 }
 );
 
 // Whole-catalog product count for the hero's trust strip -- doesn't need to
@@ -364,7 +375,7 @@ export const getTotalProductCount = unstable_cache(
     }
   },
   ["total-product-count"],
-  { revalidate: 300 }
+  { tags: ["products"], revalidate: 3600 }
 );
 
 // Real per-product units-sold tally, from actual order line items (same
@@ -404,7 +415,7 @@ export const getSoldCounts = unstable_cache(
     }
   },
   ["sold-counts"],
-  { revalidate: 300 }
+  { tags: ["orders"], revalidate: 3600 }
 );
 
 // How many distinct visitors have viewed a product recently -- real data
@@ -491,7 +502,7 @@ export const getBestsellers = unstable_cache(
     }
   },
   ["bestsellers"],
-  { revalidate: 300 }
+  { tags: ["orders", "products"], revalidate: 3600 }
 );
 
 // "Customers also bought" for a product's own category -- ranks by real
@@ -555,5 +566,5 @@ export const getRelatedProducts = unstable_cache(
     }
   },
   ["related-products"],
-  { revalidate: 300 }
+  { tags: ["orders", "products"], revalidate: 3600 }
 );

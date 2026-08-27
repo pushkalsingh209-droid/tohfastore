@@ -1,5 +1,6 @@
 // app/api/admin/coupons/route.ts
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
 function isMissingColumn(error: any, columnHint: string) {
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    revalidateTag("coupons", "max");
     return NextResponse.json({ coupon: data?.[0], publicSaved });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -61,6 +63,7 @@ export async function PATCH(req: Request) {
     const { data, error } = await supabase.from("coupons").update(fields).eq("id", id).select();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    revalidateTag("coupons", "max");
     return NextResponse.json({ coupon: data?.[0] });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -75,6 +78,7 @@ export async function DELETE(req: Request) {
     const { error } = await supabase.from("coupons").delete().eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    revalidateTag("coupons", "max");
     return NextResponse.json({ status: "deleted" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

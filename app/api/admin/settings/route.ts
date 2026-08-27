@@ -1,5 +1,6 @@
 // app/api/admin/settings/route.ts
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
@@ -206,6 +207,8 @@ export async function PATCH(req: Request) {
 
     const { error } = await supabase.from("site_settings").upsert(updates, { onConflict: "key" });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    revalidateTag("site-settings", "max");
 
     const settings: Record<string, string> = {};
     for (const u of updates) settings[u.key] = u.value;

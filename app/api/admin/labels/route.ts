@@ -2,6 +2,7 @@
 // Backs the admin product form's Label dropdown -- admin-only (not a
 // public API), since this list only exists to populate that one select.
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    revalidateTag("labels", "max");
     return NextResponse.json({ label: data });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -50,6 +52,7 @@ export async function PATCH(req: Request) {
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    revalidateTag("labels", "max");
     return NextResponse.json({ label: data });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

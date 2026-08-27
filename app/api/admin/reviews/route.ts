@@ -1,5 +1,6 @@
 // app/api/admin/reviews/route.ts
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
 export async function GET() {
@@ -21,6 +22,7 @@ export async function PATCH(req: Request) {
     const { error } = await supabase.from("reviews").update({ approved: true }).eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    revalidateTag("reviews", "max");
     return NextResponse.json({ status: "approved" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -36,6 +38,7 @@ export async function DELETE(req: Request) {
     const { error } = await supabase.from("reviews").delete().eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    revalidateTag("reviews", "max");
     return NextResponse.json({ status: "deleted" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

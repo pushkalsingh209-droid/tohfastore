@@ -1,5 +1,6 @@
 // app/api/admin/products/route.ts
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { attachThumbUrls } from "@/app/utils/imageThumb";
@@ -120,6 +121,11 @@ export async function POST(req: Request) {
     const { data, error, droppedColumns } = await insertWithFallback(payload);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    // On-demand cache invalidation -- see the "tags" note atop
+    // storeQueries.ts. A new product should show up on the storefront right
+    // away, not after the safety-net window elapses.
+    revalidateTag("products", "max");
+
     return NextResponse.json({
       product: data?.[0],
       gallerySaved: !droppedColumns.includes("images"),
@@ -195,6 +201,12 @@ export async function PATCH(req: Request) {
 
     const { data, error, droppedColumns } = await updateWithFallback(id, payload);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // On-demand cache invalidation -- see the "tags" note atop
+    // storeQueries.ts. Covers every field this route can touch (price,
+    // stock, hidden, etc.) with one call, since they all live on the same
+    // cached product rows.
+    revalidateTag("products", "max");
 
     // Best-effort back-in-stock notifications -- never blocks the save
     // itself. Only fires on a genuine 0 -> positive transition (not, say,

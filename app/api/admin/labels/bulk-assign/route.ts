@@ -5,6 +5,7 @@
 // products should be 'Lightweight Brass') -- so an admin doesn't have to
 // open and re-save each product individually. Admin-only.
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { getHiddenCategoryNames } from "@/app/utils/storeQueries";
 
@@ -40,6 +41,7 @@ export async function POST(req: Request) {
     const { data, error } = await query.select("id");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    revalidateTag("products", "max");
     return NextResponse.json({ updated: data?.length || 0 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

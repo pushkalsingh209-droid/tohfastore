@@ -1,5 +1,6 @@
 // app/api/admin/orders/update-status/route.ts
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { productHref } from "@/app/utils/slug";
 
@@ -29,6 +30,11 @@ export async function POST(req: Request) {
     if (updateError || !order) {
       return NextResponse.json({ error: updateError?.message || "Order not found." }, { status: 404 });
     }
+
+    // A cancellation changes what getSoldCounts/getBestsellers/getRelatedProducts
+    // should show (they exclude/rank around cancelled orders) -- see the
+    // "tags" note atop storeQueries.ts.
+    revalidateTag("orders", "max");
 
     // Best-effort WhatsApp ping to the customer when their order ships or
     // is delivered -- never blocks the status update itself.

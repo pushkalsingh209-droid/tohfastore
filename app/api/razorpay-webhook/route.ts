@@ -1,5 +1,6 @@
 // app/api/razorpay-webhook/route.ts
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import Razorpay from "razorpay";
 import { Resend } from "resend";
@@ -166,6 +167,10 @@ export async function POST(req: Request) {
         throw new Error(`Supabase Exception: ${dbError.message}`);
       }
 
+      // A new order changes getSoldCounts/getBestsellers/getRelatedProducts
+      // -- see the "tags" note atop storeQueries.ts.
+      revalidateTag("orders", "max");
+
       // 1a. If a coupon was applied, count this verified, paid order against
       // its usage limit now (not at order-creation time, so abandoned/failed
       // checkouts never consume a redemption).
@@ -178,6 +183,12 @@ export async function POST(req: Request) {
             .maybeSingle();
           if (coupon) {
             await supabase.from("coupons").update({ used_count: coupon.used_count + 1 }).eq("id", coupon.id);
+            // getPublicCoupons' own live expiry/usage filter (see
+            // storeQueries.ts) runs against whatever used_count is in the
+            // cached row -- without this, a coupon that just hit max_uses
+            // right here could keep showing as available until the safety
+            // net window elapses.
+            revalidateTag("coupons", "max");
           }
         } catch (couponErr) {
           console.error("Coupon usage increment failed:", couponErr);
@@ -213,6 +224,9 @@ export async function POST(req: Request) {
               console.error("Low-stock alert failed:", lowStockErr);
             }
           }
+          // Stock/availability just changed on every purchased product --
+          // see the "tags" note atop storeQueries.ts.
+          revalidateTag("products", "max");
         }
       } catch (stockError) {
         console.error("Stock deduction after sale failed:", stockError);

@@ -33,22 +33,26 @@ import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 import { permanentRedirect } from "next/navigation";
 
 // Pre-renders every product page at build time so visits serve a cached
-// page instead of paying a fresh server render each time -- matches the 30s
-// window the data layer below already revalidates on, so admin edits still
-// show up quickly. A product id not in this list (e.g. one added after the
-// last build) still renders on-demand and gets cached from then on, since
-// dynamicParams defaults to true.
+// page instead of paying a fresh server render each time. Admin edits show
+// up on-demand via revalidateTag("products"/"reviews") called from the
+// relevant admin routes (see storeQueries.ts), not by waiting out the
+// revalidate window below -- that window is only a safety net (deliberately
+// wide, since Vercel bills every background regeneration, tag-triggered or
+// not, as one "ISR write" against a metered monthly quota, and this route
+// alone has one cache entry per product). A product id not in this list
+// (e.g. one added after the last build) still renders on-demand and gets
+// cached from then on, since dynamicParams defaults to true.
 export async function generateStaticParams() {
   const { data } = await supabase.from("products").select("id, name").eq("hidden", false);
   return (data || []).map((product) => ({ id: productHref(product).replace("/product/", "") }));
 }
 
-export const revalidate = 30;
+export const revalidate = 300;
 
-// The Supabase reads below are cached via unstable_cache (30s) so repeat
-// views of a popular product don't each cost a fresh round trip -- wrapped
-// again in React's cache() so generateMetadata and the page component still
-// only invoke it once per request.
+// The Supabase reads below are cached via unstable_cache so repeat views of
+// a popular product don't each cost a fresh round trip -- wrapped again in
+// React's cache() so generateMetadata and the page component still only
+// invoke it once per request.
 const getProduct = cache(
   unstable_cache(
     async (id: string) => {
@@ -80,7 +84,7 @@ const getProduct = cache(
       }
     },
     ["product-by-id"],
-    { revalidate: 30 }
+    { tags: ["products"], revalidate: 300 }
   )
 );
 
@@ -100,7 +104,7 @@ const getApprovedReviews = unstable_cache(
     }
   },
   ["approved-reviews"],
-  { revalidate: 30 }
+  { tags: ["reviews"], revalidate: 300 }
 );
 
 export async function generateMetadata({
