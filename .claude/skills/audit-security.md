@@ -74,9 +74,12 @@ payment-path items, anything 💰, anything needing a running app to prove.
 (no new errors). For RLS claims, state whether you actually ran the anon-key probe or
 only read the migrations.
 
-## 8. Document & recommend (mandatory close)
+## 8. Document & recommend (mandatory close — docs gate the deploy)
 
-- `docs/ARCHITECTURE.html`: affected sections + dated **Change log** row. Re-publish the
+Do this *before* anything merges to `main` (see `CLAUDE.md` / `AGENT.md`).
+
+- `docs/ARCHITECTURE.html`: affected sections + dated **Change log** row; check the §27
+  playbook if a new kind of thing was added. Re-strip the skeleton, re-publish the
   artifact (`url`).
 - `IMPROVEMENTS.md`: shipped → Done; findings → Active with tier + 💰/⚠️ flags.
 - End with a prioritised remediation list (severity × exploitability), deferred items and

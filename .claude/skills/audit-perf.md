@@ -56,9 +56,13 @@ running app to verify.
 static/dynamic split and SSG count to the pre-change build) · `npx eslint <changed>` (no
 new errors).
 
-## 5. Document & recommend (mandatory close)
+## 5. Document & recommend (mandatory close — docs gate the deploy)
+
+Do this *before* anything merges to `main`; a batch whose docs aren't current is not
+deployable (see `CLAUDE.md` / `AGENT.md`).
 
 - Update `docs/ARCHITECTURE.html`: affected sections + a dated **Change log** row (IST
-  time, files, verification). Re-publish the artifact (pass its `url`).
+  time, files, verification); if a new kind of thing was added, check its §27 playbook.
+  Re-strip the skeleton and re-publish the artifact (pass its `url`).
 - Update `IMPROVEMENTS.md`: shipped → Done; new findings → Active with tier + flags.
 - End with a prioritised "what next" list, including everything deferred and why.

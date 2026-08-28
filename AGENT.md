@@ -75,6 +75,12 @@ trusting it. Don't present unverifiable payment-path changes as done.
 
 ## When you finish any batch
 
-Follow the SOP in `CLAUDE.md` → "batch → document → recommend": verify, then update
-`docs/ARCHITECTURE.html` (sections + dated Change-log row), re-publish the artifact,
-update `IMPROVEMENTS.md`, and end with a prioritised "what next" list.
+Follow the SOP in `CLAUDE.md` → "batch → verify → document → deploy → recommend".
+
+**The documentation step gates the deploy.** `docs/ARCHITECTURE.html` (affected sections
++ a dated Change-log row), the re-published artifact, and `IMPROVEMENTS.md` are updated
+*before* the batch merges to `main` — never after, never "I'll document it later". A
+batch whose docs aren't current is not deployable. If a new kind of thing was added
+(route / migration / setting / notification / cron / admin tab), confirm its **§27
+playbook** in ARCHITECTURE.html still matches reality. Then re-verify the merged HEAD
+(`next build` + `npm test`) before pushing `main`.

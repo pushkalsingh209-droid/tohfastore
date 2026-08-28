@@ -163,6 +163,7 @@
     <li><a href="#gotchas">Known constraints &amp; gotchas</a></li>
     <li><a href="#filemap">Directory map</a></li>
     <li><a href="#localdev">Running locally</a></li>
+    <li><a href="#playbooks">Extending the system &mdash; playbooks</a></li>
   </ol>
 </nav>
 
@@ -187,7 +188,10 @@ communication channel. Production domain <code>tohfaonline.com</code>; deployed 
 <div class="note">
 <p><strong>Reading order for a new contributor / agent:</strong> &sect;3 (architecture &mdash; start with the
 diagrams) &rarr; &sect;5&ndash;7 (data) &rarr; &sect;11 (API) &rarr; &sect;12 (checkout) &rarr; &sect;16
-(caching &mdash; where most non-obvious decisions live) &rarr; &sect;24 (gotchas).</p>
+(caching &mdash; where most non-obvious decisions live) &rarr; &sect;24 (gotchas).
+<strong>About to build something? Start at <a href="#playbooks">&sect;27 &mdash; Extending the system</a></strong>
+&mdash; the recurring how-tos (add a migration / route / cached query / setting / notification / cron / admin
+tab) and the invariants each must preserve.</p>
 </div>
 
 <section id="changelog" style="scroll-margin-top:16px">
@@ -195,11 +199,29 @@ diagrams) &rarr; &sect;5&ndash;7 (data) &rarr; &sect;11 (API) &rarr; &sect;12 (c
   <span style="font-family:var(--font-mono);font-size:15px;color:var(--accent)">&#9633;&nbsp;&nbsp;</span>Change log
 </h2>
 <p>Every batch of code changes is recorded here with a timestamp, the files touched, and how it was verified.
-Documentation (this file + the diagrams + the published artifact) is refreshed once per batch so all updates land
-together. Newest first.</p>
+<strong>Updating this file (the affected sections + a new row here) and re-publishing the artifact is a
+precondition for deploying the batch &mdash; done before the merge to <code>main</code>, never after.</strong>
+Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-08-29<br>03:05</code></td>
+  <td><strong>Docs: forward-looking playbooks + docs-before-deploy rule</strong></td>
+  <td>
+    &bull; New <strong>&sect;27 &mdash; Extending the system (playbooks)</strong>: the shortest safe path for
+    each recurring change (migration, API route, cached read, site setting, WhatsApp notification, scheduled job,
+    admin tab, payment-path change) plus the invariants each must preserve. Pointer added to the reading-order
+    note.<br>
+    &bull; The &ldquo;update the docs + re-publish the artifact&rdquo; step is now an explicit
+    <strong>precondition for deploying</strong> a batch (was &ldquo;once per batch&rdquo;, timing unstated).
+    Codified here and in <code>CLAUDE.md</code>, <code>AGENT.md</code>, and the three
+    <code>.claude/skills/*.md</code> SOPs. Deploys together with the keepalive batch below.
+  </td>
+  <td><code>docs/ARCHITECTURE.html</code>, <code>CLAUDE.md</code>, <code>AGENT.md</code>,
+    <code>.claude/skills/audit-perf.md</code>, <code>audit-security.md</code>, <code>refactor.md</code></td>
+  <td>self-contained render check &middot; no CDN / scripts</td>
+</tr>
 <tr>
   <td><code>2026-08-29<br>02:55</code></td>
   <td><strong>Keepalive heartbeat visibility</strong><br>(<code>IMPROVEMENTS.md</code> T4&nbsp;#14)</td>
@@ -1438,10 +1460,139 @@ node --env-file=.env.local scripts/cleanup-legacy-product-images.mjs --apply   #
 string), add the secret to an authenticator app (or use <code>/api/admin/totp-qr</code> once logged in), then sign
 in at <code>/admin/login</code>.</p>
 
+<h2 id="playbooks">Extending the system &mdash; playbooks</h2>
+<p>How to add the recurring things without breaking the invariants. Each playbook is the shortest safe path;
+follow the file it points at for the exact style. If a change spans two playbooks (e.g. a new setting that a
+cached query reads), do both.</p>
+
+<div class="note">
+<p><strong>Invariants that must always hold</strong> (full detail in &sect;22 and <code>AGENT.md</code>):
+never trust the client at checkout (re-price, re-validate, re-check server-side);
+a new table gets RLS <em>on</em> with <strong>no</strong> anon policy, and <code>rls.test.ts</code> is re-run;
+side effects (WhatsApp / email / analytics) are <code>try/catch</code> + log, never blocking;
+5xx bodies are generic via <code>serverErrorResponse</code>, 4xx messages are user-facing and fine;
+fail closed on missing security config;
+one shared constant over a &ldquo;keep in sync&rdquo; comment;
+<code>docs/ARCHITECTURE.html</code> (sections + a Change-log row) and the published artifact are updated
+<strong>before</strong> the batch is deployed &mdash; never after.</p>
+</div>
+
+<h3>Add a migration</h3>
+<ul class="tight">
+  <li>New file <code>supabase/migrations/NNNN_short_description.sql</code>, next number in sequence.</li>
+  <li>Every statement idempotent: <code>add column if not exists</code>, <code>create table if not exists</code>,
+      <code>insert &hellip; on conflict do nothing</code>. It may be re-run against prod as a no-op.</li>
+  <li>Header comment: <em>what</em> + <em>why</em> + &ldquo;run once in the Supabase SQL editor&rdquo;.</li>
+  <li>New table &rarr; <code>alter table X enable row level security;</code> and (almost always)
+      <strong>no</strong> policy &mdash; service-role only, like <code>orders</code>.</li>
+  <li>Run it by hand in the Supabase dashboard (no CLI wired &mdash; see &sect;24 / backlog #4). Add a row to
+      &sect;7. If it touched policies, run <code>rls.test.ts</code> against live.</li>
+</ul>
+
+<h3>Add an API route</h3>
+<ul class="tight">
+  <li><code>app/api/&lt;path&gt;/route.ts</code>, <code>export async function GET/POST/&hellip;</code>. Import
+      <code>supabaseAdmin</code> (server-only) for DB access.</li>
+  <li><strong>Public + mutating?</strong> Rate-limit with <code>app/utils/rateLimit.ts</code> (a new
+      <code>bucket</code> name) and/or the OTP gate. If it writes a log-ish table, add the 2%-of-writes
+      opportunistic prune (see <code>rateLimit.ts</code> / <code>track-view</code>).</li>
+  <li><strong>Admin route?</strong> Put it under <code>/api/admin/</code> &mdash; <code>proxy.ts</code>
+      auto-applies the session check + cross-origin CSRF guard. After any write a cached storefront query reads,
+      call <code>revalidateTag(tag, "max")</code>.</li>
+  <li>5xx &rarr; <code>return serverErrorResponse("&lt;context&gt;", err[, publicMessage])</code>. 4xx &rarr;
+      plain <code>NextResponse.json({ error: "&hellip;" }, { status: 400 })</code>.</li>
+  <li>Add a row to the &sect;11 table.</li>
+</ul>
+
+<h3>Add a cached storefront read</h3>
+<ul class="tight">
+  <li>Add to <code>app/utils/storeQueries.ts</code> as
+      <code>unstable_cache(async (&hellip;) =&gt; {&hellip;}, ["unique-key"], { tags: [&hellip;], revalidate: 86400 })</code>.</li>
+  <li>Tags come from the fixed set: <code>products</code>, <code>categories</code>, <code>coupons</code>,
+      <code>reviews</code>, <code>orders</code>, <code>site-settings</code>, <code>labels</code>. The admin write
+      route that changes the underlying data <em>must</em> <code>revalidateTag</code> the same tag.</li>
+  <li>Needs to be fresher than a day (stock-like)? <strong>Do not cache it.</strong> Make it a
+      <code>force-dynamic</code> + <code>no-store</code> route the client fetches on mount (pattern:
+      <code>LiveStock</code> / <code>/api/stock</code>).</li>
+  <li>Never <code>revalidateTag("products"/"orders")</code> from the webhook &mdash; it schedules a
+      full-storefront regeneration per sale (&sect;16).</li>
+</ul>
+
+<h3>Add a site setting</h3>
+<ul class="tight">
+  <li>It is one <code>site_settings</code> KV row. Seed a default in a migration
+      (<code>insert &hellip; on conflict do nothing</code>).</li>
+  <li>Admin-editable? Add validation + an <code>updates.push({ key, value })</code> branch in
+      <code>/api/admin/settings</code> PATCH, a form field in the admin Settings tab, and
+      <code>revalidateTag("site-settings", "max")</code>.</li>
+  <li>Read it server-side through a <code>getSiteSettings</code>-style cached helper. Expose to the browser
+      <em>only</em> by adding the key to <code>PUBLIC_SETTING_KEYS</code> in <code>/api/settings</code> &mdash;
+      think before you do (operational values like <code>last_keepalive_at</code> stay server-side).</li>
+</ul>
+
+<h3>Add a WhatsApp notification</h3>
+<ul class="tight">
+  <li><code>await sendWhatsappMessage(phone, text, imageUrl?)</code> from <code>app/utils/greenApi.ts</code>,
+      wrapped in <code>try/catch</code> + <code>console.error</code>. It silently no-ops without the three
+      <code>GREEN_API_*</code> vars &mdash; never let a failed send block the triggering action.</li>
+  <li>Business-facing &rarr; <code>BUSINESS_WHATSAPP_NUMBER</code>. Customer-facing &rarr; the OTP-verified /
+      pinned number, never a client-supplied one.</li>
+  <li>The free Green API tier caps distinct chats per month &mdash; assume customer-side delivery is
+      best-effort.</li>
+</ul>
+
+<h3>Add a scheduled job</h3>
+<ul class="tight">
+  <li>Route under <code>app/api/cron/</code>. Gate on <code>CRON_SECRET</code> bearer if set (pattern:
+      <code>keepalive</code> / <code>abandoned-checkout</code>).</li>
+  <li>Vercel Hobby cron is daily-only &mdash; document that an external scheduler (cron-job.org) must hit it,
+      and give it a health signal: stamp a <code>site_settings</code> timestamp on each run and surface staleness
+      in the admin Overview (pattern: the keepalive heartbeat, &sect;21).</li>
+</ul>
+
+<h3>Add an admin tab / panel</h3>
+<ul class="tight">
+  <li>Add the key to <code>ADMIN_TABS</code> in <code>app/admin/page.tsx</code>, a <code>{ key, label }</code>
+      entry to the tab list, and a <code>{activeTab === "&lt;key&gt;" &amp;&amp; (&hellip;)}</code> block.</li>
+  <li>Data from a new <code>/api/admin/*</code> route, loaded in the <code>Promise.allSettled</code> in
+      <code>loadAll()</code>.</li>
+  <li>Compute stats client-side from already-loaded data where you can (pattern: the
+      <code>components/admin/*</code> panels); CSV export via <code>app/utils/downloadCsv.ts</code>.</li>
+  <li>This file already carries pre-existing <code>no-explicit-any</code> / <code>set-state-in-effect</code> lint
+      debt &mdash; match the surrounding style, don&rsquo;t add <em>new</em> violations (derive from data in
+      <code>loadAll()</code>, not with an impure call in render).</li>
+</ul>
+
+<h3>Touching the payment path</h3>
+<ul class="tight">
+  <li><code>/api/razorpay</code>, <code>/api/razorpay-webhook</code>, and the GST / coupon / signature utils they
+      call &mdash; boundary #1 in <code>AGENT.md</code>. Written rationale, land behind tests, run
+      <code>next build</code> + <code>tsc</code> + <code>npm test</code>, and <strong>never merge blind</strong>
+      (no running app to exercise a real payment &rArr; it is a proposal, not done).</li>
+  <li>Both webhook callers stay idempotent: the <code>SELECT payment_id</code> guard <em>and</em>
+      <code>UNIQUE(payment_id)</code> (migration 0037). Re-fetch from Razorpay&rsquo;s API; never trust the
+      request body. Trusted data is pinned into <code>order.notes</code> at creation time.</li>
+</ul>
+
+<h3>Every batch, before deploy</h3>
+<ol class="steps">
+  <li>Group related changes; keep the diff surgical.</li>
+  <li>Verify: <code>npx next build</code> (exit 0), <code>npx tsc --noEmit</code>, <code>npm test</code>,
+      <code>npx eslint &lt;changed&gt;</code> (no <em>new</em> errors vs. the pre-existing baseline). Report the
+      real output.</li>
+  <li><strong>Update the docs &mdash; this gates the deploy.</strong> Edit the affected &sect; sections
+      <em>and</em> add a dated Change-log row (IST time, files, how verified). Re-strip the skeleton and
+      re-publish the artifact (<code>https://claude.ai/code/artifact/85252c72-364e-44ee-80cf-710ae21d88cb</code>,
+      pass as <code>url</code>). Move shipped items to Done in <code>IMPROVEMENTS.md</code>.</li>
+  <li>Only then merge to <code>main</code> / deploy. Re-verify the merged HEAD before pushing.</li>
+  <li>End with a short prioritised &ldquo;what next&rdquo; list; feed anything durable into
+      <code>IMPROVEMENTS.md</code>.</li>
+</ol>
+
 <footer class="end">
 End of reference. When you change the schema, a route contract, the caching strategy, or the checkout flow, update
-the matching section here in the same change. This file is fully self-contained &mdash; no CDN, no scripts, no
-external assets.
+the matching section here <strong>in the same batch, before it deploys</strong>. This file is fully self-contained
+&mdash; no CDN, no scripts, no external assets.
 </footer>
 </main>
 </div>

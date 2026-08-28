@@ -57,26 +57,31 @@ wired up) — the two base tables (`products`, `orders`) have no migration file.
 - **Docs are self-contained.** `docs/ARCHITECTURE.html` must stay CDN-free — system
   fonts, inline SVG, no `<script>`, no external assets.
 
-## Working agreement — batch → document → recommend
+## Working agreement — batch → verify → document → deploy → recommend
 
 This is the standing SOP for any multi-change piece of work (the audit/refactor skills in
 `.claude/skills/` follow it too):
 
 1. **Batch.** Group related changes and land them together. Keep each batch small enough
    to reason about; keep the diff surgical.
-2. **Verify before claiming done.** Run what applies: `npx next build`,
-   `npx tsc --noEmit`, `npm test`. Report the actual results — if something can't be
-   verified (no running app, no live Supabase/Razorpay), say so.
-3. **Document once per batch.** After the batch is green, update `docs/ARCHITECTURE.html`:
-   the affected sections *and* a new dated row in the **Change log** (date + time IST,
-   files touched, how verified). Then re-publish the artifact
-   (`https://claude.ai/code/artifact/85252c72-364e-44ee-80cf-710ae21d88cb`, pass it as
-   `url`). Update `IMPROVEMENTS.md` (move shipped items to Done).
-   *Do this only when there is token budget to do it properly in the same session; if
-   not, note clearly what still needs documenting.*
-4. **Always recommend improvements.** End the piece of work with a short, prioritised list
-   of what to do next — new issues found, deferred items, follow-ups. Feed anything
-   durable into `IMPROVEMENTS.md`.
+2. **Verify.** Run what applies: `npx next build` (exit 0), `npx tsc --noEmit`,
+   `npm test`, `npx eslint <changed>` (no *new* errors vs. the pre-existing baseline).
+   Report the actual results — if something can't be verified (no running app, no live
+   Supabase/Razorpay), say so, and treat a payment-path change as a proposal, not done.
+3. **Document — this GATES the deploy.** Before merging anything, update
+   `docs/ARCHITECTURE.html`: the affected sections *and* a new dated row in the **Change
+   log** (date + time IST, files touched, how verified). If the batch adds a new kind of
+   thing (route, migration, setting, notification…), check its **§27 playbook** still
+   describes reality. Re-strip the skeleton and re-publish the artifact
+   (`https://claude.ai/code/artifact/85252c72-364e-44ee-80cf-710ae21d88cb`, pass as
+   `url`). Move shipped items to Done in `IMPROVEMENTS.md`. **Never deploy a batch whose
+   docs aren't already updated.** If token budget is too low to document properly, stop
+   before deploying and say exactly what's undocumented.
+4. **Deploy** (only when the owner says so, and only after step 3). Branch from `main`,
+   commit, push; on "deploy", fast-forward `main` and **re-verify the merged HEAD**
+   (`next build` + `npm test`) before `git push origin main`. Delete the merged branch.
+5. **Recommend.** End with a short, prioritised "what next" — new issues found, deferred
+   items, follow-ups. Feed anything durable into `IMPROVEMENTS.md`.
 
 ## Cost / liability guardrail
 
