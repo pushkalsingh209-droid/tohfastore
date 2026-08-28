@@ -1,6 +1,7 @@
 // app/api/reviews/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { serverErrorResponse } from "@/app/utils/apiError";
 
 // Public endpoint: anyone can submit a review, but it only appears on the
 // storefront after an admin approves it (see /api/admin/reviews).
@@ -26,11 +27,11 @@ export async function POST(req: Request) {
     ]);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return serverErrorResponse("Review insert failed", error, "Could not submit your review. Please try again.");
     }
 
     return NextResponse.json({ status: "submitted_for_review" });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("Review submission failed", err, "Could not submit your review. Please try again.");
   }
 }

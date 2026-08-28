@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { isRateLimited, recordRateLimitEvent } from "@/app/utils/rateLimit";
 import { getClientIp } from "@/app/utils/clientIp";
+import { serverErrorResponse } from "@/app/utils/apiError";
 
 const RATE_LIMIT_BUCKET = "track-view";
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -51,13 +52,12 @@ export async function POST(req: Request) {
       .from("product_views")
       .upsert({ product_id: productId, visitor_token: visitorToken, viewed_at: new Date().toISOString() }, { onConflict: "product_id,visitor_token" });
     if (error) {
-      console.error("Failed to record product view:", error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return serverErrorResponse("Failed to record product view", error);
     }
 
     maybePrune();
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("track-view failed", err);
   }
 }

@@ -8,6 +8,7 @@
 // and permissive rather than strict about validation.
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { serverErrorResponse } from "@/app/utils/apiError";
 
 const VALID_SOURCES = ["card_front", "card_back", "product_detail"];
 
@@ -30,12 +31,12 @@ export async function POST(req: Request) {
         source,
       },
     ]);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("Enquiry log insert failed", error);
 
     return NextResponse.json({ status: "ok" });
-  } catch (err: any) {
+  } catch (err) {
     // Swallow malformed bodies etc. -- this is a best-effort analytics
     // beacon, never something worth surfacing to the visitor.
-    return NextResponse.json({ error: err.message || "Something went wrong." }, { status: 500 });
+    return serverErrorResponse("Enquiry log failed", err);
   }
 }

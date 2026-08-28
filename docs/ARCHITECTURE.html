@@ -201,6 +201,33 @@ together. Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>02:01</code></td>
+  <td><strong>Security &amp; hygiene #2</strong><br>(data perimeter &mdash; <code>IMPROVEMENTS.md</code> T1&nbsp;#4, T2&nbsp;#5&ndash;6)</td>
+  <td>
+    &bull; <strong>RLS regression test</strong> (<code>app/utils/rls.test.ts</code>): the anon key cannot
+    read <code>orders</code>/<code>coupons</code>/hidden products/unapproved reviews and cannot write; it
+    <em>can</em> read non-hidden products. Env-gated &mdash; skips cleanly without Supabase creds so CI stays
+    green; run with <code>. ./.env.local</code> exported. <strong>Verified 7/7 against the live project.</strong><br>
+    &bull; <code>supabase/migrations/0000_base_schema.sql</code> &mdash; reconstructed base
+    <code>products</code>/<code>orders</code> DDL so a fresh/staging project is reproducible from
+    <code>supabase/migrations/</code> alone. Fully <code>IF NOT EXISTS</code> (no-op on prod); column types
+    flagged &ldquo;verify against live&rdquo;.<br>
+    &bull; 5xx error-body scrubbing extended to <strong>all public POST routes</strong>:
+    <code>/api/leads</code>, <code>/api/contact</code>, <code>/api/reviews</code>, <code>/api/enquiries</code>,
+    <code>/api/track-view</code>, <code>/api/stock-alerts</code>, <code>/api/coupons/validate</code>
+    (admin routes remain &mdash; auth-gated, lower priority).
+  </td>
+  <td>
+    <em>new:</em> <code>app/utils/rls.test.ts</code>, <code>supabase/migrations/0000_base_schema.sql</code><br>
+    <code>app/api/leads/route.ts</code>, <code>app/api/contact/route.ts</code>,
+    <code>app/api/reviews/route.ts</code>, <code>app/api/enquiries/route.ts</code>,
+    <code>app/api/track-view/route.ts</code>, <code>app/api/stock-alerts/route.ts</code>,
+    <code>app/api/coupons/validate/route.ts</code>
+  </td>
+  <td><code>next build</code> exit 0 (239 pages) &middot; <code>tsc --noEmit</code> clean &middot;
+    <code>npm test</code> 43 pass / 7 gated &middot; <code>rls.test.ts</code> 7/7 against live Supabase</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>01:14</code></td>
   <td><strong>Security &amp; hygiene #1</strong><br>(from the &sect;24 backlog / <code>IMPROVEMENTS.md</code>)</td>
   <td>
@@ -292,7 +319,7 @@ takes a second arg.</p>
 <tr><td>PDF</td><td><code>@react-pdf/renderer</code> 4.5</td><td>Catalogue PDF (pure JS). <code>sharp</code> re-encodes photos to thumbnails first.</td></tr>
 <tr><td>QR</td><td><code>qrcode</code> 1.5</td><td>Admin TOTP re-provisioning QR (SVG).</td></tr>
 <tr><td>Analytics / RUM</td><td><code>@vercel/analytics</code>, <code>@vercel/speed-insights</code>, <code>@next/third-parties</code> (GA4)</td><td>All free-tier. Purchase conversions fired client-side on <code>/success</code> with the real server-verified total.</td></tr>
-<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code>. Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>razorpaySignature</code>, <code>totp</code>.</td></tr>
+<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (43 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>razorpaySignature</code>, <code>totp</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
 <tr><td>Lint</td><td>ESLint 9 + <code>eslint-config-next</code></td><td><code>npm run lint</code>. (Next 16 no longer runs ESLint during <code>next build</code>.)</td></tr>
 </tbody></table></div>
 
@@ -640,6 +667,11 @@ direct-to-Supabase reads. Final effective state (migrations 0003 &rarr; 0039 &ra
 <tr><td><code>coupons</code></td><td class="no">no policy &rarr; denied</td><td class="no">no</td><td class="yes">full</td></tr>
 <tr><td>every other table</td><td class="no">no policy &rarr; denied</td><td class="no">no</td><td class="yes">full</td></tr>
 </tbody></table></div>
+<div class="note">
+<p><strong>Regression guard:</strong> <code>app/utils/rls.test.ts</code> connects with the anon key and asserts
+this table &mdash; run it (with <code>.env.local</code> exported) after any schema or policy change, and keep it
+in CI. It skips cleanly when Supabase creds are absent.</p>
+</div>
 <div class="note bad">
 <p><strong>History / lesson (0039, 0040):</strong> the original lockdown (0003) was effectively a no-op because
 four stray dashboard-generated policies (<code>products</code>, <code>orders</code>, <code>forreviews</code>,
@@ -655,6 +687,7 @@ policy exists.</p>
 <div class="x"><table>
 <thead><tr><th>#</th><th>File</th><th>Summary</th></tr></thead>
 <tbody>
+<tr><td>0000</td><td>base_schema <em>(added 2026-08-29)</em></td><td><strong>Reconstructed</strong> base <code>products</code> + <code>orders</code> DDL (they were dashboard-created, no migration existed). Fully <code>IF NOT EXISTS</code> → no-op on the live DB; exists so a fresh/staging project is reproducible from this folder. Represents the pre-0001 state; column types marked &ldquo;verify against live&rdquo;.</td></tr>
 <tr><td>0001</td><td>add_status_category_reviews_coupons</td><td><code>orders.status</code>+check, <code>products.category</code>, <code>reviews</code> table, <code>coupons</code> table, search/sort indexes.</td></tr>
 <tr><td>0002</td><td>add_coupon_visibility</td><td><code>coupons.is_public</code>.</td></tr>
 <tr><td>0003</td><td>lock_down_rls</td><td>Enable RLS + public-read policies for products &amp; approved reviews. <em>(later found ineffective &mdash; 0039/0040)</em></td></tr>
@@ -1165,7 +1198,8 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
 <tr><td><code>slug.ts</code></td><td><code>slugify</code>, <code>productHref</code>, <code>productIdFromParam</code>, <code>categoryHref</code>, <code>findCategoryBySlug</code>.</td></tr>
 <tr><td><code>pricing.ts</code>, <code>gst.ts</code>, <code>coupons.ts</code></td><td>Money math (&sect;13). Unit-tested.</td></tr>
 <tr><td><code>stock.ts</code></td><td><em>(new)</em> <code>LOW_STOCK_THRESHOLD</code> &mdash; one cutoff shared by <code>LiveStock</code>, <code>ProductCard</code>, the stock API, the webhook and the admin stats panels.</td></tr>
-<tr><td><code>apiError.ts</code></td><td><em>(new)</em> <code>serverErrorResponse(context, err, publicMessage)</code> &mdash; logs the real error, returns a generic 5xx body. Wired into <code>/api/razorpay</code> and <code>/api/orders/track</code>; the mechanical follow-up is the rest of the admin routes.</td></tr>
+<tr><td><code>apiError.ts</code></td><td><code>serverErrorResponse(context, err, publicMessage)</code> &mdash; logs the real error, returns a generic 5xx body. Wired into <strong>all public POST routes</strong> (§22); admin routes remain.</td></tr>
+<tr><td><code>rls.test.ts</code></td><td>Anon-key RLS perimeter regression test (§6). Env-gated (skips without Supabase creds).</td></tr>
 <tr><td><code>whatsapp.ts</code></td><td>Enquiry-link builder + number-resolution priority.</td></tr>
 <tr><td><code>whatsappOtp.ts</code></td><td>OTP send/verify/token-check + all abuse limits + opportunistic verification-row pruning.</td></tr>
 <tr><td><code>greenApi.ts</code></td><td>Green API send (text / image+caption) + <code>checkWhatsappNumber</code>.</td></tr>
@@ -1222,9 +1256,15 @@ scheduler</strong> (e.g. cron-job.org) at the same URLs &mdash; <code>/api/keepa
       (<code>rate_limit_events</code>), OTP send/verify caps, contact-form honeypot. Log tables self-prune.</li>
   <li><strong>Order tracking</strong> &mdash; needs reference AND matching phone; user input never interpolated into
       PostgREST filter strings.</li>
-  <li><strong>Error hygiene</strong> &mdash; <em>(working branch)</em> <code>/api/razorpay</code> and
-      <code>/api/orders/track</code> no longer echo raw exception / Postgres text in 5xx bodies
-      (<code>apiError.ts</code>); the real error is logged server-side.</li>
+  <li><strong>Error hygiene</strong> &mdash; every <strong>public POST route</strong> (<code>/api/razorpay</code>,
+      <code>/api/orders/track</code>, <code>/api/leads</code>, <code>/api/contact</code>, <code>/api/reviews</code>,
+      <code>/api/enquiries</code>, <code>/api/track-view</code>, <code>/api/stock-alerts</code>,
+      <code>/api/coupons/validate</code>) returns a generic 5xx body via <code>apiError.ts</code>; the real
+      exception / Postgres text is logged server-side, never echoed. Admin routes (auth-gated) are the remaining
+      follow-up.</li>
+  <li><strong>RLS regression test</strong> &mdash; <code>app/utils/rls.test.ts</code> connects with the anon key
+      and asserts the &sect;6 perimeter (no <code>orders</code>/<code>coupons</code>/hidden-product/unapproved-review
+      reads, no writes). Env-gated; run it after any schema or policy change.</li>
   <li><strong>Headers / CSP</strong> &mdash; <code>next.config.ts</code> sets (production only) a
       <code>Content-Security-Policy</code> (explicit allow-list for Razorpay / GA / GTM / Meta / Google Translate /
       Supabase), <code>X-Content-Type-Options</code>, <code>Referrer-Policy</code>, <code>Permissions-Policy</code>
@@ -1265,8 +1305,11 @@ scheduler</strong> (e.g. cron-job.org) at the same URLs &mdash; <code>/api/keepa
   <li><strong>Admin product routes silently drop unknown columns and retry</strong>
       (<code>insert/updateWithFallback</code>) &mdash; a save can partially succeed if a migration hasn&rsquo;t been
       run; the response flags which fields were saved (<code>gallerySaved</code>, <code>hiddenSaved</code>, &hellip;).</li>
-  <li><strong>Base tables (<code>products</code>, <code>orders</code>) have no migration file</strong> &mdash; created
-      via the dashboard. A fresh Supabase project needs them created by hand before running <code>0001</code> onward.</li>
+  <li><strong>Base tables (<code>products</code>, <code>orders</code>) were dashboard-created</strong> &mdash;
+      <code>supabase/migrations/0000_base_schema.sql</code> (added 2026-08-29) now reconstructs them so a fresh
+      project can be bootstrapped from the folder. It is <code>IF NOT EXISTS</code>-guarded (no-op on prod) and
+      <em>approximate</em> &mdash; a few column types are unverified; diff against <code>\d products</code> /
+      <code>\d orders</code> on the live DB before relying on it.</li>
   <li><strong>RLS was silently broken for a long time</strong> (stray <code>ALL/true</code> policies). Always
       verify <code>pg_policies</code> after schema changes.</li>
   <li><strong>Green API free tier</strong> caps distinct chats/month &mdash; customer WhatsApp delivery can stop
@@ -1315,7 +1358,7 @@ scheduler</strong> (e.g. cron-job.org) at the same URLs &mdash; <code>/api/keepa
 |  |- context/              10 providers
 |  |- lib/supabase.ts        browser publishable client
 |  '- utils/                 ~47 modules (+ *.test.ts) - see §20; incl. stock.ts, apiError.ts
-|- supabase/migrations/      0001...0040 (hand-run SQL)
+|- supabase/migrations/      0000 (reconstructed base) ... 0040 (hand-run SQL)
 |- scripts/                  migrate-product-images.mjs, cleanup-legacy-product-images.mjs
 |- public/                   icon.svg, logo-mark.png, ganesha.jpg, audio/welcome.mp3
 '- docs/                     ARCHITECTURE.html (this file) + v1 feature manifest (HTML + PDF)</code></pre>
@@ -1329,6 +1372,9 @@ npm install
 npm run dev        # http://localhost:3000   (CSP disabled in dev)
 npm test           # vitest: money math, signatures, totp, backup codes, client-ip  (43 tests)
 npm run lint       # note: pre-existing no-explicit-any / set-state-in-effect debt
+
+# RLS regression test — talks to the live project, so it needs the anon creds:
+set -a; . ./.env.local; set +a; npx vitest run app/utils/rls.test.ts
 
 # one-off image migration (dry run, then apply):
 node --env-file=.env.local scripts/migrate-product-images.mjs

@@ -12,6 +12,21 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Security & hygiene #2 (data perimeter) — 2026-08-29 02:01 IST
+- **RLS regression test** — `app/utils/rls.test.ts`: anon key cannot read
+  `orders`/`coupons`/hidden products/unapproved reviews and cannot write; *can* read
+  non-hidden products. Env-gated (skips without Supabase creds → CI stays green).
+  **Verified 7/7 against the live project.** (was Tier 2 #5)
+- **`supabase/migrations/0000_base_schema.sql`** — reconstructed base `products`/`orders`
+  DDL so a fresh/staging project is reproducible from the folder. `IF NOT EXISTS`
+  throughout (no-op on prod); a few column types flagged "verify against live".
+  (was Tier 1 #4 — partial: the Supabase-CLI adoption half is still open, see #4 below.)
+- **5xx error scrubbing — public routes done.** Extended `serverErrorResponse` to
+  `/api/leads`, `/api/contact`, `/api/reviews`, `/api/enquiries`, `/api/track-view`,
+  `/api/stock-alerts`, `/api/coupons/validate`. (was Tier 2 #6 — admin routes remain.)
+- Verified: `next build` exit 0 (239 SSG pages), `tsc --noEmit` clean, `npm test`
+  43 pass / 7 gated, `rls.test.ts` 7/7 live.
+
 ### Batch: Security & hygiene #1 — 2026-08-29 01:14 IST
 - **Admin CSRF guard** — `proxy.ts` rejects a mutating method on `/api/admin/*` whose
   `Origin` header is cross-host. Defense-in-depth on top of the `sameSite:lax` cookie.
@@ -53,22 +68,22 @@ care, land behind tests, never "blind".
    *Fix:* a `product_sales` aggregate table incremented in the webhook, decremented on
    cancel. Migration + webhook change (⚠️ payment path).
 
-4. **No `0000` base-schema migration.**
-   `products` and `orders` exist only in the dashboard — a fresh/staging Supabase can't
-   be reproduced. Capture current DDL as idempotent `supabase/migrations/0000_base_schema.sql`.
-   Consider adopting the Supabase CLI so migrations are versioned, not hand-pasted (the
-   0039/0040 RLS incident is what that prevents).
+4. **Adopt the Supabase CLI for migrations.** `0000_base_schema.sql` now exists (done),
+   but migrations are still hand-pasted into the SQL editor. `supabase db pull` /
+   `supabase migration` would make them versioned + repeatable and let `0000` be
+   verified against the real DDL (a few column types in it are still guessed). Also wire
+   an RLS `pg_policies` snapshot check.
 
 ## Active — Tier 2 (security / hardening)
 
-5. **RLS regression guard in CI.** A test (or scheduled route) that does an anon-key
-   `select` on `orders` and asserts 0 rows, and snapshots `pg_policies`. The last RLS
-   hole went undetected for months.
+5. **RLS regression test in CI.** `app/utils/rls.test.ts` exists and passes against live
+   — remaining work is to run it in whatever CI executes on the repo (there is currently
+   **no `.github/workflows`**), so a regression actually blocks a merge.
 
-6. **Finish 5xx error scrubbing.** ~40 admin/route files still return `err.message` /
-   `error.message` in 500 bodies. Mechanical: import `serverErrorResponse` from
-   `app/utils/apiError.ts`, replace the `catch` returns. Touch **only** 500s — 4xx
-   validation messages are user-facing and safe.
+6. **Finish 5xx error scrubbing — admin routes.** ~30 `app/api/admin/**` files still
+   return `err.message` / `error.message` in 500 bodies. Lower priority (auth-gated) but
+   mechanical: import `serverErrorResponse`, replace the `catch` returns and the
+   `if (error) return …500` lines. Touch **only** 500s.
 
 7. **`/success` shouldn't depend on `sessionStorage`.** Closing the tab during the
    Razorpay redirect leaves the buyer with no on-screen invoice. Add

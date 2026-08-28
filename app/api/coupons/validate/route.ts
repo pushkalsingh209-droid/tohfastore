@@ -4,6 +4,7 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { validateAndCalculateDiscount } from "@/app/utils/coupons";
 import { isRateLimited, recordRateLimitEvent } from "@/app/utils/rateLimit";
 import { getClientIp } from "@/app/utils/clientIp";
+import { serverErrorResponse } from "@/app/utils/apiError";
 
 const RATE_LIMIT_BUCKET = "coupon-validate";
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ discount: result.discount, code: coupon.code });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("Coupon validate failed", err, "Could not check that coupon right now. Please try again.");
   }
 }

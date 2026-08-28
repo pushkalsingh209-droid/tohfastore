@@ -8,6 +8,7 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
 import { isRateLimited, recordRateLimitEvent } from "@/app/utils/rateLimit";
 import { getClientIp } from "@/app/utils/clientIp";
+import { serverErrorResponse } from "@/app/utils/apiError";
 
 const RATE_LIMIT_BUCKET = "lead-submit";
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
       .insert([{ name, email: email || null, phone: phone || null, source, details }])
       .select()
       .single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("Lead insert failed", error);
 
     // Best-effort auto follow-up -- never blocks the lead submission itself
     // (a WhatsApp/Green API hiccup shouldn't make the visitor's form
@@ -88,8 +89,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ status: "ok" });
-  } catch (err: any) {
-    console.error("Lead submission failed:", err);
-    return NextResponse.json({ error: err.message || "Something went wrong." }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("Lead submission failed", err);
   }
 }

@@ -1,6 +1,7 @@
 // app/api/contact/route.ts
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { serverErrorResponse } from "@/app/utils/apiError";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CONTACT_INBOX = "contact@tohfaonline.com";
@@ -48,8 +49,11 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ status: "ok" });
-  } catch (err: any) {
-    console.error("Contact form submission failed:", err);
-    return NextResponse.json({ error: err.message || "Something went wrong." }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse(
+      "Contact form submission failed",
+      err,
+      "Could not send your message. Please try again or WhatsApp us directly.",
+    );
   }
 }

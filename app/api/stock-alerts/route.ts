@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { isRateLimited, recordRateLimitEvent } from "@/app/utils/rateLimit";
 import { getClientIp } from "@/app/utils/clientIp";
+import { serverErrorResponse } from "@/app/utils/apiError";
 
 const RATE_LIMIT_BUCKET = "stock-alert-subscribe";
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
@@ -49,11 +50,11 @@ export async function POST(req: Request) {
     // exact phone+product -- resubscribing while still pending is a
     // harmless no-op, not an error the shopper needs to see.
     if (error && error.code !== "23505") {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return serverErrorResponse("Stock alert subscribe failed", error, "Could not save your alert. Please try again.");
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Something went wrong." }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("Stock alert subscribe failed", err, "Could not save your alert. Please try again.");
   }
 }
