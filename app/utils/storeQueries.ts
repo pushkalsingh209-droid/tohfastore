@@ -37,7 +37,8 @@ import {
 
 // PostgREST's "in"/"not.in" list literal: comma-separated, with any value
 // containing a comma or quote wrapped in double quotes (quotes doubled).
-function notInListLiteral(values: string[]): string {
+// Exported because /api/admin/labels/bulk-assign builds the same filter.
+export function notInListLiteral(values: string[]): string {
   return `(${values.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")})`;
 }
 

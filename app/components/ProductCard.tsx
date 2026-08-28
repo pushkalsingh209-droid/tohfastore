@@ -17,9 +17,9 @@ import { useDefaultWhatsappNumber } from "@/app/context/DefaultWhatsappNumberCon
 import { useChatLabels } from "@/app/context/ChatLabelSettingContext";
 import StockStatusBadge from "@/app/components/StockStatusBadge";
 import { productHref } from "@/app/utils/slug";
+import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
 
 const DOUBLE_TAP_WINDOW_MS = 350;
-const LOW_STOCK_THRESHOLD = 3;
 const FLIP_HINT_SEEN_KEY = "tohfa_card_flip_seen";
 const CARD_FLIP_DURATION_MS = 1200; // matches .card-flip-inner's transition duration in globals.css
 

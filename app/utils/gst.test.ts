@@ -60,4 +60,51 @@ describe("calculateOrderGstBreakdown", () => {
     expect(result.totalPrice).toBeCloseTo(1000, 2);
     expect(result.basePrice + result.gstAmount).toBeCloseTo(result.totalPrice, 2);
   });
+
+  it("distributes an uneven discount by each group's share of the pre-discount subtotal", () => {
+    // Group A subtotal 3000 (75%), group B subtotal 1000 (25%). A 400
+    // discount should land 300 on A and 100 on B, and every group's
+    // base+gst must still reconstruct its own charged total.
+    const result = calculateOrderGstBreakdown(
+      [
+        { price: 1500, quantity: 2, gstRate: 5 },
+        { price: 1000, quantity: 1, gstRate: 12 },
+      ],
+      400
+    );
+    const a = result.byRate.find((g) => g.rate === 5)!;
+    const b = result.byRate.find((g) => g.rate === 12)!;
+    expect(a.totalPrice).toBeCloseTo(2700, 2);
+    expect(b.totalPrice).toBeCloseTo(900, 2);
+    expect(a.basePrice + a.gstAmount).toBeCloseTo(a.totalPrice, 2);
+    expect(b.basePrice + b.gstAmount).toBeCloseTo(b.totalPrice, 2);
+    expect(result.totalPrice).toBeCloseTo(3600, 2);
+  });
+
+  it("handles three distinct rates in one basket", () => {
+    const result = calculateOrderGstBreakdown([
+      { price: 1050, quantity: 1, gstRate: 5 },
+      { price: 1120, quantity: 1, gstRate: 12 },
+      { price: 1180, quantity: 1, gstRate: 18 },
+    ]);
+    expect(result.byRate.map((g) => g.rate)).toEqual([5, 12, 18]);
+    expect(result.totalPrice).toBeCloseTo(3350, 2);
+    const sumBase = result.byRate.reduce((s, g) => s + g.basePrice, 0);
+    expect(result.basePrice).toBeCloseTo(sumBase, 2);
+  });
+
+  it("clamps a discount larger than the subtotal to zero, not negative", () => {
+    const result = calculateOrderGstBreakdown([{ price: 1000, quantity: 1, gstRate: 5 }], 5000);
+    expect(result.totalPrice).toBe(0);
+    expect(result.basePrice).toBe(0);
+    expect(result.gstAmount).toBe(0);
+  });
+
+  it("returns all-zero totals and no rate groups for an empty basket", () => {
+    const result = calculateOrderGstBreakdown([], 0);
+    expect(result.byRate).toHaveLength(0);
+    expect(result.basePrice).toBe(0);
+    expect(result.gstAmount).toBe(0);
+    expect(result.totalPrice).toBe(0);
+  });
 });

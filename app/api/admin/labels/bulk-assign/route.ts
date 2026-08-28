@@ -7,13 +7,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
-import { getHiddenCategoryNames } from "@/app/utils/storeQueries";
-
-// PostgREST's "not.in" list literal -- mirrors the identical helper in
-// storeQueries.ts (kept local since that one isn't exported).
-function notInListLiteral(values: string[]): string {
-  return `(${values.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")})`;
-}
+import { getHiddenCategoryNames, notInListLiteral } from "@/app/utils/storeQueries";
 
 export async function POST(req: Request) {
   try {

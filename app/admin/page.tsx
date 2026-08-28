@@ -22,6 +22,7 @@ import {
   type DimensionUnit,
 } from "@/app/utils/productUnits";
 import { roundUpBrassPrice } from "@/app/utils/pricing";
+import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
 import { CHAT_LABEL_KINDS, DEFAULT_CHAT_LABELS, MAX_CHAT_LABEL_LENGTH, type ChatLabelKind } from "@/app/utils/chatLabels";
 
 // All reads/writes below go through /api/admin/* route handlers (protected
@@ -58,10 +59,10 @@ const ORDER_STATUS_TABS: { key: string; label: string }[] = [
   { key: "cancelled", label: "Cancelled" },
 ];
 
-// Matches ProductCard.tsx's LOW_STOCK_THRESHOLD -- so a product flagged
-// "low stock" in the Product Statistics panel is the same one showing
-// "Only N left!" to a customer on the storefront, not a different cutoff.
-const LOW_STOCK_THRESHOLD = 3;
+// LOW_STOCK_THRESHOLD is imported from app/utils/stock.ts -- one cutoff
+// shared with ProductCard/LiveStock/the stock API/the webhook, so a product
+// flagged "low stock" in the Product Statistics panel is the same one
+// showing "Only N left!" to a customer on the storefront.
 
 // Shared by the label-wise and category-wise Product Statistics panels
 // (see GroupStatsPanel) -- groups `products` by whatever `keyFn` returns

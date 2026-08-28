@@ -2,6 +2,7 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
 import StockStatusBadge from "@/app/components/StockStatusBadge";
+import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
 
 // The product page's stock figure is baked into a statically rendered page
 // that can now be up to a day stale (see the wide `revalidate` in
@@ -12,9 +13,6 @@ import StockStatusBadge from "@/app/components/StockStatusBadge";
 // / the restock prompt reflect live inventory within a second of the page
 // loading. Until that fetch resolves -- or if it fails -- callers fall back
 // to the figure the page was rendered with.
-
-// Kept in sync with app/api/stock/[id]/route.ts and the webhook's alert.
-const LOW_STOCK_THRESHOLD = 3;
 
 export type LiveStock = {
   inventory: number;

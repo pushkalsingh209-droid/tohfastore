@@ -5,6 +5,7 @@
 // look up someone else's order.
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { serverErrorResponse } from "@/app/utils/apiError";
 
 export async function POST(req: Request) {
   try {
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
       createdAt: data.created_at,
       awbNumber: data.awb_number || null,
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Could not look up order." }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("Order tracking lookup failed", err, "Could not look up your order right now. Please try again.");
   }
 }

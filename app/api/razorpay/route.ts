@@ -5,6 +5,7 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { validateAndCalculateDiscount } from "@/app/utils/coupons";
 import { calculateOrderGstBreakdown, GST_RATE } from "@/app/utils/gst";
 import { isVerificationTokenValid, normalizePhoneForRecord } from "@/app/utils/whatsappOtp";
+import { serverErrorResponse } from "@/app/utils/apiError";
 
 // Interface definition to explicitly type incoming shopping bag artifacts
 interface CartItem {
@@ -209,14 +210,13 @@ export async function POST(req: Request) {
     });
 
   } catch (err: unknown) {
-    // 4. Type Narrowing Guard: Resolves the 'unknown catch variable' validation block safely
-    const errorMessage = err instanceof Error ? err.message : "An unhandled execution crash occurred";
-
-    console.error("Razorpay order generation process exception:", err);
-
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
+    // Never surface the raw exception / Razorpay SDK error text to the
+    // browser -- it leaks internals and gives a tampering client nothing
+    // it can legitimately act on. The real error is logged server-side.
+    return serverErrorResponse(
+      "Razorpay order generation process exception",
+      err,
+      "We couldn't start your payment just now. Please try again in a moment."
     );
   }
 }

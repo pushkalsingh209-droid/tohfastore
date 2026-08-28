@@ -9,12 +9,9 @@
 // cache, hence `force-dynamic` + a `no-store` response header.
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
 
 export const dynamic = "force-dynamic";
-
-// Kept in sync with the same threshold in app/components/LiveStock.tsx and
-// the low-stock alert in app/api/razorpay-webhook/route.ts.
-const LOW_STOCK_THRESHOLD = 3;
 
 const NO_STORE = { "Cache-Control": "no-store" };
 

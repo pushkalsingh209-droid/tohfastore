@@ -24,9 +24,30 @@ export async function isRateLimited(ip: string): Promise<boolean> {
   return (count || 0) >= RATE_LIMIT_MAX_ATTEMPTS;
 }
 
+// Opportunistic cleanup (not a cron) -- same pattern as app/utils/rateLimit.ts's
+// maybeCleanup and /api/track-view's maybePrune, so this table stays bounded
+// without a dedicated scheduled job. The rate-limit window is 15 minutes and
+// the Security tab only ever shows the most recent 50 rows, so a 90-day
+// retention is already far more history than anything reads. Fire-and-forget:
+// a failure here must never affect recording the attempt itself.
+const ATTEMPT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+
+function maybePruneAttempts() {
+  if (Math.random() > 0.02) return;
+  const cutoff = new Date(Date.now() - ATTEMPT_RETENTION_MS).toISOString();
+  supabase
+    .from("admin_login_attempts")
+    .delete()
+    .lt("created_at", cutoff)
+    .then(({ error }) => {
+      if (error) console.error("admin_login_attempts cleanup failed:", error);
+    });
+}
+
 export async function recordLoginAttempt(ip: string, success: boolean, reason: string): Promise<void> {
   const { error } = await supabase.from("admin_login_attempts").insert({ ip, success, reason });
   if (error) console.error("Failed to record login attempt:", error);
+  maybePruneAttempts();
 }
 
 export async function getRecentLoginAttempts(limit = 50) {

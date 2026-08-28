@@ -9,6 +9,7 @@ import { calculateOrderGstBreakdown, BUSINESS_GSTIN } from "@/app/utils/gst";
 import { calculateSlashedPrice } from "@/app/utils/pricing";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
 import { productHref } from "@/app/utils/slug";
+import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
 
 const CONTACT_INBOX = "contact@tohfaonline.com";
 
@@ -223,7 +224,6 @@ export async function POST(req: Request) {
 
             // Best-effort low-stock alert to the business WhatsApp number.
             try {
-              const LOW_STOCK_THRESHOLD = 3;
               if (newInventory <= LOW_STOCK_THRESHOLD) {
                 await sendLowStockAlert(item.name ?? current.id, newInventory);
               }

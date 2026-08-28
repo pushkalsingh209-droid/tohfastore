@@ -50,6 +50,25 @@ function isGreenApiConfigured(): boolean {
   return Boolean(process.env.GREEN_API_URL && process.env.GREEN_API_ID_INSTANCE && process.env.GREEN_API_TOKEN_INSTANCE);
 }
 
+// Opportunistic cleanup (not a cron) -- same pattern as app/utils/rateLimit.ts
+// and /api/track-view. A sent code is enterable for 5 minutes and a verified
+// record proves anything for at most 60 (see the TTLs above), so any row
+// older than a day is already dead weight; 7 days is a generous margin.
+// Fire-and-forget from sendOtp (which always inserts a row).
+const VERIFICATION_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
+function maybePruneVerifications() {
+  if (Math.random() > 0.02) return;
+  const cutoff = new Date(Date.now() - VERIFICATION_RETENTION_MS).toISOString();
+  supabase
+    .from("whatsapp_otp_verifications")
+    .delete()
+    .lt("created_at", cutoff)
+    .then(({ error }) => {
+      if (error) console.error("whatsapp_otp_verifications cleanup failed:", error);
+    });
+}
+
 export async function sendOtp(rawPhone: string, ip: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const phone = normalizePhone(rawPhone);
   if (!/^91[6-9]\d{9}$/.test(phone)) {
@@ -107,6 +126,7 @@ export async function sendOtp(rawPhone: string, ip: string): Promise<{ ok: true 
     return { ok: false, error: "Could not send the verification code via WhatsApp. Please try again or contact us directly." };
   }
 
+  maybePruneVerifications();
   return { ok: true };
 }
 

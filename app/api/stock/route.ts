@@ -6,11 +6,9 @@
 // -- one request for a whole page of cards, not one per card.
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
 
 export const dynamic = "force-dynamic";
-
-// Kept in sync with app/api/stock/[id]/route.ts and app/components/LiveStock.tsx.
-const LOW_STOCK_THRESHOLD = 3;
 
 // A single catalog page maxes out at 100 products; cap well above that so a
 // crafted request can't ask for an unbounded IN (...) list.

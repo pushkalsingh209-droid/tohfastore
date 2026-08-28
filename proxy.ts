@@ -12,9 +12,35 @@ import { findCategoryBySlug, categoryHref, productIdFromParam, productHref } fro
 // what let you obtain one in the first place.
 const PUBLIC_ADMIN_PATHS = new Set(['/admin/login', '/api/admin/login']);
 
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+// CSRF defense-in-depth for the admin write API. The admin_session cookie
+// is sameSite:lax, which already blocks the classic cross-site form POST,
+// but a forged request from another origin (or a lax-exempt top-level
+// navigation) still carries the cookie. Every legitimate admin mutation
+// comes from the admin SPA's own fetch() calls, which the browser stamps
+// with an Origin header matching this host. A cross-origin Origin on a
+// state-changing method is therefore never legitimate here. A *missing*
+// Origin is left alone -- that's non-browser tooling (curl, a server job),
+// not a browser-driven CSRF vector.
+function isForgedCrossOriginWrite(request: NextRequest): boolean {
+  if (!MUTATING_METHODS.has(request.method)) return false;
+  const origin = request.headers.get('origin');
+  if (!origin) return false;
+  try {
+    return new URL(origin).host !== request.nextUrl.host;
+  } catch {
+    return true;
+  }
+}
+
 async function handleAdminAuth(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const isAdminApi = pathname.startsWith('/api/admin');
+
+  if (isAdminApi && isForgedCrossOriginWrite(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked.' }, { status: 403 });
+  }
 
   if (PUBLIC_ADMIN_PATHS.has(pathname)) {
     return NextResponse.next();
