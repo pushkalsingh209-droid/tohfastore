@@ -1,5 +1,6 @@
 // app/api/razorpay-webhook/route.ts
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import Razorpay from "razorpay";
@@ -409,8 +410,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ status: "webhook_acknowledged" });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("razorpay-webhook", err);
   }
 }
 

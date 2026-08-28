@@ -4,6 +4,7 @@
 // this client-side to stay in sync with whatever the admin panel sets,
 // without requiring a redeploy.
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
 export async function GET() {
@@ -11,6 +12,6 @@ export async function GET() {
     .from("categories")
     .select("name, show_on_home, discount_percent")
     .order("name", { ascending: true });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverErrorResponse("categories", error);
   return NextResponse.json({ categories: data || [] });
 }

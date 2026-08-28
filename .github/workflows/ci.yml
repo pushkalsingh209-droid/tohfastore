@@ -1,0 +1,62 @@
+name: CI
+
+# The repo had no CI before this. These are the same gates the working
+# agreement in CLAUDE.md / AGENT.md requires for every batch, run
+# automatically on push to main and on every pull request so a regression
+# shows up before merge instead of after deploy.
+#
+# Deliberately NOT run here:
+#   * eslint -- the repo carries pre-existing @typescript-eslint/no-explicit-any
+#     and react-hooks/set-state-in-effect debt (IMPROVEMENTS.md #19). Add a
+#     lint job once that's cleared.
+#   * A dedicated Vercel deploy check -- Vercel's own Git integration already
+#     builds every push/PR.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        # rls.test.ts self-skips when the Supabase vars are absent, so this
+        # passes with or without secrets configured. If the repo has
+        # NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY set
+        # as Actions secrets, the RLS perimeter is asserted for real.
+        run: npm test
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+
+      - name: Production build
+        # The app ships build-time placeholder keys (see supabaseAdmin.ts /
+        # api/razorpay), so `next build` still succeeds without secrets --
+        # it just prerenders fewer product pages. With the real keys set as
+        # Actions secrets it mirrors the Vercel build exactly.
+        run: npx next build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_RAZORPAY_KEY_ID: ${{ secrets.NEXT_PUBLIC_RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}

@@ -8,6 +8,7 @@
 // secret that was there all along. Protected the same as every other
 // /api/admin/* route, via proxy.ts's session-cookie check.
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import QRCode from "qrcode";
 
 const ISSUER = "TOHFA Admin";
@@ -24,7 +25,7 @@ export async function GET() {
   try {
     const qrSvg = await QRCode.toString(otpauthUri, { type: "svg", margin: 1 });
     return NextResponse.json({ secret, qrSvg });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Could not generate QR code." }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin totp-qr", err, "Could not generate QR code.");
   }
 }

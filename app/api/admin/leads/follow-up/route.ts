@@ -4,6 +4,7 @@
 // email). Gated by the admin Basic Auth middleware like every /api/admin/*
 // route.
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
 
@@ -39,11 +40,10 @@ export async function POST(req: Request) {
       .eq("id", id)
       .select()
       .single();
-    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
+    if (updateError) return serverErrorResponse("admin leads follow-up", updateError);
 
     return NextResponse.json({ lead: updated });
-  } catch (err: any) {
-    console.error("Lead follow-up failed:", err);
-    return NextResponse.json({ error: err.message || "Something went wrong." }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin leads follow-up", err, "Something went wrong.");
   }
 }

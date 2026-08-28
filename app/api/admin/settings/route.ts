@@ -1,5 +1,6 @@
 // app/api/admin/settings/route.ts
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
@@ -70,7 +71,7 @@ function parseRevealBatchSize(value: unknown): number | null {
 
 export async function GET() {
   const { data, error } = await supabase.from("site_settings").select("key, value");
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverErrorResponse("admin settings", error);
   const settings: Record<string, string> = {};
   for (const row of data || []) settings[row.key] = row.value;
   return NextResponse.json({ settings });
@@ -206,14 +207,14 @@ export async function PATCH(req: Request) {
     }
 
     const { error } = await supabase.from("site_settings").upsert(updates, { onConflict: "key" });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin settings", error);
 
     revalidateTag("site-settings", "max");
 
     const settings: Record<string, string> = {};
     for (const u of updates) settings[u.key] = u.value;
     return NextResponse.json({ settings });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin settings", err);
   }
 }

@@ -1,5 +1,6 @@
 // app/api/admin/orders/update-status/route.ts
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { productHref } from "@/app/utils/slug";
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ order });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin orders update-status", err);
   }
 }

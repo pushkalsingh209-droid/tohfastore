@@ -3,6 +3,7 @@
 // same style as app/api/admin/analytics/route.ts: one full-table fetch,
 // grouping done in plain JS, no external analytics service.
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
 const TOP_PRODUCTS_LIMIT = 8;
@@ -13,7 +14,7 @@ export async function GET() {
       .from("whatsapp_enquiries")
       .select("product_id, product_name, category, out_of_stock, whatsapp_number, source, created_at")
       .order("created_at", { ascending: true });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin whatsapp-enquiries", error);
 
     const all = enquiries || [];
     const totalEnquiries = all.length;
@@ -85,7 +86,7 @@ export async function GET() {
       bySource,
       dailyTrend,
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin whatsapp-enquiries", err);
   }
 }

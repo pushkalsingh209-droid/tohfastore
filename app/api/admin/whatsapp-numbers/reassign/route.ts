@@ -6,6 +6,7 @@
 // enquiry link); order/business notifications are untouched by this table
 // entirely.
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
@@ -30,11 +31,11 @@ export async function POST(req: Request) {
     }
 
     const { data, error } = await query.select("id");
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin whatsapp-numbers reassign", error);
 
     revalidateTag("products", "max");
     return NextResponse.json({ updated: data?.length || 0 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin whatsapp-numbers reassign", err);
   }
 }

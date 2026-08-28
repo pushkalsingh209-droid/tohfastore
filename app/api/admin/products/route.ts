@@ -1,5 +1,6 @@
 // app/api/admin/products/route.ts
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
@@ -82,7 +83,7 @@ export async function GET() {
     .select("*")
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: false });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverErrorResponse("admin products", error);
   return NextResponse.json({ products: await attachThumbUrls(data || []) });
 }
 
@@ -119,7 +120,7 @@ export async function POST(req: Request) {
     };
 
     const { data, error, droppedColumns } = await insertWithFallback(payload);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin products", error);
 
     // On-demand cache invalidation -- see the "tags" note atop
     // storeQueries.ts. A new product should show up on the storefront right
@@ -140,8 +141,8 @@ export async function POST(req: Request) {
       costPricePerKgSaved: !droppedColumns.includes("cost_price_per_kg"),
       hiddenSaved: !droppedColumns.includes("hidden"),
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin products", err);
   }
 }
 
@@ -200,7 +201,7 @@ export async function PATCH(req: Request) {
     }
 
     const { data, error, droppedColumns } = await updateWithFallback(id, payload);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin products", error);
 
     // On-demand cache invalidation -- see the "tags" note atop
     // storeQueries.ts. Covers every field this route can touch (price,
@@ -252,7 +253,7 @@ export async function PATCH(req: Request) {
       costPricePerKgSaved: !droppedColumns.includes("cost_price_per_kg"),
       hiddenSaved: !droppedColumns.includes("hidden"),
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin products", err);
   }
 }

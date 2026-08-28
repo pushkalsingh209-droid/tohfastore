@@ -5,6 +5,7 @@
 // underlying Green API check needs a server-side token, hence this thin
 // route rather than calling it straight from the browser.
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { checkWhatsappNumber } from "@/app/utils/greenApi";
 
 export async function POST(req: Request) {
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
 
     const exists = await checkWhatsappNumber(digits);
     return NextResponse.json({ exists });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Check failed." }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("check-whatsapp-number", err, "Check failed.");
   }
 }

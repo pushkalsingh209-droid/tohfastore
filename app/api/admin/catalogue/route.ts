@@ -4,6 +4,7 @@
 // shared with the public /api/catalogue route (gated behind the
 // /catalogue lead-capture form).
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { generateCatalogueBuffer } from "@/app/utils/catalogueGenerator";
 
 export const maxDuration = 60;
@@ -18,8 +19,7 @@ export async function GET() {
         "Content-Disposition": `attachment; filename="tohfa-catalogue-${new Date().toISOString().slice(0, 10)}.pdf"`,
       },
     });
-  } catch (err: any) {
-    console.error("Catalogue PDF generation failed:", err);
-    return NextResponse.json({ error: err.message || "Could not generate catalogue." }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin catalogue", err, "Could not generate catalogue.");
   }
 }

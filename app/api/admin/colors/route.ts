@@ -2,11 +2,12 @@
 // Backs the admin product form's Colour dropdown -- admin-only (not a
 // public API), since this list only exists to populate that one select.
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
 export async function GET() {
   const { data, error } = await supabase.from("product_colors").select("*").order("name", { ascending: true });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverErrorResponse("admin colors", error);
   return NextResponse.json({ colors: data || [] });
 }
 
@@ -19,11 +20,11 @@ export async function POST(req: Request) {
     const { data, error } = await supabase.from("product_colors").insert([{ name: trimmed }]).select().single();
     if (error) {
       if (error.code === "23505") return NextResponse.json({ error: `"${trimmed}" is already in the list.` }, { status: 400 });
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return serverErrorResponse("admin colors", error);
     }
 
     return NextResponse.json({ color: data });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin colors", err);
   }
 }

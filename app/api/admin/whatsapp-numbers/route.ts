@@ -4,6 +4,7 @@
 // enquiry link (getProductWhatsappLink); order/business notifications
 // always use BUSINESS_WHATSAPP_NUMBER, untouched by this list.
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
 // Normalizes "+91 6302672351" / "6302672351" / "916302672351" etc. into the
@@ -17,7 +18,7 @@ function normalizePhoneNumber(value: string): string {
 
 export async function GET() {
   const { data, error } = await supabase.from("whatsapp_numbers").select("*").order("label", { ascending: true });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverErrorResponse("admin whatsapp-numbers", error);
   return NextResponse.json({ numbers: data || [] });
 }
 
@@ -36,11 +37,11 @@ export async function POST(req: Request) {
       .single();
     if (error) {
       if (error.code === "23505") return NextResponse.json({ error: `${normalized} is already in the list.` }, { status: 400 });
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return serverErrorResponse("admin whatsapp-numbers", error);
     }
 
     return NextResponse.json({ number: data });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin whatsapp-numbers", err);
   }
 }

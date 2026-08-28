@@ -12,6 +12,20 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: CI + error-hygiene sweep — 2026-08-29 02:42 IST
+- **CI wired.** `.github/workflows/ci.yml` — the repo had none. Runs `tsc --noEmit` +
+  `npm test` + `next build` on push to `main` and every PR. RLS test runs for real if
+  Supabase vars are set as Actions secrets, else self-skips. No ESLint job (pre-existing
+  debt, #19). Remaining: add the Actions secrets + branch protection so a red CI blocks
+  merge — that's a repo-settings action for the owner, not code.
+- **5xx error scrubbing — whole `app/api` surface.** Extended `serverErrorResponse` to
+  every remaining admin route (22 files) + `/api/catalogue`, `/api/categories`,
+  `/api/check-whatsapp-number`, `/api/cron/abandoned-checkout`, `/api/razorpay-webhook`,
+  `/api/settings`. No route echoes raw exception / Postgres text in a 5xx; every
+  `catch (err: any)` feeding a 5xx in `app/api` is gone. (was Tier 2 #6 — complete.)
+- Verified: `next build` exit 0 (239 SSG pages), `tsc --noEmit` clean, `npm test`
+  43 pass / 7 gated, eslint no new errors.
+
 ### Batch: Security & hygiene #2 (data perimeter) — 2026-08-29 02:01 IST
 - **RLS regression test** — `app/utils/rls.test.ts`: anon key cannot read
   `orders`/`coupons`/hidden products/unapproved reviews and cannot write; *can* read
@@ -76,14 +90,10 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 2 (security / hardening)
 
-5. **RLS regression test in CI.** `app/utils/rls.test.ts` exists and passes against live
-   — remaining work is to run it in whatever CI executes on the repo (there is currently
-   **no `.github/workflows`**), so a regression actually blocks a merge.
-
-6. **Finish 5xx error scrubbing — admin routes.** ~30 `app/api/admin/**` files still
-   return `err.message` / `error.message` in 500 bodies. Lower priority (auth-gated) but
-   mechanical: import `serverErrorResponse`, replace the `catch` returns and the
-   `if (error) return …500` lines. Touch **only** 500s.
+5. **Make CI enforcing.** `.github/workflows/ci.yml` exists and runs the gates, but on
+   the repo it's currently advisory: add the Supabase/Razorpay **Actions secrets** (so
+   the build mirrors Vercel and the RLS test runs) and turn on **branch protection** for
+   `main` requiring the `verify` check — repo-settings actions for the owner.
 
 7. **`/success` shouldn't depend on `sessionStorage`.** Closing the tab during the
    Razorpay redirect leaves the buyer with no on-screen invoice. Add

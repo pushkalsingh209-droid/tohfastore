@@ -8,6 +8,7 @@
 // product.image_url already uses (the bucket is private, so there's no
 // plain public URL to return instead).
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import crypto from "crypto";
 import sharp from "sharp";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
@@ -85,8 +86,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ url: signedData.signedUrl });
-  } catch (err: any) {
-    console.error("Admin image upload failed:", err);
-    return NextResponse.json({ error: err.message || "Upload failed." }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin upload", err, "Upload failed.");
   }
 }

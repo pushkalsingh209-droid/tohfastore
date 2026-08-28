@@ -1,5 +1,6 @@
 // app/api/admin/coupons/route.ts
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
@@ -14,7 +15,7 @@ function isMissingColumn(error: any, columnHint: string) {
 
 export async function GET() {
   const { data, error } = await supabase.from("coupons").select("*").order("created_at", { ascending: false });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverErrorResponse("admin coupons", error);
   return NextResponse.json({ coupons: data || [] });
 }
 
@@ -46,12 +47,12 @@ export async function POST(req: Request) {
       ({ data, error } = await supabase.from("coupons").insert([payload]).select());
     }
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin coupons", error);
 
     revalidateTag("coupons", "max");
     return NextResponse.json({ coupon: data?.[0], publicSaved });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin coupons", err);
   }
 }
 
@@ -61,12 +62,12 @@ export async function PATCH(req: Request) {
     if (!id) return NextResponse.json({ error: "Missing coupon id." }, { status: 400 });
 
     const { data, error } = await supabase.from("coupons").update(fields).eq("id", id).select();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin coupons", error);
 
     revalidateTag("coupons", "max");
     return NextResponse.json({ coupon: data?.[0] });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin coupons", err);
   }
 }
 
@@ -76,11 +77,11 @@ export async function DELETE(req: Request) {
     if (!id) return NextResponse.json({ error: "Missing coupon id." }, { status: 400 });
 
     const { error } = await supabase.from("coupons").delete().eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin coupons", error);
 
     revalidateTag("coupons", "max");
     return NextResponse.json({ status: "deleted" });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin coupons", err);
   }
 }

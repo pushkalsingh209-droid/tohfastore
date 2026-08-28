@@ -4,6 +4,7 @@
 // fetched client-side by contexts like PhotoFilterSettingContext. Mirrors
 // the same public-read pattern as /api/categories.
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
 const PUBLIC_SETTING_KEYS = [
@@ -23,7 +24,7 @@ export async function GET() {
     .from("site_settings")
     .select("key, value")
     .in("key", PUBLIC_SETTING_KEYS);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverErrorResponse("settings", error);
   const settings: Record<string, string> = {};
   for (const row of data || []) settings[row.key] = row.value;
   return NextResponse.json({ settings });

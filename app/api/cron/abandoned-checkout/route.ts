@@ -11,6 +11,7 @@
 // 30-60 min, sending CRON_SECRET as a bearer token if it's set (same auth
 // pattern as keepalive).
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
 import { normalizePhoneForRecord } from "@/app/utils/whatsappOtp";
@@ -44,7 +45,7 @@ export async function GET(req: Request) {
 
   if (error) {
     console.error("Abandoned-checkout cron: failed to load candidates:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return serverErrorResponse("cron abandoned-checkout", error);
   }
 
   let nudged = 0, alreadyOrdered = 0, failed = 0;

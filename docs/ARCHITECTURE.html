@@ -201,6 +201,30 @@ together. Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>02:42</code></td>
+  <td><strong>CI + error-hygiene sweep</strong><br>(<code>IMPROVEMENTS.md</code> T2&nbsp;#5&ndash;6)</td>
+  <td>
+    &bull; <strong><code>.github/workflows/ci.yml</code></strong> &mdash; the repo had no CI. Runs
+    <code>tsc --noEmit</code> + <code>npm test</code> + <code>next build</code> on push to <code>main</code> and
+    every PR. The RLS test runs for real if the Supabase vars are set as Actions secrets, else self-skips.
+    ESLint is deliberately omitted (pre-existing debt &mdash; T4&nbsp;#19).<br>
+    &bull; <strong>5xx error-body scrubbing finished for the whole <code>app/api</code> surface</strong> &mdash;
+    every remaining admin route (22 files) plus <code>/api/catalogue</code>, <code>/api/categories</code>,
+    <code>/api/check-whatsapp-number</code>, <code>/api/cron/abandoned-checkout</code>,
+    <code>/api/razorpay-webhook</code>, <code>/api/settings</code>. No route echoes raw exception / Postgres text
+    in a 5xx any more; every <code>catch (err: any)</code> in <code>app/api</code> that fed a 5xx is gone. 4xx
+    validation messages untouched.
+  </td>
+  <td>
+    <em>new:</em> <code>.github/workflows/ci.yml</code><br>
+    28 route files under <code>app/api/**</code> (all still-leaking <code>catch</code> / <code>if (error)</code>
+    branches &rarr; <code>serverErrorResponse</code>)
+  </td>
+  <td><code>next build</code> exit 0 (239 pages) &middot; <code>tsc --noEmit</code> clean &middot;
+    <code>npm test</code> 43 pass / 7 gated &middot; eslint: no new errors (pre-existing
+    <code>no-explicit-any</code> debt only)</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>02:01</code></td>
   <td><strong>Security &amp; hygiene #2</strong><br>(data perimeter &mdash; <code>IMPROVEMENTS.md</code> T1&nbsp;#4, T2&nbsp;#5&ndash;6)</td>
   <td>
@@ -1198,7 +1222,7 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
 <tr><td><code>slug.ts</code></td><td><code>slugify</code>, <code>productHref</code>, <code>productIdFromParam</code>, <code>categoryHref</code>, <code>findCategoryBySlug</code>.</td></tr>
 <tr><td><code>pricing.ts</code>, <code>gst.ts</code>, <code>coupons.ts</code></td><td>Money math (&sect;13). Unit-tested.</td></tr>
 <tr><td><code>stock.ts</code></td><td><em>(new)</em> <code>LOW_STOCK_THRESHOLD</code> &mdash; one cutoff shared by <code>LiveStock</code>, <code>ProductCard</code>, the stock API, the webhook and the admin stats panels.</td></tr>
-<tr><td><code>apiError.ts</code></td><td><code>serverErrorResponse(context, err, publicMessage)</code> &mdash; logs the real error, returns a generic 5xx body. Wired into <strong>all public POST routes</strong> (§22); admin routes remain.</td></tr>
+<tr><td><code>apiError.ts</code></td><td><code>serverErrorResponse(context, err, publicMessage)</code> &mdash; logs the real error, returns a generic 5xx body. Wired into <strong>every route under <code>app/api</code></strong> (§22).</td></tr>
 <tr><td><code>rls.test.ts</code></td><td>Anon-key RLS perimeter regression test (§6). Env-gated (skips without Supabase creds).</td></tr>
 <tr><td><code>whatsapp.ts</code></td><td>Enquiry-link builder + number-resolution priority.</td></tr>
 <tr><td><code>whatsappOtp.ts</code></td><td>OTP send/verify/token-check + all abuse limits + opportunistic verification-row pruning.</td></tr>
@@ -1256,12 +1280,11 @@ scheduler</strong> (e.g. cron-job.org) at the same URLs &mdash; <code>/api/keepa
       (<code>rate_limit_events</code>), OTP send/verify caps, contact-form honeypot. Log tables self-prune.</li>
   <li><strong>Order tracking</strong> &mdash; needs reference AND matching phone; user input never interpolated into
       PostgREST filter strings.</li>
-  <li><strong>Error hygiene</strong> &mdash; every <strong>public POST route</strong> (<code>/api/razorpay</code>,
-      <code>/api/orders/track</code>, <code>/api/leads</code>, <code>/api/contact</code>, <code>/api/reviews</code>,
-      <code>/api/enquiries</code>, <code>/api/track-view</code>, <code>/api/stock-alerts</code>,
-      <code>/api/coupons/validate</code>) returns a generic 5xx body via <code>apiError.ts</code>; the real
-      exception / Postgres text is logged server-side, never echoed. Admin routes (auth-gated) are the remaining
-      follow-up.</li>
+  <li><strong>Error hygiene</strong> &mdash; <strong>every route under <code>app/api</code></strong> (storefront,
+      admin, cron, webhook) returns a generic 5xx body via <code>serverErrorResponse</code> (<code>apiError.ts</code>);
+      the real exception / Postgres text is logged server-side, never echoed. No <code>catch (err: any)</code> in
+      <code>app/api</code> feeds a 5xx any more. 4xx validation messages are untouched (they are written for the
+      user and safe).</li>
   <li><strong>RLS regression test</strong> &mdash; <code>app/utils/rls.test.ts</code> connects with the anon key
       and asserts the &sect;6 perimeter (no <code>orders</code>/<code>coupons</code>/hidden-product/unapproved-review
       reads, no writes). Env-gated; run it after any schema or policy change.</li>
@@ -1277,7 +1300,8 @@ scheduler</strong> (e.g. cron-job.org) at the same URLs &mdash; <code>/api/keepa
 <dl class="kv">
   <dt>Scripts</dt><dd><code>dev</code> = <code>next dev</code>, <code>build</code> = <code>next build</code>, <code>start</code> = <code>next start</code>, <code>lint</code> = <code>eslint</code>, <code>test</code> = <code>vitest run</code></dd>
   <dt>Host</dt><dd>Vercel (Hobby). <code>maxDuration = 60</code> on the two catalogue PDF routes.</dd>
-  <dt>Last verified build</dt><dd><code>next build</code> exit 0 &mdash; 156 SSG product pages, all routes + middleware compiled, <code>tsc --noEmit</code> clean, 43 unit tests pass.</dd>
+  <dt>CI</dt><dd><code>.github/workflows/ci.yml</code> (added 2026-08-29) &mdash; <code>tsc --noEmit</code> + <code>npm test</code> + <code>next build</code> on push to <code>main</code> and every PR. RLS test runs if Supabase vars are set as Actions secrets, else self-skips. No ESLint job (pre-existing debt). Vercel&rsquo;s own Git integration is the deploy check.</dd>
+  <dt>Last verified build</dt><dd><code>next build</code> exit 0 &mdash; 239 SSG pages (156 products), all routes + middleware compiled, <code>tsc --noEmit</code> clean, unit tests pass.</dd>
   <dt>CSP</dt><dd>Enforced only when <code>NODE_ENV === "production"</code> (dev tooling needs looser rules). Directive list compiled by grepping every <code>https://</code> the code loads + each integration&rsquo;s documented requirements; deliberately generous on <code>script/connect/frame</code>.</dd>
   <dt>Images</dt><dd><code>remotePatterns</code>: <code>gxlervcazzddqcoagewy.supabase.co/storage/v1/object/**</code>, <code>images.unsplash.com/**</code>. <code>unoptimized: true</code> (temporary).</dd>
   <dt>Lint debt</dt><dd>The repo carries pre-existing <code>@typescript-eslint/no-explicit-any</code> and <code>react-hooks/set-state-in-effect</code> errors (<code>npm run lint</code> is not clean). Next 16 does not run ESLint during <code>next build</code>, so deploys are unaffected.</dd>
@@ -1328,6 +1352,10 @@ scheduler</strong> (e.g. cron-job.org) at the same URLs &mdash; <code>/api/keepa
 <h2 id="filemap">Directory map</h2>
 <pre><code>tohfastore/
 |- AGENTS.md / CLAUDE.md      "This is NOT the Next.js you know" + pointer to docs/ARCHITECTURE.html
+|- AGENT.md                  hard safety boundaries + refactor discipline
+|- IMPROVEMENTS.md           optimisation backlog (Done + Active)
+|- .github/workflows/ci.yml  tsc + npm test + next build on push/PR
+|- .claude/skills/           audit-perf.md, audit-security.md, refactor.md (SOPs)
 |- next.config.ts            CSP + security headers, image config (unoptimized, remotePatterns)
 |- proxy.ts                  edge middleware: admin auth + CSRF guard + real-status redirects/404s
 |- vercel.json               2 daily crons

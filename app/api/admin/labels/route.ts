@@ -2,13 +2,14 @@
 // Backs the admin product form's Label dropdown -- admin-only (not a
 // public API), since this list only exists to populate that one select.
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 
 export async function GET() {
   const { data, error } = await supabase.from("labels").select("*").order("name", { ascending: true });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverErrorResponse("admin labels", error);
   return NextResponse.json({ labels: data || [] });
 }
 
@@ -21,13 +22,13 @@ export async function POST(req: Request) {
     const { data, error } = await supabase.from("labels").insert([{ name: trimmed }]).select().single();
     if (error) {
       if (error.code === "23505") return NextResponse.json({ error: `"${trimmed}" is already in the list.` }, { status: 400 });
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return serverErrorResponse("admin labels", error);
     }
 
     revalidateTag("labels", "max");
     return NextResponse.json({ label: data });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin labels", err);
   }
 }
 
@@ -50,11 +51,11 @@ export async function PATCH(req: Request) {
       .eq("id", id)
       .select()
       .single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin labels", error);
 
     revalidateTag("labels", "max");
     return NextResponse.json({ label: data });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin labels", err);
   }
 }

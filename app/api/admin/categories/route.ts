@@ -1,11 +1,12 @@
 // app/api/admin/categories/route.ts
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
 export async function GET() {
   const { data, error } = await supabase.from("categories").select("*").order("name", { ascending: true });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverErrorResponse("admin categories", error);
   return NextResponse.json({ categories: data || [] });
 }
 
@@ -55,13 +56,13 @@ export async function POST(req: Request) {
       if (error.code === "23505") {
         return NextResponse.json({ error: "That category already exists." }, { status: 400 });
       }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return serverErrorResponse("admin categories", error);
     }
 
     revalidateTag("categories", "max");
     return NextResponse.json({ category: data?.[0] });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin categories", err);
   }
 }
 
@@ -107,12 +108,12 @@ export async function PATCH(req: Request) {
     }
 
     const { data, error } = await supabase.from("categories").update(updates).eq("id", id).select();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin categories", error);
 
     revalidateTag("categories", "max");
     return NextResponse.json({ category: data?.[0] });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin categories", err);
   }
 }
 
@@ -122,11 +123,11 @@ export async function DELETE(req: Request) {
     if (!id) return NextResponse.json({ error: "Missing category id." }, { status: 400 });
 
     const { error } = await supabase.from("categories").delete().eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin categories", error);
 
     revalidateTag("categories", "max");
     return NextResponse.json({ status: "deleted" });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin categories", err);
   }
 }

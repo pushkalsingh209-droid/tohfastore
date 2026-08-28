@@ -7,12 +7,13 @@
 // deleting a preset here never breaks the currently-active label, since
 // that's stored as its own plain-text value, not a foreign key.
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { isChatLabelKind, MAX_CHAT_LABEL_LENGTH } from "@/app/utils/chatLabels";
 
 export async function GET() {
   const { data, error } = await supabase.from("chat_button_labels").select("*").order("kind").order("label");
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverErrorResponse("admin chat-labels", error);
   return NextResponse.json({ labels: data || [] });
 }
 
@@ -31,12 +32,12 @@ export async function POST(req: Request) {
     const { data, error } = await supabase.from("chat_button_labels").insert([{ kind, label: trimmed }]).select().single();
     if (error) {
       if (error.code === "23505") return NextResponse.json({ error: `"${trimmed}" is already saved for this label.` }, { status: 400 });
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return serverErrorResponse("admin chat-labels", error);
     }
 
     return NextResponse.json({ label: data });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin chat-labels", err);
   }
 }
 
@@ -46,10 +47,10 @@ export async function DELETE(req: Request) {
     if (!id) return NextResponse.json({ error: "Missing label id." }, { status: 400 });
 
     const { error } = await supabase.from("chat_button_labels").delete().eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin chat-labels", error);
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin chat-labels", err);
   }
 }

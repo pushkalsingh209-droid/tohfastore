@@ -4,6 +4,7 @@
 // would require GA4's Data API (session counts aren't in this database),
 // so that's deliberately left out here rather than faked.
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
 // customer_details.email/contact fall back to these literal placeholders
@@ -27,7 +28,7 @@ export async function GET() {
       .from("orders")
       .select("id, amount, created_at, customer_details")
       .order("created_at", { ascending: true });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin analytics", error);
 
     const allOrders = orders || [];
     const totalOrders = allOrders.length;
@@ -69,7 +70,7 @@ export async function GET() {
       repeatPurchaseRate,
       monthlyTrend,
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin analytics", err);
   }
 }

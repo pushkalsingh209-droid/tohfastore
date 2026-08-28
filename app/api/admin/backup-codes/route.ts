@@ -1,5 +1,6 @@
 // app/api/admin/backup-codes/route.ts
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { countRemainingBackupCodes, issueNewBackupCodes } from "@/app/utils/backupCodes";
 
 export async function GET() {
@@ -14,7 +15,7 @@ export async function POST() {
   try {
     const codes = await issueNewBackupCodes();
     return NextResponse.json({ codes });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin backup-codes", err);
   }
 }

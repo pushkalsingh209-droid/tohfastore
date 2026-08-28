@@ -4,6 +4,7 @@
 // consistent with how gated content typically works for a small business
 // site, not worth the added complexity of signed download tokens here).
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { getCachedCatalogueBase64 } from "@/app/utils/catalogueGenerator";
 
 export const maxDuration = 60;
@@ -19,8 +20,7 @@ export async function GET() {
         "Content-Disposition": `attachment; filename="tohfa-catalogue-${new Date().toISOString().slice(0, 10)}.pdf"`,
       },
     });
-  } catch (err: any) {
-    console.error("Catalogue PDF generation failed:", err);
-    return NextResponse.json({ error: err.message || "Could not generate catalogue." }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("catalogue", err, "Could not generate catalogue.");
   }
 }

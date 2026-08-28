@@ -1,10 +1,11 @@
 // app/api/admin/leads/route.ts
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 
 export async function GET() {
   const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverErrorResponse("admin leads", error);
   return NextResponse.json({ leads: data || [] });
 }
 
@@ -17,10 +18,10 @@ export async function DELETE(req: Request) {
     if (!id) return NextResponse.json({ error: "Missing lead id." }, { status: 400 });
 
     const { error } = await supabase.from("leads").delete().eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverErrorResponse("admin leads", error);
 
     return NextResponse.json({ status: "deleted" });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return serverErrorResponse("admin leads", err);
   }
 }
