@@ -201,6 +201,27 @@ together. Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>02:55</code></td>
+  <td><strong>Keepalive heartbeat visibility</strong><br>(<code>IMPROVEMENTS.md</code> T4&nbsp;#14)</td>
+  <td>
+    &bull; <code>/api/keepalive</code> now stamps <code>site_settings.last_keepalive_at</code> on every run
+    (best-effort; no cache revalidation &mdash; the key is not in any cached storefront query).<br>
+    &bull; The admin <strong>Overview</strong> tab shows a &ldquo;Keepalive heartbeat&rdquo; card with the last-run
+    timestamp and an amber <em>Check</em> badge if it&rsquo;s &gt; 90 min old &mdash; so a dead external
+    scheduler (cron-job.org) is visible immediately instead of surfacing days later as Green API silently going
+    idle. Staleness is derived in <code>loadAll()</code>, not in render (no impure <code>Date.now()</code> on
+    the render path).<br>
+    &bull; Rider: 1 trivially-safe <code>prefer-const</code> fix in <code>razorpay-webhook</code>
+    (<code>let categoryDiscounts</code> &rarr; <code>const</code>). Net eslint delta &minus;1.
+  </td>
+  <td>
+    <code>app/api/keepalive/route.ts</code>, <code>app/admin/page.tsx</code>,
+    <code>app/api/razorpay-webhook/route.ts</code>
+  </td>
+  <td><code>next build</code> exit 0 (239 pages) &middot; <code>tsc --noEmit</code> clean &middot;
+    <code>npm test</code> 43 pass / 7 gated &middot; eslint &minus;1 (no new errors)</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>02:42</code></td>
   <td><strong>CI + error-hygiene sweep</strong><br>(<code>IMPROVEMENTS.md</code> T2&nbsp;#5&ndash;6)</td>
   <td>
@@ -658,7 +679,7 @@ RLS: anon <code>SELECT USING (hidden = false)</code>; service role bypasses.</p>
 <tr><td><code>categories</code></td><td><code>name</code> UNIQUE, <code>show_on_home</code> bool=true, <code>gst_rate</code> numeric(5,2)=5.00, <code>default_page_size</code> int, <code>discount_percent</code> numeric=25</td><td>Managed category list. <code>show_on_home=false</code> drops products from the unfiltered homepage but keeps the category reachable. <code>discount_percent</code> is display-only (fake struck-through MRP). <em>(0004&ndash;07, 0011, 0013)</em></td></tr>
 <tr><td><code>reviews</code></td><td><code>product_id</code> FK&rarr;products ON DELETE CASCADE, <code>rating</code> smallint 1&ndash;5, <code>approved</code> bool=false</td><td>Admin-moderated. RLS anon <code>SELECT USING (approved = true)</code>. <em>(0001)</em></td></tr>
 <tr><td><code>coupons</code></td><td><code>code</code> UNIQUE, <code>discount_type</code> flat|percent, <code>discount_value</code> &gt; 0, <code>active</code> bool=true, <code>max_uses</code> int, <code>used_count</code> int=0, <code>expires_at</code>, <code>is_public</code> bool=false</td><td><code>is_public</code> coupons are advertised in the promo banner; private ones still redeem. <code>used_count</code> incremented only on a captured, paid order. RLS: no policies. <em>(0001&ndash;02)</em></td></tr>
-<tr><td><code>site_settings</code></td><td><code>key</code> text PK, <code>value</code> text</td><td>KV store. Keys: <code>default_page_size</code>, <code>brass_price_per_kg</code>, <code>catalog_reveal_batch_size</code>, <code>weight_unit</code>, <code>dimension_unit</code>, <code>default_whatsapp_number</code>, <code>default_photo_filter</code>, <code>ganesha_cooldown_minutes</code>, <code>ganesha_max_auto_shows</code>, <code>ganesha_collapse_delay_seconds</code>, <code>chat_label_in_stock</code>, <code>chat_label_out_of_stock</code>. Public subset via <code>/api/settings</code>. <em>(0011, 0022, 0025)</em></td></tr>
+<tr><td><code>site_settings</code></td><td><code>key</code> text PK, <code>value</code> text</td><td>KV store. Keys: <code>default_page_size</code>, <code>brass_price_per_kg</code>, <code>catalog_reveal_batch_size</code>, <code>weight_unit</code>, <code>dimension_unit</code>, <code>default_whatsapp_number</code>, <code>default_photo_filter</code>, <code>ganesha_cooldown_minutes</code>, <code>ganesha_max_auto_shows</code>, <code>ganesha_collapse_delay_seconds</code>, <code>chat_label_in_stock</code>, <code>chat_label_out_of_stock</code>, <code>last_keepalive_at</code> (stamped by <code>/api/keepalive</code>, read by the admin Overview). Public subset via <code>/api/settings</code>. <em>(0011, 0022, 0025)</em></td></tr>
 <tr><td><code>product_colors</code>, <code>product_materials</code>, <code>labels</code></td><td><code>name</code> UNIQUE (+ <code>labels.photo_filter</code>)</td><td>Managed dropdown lists for the admin product form. Storefront reads distinct in-use labels off <code>products</code> via <code>/api/labels</code> instead. <em>(0017, 0018, 0021, 0023)</em></td></tr>
 <tr><td><code>whatsapp_numbers</code></td><td><code>phone_number</code> UNIQUE (<code>91&hellip;</code>), <code>label</code></td><td>Additional per-product enquiry numbers. The active site-wide default lives in <code>site_settings.default_whatsapp_number</code>. <em>(0019)</em></td></tr>
 <tr><td><code>chat_button_labels</code></td><td><code>kind</code> in_stock|out_of_stock, <code>label</code> 1&ndash;30, UNIQUE(kind,label)</td><td>Preset pool for the &ldquo;Chat for &hellip;&rdquo; product-card button. Active choice is a plain-text <code>site_settings</code> value. <em>(0033)</em></td></tr>
@@ -1011,7 +1032,7 @@ alert shows only the real price.</p>
 <div class="x"><table>
 <thead><tr><th>Tab</th><th>Contents</th></tr></thead>
 <tbody>
-<tr><td><code>overview</code></td><td>Business Overview (revenue, orders, AOV, repeat-rate, 6-month revenue chart), WhatsApp Enquiries analytics (14-day trend, by category/product/number/source), Leads list (follow-up / mark-contacted / delete), all with CSV export.</td></tr>
+<tr><td><code>overview</code></td><td>A <strong>Keepalive heartbeat</strong> card (last-run timestamp + amber <em>Check</em> badge if &gt; 90 min stale), then Business Overview (revenue, orders, AOV, repeat-rate, 6-month revenue chart), WhatsApp Enquiries analytics (14-day trend, by category/product/number/source), Leads list (follow-up / mark-contacted / delete), all with CSV export.</td></tr>
 <tr><td><code>products</code></td><td>Add-product form (name, price, description, images via <code>ImageUploadField</code>, category, inventory, weight/dimensions with selectable input unit + converter, material/color/label dropdowns, per-product WhatsApp number, photo filter, cost price). <strong>Live Storefront Catalog &amp; Stock Tracker:</strong> inline stock steppers, spec drafts, a &ldquo;Lightweight Brass&rdquo; price calculator (<code>weight &times; &#8377;/kg &times; 1.20</code> &rarr; <code>roundUpBrassPrice</code>), bulk label assign, hide/unhide.</td></tr>
 <tr><td><code>orders</code></td><td>Order table filtered by status (<code>ORDER_STATUS_TABS</code>), status updates + AWB entry, customer/address/items view.</td></tr>
 <tr><td><code>coupons</code></td><td>Coupon CRUD, public/private toggle, usage vs limit.</td></tr>
@@ -1259,6 +1280,9 @@ scheduler</strong> (e.g. cron-job.org) at the same URLs &mdash; <code>/api/keepa
 <code>/api/cron/abandoned-checkout</code> every 30&ndash;60 min &mdash; sending
 <code>Authorization: Bearer $CRON_SECRET</code> if that var is set.</p>
 </div>
+<p><code>/api/keepalive</code> stamps <code>site_settings.last_keepalive_at</code> on each run; the admin
+<strong>Overview</strong> tab reads it back and shows an amber &ldquo;Check&rdquo; badge once it is &gt; 90 min
+stale &mdash; the one scheduled job with a health signal.</p>
 
 <h2 id="security">Security model summary</h2>
 <ul class="tight">
@@ -1339,7 +1363,8 @@ scheduler</strong> (e.g. cron-job.org) at the same URLs &mdash; <code>/api/keepa
   <li><strong>Green API free tier</strong> caps distinct chats/month &mdash; customer WhatsApp delivery can stop
       while business alerts keep working.</li>
   <li><strong>Vercel Cron is daily-only here</strong> &mdash; keepalive &amp; abandoned-checkout need an external
-      scheduler to be genuinely useful. No alert exists if that scheduler stops.</li>
+      scheduler (cron-job.org) to be genuinely useful. A stale keepalive heartbeat is now flagged on the admin
+      Overview tab (&sect;14); a stalled abandoned-checkout job is still silent.</li>
   <li><strong><code>ADMIN_SESSION_SECRET</code> is vestigial</strong> &mdash; sessions are DB-backed now; nothing reads it.</li>
   <li><strong>Category / label are plain text on <code>products</code></strong>, not foreign keys &mdash; deleting a
       <code>categories</code>/<code>labels</code> row doesn&rsquo;t cascade; products keep the string value.</li>

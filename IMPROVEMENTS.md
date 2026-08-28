@@ -12,6 +12,16 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Keepalive heartbeat visibility — 2026-08-29 02:55 IST
+- `/api/keepalive` stamps `site_settings.last_keepalive_at` on every run (best-effort,
+  no cache revalidation). Admin **Overview** tab shows a heartbeat card + an amber
+  "Check" badge when it's > 90 min stale — a dead external scheduler is now visible
+  instead of only surfacing days later as Green API going idle. Staleness derived in
+  `loadAll()`, not render. (was Tier 4 #14.)
+- Rider: 1 `prefer-const` fix in `razorpay-webhook`. Net eslint delta −1.
+- Verified: `next build` exit 0 (239 pages), `tsc` clean, `npm test` 43 pass / 7 gated,
+  eslint no new errors.
+
 ### Batch: CI + error-hygiene sweep — 2026-08-29 02:42 IST
 - **CI wired.** `.github/workflows/ci.yml` — the repo had none. Runs `tsc --noEmit` +
   `npm test` + `next build` on push to `main` and every PR. RLS test runs for real if
@@ -130,8 +140,8 @@ care, land behind tests, never "blind".
     (WhatsApp, email, stock deduction) vanish in logs — a systematically failing Green
     API is invisible. Sentry has a free tier but needs an account + DSN.
 
-14. **Keepalive staleness alert.** Store `last_keepalive_at`; show staleness in the admin
-    dashboard. If the external cron-job.org scheduler stops, Green API silently dies.
+14. ~~Keepalive staleness alert~~ — **done** (2026-08-29). Follow-up: the
+    `abandoned-checkout` cron still has no health signal; same pattern could cover it.
 
 15. **Generate DB types** (`supabase gen types typescript` → `types/db.ts`) — kills the
     pervasive `any` on products/orders/API bodies.

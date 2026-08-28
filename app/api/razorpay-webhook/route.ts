@@ -260,7 +260,7 @@ export async function POST(req: Request) {
       // business alert/email deliberately keeps showing only the real
       // price (an internal ops notification, not a marketing document).
       // Best-effort: an empty map just means no slashed pricing shows.
-      let categoryDiscounts: Record<string, number> = {};
+      const categoryDiscounts: Record<string, number> = {};
       try {
         const { data: categoryRows } = await supabase.from("categories").select("name, discount_percent");
         for (const row of categoryRows || []) {

@@ -183,6 +183,9 @@ function AdminDashboard() {
   const [converterValue, setConverterValue] = useState("");
   const [converterUnit, setConverterUnit] = useState<DimensionUnit>("in");
   const [settings, setSettings] = useState<Record<string, string>>({});
+  // Derived in loadAll() from settings.last_keepalive_at rather than in
+  // render, so there's no impure Date.now() on the render path.
+  const [keepaliveStale, setKeepaliveStale] = useState(false);
   const [leads, setLeads] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
   const [enquiryAnalytics, setEnquiryAnalytics] = useState<any>(null);
@@ -342,7 +345,13 @@ function AdminDashboard() {
     if (reviewsRes.status === "fulfilled") setReviews(reviewsRes.value.reviews);
     if (couponsRes.status === "fulfilled") setCoupons(couponsRes.value.coupons);
     if (categoriesRes.status === "fulfilled") setCategories(categoriesRes.value.categories);
-    if (settingsRes.status === "fulfilled") setSettings(settingsRes.value.settings);
+    if (settingsRes.status === "fulfilled") {
+      setSettings(settingsRes.value.settings);
+      const lastKeepalive = settingsRes.value.settings?.last_keepalive_at;
+      setKeepaliveStale(
+        Boolean(lastKeepalive) && Date.now() - new Date(lastKeepalive).getTime() > 90 * 60 * 1000
+      );
+    }
     if (leadsRes.status === "fulfilled") setLeads(leadsRes.value.leads);
     if (analyticsRes.status === "fulfilled") setAnalytics(analyticsRes.value);
     if (colorsRes.status === "fulfilled") setColors(colorsRes.value.colors);
@@ -1503,6 +1512,42 @@ function AdminDashboard() {
 
         {activeTab === "overview" && (
         <>
+        {/* SYSTEM HEALTH: keepalive heartbeat. /api/keepalive stamps
+            site_settings.last_keepalive_at on every run; an external
+            scheduler is meant to hit it every 15-30 min. If this timestamp
+            stops advancing, Green API's WhatsApp session and Supabase's
+            free tier are both at risk -- surface it here rather than
+            finding out days later. `keepaliveStale` is derived server-side
+            in loadAll() (no impure Date.now() in render). */}
+        {settings.last_keepalive_at && (
+          <div
+            className={`rounded-lg border p-4 mb-6 flex items-center justify-between gap-4 ${
+              keepaliveStale ? "bg-amber-50 border-amber-300" : "bg-stone-50 border-stone-200"
+            }`}
+          >
+            <div>
+              <p className="text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-stone-500">Keepalive heartbeat</p>
+              <p className={`text-sm font-mono ${keepaliveStale ? "text-amber-800 font-semibold" : "text-stone-700"}`}>
+                Last ran {new Date(settings.last_keepalive_at).toLocaleString("en-IN")}
+              </p>
+              <p className="text-[10px] text-stone-400 mt-0.5">
+                {keepaliveStale
+                  ? "Over 90 min ago — the external scheduler (cron-job.org) may be down."
+                  : "The external scheduler should hit /api/keepalive every 15–30 min."}
+              </p>
+            </div>
+            <span
+              className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full border ${
+                keepaliveStale
+                  ? "bg-amber-100 text-amber-800 border-amber-300"
+                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              }`}
+            >
+              {keepaliveStale ? "Check" : "OK"}
+            </span>
+          </div>
+        )}
+
         {/* SECTION OVERVIEW: BUSINESS ANALYTICS */}
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">

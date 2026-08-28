@@ -58,6 +58,22 @@ export async function GET(req: Request) {
   const [supabaseResult, greenApiResult] = await Promise.all([pingSupabase(), pingGreenApi()]);
   const ok = supabaseResult.status !== "error" && greenApiResult.status !== "error";
 
+  // Record a heartbeat regardless of whether the individual pings were
+  // healthy -- the point is "the scheduler is alive and hitting this route".
+  // The admin Overview tab reads this back and flags it if it goes stale,
+  // so a dead cron-job.org schedule surfaces there instead of only showing
+  // up days later as Green API silently going idle. Best-effort: a failure
+  // here must not change the ping result. Deliberately no
+  // revalidateTag("site-settings") -- this key isn't part of any cached
+  // storefront query (see getSiteSettings / PUBLIC_SETTING_KEYS).
+  try {
+    await supabase
+      .from("site_settings")
+      .upsert({ key: "last_keepalive_at", value: new Date().toISOString() }, { onConflict: "key" });
+  } catch (err) {
+    console.error("Keepalive: heartbeat write failed:", err);
+  }
+
   return NextResponse.json(
     { status: ok ? "ok" : "error", pingedAt: new Date().toISOString(), supabase: supabaseResult, greenApi: greenApiResult },
     { status: ok ? 200 : 500 }
