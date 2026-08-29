@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "gen:types": "npx supabase gen types typescript --linked > types/db.ts"
   },
   "dependencies": {
     "@next/third-parties": "^16.2.12",

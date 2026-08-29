@@ -206,6 +206,46 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>16:50</code></td>
+  <td><strong>Process: one PR at a time</strong><br>(owner directive)</td>
+  <td>
+    Docs-only. Owner asked that changes ship as <strong>one open PR at a time</strong> &mdash; finish a batch,
+    merge it, resync <code>main</code>, then branch the next. Stacked branches all edit
+    <code>IMPROVEMENTS.md</code> + this Change-log table and collide at the top. Codified in the working agreement
+    (<code>CLAUDE.md</code> step&nbsp;1 + 4), <code>AGENT.md</code> &ldquo;When you finish any batch&rdquo;, and the
+    &sect;27 &ldquo;Every batch, before deploy&rdquo; playbook.
+  </td>
+  <td><code>CLAUDE.md</code> &middot; <code>AGENT.md</code> &middot; <code>docs/ARCHITECTURE.html</code></td>
+  <td>n/a &mdash; docs only.</td>
+</tr>
+<tr>
+  <td><code>2026-08-29<br>16:30</code></td>
+  <td><strong>Batch A: reconcile cron + DB types + drop <code>ADMIN_SESSION_SECRET</code></strong><br>(<code>IMPROVEMENTS.md</code> #16, #15, #20)</td>
+  <td>
+    &bull; <strong>#16</strong> &mdash; new <code>/api/cron/product-sales-reconcile</code> (GET, <code>CRON_SECRET</code>
+    bearer). Recomputes the units-sold tally from every non-cancelled order (paged, via the pure
+    <code>tallyUnitsSold</code>), diffs against <code>product_sales</code>, WhatsApps the business on drift.
+    <code>?heal=1</code> also writes the recomputed values back (default is alert-only so a recompute bug can&rsquo;t
+    clobber good data). Not in <code>vercel.json</code> (Hobby 2-cron cap) &mdash; needs a daily external schedule.<br>
+    &bull; <strong>#15</strong> &mdash; <code>types/db.ts</code> generated from the live schema
+    (<code>npm run gen:types</code> &rarr; <code>npx supabase gen types typescript --linked</code>; Management API,
+    no Docker). Committed but <em>not</em> yet wired into the Supabase clients &mdash; doing so surfaces ~37
+    pre-existing loose-typing errors; that&rsquo;s a follow-up batch.<br>
+    &bull; <strong>#20</strong> &mdash; <code>ADMIN_SESSION_SECRET</code> removed from the docs / env table / gotcha
+    list (vestigial pre-DB-session design; no code ever read it) and <strong>deleted from the Vercel project env</strong>
+    (owner, 2026-08-29).<br>
+    &bull; No schema change, no payment-path change.
+  </td>
+  <td>
+    <em>new:</em> <code>app/api/cron/product-sales-reconcile/route.ts</code>, <code>types/db.ts</code><br>
+    <code>package.json</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot; <code>AGENT.md</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>next build</code> exit 0 &middot; <code>tsc --noEmit</code> clean &middot; <code>npm test</code> 51/7.
+    The reconcile route&rsquo;s recompute-vs-aggregate logic not yet exercised against live data (owner runs it
+    once the daily schedule is set).</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>16:05</code></td>
   <td><strong>Backlog decision: no Sentry</strong><br>(<code>IMPROVEMENTS.md</code> T4&nbsp;#13)</td>
   <td>
@@ -848,9 +888,8 @@ paths produce an identical row because both re-read from Razorpay&rsquo;s own AP
 <tr><td><code>RAZORPAY_WEBHOOK_SECRET</code></td><td>server</td><td>HMAC key for the Dashboard server-to-server webhook (<code>x-razorpay-signature</code>). Configure event <code>payment.captured</code> &rarr; <code>/api/razorpay-webhook</code>.</td></tr>
 <tr><td><code>ADMIN_PASSWORD</code></td><td>server</td><td>Admin password (constant-time compare). Missing &rarr; login 500 (fails closed, no default).</td></tr>
 <tr><td><code>ADMIN_TOTP_SECRET</code></td><td>server</td><td>Base32 TOTP secret (RFC 6238, SHA1, 6 digits, 30s, &plusmn;1 step drift). Static &mdash; the QR tool just re-renders it.</td></tr>
-<tr><td><code>ADMIN_SESSION_SECRET</code></td><td>server</td><td>Vestigial (pre-DB signed-token design). Sessions are now DB-backed; nothing reads this.</td></tr>
 <tr><td><code>GREEN_API_URL</code>, <code>GREEN_API_ID_INSTANCE</code>, <code>GREEN_API_TOKEN_INSTANCE</code></td><td>server</td><td>Green API instance. All three required or every WhatsApp feature silently no-ops (OTP send surfaces an explicit error instead).</td></tr>
-<tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code> and <code>/api/cron/abandoned-checkout</code>.</td></tr>
+<tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code>, <code>/api/cron/abandoned-checkout</code>, <code>/api/cron/product-sales-reconcile</code>.</td></tr>
 <tr><td><code>RESEND_API_KEY</code></td><td>server</td><td>Missing &rarr; order emails skipped silently; contact form returns 500.</td></tr>
 <tr><td><code>NEXT_PUBLIC_META_PIXEL_ID</code></td><td>public</td><td>Optional. Unset &rarr; <code>MetaPixel</code> and <code>trackMetaPurchase()</code> no-op.</td></tr>
 <tr><td><code>BUSINESS_WHATSAPP_NUMBER</code></td><td>server</td><td>Optional override for order/business alerts. Default <code>916302672351</code>.</td></tr>
@@ -1138,6 +1177,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/pincode/[code]</code></td><td><span class="tag t-get">get</span></td><td>Proxies India Post PIN lookup (no CORS upstream). <code>{city, state}</code>. Cached 1h.</td></tr>
 <tr><td><code>/api/keepalive</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Pings Supabase (7-day auto-pause) + Green API <code>getStateInstance</code>. External scheduler every 15&ndash;30 min.</td></tr>
 <tr><td><code>/api/cron/abandoned-checkout</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Nudges <code>checkout_started</code> leads 2h&ndash;7d old, not yet <code>contacted</code>, with no matching order since. Every 30&ndash;60 min.</td></tr>
+<tr><td><code>/api/cron/product-sales-reconcile</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Recomputes the units-sold tally from every non-cancelled order and diffs it against <code>product_sales</code> (0042). Drift &rarr; best-effort business WhatsApp; <code>?heal=1</code> also writes the recomputed values back. Alert-only by default. Daily external schedule.</td></tr>
 </tbody></table></div>
 
 <h3>Admin (behind <code>admin_session</code>)</h3>
@@ -1544,6 +1584,10 @@ scheduler</strong> (e.g. cron-job.org) at the same URLs &mdash; <code>/api/keepa
 (Green API sessions idle out well within a day; Supabase auto-pauses after 7 days),
 <code>/api/cron/abandoned-checkout</code> every 30&ndash;60 min &mdash; sending
 <code>Authorization: Bearer $CRON_SECRET</code> if that var is set.</p>
+<p><code>/api/cron/product-sales-reconcile</code> is a <strong>third</strong> cron route but is <em>not</em> in
+<code>vercel.json</code> (Hobby caps the list at two). Point the external scheduler at it <strong>once a day</strong>,
+same bearer auth. It recomputes the units-sold tally from every non-cancelled order, WhatsApps the business on any
+drift from <code>product_sales</code>, and (with <code>?heal=1</code>) writes the corrected values back.</p>
 </div>
 <p><code>/api/keepalive</code> stamps <code>site_settings.last_keepalive_at</code> on each run; the admin
 <strong>Overview</strong> tab reads it back and shows an amber &ldquo;Check&rdquo; badge once it is &gt; 90 min
@@ -1587,7 +1631,8 @@ stale &mdash; the one scheduled job with a health signal.</p>
 
 <h2 id="build">Build, deploy &amp; config</h2>
 <dl class="kv">
-  <dt>Scripts</dt><dd><code>dev</code> = <code>next dev</code>, <code>build</code> = <code>next build</code>, <code>start</code> = <code>next start</code>, <code>lint</code> = <code>eslint</code>, <code>test</code> = <code>vitest run</code></dd>
+  <dt>Scripts</dt><dd><code>dev</code> = <code>next dev</code>, <code>build</code> = <code>next build</code>, <code>start</code> = <code>next start</code>, <code>lint</code> = <code>eslint</code>, <code>test</code> = <code>vitest run</code>, <code>gen:types</code> = <code>npx supabase gen types typescript --linked &gt; types/db.ts</code></dd>
+  <dt>DB types</dt><dd><code>types/db.ts</code> &mdash; generated from the live schema by <code>npm run gen:types</code> (Management API, no Docker; needs the CLI linked &mdash; <code>npx supabase link</code>). Exports <code>Database</code>. <strong>Not yet wired into the Supabase clients</strong> &mdash; typing <code>supabaseAdmin</code> as <code>createClient&lt;Database&gt;</code> surfaces ~37 pre-existing loose-typing errors (mostly <code>string</code> vs <code>number</code> product ids); that clean-up is its own batch (<code>IMPROVEMENTS.md</code> #15). Regenerate after every schema migration.</dd>
   <dt>Host</dt><dd>Vercel (Hobby). <code>maxDuration = 60</code> on the two catalogue PDF routes.</dd>
   <dt>CI</dt><dd><code>.github/workflows/ci.yml</code> (added 2026-08-29) &mdash; <code>tsc --noEmit</code> + <code>npm test</code> + <code>next build</code> on push to <code>main</code> and every PR. RLS test runs if Supabase vars are set as Actions secrets, else self-skips. No ESLint job (pre-existing debt). Vercel&rsquo;s own Git integration is the deploy check.
     <br><strong>Enforcement (Active, confirmed 2026-08-29):</strong> a branch-protection ruleset on the default
@@ -1652,7 +1697,8 @@ stale &mdash; the one scheduled job with a health signal.</p>
   <li><strong>Vercel Cron is daily-only here</strong> &mdash; keepalive &amp; abandoned-checkout need an external
       scheduler (cron-job.org) to be genuinely useful. A stale keepalive heartbeat is now flagged on the admin
       Overview tab (&sect;14); a stalled abandoned-checkout job is still silent.</li>
-  <li><strong><code>ADMIN_SESSION_SECRET</code> is vestigial</strong> &mdash; sessions are DB-backed now; nothing reads it.</li>
+  <li><strong><code>ADMIN_SESSION_SECRET</code> removed</strong> (2026-08-29) &mdash; it was vestigial (pre-DB
+      signed-token design); no code ever read it. Deleted from the Vercel project env on 2026-08-29.</li>
   <li><strong>Category / label are plain text on <code>products</code></strong>, not foreign keys &mdash; deleting a
       <code>categories</code>/<code>labels</code> row doesn&rsquo;t cascade; products keep the string value.</li>
   <li><strong><code>discount_percent</code> is display-only</strong> &mdash; never affects the charged amount.</li>
@@ -1849,7 +1895,9 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
 
 <h3>Every batch, before deploy</h3>
 <ol class="steps">
-  <li>Group related changes; keep the diff surgical.</li>
+  <li>Group related changes; keep the diff surgical. <strong>One PR open at a time</strong> &mdash; merge and
+      resync <code>main</code> before branching the next batch; stacked branches collide in
+      <code>IMPROVEMENTS.md</code> and the Change-log table.</li>
   <li>Verify: <code>npx next build</code> (exit 0), <code>npx tsc --noEmit</code>, <code>npm test</code>,
       <code>npx eslint &lt;changed&gt;</code> (no <em>new</em> errors vs. the pre-existing baseline). Report the
       real output.</li>

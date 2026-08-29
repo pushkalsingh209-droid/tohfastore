@@ -63,7 +63,13 @@ This is the standing SOP for any multi-change piece of work (the audit/refactor 
 `.claude/skills/` follow it too):
 
 1. **Batch.** Group related changes and land them together. Keep each batch small enough
-   to reason about; keep the diff surgical.
+   to reason about; keep the diff surgical. **One PR at a time** — finish a batch, push
+   its branch, wait for the owner to merge it, then `git checkout main && git pull` and
+   delete the branch *before* starting the next branch. Never have two PRs open at once
+   (stacked branches all edit `IMPROVEMENTS.md` + the ARCHITECTURE.html Change log and
+   collide at the top of the same table — the owner does not want to resolve that). If
+   several independent changes are ready, ship them as a sequential queue, not in
+   parallel. A large batch stays one PR and iterates on that same branch.
 2. **Verify.** Run what applies: `npx next build` (exit 0), `npx tsc --noEmit`,
    `npm test`, `npx eslint <changed>` (no *new* errors vs. the pre-existing baseline).
    Report the actual results — if something can't be verified (no running app, no live
@@ -79,11 +85,13 @@ This is the standing SOP for any multi-change piece of work (the audit/refactor 
    before deploying and say exactly what's undocumented.
 4. **Deploy** (only when the owner says so, and only after step 3). **`main` is
    branch-protected — direct `git push origin main` is rejected (`GH013 … Required status
-   check "verify"`).** Flow: branch from `main`, commit, push the branch; open a PR; wait
-   for the `verify` check (CI: `tsc` + `npm test` + `next build`) to go green; on "deploy",
-   **re-verify the merged HEAD** (`next build` + `npm test`) and merge the PR (Vercel
-   deploys from the merge commit). Delete the merged branch. `gh` is not installed here —
-   push the branch and have the owner click Merge, or use the API with a token if provided.
+   check "verify"`).** Flow: branch from `main` (with no other PR open — see step 1),
+   commit, push the branch; open a PR; wait for the `verify` check (CI: `tsc` + `npm test`
+   + `next build`) to go green; on "deploy", **re-verify the merged HEAD** (`next build` +
+   `npm test`) and merge the PR (Vercel deploys from the merge commit). Then
+   `git checkout main && git pull` and delete the branch (local + remote) before the next
+   batch. `gh` is not installed here — push the branch and have the owner click Merge, or
+   use the API with a token if provided.
 5. **Recommend.** End with a short, prioritised "what next" — new issues found, deferred
    items, follow-ups. Feed anything durable into `IMPROVEMENTS.md`.
 

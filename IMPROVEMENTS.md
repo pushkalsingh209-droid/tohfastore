@@ -218,11 +218,12 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 4 (maintainability / observability)
 
-16. **`product_sales` reconcile check.** The tally (`0042`) only self-corrects for cancels
-    via `/api/admin/orders/update-status`; any other cancel path leaves it high. The
-    drift-scan query is in ARCHITECTURE.html §7 but has to be run by hand. Options: a
-    weekly cron that runs the recompute and alerts on any mismatch, or fold it into the
-    existing keepalive/health cron. Cheap, free, no payment-path risk.
+16. ~~**`product_sales` reconcile check.**~~ — **done (2026-08-29, Batch A).**
+    `/api/cron/product-sales-reconcile` (GET, `CRON_SECRET` bearer): recomputes the tally
+    from every non-cancelled order (paged, via `tallyUnitsSold`), diffs against
+    `product_sales`, WhatsApps the business on drift. `?heal=1` writes corrected values
+    back; default alert-only. Not in `vercel.json` (Hobby 2-cron cap) — **owner: add a
+    daily external schedule** (cron-job.org), same bearer as keepalive.
 
 13. **Error monitoring.** — *deferred by owner (2026-08-29): no Sentry.* Dozens of
     best-effort `console.error` (WhatsApp, email, stock deduction) vanish in Vercel's
@@ -235,8 +236,13 @@ care, land behind tests, never "blind".
 14. ~~Keepalive staleness alert~~ — **done** (2026-08-29). Follow-up: the
     `abandoned-checkout` cron still has no health signal; same pattern could cover it.
 
-15. **Generate DB types** (`supabase gen types typescript` → `types/db.ts`) — kills the
-    pervasive `any` on products/orders/API bodies.
+15. **Generate DB types** — *partly done (2026-08-29, Batch A).* `types/db.ts` is
+    generated + committed; `npm run gen:types` (`npx supabase gen types typescript
+    --linked`, Management API, no Docker) regenerates it. **Still open:** wire it into the
+    Supabase clients (`createClient<Database>`) — that surfaces ~37 pre-existing
+    loose-typing errors (mostly `string` vs `number` product ids in `storeQueries.ts`,
+    `razorpay`, `orders/*`, `admin/products`, `proxy.ts`), several of which look like real
+    latent bugs. Own batch: fix those, then delete the hand-written `any`s.
 
 16. **Split `app/admin/page.tsx`** (~3,600 lines, one client component) into route
     segments / lazy tabs. Improves admin TTI and maintainability.
@@ -253,7 +259,9 @@ care, land behind tests, never "blind".
     `react-hooks/set-state-in-effect` errors across the repo (`npm run lint` is not
     clean; Next 16 no longer runs it during `next build`).
 
-20. **Delete vestigial `ADMIN_SESSION_SECRET`** from the env (nothing reads it).
+20. ~~**Delete vestigial `ADMIN_SESSION_SECRET`.**~~ — **done (2026-08-29, Batch A).** No
+    code ever read it; removed from the docs / env table / gotcha list / AGENT.md, and
+    deleted from the Vercel project env by the owner 2026-08-29.
 
 ## Active — Tier 5 (tests)
 
