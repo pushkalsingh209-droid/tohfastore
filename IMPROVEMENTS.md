@@ -12,6 +12,17 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Share the recent-orders scan — 2026-08-29 11:23 IST
+- New cached `getRecentOrderItems` (last 300 orders' `items`, tag `orders`);
+  `getBestsellers` + `getRelatedProducts` share it instead of two near-identical
+  cold-cache scans. Tally extracted to a pure `app/utils/orderTally.ts`
+  (`tallyUnitsSold`) with 8 unit tests. `getSoldCounts` unchanged (needs the 300 most
+  recent *non-cancelled* orders — a different set). (was Tier 3 #12.)
+- One immaterial shift: equal-units-sold tie-break at the top-N cutoff is now id order,
+  not recency. No correctness/revenue impact on a ranking strip.
+- Verified: `next build` exit 0 (240 pages), `tsc` clean, `npm test` 51 pass / 7 gated,
+  eslint −2 on `storeQueries.ts`, no new errors.
+
 ### Batch: Confirmations link to the invoice — 2026-08-29 10:46 IST
 - Customer order-confirmation WhatsApp + email (`/api/razorpay-webhook`) now carry a
   `/success?order_id=` link / "View / print invoice" button (`invoiceUrl` param, customer
@@ -152,10 +163,9 @@ care, land behind tests, never "blind".
     on mount — several client round trips per page load for data the server already has.
     One `/api/bootstrap` + one provider. Larger refactor — do behind a running app.
 
-12. **Share the "last 300 orders" scan.** `getSoldCounts` / `getBestsellers` /
-    `getRelatedProducts` each run it. One cached `getRecentOrderItems()` they derive
-    from — mind the `unstable_cache` key/tag topology (`getSoldCounts` filters
-    `status != cancelled`, the others don't).
+12. ~~Share the "last 300 orders" scan~~ — **done** (2026-08-29) for `getBestsellers` +
+    `getRelatedProducts` via `getRecentOrderItems`. `getSoldCounts` left separate (it
+    needs the 300 most recent *non-cancelled* orders).
 
 ## Active — Tier 4 (maintainability / observability)
 

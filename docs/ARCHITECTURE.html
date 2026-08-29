@@ -206,6 +206,30 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>11:23</code></td>
+  <td><strong>Share the recent-orders scan</strong><br>(<code>IMPROVEMENTS.md</code> T3&nbsp;#12)</td>
+  <td>
+    &bull; New cached <code>getRecentOrderItems</code> (last 300 orders&rsquo; <code>items</code>, tag
+    <code>orders</code>) &mdash; <code>getBestsellers</code> and <code>getRelatedProducts</code> now share it
+    instead of running two near-identical scans on a cold cache.<br>
+    &bull; The tally loop extracted to a pure <code>app/utils/orderTally.ts</code> (<code>tallyUnitsSold</code>)
+    with 8 unit tests. Behaviour matches the old inline loops (falsy id skipped, <code>Number(qty)||0</code>,
+    non-array <code>items</code> ignored, <code>excludeId</code> for related-products).<br>
+    &bull; <code>getSoldCounts</code> is unchanged &mdash; it needs the 300 most recent <em>non-cancelled</em>
+    orders, a different set.<br>
+    &bull; One immaterial shift: for products with an <em>equal</em> units-sold count straddling the top-N
+    cutoff, the tie-break is now id order rather than recency. No correctness / revenue impact on a ranking
+    strip.
+  </td>
+  <td>
+    <em>new:</em> <code>app/utils/orderTally.ts</code>, <code>app/utils/orderTally.test.ts</code><br>
+    <code>app/utils/storeQueries.ts</code>
+  </td>
+  <td><code>next build</code> exit 0 (240 pages) &middot; <code>tsc --noEmit</code> clean &middot;
+    <code>npm test</code> <strong>51</strong> pass / 7 gated &middot; eslint &minus;2 on <code>storeQueries.ts</code>,
+    no new errors</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>10:46</code></td>
   <td><strong>Confirmations link to the invoice</strong><br>(follow-up to the 10:29 batch)</td>
   <td>
@@ -426,7 +450,7 @@ takes a second arg.</p>
 <tr><td>PDF</td><td><code>@react-pdf/renderer</code> 4.5</td><td>Catalogue PDF (pure JS). <code>sharp</code> re-encodes photos to thumbnails first.</td></tr>
 <tr><td>QR</td><td><code>qrcode</code> 1.5</td><td>Admin TOTP re-provisioning QR (SVG).</td></tr>
 <tr><td>Analytics / RUM</td><td><code>@vercel/analytics</code>, <code>@vercel/speed-insights</code>, <code>@next/third-parties</code> (GA4)</td><td>All free-tier. Purchase conversions fired client-side on <code>/success</code> with the real server-verified total.</td></tr>
-<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (43 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>razorpaySignature</code>, <code>totp</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
+<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (51 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>totp</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
 <tr><td>Lint</td><td>ESLint 9 + <code>eslint-config-next</code></td><td><code>npm run lint</code>. (Next 16 no longer runs ESLint during <code>next build</code>.)</td></tr>
 </tbody></table></div>
 
@@ -1193,7 +1217,9 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       <code>getActiveLabelNames</code>, <code>getLabelPhotoFilters</code>, <code>getSiteSettings</code>,
       <code>getProductUnitSettings</code>, <code>getDefaultWhatsappNumber</code>, <code>getCategoryDefaultPageSize</code>,
       <code>getPublicCoupons</code> (+ live <code>filterLivePublicCoupons</code>), <code>getTotalProductCount</code>,
-      <code>getSoldCounts</code>, <code>getBestsellers</code>, <code>getRelatedProducts</code>, <code>getCategoryImage</code>.
+      <code>getSoldCounts</code>, <code>getRecentOrderItems</code> (shared last-300-orders scan behind
+      <code>getBestsellers</code> + <code>getRelatedProducts</code>; tally is the pure
+      <code>orderTally.ts</code>), <code>getCategoryImage</code>.
       <code>notInListLiteral</code> is exported for reuse by <code>/api/admin/labels/bulk-assign</code>.</li>
 </ul>
 
@@ -1308,6 +1334,7 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
 <tr><td><code>stock.ts</code></td><td><em>(new)</em> <code>LOW_STOCK_THRESHOLD</code> &mdash; one cutoff shared by <code>LiveStock</code>, <code>ProductCard</code>, the stock API, the webhook and the admin stats panels.</td></tr>
 <tr><td><code>apiError.ts</code></td><td><code>serverErrorResponse(context, err, publicMessage)</code> &mdash; logs the real error, returns a generic 5xx body. Wired into <strong>every route under <code>app/api</code></strong> (§22).</td></tr>
 <tr><td><code>rls.test.ts</code></td><td>Anon-key RLS perimeter regression test (§6). Env-gated (skips without Supabase creds).</td></tr>
+<tr><td><code>orderTally.ts</code></td><td><code>tallyUnitsSold(orders, {excludeId?})</code> &mdash; pure line-item quantity tally, shared by <code>getBestsellers</code> / <code>getRelatedProducts</code> via <code>getRecentOrderItems</code>. Unit-tested.</td></tr>
 <tr><td><code>whatsapp.ts</code></td><td>Enquiry-link builder + number-resolution priority.</td></tr>
 <tr><td><code>whatsappOtp.ts</code></td><td>OTP send/verify/token-check + all abuse limits + opportunistic verification-row pruning.</td></tr>
 <tr><td><code>greenApi.ts</code></td><td>Green API send (text / image+caption) + <code>checkWhatsappNumber</code>.</td></tr>

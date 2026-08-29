@@ -26,6 +26,7 @@
 import { unstable_cache } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { attachThumbUrls } from "@/app/utils/imageThumb";
+import { tallyUnitsSold } from "@/app/utils/orderTally";
 import {
   DEFAULT_WEIGHT_UNIT,
   DEFAULT_DIMENSION_UNIT,
@@ -443,37 +444,45 @@ export interface BestsellerItem {
   unitsSold: number;
 }
 
-// Tallies quantities sold across recent orders to find the top sellers.
-// Reads only the `items` column from the most recent orders (not the whole
-// table), then re-fetches those product ids' current price/stock/image so
-// the cards shown always reflect live catalog data, not a stale snapshot
-// baked into the order record.
-export const getBestsellers = unstable_cache(
-  async (limit = 8): Promise<BestsellerItem[]> => {
+// The last 300 orders' line items, shared by getBestsellers and
+// getRelatedProducts so a cold cache scans the orders table once for both
+// instead of twice. Each caller still does its own tally (via
+// tallyUnitsSold) and its own product re-fetch. getSoldCounts keeps its
+// own separate query -- it needs the 300 most recent *non-cancelled*
+// orders, which is a different set than "300 most recent, cancelled ones
+// filtered out afterward".
+export const getRecentOrderItems = unstable_cache(
+  async (): Promise<{ items: unknown }[]> => {
     try {
-      const { data: orders, error } = await supabase
+      const { data, error } = await supabase
         .from("orders")
         .select("items")
         .order("created_at", { ascending: false })
         .limit(300);
-      if (error || !orders) return [];
+      if (error || !data) return [];
+      return data as { items: unknown }[];
+    } catch {
+      return [];
+    }
+  },
+  ["recent-order-items"],
+  { tags: ["orders"], revalidate: 86400 }
+);
 
-      const soldCount = new Map<string, number>();
-      for (const order of orders as any[]) {
-        const items = Array.isArray(order.items) ? order.items : [];
-        for (const item of items) {
-          if (!item?.id) continue;
-          const key = String(item.id);
-          soldCount.set(key, (soldCount.get(key) || 0) + (Number(item.quantity) || 0));
-        }
-      }
+// Tallies quantities sold across recent orders to find the top sellers,
+// then re-fetches those product ids' current price/stock/image so the
+// cards shown always reflect live catalog data, not a stale snapshot
+// baked into the order record.
+export const getBestsellers = unstable_cache(
+  async (limit = 8): Promise<BestsellerItem[]> => {
+    try {
+      const soldCount = tallyUnitsSold(await getRecentOrderItems());
+      const rankedIds = Object.keys(soldCount);
+      if (rankedIds.length === 0) return [];
 
-      if (soldCount.size === 0) return [];
-
-      const topIds = Array.from(soldCount.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, limit)
-        .map(([id]) => id);
+      const topIds = rankedIds
+        .sort((a, b) => soldCount[b] - soldCount[a])
+        .slice(0, limit);
 
       const { data: products, error: productsError } = await supabase
         .from("products")
@@ -484,7 +493,7 @@ export const getBestsellers = unstable_cache(
 
       const withThumbs = await attachThumbUrls(products as any[]);
       return withThumbs
-        .map((p) => ({ ...p, unitsSold: soldCount.get(String(p.id)) || 0 }))
+        .map((p) => ({ ...p, unitsSold: soldCount[String(p.id)] || 0 }))
         .sort((a, b) => b.unitsSold - a.unitsSold);
     } catch {
       return [];
@@ -503,24 +512,11 @@ export const getRelatedProducts = unstable_cache(
     try {
       if (!category) return [];
 
-      const { data: orders } = await supabase
-        .from("orders")
-        .select("items")
-        .order("created_at", { ascending: false })
-        .limit(300);
-
-      const soldCount = new Map<string, number>();
-      for (const order of (orders as any[]) || []) {
-        const items = Array.isArray(order.items) ? order.items : [];
-        for (const item of items) {
-          if (!item?.id || String(item.id) === String(excludeId)) continue;
-          soldCount.set(String(item.id), (soldCount.get(String(item.id)) || 0) + (Number(item.quantity) || 0));
-        }
-      }
+      const soldCount = tallyUnitsSold(await getRecentOrderItems(), { excludeId });
 
       const productMap = new Map<string, any>();
 
-      const rankedIds = Array.from(soldCount.keys());
+      const rankedIds = Object.keys(soldCount);
       if (rankedIds.length > 0) {
         const { data: ranked } = await supabase
           .from("products")
@@ -546,7 +542,7 @@ export const getRelatedProducts = unstable_cache(
       }
 
       const top = Array.from(productMap.values())
-        .map((p) => ({ ...p, unitsSold: soldCount.get(String(p.id)) || 0 }))
+        .map((p) => ({ ...p, unitsSold: soldCount[String(p.id)] || 0 }))
         .sort((a, b) => b.unitsSold - a.unitsSold)
         .slice(0, limit);
       return attachThumbUrls(top);
