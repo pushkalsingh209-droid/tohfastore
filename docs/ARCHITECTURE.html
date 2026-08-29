@@ -206,6 +206,18 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>16:05</code></td>
+  <td><strong>Backlog decision: no Sentry</strong><br>(<code>IMPROVEMENTS.md</code> T4&nbsp;#13)</td>
+  <td>
+    Docs-only. Owner declined error monitoring (Sentry) &mdash; plan is to lean on <strong>Vercel Pro</strong>
+    observability (log retention + drains) if/when traffic justifies that upgrade. Until then the admin Overview
+    heartbeat card is the only health signal; a cheap stop-gap (surface repeated Green-API send failures on that
+    card or a health cron) stays open in the backlog. No code change.
+  </td>
+  <td><code>IMPROVEMENTS.md</code></td>
+  <td>n/a &mdash; docs only.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>15:45</code></td>
   <td><strong>Verify <code>0000_base_schema.sql</code> against the live DB</strong><br>(<code>IMPROVEMENTS.md</code> T1&nbsp;#3)</td>
   <td>
