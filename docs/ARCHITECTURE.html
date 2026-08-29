@@ -1895,7 +1895,9 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
 
 <h3>Every batch, before deploy</h3>
 <ol class="steps">
-  <li>Group related changes; keep the diff surgical.</li>
+  <li>Group related changes; keep the diff surgical. <strong>One PR open at a time</strong> &mdash; merge and
+      resync <code>main</code> before branching the next batch; stacked branches collide in
+      <code>IMPROVEMENTS.md</code> and the Change-log table.</li>
   <li>Verify: <code>npx next build</code> (exit 0), <code>npx tsc --noEmit</code>, <code>npm test</code>,
       <code>npx eslint &lt;changed&gt;</code> (no <em>new</em> errors vs. the pre-existing baseline). Report the
       real output.</li>

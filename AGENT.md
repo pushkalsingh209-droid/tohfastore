@@ -78,6 +78,11 @@ trusting it. Don't present unverifiable payment-path changes as done.
 
 Follow the SOP in `CLAUDE.md` → "batch → verify → document → deploy → recommend".
 
+**One PR at a time.** Push a branch, wait for the owner to merge it, resync `main`, delete
+the branch — *then* start the next. Never open a second PR while one is pending: stacked
+branches all touch `IMPROVEMENTS.md` + the ARCHITECTURE.html Change log and conflict at the
+top of the same table. Ready work waits in a queue, not in a parallel branch.
+
 **The documentation step gates the deploy.** `docs/ARCHITECTURE.html` (affected sections
 + a dated Change-log row), the re-published artifact, and `IMPROVEMENTS.md` are updated
 *before* the batch merges to `main` — never after, never "I'll document it later". A
