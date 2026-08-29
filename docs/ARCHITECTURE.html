@@ -206,6 +206,27 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>20:05</code></td>
+  <td><strong>#16 &mdash; split <code>admin/page.tsx</code>: <code>CouponsTab</code></strong><br>(<code>IMPROVEMENTS.md</code> #16)</td>
+  <td>
+    Third per-tab move. The <code>coupons</code> tab &mdash; create form + <code>handleCreateCoupon</code> /
+    <code>handleToggleCoupon</code> / <code>handleToggleCouponVisibility</code> / <code>handleDeleteCoupon</code>
+    &mdash; lifted verbatim into <code>app/admin/tabs/CouponsTab.tsx</code>. <code>couponForm</code> /
+    <code>couponStatus</code> are now tab-local; <code>coupons</code> + <code>setCoupons</code> added to
+    <code>AdminData</code>. <code>page.tsx</code> &minus;62 lines; <code>no-explicit-any</code> 96 &rarr; 91.
+    No behaviour change.
+  </td>
+  <td>
+    <em>new:</em> <code>app/admin/tabs/CouponsTab.tsx</code><br>
+    <code>app/admin/page.tsx</code> &middot; <code>app/admin/AdminDataContext.tsx</code> &middot;
+    <code>docs/ARCHITECTURE.html</code> &middot; <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>next build</code> exit 0 (241 pages, <code>/admin</code> static) &middot; <code>tsc</code> clean &middot;
+    <code>npm test</code> 71/7 &middot; <code>eslint</code> clean on the new file. <strong>Owner: click the Coupons
+    tab</strong> &mdash; create a coupon (appears at top, form clears), toggle Active / Public, delete one,
+    &ldquo;Used N&rdquo; counter renders.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>19:40</code></td>
   <td><strong>#16 &mdash; split <code>admin/page.tsx</code>: <code>ReviewsTab</code></strong><br>(<code>IMPROVEMENTS.md</code> #16)</td>
   <td>
@@ -1471,7 +1492,7 @@ alert shows only the real price.</p>
 <code>app/admin/tabs/</code>. The page stays one route and keeps <code>loadAll()</code>; each extracted tab reads
 its slice of that state through <code>app/admin/AdminDataContext.tsx</code> (<code>useAdminData()</code>), which
 grows one entry per tab moved. Shared helper: <code>app/admin/lib/apiRequest.ts</code>.
-<strong>Done so far:</strong> <code>security</code>, <code>reviews</code> (2026-08-29).</p>
+<strong>Done so far:</strong> <code>security</code>, <code>reviews</code>, <code>coupons</code> (2026-08-29).</p>
 <div class="x"><table>
 <thead><tr><th>Tab</th><th>Contents</th></tr></thead>
 <tbody>
@@ -1883,7 +1904,7 @@ stale &mdash; the one scheduled job with a health signal.</p>
 |  |- product/[id]/page.tsx  SSG+ISR(24h), canonical redirects, LiveStockProvider
 |  |- catalogue|success|track|wishlist|about|contact|corporate|privacy|terms|refunds/page.tsx
 |  |- admin/page.tsx         client SPA (7 tabs); AdminDataContext + per-tab components in admin/tabs/ (split in progress)
-|  |- admin/tabs/            SecurityTab, ReviewsTab (more moving here per DESIGN-split-admin-page.md)
+|  |- admin/tabs/            SecurityTab, ReviewsTab, CouponsTab (more moving here per DESIGN-split-admin-page.md)
 |  |- admin/lib/apiRequest.ts  shared admin fetch wrapper
 |  |- admin/login/page.tsx
 |  |- api/

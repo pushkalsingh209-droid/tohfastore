@@ -26,6 +26,18 @@ export interface AdminReview {
   products?: { name?: string } | null;
 }
 
+export interface AdminCoupon {
+  id: number;
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  used_count: number;
+  max_uses?: number | null;
+  expires_at?: string | null;
+  active: boolean;
+  is_public: boolean;
+}
+
 export interface AdminData {
   // --- security tab ---
   loginAttempts: AdminLoginAttempt[];
@@ -34,6 +46,9 @@ export interface AdminData {
   // --- reviews tab ---
   reviews: AdminReview[];
   setReviews: (value: AdminReview[]) => void;
+  // --- coupons tab ---
+  coupons: AdminCoupon[];
+  setCoupons: (value: AdminCoupon[]) => void;
 }
 
 const AdminDataContext = createContext<AdminData | null>(null);
