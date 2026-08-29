@@ -224,9 +224,13 @@ care, land behind tests, never "blind".
     weekly cron that runs the recompute and alerts on any mismatch, or fold it into the
     existing keepalive/health cron. Cheap, free, no payment-path risk.
 
-13. **💰 Error monitoring (Sentry / Vercel).** Dozens of best-effort `console.error`
-    (WhatsApp, email, stock deduction) vanish in logs — a systematically failing Green
-    API is invisible. Sentry has a free tier but needs an account + DSN.
+13. **Error monitoring.** — *deferred by owner (2026-08-29): no Sentry.* Dozens of
+    best-effort `console.error` (WhatsApp, email, stock deduction) vanish in Vercel's
+    short log retention — a systematically failing Green API is invisible. Owner's plan:
+    rely on **Vercel Pro** observability (longer log retention + log drains) if/when
+    traffic justifies the upgrade. Revisit only then; until upgrade, the admin Overview
+    heartbeat card (#14) is the only health signal. Cheap stop-gap still open: extend that
+    card / a health cron to surface repeated Green-API send failures.
 
 14. ~~Keepalive staleness alert~~ — **done** (2026-08-29). Follow-up: the
     `abandoned-checkout` cron still has no health signal; same pattern could cover it.
