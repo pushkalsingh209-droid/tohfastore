@@ -130,6 +130,11 @@ describe("checkoutReducer — payment phase", () => {
     expect(s).toEqual(review);
   });
 
+  it("PAYMENT_DISMISSED from paying (submit failed pre-modal) also returns to review", () => {
+    const s = run(review, { t: "SUBMIT_PAYMENT" }, { t: "PAYMENT_DISMISSED" });
+    expect(s).toEqual(review);
+  });
+
   it("SUBMIT_PAYMENT is a no-op outside review", () => {
     expect(run(initialCheckoutState, { t: "SUBMIT_PAYMENT" })).toEqual(initialCheckoutState);
   });
