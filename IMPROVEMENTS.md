@@ -261,14 +261,18 @@ care, land behind tests, never "blind".
     Do them **with a dev-server loop**, `products` first (split into 3 sub-PRs: stock
     tracker / editor form / dropdown-mgmt — see the design doc), then `settings`.
 
-17. **Extract the checkout state machine** from `CartDrawer.tsx` (1,159 lines, 26
-    `useState`). **⚠️ payment path. Decomposition plan written 2026-08-29 →
-    `docs/DESIGN-extract-checkout-machine.md`** (`useCheckoutMachine` reducer with a
-    discriminated `phase` union + pure unit tests; nothing server-side changes; fields
-    stay in `CartDrawer` so the "verification_required" rewind keeps them; do it in 3
-    slices). **Cannot be verified from the dev environment** — needs `npm run dev` +
-    Razorpay test keys + live Green API; merge only after a full test-mode checkout
-    passes. Awaiting owner review.
+17. **Multi-step checkout + state-machine extract** from `CartDrawer.tsx` (1,159 lines,
+    26 `useState`). **⚠️ payment path. Design (revised) 2026-08-29 →
+    `docs/DESIGN-extract-checkout-machine.md`** — now delivers *two* things: a
+    **4-step mobile-first checkout** (Contact → Verify → Delivery → Review&Pay, full-height
+    sheet, sticky header progress bar + footer button, slide transitions, Back never loses
+    input) and the `useCheckoutMachine` reducer (`phase` = current step) that makes the
+    step nav clean. **Money path unchanged** — step 4's "Pay ₹X" calls the existing
+    `handleRazorpayPayment` body verbatim; no API/webhook/sessionStorage/`/success` change.
+    3 slices: 17a reducer + pure tests (merges on `npm test`); 17b `CheckoutSheet` + 4 step
+    components + `?checkout=preview` dev flag; 17c delete the old inline form. **Live check:**
+    Razorpay is live-only here (no test keys) → one real ~₹1 order via a ~99%-off private
+    coupon, then refund. 5 open questions in the doc §11. Awaiting owner review.
 
 18. **Consolidate phone normalisation** — reimplemented with slightly different rules in
     `whatsappOtp.ts`, `whatsapp-numbers/route.ts`, `stock-alerts/route.ts`,

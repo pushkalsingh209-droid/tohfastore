@@ -206,6 +206,23 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>22:10</code></td>
+  <td><strong>#17 design (revised): 4-step checkout + state machine</strong><br>(<code>IMPROVEMENTS.md</code> #17; docs-only)</td>
+  <td>
+    Rewrote <code>docs/DESIGN-extract-checkout-machine.md</code>. Scope grew from &ldquo;extract the OTP/payment
+    state machine&rdquo; to also **redesign checkout into 4 mobile-first screens** (Contact &rarr; Verify &rarr;
+    Delivery &rarr; Review&nbsp;&amp;&nbsp;Pay) with a full-height sheet, sticky progress header + footer button,
+    slide transitions, and a Back button that never loses typed input. The <code>useCheckoutMachine</code> reducer&rsquo;s
+    <code>phase</code> <em>is</em> the current step. <strong>Money path unchanged</strong> &mdash; step 4&rsquo;s
+    &ldquo;Pay ₹X&rdquo; calls the existing <code>handleRazorpayPayment</code> body verbatim; no
+    API / webhook / <code>sessionStorage</code> / <code>/success</code> change. 3 slices (17a reducer + pure
+    tests; 17b sheet + 4 steps + a <code>?checkout=preview</code> dev flag; 17c delete the old form). Live check:
+    Razorpay is live-only here, so one real ~₹1 order via a ~99%-off private coupon, then refund. No code yet.
+  </td>
+  <td><code>docs/DESIGN-extract-checkout-machine.md</code> &middot; <code>IMPROVEMENTS.md</code></td>
+  <td>n/a &mdash; docs only.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>21:40</code></td>
   <td><strong>#16 &mdash; park <code>products</code> + <code>settings</code></strong><br>(<code>IMPROVEMENTS.md</code> #16; docs-only)</td>
   <td>
