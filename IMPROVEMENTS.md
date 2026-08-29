@@ -23,11 +23,11 @@ care, land behind tests, never "blind".
   business "OVERSELL — action needed" WhatsApp (`sendOversellAlert`). Low-stock alert and
   the "no revalidateTag" behaviour preserved. (was Tier 1 #1; #2 partly — see #1 below
   for the remaining reservation-window follow-up.)
-- Verified: `next build` exit 0 (240 pages), `tsc` clean, `npm test` 51 pass / 7 gated,
-  eslint −2 on the webhook. **DB side verified via SQL** (2026-08-29): decrement/clamp/
-  `oversold_by` correct, unknown id → 0 rows, `EXECUTE` service_role-only, `products` RLS
-  + policy intact. **Still owed:** one live test payment end-to-end; revert target
-  `57ffd29`.
+- **Verified end-to-end 2026-08-29.** Static: `next build` exit 0, `tsc` clean, `npm test`
+  51/7. DB via SQL: decrement/clamp/`oversold_by` correct, unknown id → 0 rows, `EXECUTE`
+  service_role-only, `products` RLS + policy intact. Live test-mode payment: order row
+  created, WhatsApp + email delivered, inventory −1 exactly. (Oversell branch + true
+  concurrency not hit live — SQL test covered the logic.) Revert target `57ffd29`.
 - Fix commit `69fbaf6`: `grant execute … to service_role` in `0041` (the `revoke from
   public` had stripped it). If re-applying `0041` elsewhere, that grant is now included.
 
