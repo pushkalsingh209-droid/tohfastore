@@ -218,9 +218,14 @@ Newest first.</p>
     Race-free; <code>oversold_by &gt; 0</code> &rarr; a business &ldquo;OVERSELL &mdash; action needed&rdquo;
     WhatsApp alert (<code>sendOversellAlert</code>). Low-stock alert + &ldquo;no revalidateTag&rdquo; behaviour kept.
     <code>sendLowStockAlert</code> param widened to <code>string | number</code>.<br>
-    &bull; <strong>Post-deploy check still owed (owner):</strong> one real captured payment &mdash; confirm the
-    order records, confirmations send, and <code>products.inventory</code> drops by the ordered quantity.
-    Revert target if it misbehaves: <code>57ffd29</code>.
+    &bull; <strong>DB side verified via SQL (2026-08-29):</strong> <code>decrement_inventory</code> decrements +
+    clamps at 0 + reports <code>oversold_by</code> correctly, returns 0 rows for an unknown id;
+    <code>EXECUTE</code> is <code>service_role</code>-only; <code>products</code> RLS + the
+    <code>hidden = false</code> policy are intact, no forced RLS anywhere.<br>
+    &bull; <strong>Still owed:</strong> one real captured payment &mdash; confirm the order records,
+    confirmations send, and <code>products.inventory</code> drops by the ordered quantity (and, ideally, two
+    concurrent orders for the same low-stock item lose no decrement + fire the OVERSELL alert). Revert target:
+    <code>57ffd29</code>.
   </td>
   <td>
     <em>new:</em> <code>supabase/migrations/0041_atomic_stock_decrement.sql</code><br>

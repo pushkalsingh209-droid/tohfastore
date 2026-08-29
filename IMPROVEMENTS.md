@@ -24,8 +24,12 @@ care, land behind tests, never "blind".
   the "no revalidateTag" behaviour preserved. (was Tier 1 #1; #2 partly — see #1 below
   for the remaining reservation-window follow-up.)
 - Verified: `next build` exit 0 (240 pages), `tsc` clean, `npm test` 51 pass / 7 gated,
-  eslint −2 on the webhook. **Owner still owes one live test payment** end-to-end; revert
-  target `57ffd29`.
+  eslint −2 on the webhook. **DB side verified via SQL** (2026-08-29): decrement/clamp/
+  `oversold_by` correct, unknown id → 0 rows, `EXECUTE` service_role-only, `products` RLS
+  + policy intact. **Still owed:** one live test payment end-to-end; revert target
+  `57ffd29`.
+- Fix commit `69fbaf6`: `grant execute … to service_role` in `0041` (the `revoke from
+  public` had stripped it). If re-applying `0041` elsewhere, that grant is now included.
 
 ### Batch: Share the recent-orders scan — 2026-08-29 11:23 IST
 - New cached `getRecentOrderItems` (last 300 orders' `items`, tag `orders`);
