@@ -16,6 +16,14 @@ import CheckoutSheet from "@/app/components/checkout/CheckoutSheet";
 // below also needs it, to decide when the OTP send step should appear.
 const PHONE_REGEX = /^[6-9]\d{9}$/;
 
+// #17b cutover: the 3-step <CheckoutSheet> is now the checkout for everyone.
+// The old inline coupon block + contact/shipping <form> + footer submit are
+// kept only as an env-flag fallback (set NEXT_PUBLIC_LEGACY_CHECKOUT=1 in
+// Vercel + redeploy to revert if the new flow misbehaves in production).
+// All of that dead path -- and this flag -- is deleted in 17c once the new
+// flow has a few days of clean live orders.
+const LEGACY_CHECKOUT = process.env.NEXT_PUBLIC_LEGACY_CHECKOUT === "1";
+
 export default function CartDrawer() {
   const { cart, isOpen, setIsOpen, removeFromCart, updateQuantity, cartTotal } = useCart();
   const [loading, setLoading] = useState(false);
@@ -725,17 +733,9 @@ export default function CartDrawer() {
                   Have a question? Chat with us
                 </a>
 
-                {process.env.NODE_ENV !== "production" && (
-                  <button
-                    type="button"
-                    onClick={() => setCheckingOut(true)}
-                    className="w-full py-2 text-[11px] font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-500 border border-amber-300 dark:border-amber-800 rounded hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
-                  >
-                    ▶ Preview new 3-step checkout (dev)
-                  </button>
-                )}
-
-                {/* Coupon Code */}
+                {/* Coupon Code (legacy fallback only -- the 3-step sheet has
+                    its own coupon field on the Review step). */}
+                {LEGACY_CHECKOUT && (
                 <div className="pt-2 pb-1">
                   {appliedCoupon ? (
                     <div className="flex items-center justify-between p-2.5 text-xs bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 rounded">
@@ -767,11 +767,15 @@ export default function CartDrawer() {
                   )}
                   {couponError && <p className="text-[11px] text-rose-600 mt-1.5">{couponError}</p>}
                 </div>
+                )}
 
                 {/* Secure Contact Input Forms Layer -- split into two steps
                     (contact + WhatsApp verification, then shipping) rather
                     than one long form, so it never reads as one big tedious
-                    block: step 2 only mounts once step 1 is verified. */}
+                    block: step 2 only mounts once step 1 is verified.
+                    #17b: replaced by <CheckoutSheet>; kept behind
+                    LEGACY_CHECKOUT as a fallback, deleted in 17c. */}
+                {LEGACY_CHECKOUT && (
                 <form id="checkout-contact-form" onSubmit={handleRazorpayPayment} className="space-y-3 pt-2">
                   {/* Inline Error UI Warning Block */}
                   {validationError && (
@@ -1113,11 +1117,12 @@ export default function CartDrawer() {
                     </>
                   )}
                 </form>
+                )}
               </>
             )}
           </div>
 
-          {cart.length > 0 && (() => {
+          {LEGACY_CHECKOUT && cart.length > 0 && (() => {
             const finalTotal = appliedCoupon ? Math.max(0, cartTotal - appliedCoupon.discount) : cartTotal;
             const gst = calculateGstBreakdown(finalTotal);
 
@@ -1183,6 +1188,30 @@ export default function CartDrawer() {
             </div>
             );
           })()}
+
+          {/* #17b: the checkout entry point for everyone. Opening
+              <CheckoutSheet> replaces the whole drawer (see the early
+              return above). */}
+          {!LEGACY_CHECKOUT && cart.length > 0 && (
+            <div className="p-6 border-t border-stone-100 dark:border-stone-800 bg-stone-50 dark:bg-stone-950 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-stone-600 dark:text-stone-400 font-medium">Subtotal:</span>
+                <span className="text-lg font-mono font-bold text-stone-900 dark:text-stone-100">
+                  &#8377;{cartTotal.toLocaleString("en-IN")}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCheckingOut(true)}
+                className="w-full bg-amber-700 hover:bg-amber-800 text-white text-xs uppercase tracking-widest py-4 rounded shadow font-semibold transition"
+              >
+                Proceed to Checkout &rarr;
+              </button>
+              <p className="text-[10px] text-stone-400 text-center -mt-1">
+                Contact &amp; WhatsApp verification, delivery address, then payment &mdash; 3 quick steps.
+              </p>
+            </div>
+          )}
 
         </div>
       </div>
