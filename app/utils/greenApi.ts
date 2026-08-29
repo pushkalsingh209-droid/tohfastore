@@ -1,4 +1,5 @@
 // app/utils/greenApi.ts
+import { normalizeIndianPhone } from "@/app/utils/phone";
 // Shared Green API (WhatsApp) sender -- used by the order-confirmation
 // webhook and by the lead follow-up flow. Best-effort by design: silently
 // no-ops until GREEN_API_URL / GREEN_API_ID_INSTANCE / GREEN_API_TOKEN_INSTANCE
@@ -16,8 +17,7 @@ export async function sendWhatsappMessage(phone: string, message: string, imageU
   const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
   if (!greenApiUrl || !greenApiIdInstance || !greenApiTokenInstance) return;
 
-  const digits = phone.replace(/\D/g, "");
-  const chatId = digits.startsWith("91") ? `${digits}@c.us` : `91${digits}@c.us`;
+  const chatId = `${normalizeIndianPhone(phone)}@c.us`;
 
   if (imageUrl) {
     const imageRes = await fetch(
@@ -61,8 +61,7 @@ export async function checkWhatsappNumber(phone: string): Promise<boolean | null
   const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
   if (!greenApiUrl || !greenApiIdInstance || !greenApiTokenInstance) return null;
 
-  const digits = phone.replace(/\D/g, "");
-  const phoneNumber = digits.startsWith("91") ? digits : `91${digits}`;
+  const phoneNumber = normalizeIndianPhone(phone);
 
   try {
     const res = await fetch(

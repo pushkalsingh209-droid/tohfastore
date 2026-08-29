@@ -12,6 +12,67 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Short-TTL stock reservation at checkout (#1) — 2026-08-30 07:30 IST — ⚠️⚠️ payment path, SHIPS DISABLED
+- Closes the checkout-vs-checkout race: stock is decremented only *after* payment today, so
+  two shoppers can both pass `/api/razorpay`'s `qty <= inventory` read and both pay for the
+  last unit.
+- **Migration `0043`** (hand-run, ships disabled): `stock_reservations` table +
+  `reserve_stock(token, items, ttl)` (two-pass, all-or-nothing, row-locks every product,
+  returns `ok` / offending product + `available`) + `consume_reservation(token)`
+  (decrement + mark consumed, same `(new_inventory, oversold_by)` shape as `0041`; returns
+  nothing → caller falls back to the `0041` loop). `EXECUTE` service-role only (grant
+  gotcha). Availability sums only unexpired holds → expired holds self-heal, no sweeper.
+- `/api/razorpay`: when `stock_reservations_enabled = '1'`, after every existing check →
+  `reserve_stock(…, 900s)`, `400 code:"stock_unavailable"` on shortfall (before an order
+  exists), `500` on RPC error (fail closed), `checkoutToken` into `order.notes` + response.
+- `/api/razorpay-webhook` block 1b: `notes.checkoutToken` → `consume_reservation`; no held
+  rows / RPC error → legacy `decrement_inventory` loop. Alerts factored into one shared
+  `runStockAlerts` used by both paths.
+- **New `POST /api/checkout/release`** (public, best-effort, always 200) — marks a token's
+  `held` rows `released`. `CheckoutSheet` fires it (`keepalive`) on Razorpay `ondismiss`, a
+  new `rzp.on("payment.failed")`, and the payment `catch`. TTL is the backstop.
+- `abandoned-checkout` cron: `DELETE` `stock_reservations` > 1 day past expiry (hygiene).
+  `stock.ts` gains `RESERVATION_TTL_SECONDS = 900`. New pure `app/utils/reservation.ts`
+  `computeAvailability` + 6 tests.
+- **Kill switch:** `site_settings.stock_reservations_enabled`, seeded `'0'` (= exactly
+  today's behaviour). **Owner:** apply `0043`, run the SQL checks in the migration file's
+  footer, one Razorpay-mode race test, then `update site_settings set value='1' where
+  key='stock_reservations_enabled';` from the SQL editor. Flip back to `'0'` instantly if
+  anything looks wrong. Not wired into the admin Settings tab UI (that tab is parked, #16).
+- **Not a goal:** eliminating oversell. A payment landing after its hold expired still
+  records + fires `sendOversellAlert`, exactly as today — this closes the
+  checkout-vs-checkout race, not the post-expiry one. Design + failure matrix:
+  `docs/DESIGN-stock-reservation.md`.
+- Verified: `next build` exit 0, `tsc` clean, `npm test` **102 pass** / 7 skip (+6
+  `reservation.test.ts`), `eslint` no new errors. **Not run against the live DB or a real
+  payment** — a proposal until the owner's SQL checks + race test pass and the switch is
+  flipped.
+
+### Batch: Phone normalisation (#18) + Green-API health card (#13) — 2026-08-30 06:00 IST
+- **#18 — one canonical normaliser.** New `app/utils/phone.ts` `normalizeIndianPhone(raw)`
+  (→ bare `91XXXXXXXXXX`). Retired 4 near-identical local copies (`whatsappOtp.ts`
+  `normalizePhone`, `greenApi.ts` ×2 inline, `stock-alerts`, admin `whatsapp-numbers`
+  `normalizePhoneNumber`) + 1 inline in admin `orders/update-status`. Rule: strip
+  non-digits → `91`+10 unchanged → exactly 10 gets `91` → else the old "prefix unless
+  starts 91". **Output is identical to every old rule for inputs that were already valid**;
+  the only change is a 10-digit mobile starting `91` (e.g. `9198765432`) now gets its
+  country code instead of being left bare and failing `/^91[6-9]\d{9}$/` everywhere — and
+  no working in-flight OTP record can exist for such a number, so nothing that works today
+  breaks. Admin `whatsapp-numbers` POST swapped its `length < 10` guard (defeated by an
+  always-prefix normaliser) for that regex — a small intentional tightening. ⚠️ OTP path:
+  `normalizePhoneForRecord` (→ `/api/razorpay`, `abandoned-checkout`) re-exports the new
+  fn; send-time and pay-time use the same fn, so no lookup mismatch. **7 unit tests.**
+- **#13 — Green-API session visible on the dashboard.** `/api/keepalive` now also stamps
+  `site_settings.last_greenapi_state` (from its `getStateInstance` ping) + `.._error`
+  (best-effort, no cache revalidate). Admin **Overview** shows a second health card by the
+  keepalive one: amber "Check" unless the state is `authorized`, hidden when Green API
+  isn't configured. `greenApi.ts` is best-effort/silent, so a dropped session otherwise
+  only shows up as customers not getting order confirmations. Rider: 2 pre-existing
+  `catch (err: any)` in `keepalive` → `unknown`.
+- Verified: `next build` exit 0, `tsc` clean, `npm test` **96 pass** / 7 skip (+7
+  `phone.test.ts`), `eslint` clean on every changed file. Not exercised against a live
+  Green API session-drop or a live OTP round trip.
+
 ### Batch: 3-step checkout — 17c, delete the legacy path (#17) — 2026-08-30 04:30 IST
 - **⚠️ payment path.** Removed the `LEGACY_CHECKOUT` env fallback and the entire old inline
   checkout from `CartDrawer.tsx` (**~1,220 → ~150 lines**): the coupon block, the
@@ -202,16 +263,16 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 1 (correctness / money)
 
-1. **⚠️ Non-atomic stock deduction in the webhook.**
-   The concurrent-webhook race and oversell surfacing are fixed and **verified end-to-end**
-   — see Done (2026-08-29 12:33): migration `0041` `decrement_inventory()` + `rpc()` +
-   `sendOversellAlert`; a live test-mode payment confirmed order + WhatsApp + email +
-   inventory −1. What's left is a separate, larger piece: a **short-TTL stock reservation
-   at order creation** so two checkouts for the last unit can't both *pay*.
-   **Design written 2026-08-29 → `docs/DESIGN-stock-reservation.md`** (schema `0043`,
-   `reserve_stock` / `consume_reservation` RPCs, reserve-before-create flow, 15-min TTL,
-   `site_settings` kill switch, failure-mode + test matrix). Awaiting owner review of the
-   5 open questions in §11, then implement behind the kill switch.
+1. ~~**⚠️ Non-atomic stock deduction / checkout-vs-checkout race.**~~ — **code done
+   2026-08-30, ships disabled** (see Done). Migration `0043` (`stock_reservations` +
+   `reserve_stock` / `consume_reservation`), `/api/razorpay` reserves before minting the
+   order, webhook consumes (legacy `decrement_inventory` fallback), `/api/checkout/release`
+   + `CheckoutSheet` free the hold on dismiss/fail, `abandoned-checkout` cron trims.
+   All behind `site_settings.stock_reservations_enabled` (seeded `'0'`).
+   **Owner to finish:** apply `0043`, run the SQL checks in the migration file, one
+   Razorpay-mode race test, then `update site_settings set value='1' …` from the SQL
+   editor. Flip back to `'0'` instantly if trouble — the webhook's legacy path is intact.
+   *(The 0041 webhook-vs-webhook race + oversell detection were already done 2026-08-29.)*
 
 2. ~~**Sold-count accuracy degrades past ~300 orders.**~~ — **done + verified end-to-end
    2026-08-29** (see Done, batch 13:20). `product_sales` aggregate + `apply_product_sales`
@@ -279,13 +340,13 @@ care, land behind tests, never "blind".
     back; default alert-only. Not in `vercel.json` (Hobby 2-cron cap) — **owner: add a
     daily external schedule** (cron-job.org), same bearer as keepalive.
 
-13. **Error monitoring.** — *deferred by owner (2026-08-29): no Sentry.* Dozens of
-    best-effort `console.error` (WhatsApp, email, stock deduction) vanish in Vercel's
-    short log retention — a systematically failing Green API is invisible. Owner's plan:
-    rely on **Vercel Pro** observability (longer log retention + log drains) if/when
-    traffic justifies the upgrade. Revisit only then; until upgrade, the admin Overview
-    heartbeat card (#14) is the only health signal. Cheap stop-gap still open: extend that
-    card / a health cron to surface repeated Green-API send failures.
+13. **Error monitoring.** — *Sentry deferred by owner (2026-08-29); Green-API health card
+    **done (2026-08-30)** — see Done.* Dozens of best-effort `console.error` (WhatsApp,
+    email, stock deduction) still vanish in Vercel's short log retention. The admin Overview
+    now shows the Green API session state (`last_greenapi_state`, refreshed by keepalive) —
+    a dropped session is visible. **Still open (needs Vercel Pro):** longer log retention /
+    log drains for the deeper per-send failure signal. Revisit if/when traffic justifies
+    the upgrade.
 
 14. ~~Keepalive staleness alert~~ — **done** (2026-08-29). Follow-up: the
     `abandoned-checkout` cron still has no health signal; same pattern could cover it.
@@ -314,10 +375,8 @@ care, land behind tests, never "blind".
     17c).** See Done. `CartDrawer.tsx` is now bag-list-only; the 3-step `CheckoutSheet` is
     the sole checkout path.
 
-18. **Consolidate phone normalisation** — reimplemented with slightly different rules in
-    `whatsappOtp.ts`, `whatsapp-numbers/route.ts`, `stock-alerts/route.ts`,
-    `greenApi.ts`. ⚠️ touches OTP — preserve each call site's exact behaviour, land with
-    tests.
+18. ~~**Consolidate phone normalisation.**~~ — **done (2026-08-30).** See Done. One
+    `app/utils/phone.ts` `normalizeIndianPhone`, 4 local copies + 1 inline retired, 7 tests.
 
 19. **Clear the pre-existing lint debt** — `@typescript-eslint/no-explicit-any` and
     `react-hooks/set-state-in-effect` errors across the repo (`npm run lint` is not

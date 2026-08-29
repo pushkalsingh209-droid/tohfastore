@@ -11,16 +11,12 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { isRateLimited, recordRateLimitEvent } from "@/app/utils/rateLimit";
 import { getClientIp } from "@/app/utils/clientIp";
 import { serverErrorResponse } from "@/app/utils/apiError";
+import { normalizeIndianPhone } from "@/app/utils/phone";
 
 const RATE_LIMIT_BUCKET = "stock-alert-subscribe";
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_MAX_ATTEMPTS = 15;
 const PHONE_REGEX = /^[6-9]\d{9}$/;
-
-function normalizePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  return digits.startsWith("91") ? digits : `91${digits}`;
-}
 
 export async function POST(req: Request) {
   try {
@@ -44,7 +40,7 @@ export async function POST(req: Request) {
 
     const { error } = await supabase
       .from("stock_alert_subscriptions")
-      .insert({ product_id: productId, phone: normalizePhone(rawPhone) });
+      .insert({ product_id: productId, phone: normalizeIndianPhone(rawPhone) });
 
     // 23505 = the unique-pending-subscription index already covers this
     // exact phone+product -- resubscribing while still pending is a

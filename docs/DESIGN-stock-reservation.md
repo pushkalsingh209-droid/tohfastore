@@ -1,8 +1,23 @@
 # DESIGN — Short-TTL stock reservation at checkout
 
-**Status:** proposal, awaiting owner review. No code until approved.
+**Status: IMPLEMENTED 2026-08-30, ships DISABLED.** Owner answered the §11
+questions: TTL 15 min · kill switch = `site_settings` row · `/release` route
+built · keep consumed/released rows + daily cron trim · ship OFF, flip on
+after the SQL checks. All code merged behind
+`site_settings.stock_reservations_enabled` (seeded `'0'`).
+**Still to do (owner):** apply migration `0043`, run the SQL checks in the
+migration file's footer, do one Razorpay-mode race test, then
+`update site_settings set value='1' where key='stock_reservations_enabled';`
+from the SQL editor. Flip back to `'0'` instantly if anything looks wrong —
+the webhook's legacy `decrement_inventory` path is always intact.
 **Backlog:** `IMPROVEMENTS.md` Tier 1 #1 (⚠️ payment path).
-**Author/date:** 2026-08-29.
+**Author/date:** 2026-08-29 (design), 2026-08-30 (implementation).
+
+One deviation from the draft below: `/api/checkout/release` marks rows
+`status='released'` rather than hard-`DELETE` (matches the "keep for audit"
+answer to Q4); the daily cron trims them. And the kill switch is flipped
+from the SQL editor, not the admin Settings tab UI — that tab is the parked
+half of #16, so wiring a toggle control there was out of scope for v1.
 
 ---
 

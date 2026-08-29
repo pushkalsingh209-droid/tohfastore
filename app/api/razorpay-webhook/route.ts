@@ -96,6 +96,7 @@ export async function POST(req: Request) {
       let orderItems: any[] = [];
       let couponCode: string | null = null;
       let verifiedPhone: string | null = null;
+      let checkoutToken: string | null = null;
       let customerEmail = "customer@example.com";
       let customerPhone = "9999999999";
       let customerName = "Premium Customer";
@@ -116,6 +117,10 @@ export async function POST(req: Request) {
         orderItems = notes.items ? (typeof notes.items === "string" ? JSON.parse(notes.items) : notes.items) : [];
         couponCode = notes.couponCode || null;
         verifiedPhone = notes.verifiedPhone || null;
+        // Present only for orders created with the reservation feature on
+        // (migration 0043). Its held rows are consumed below instead of the
+        // legacy per-item decrement.
+        checkoutToken = notes.checkoutToken || null;
         if (notes.customerName) customerName = notes.customerName;
         if (notes.shippingAddress) {
           try {
@@ -205,50 +210,91 @@ export async function POST(req: Request) {
       }
 
       // 1b. Deduct purchased quantities from live stock so sold-out items stop
-      // accepting further orders. Each decrement is one atomic DB call
-      // (decrement_inventory, migration 0041) that row-locks the product --
-      // so two webhooks for different orders of the same item can't race and
-      // lose a decrement. It also reports oversold_by: units ordered beyond
-      // what was in stock at capture time (payment is real, so the order
-      // still stands -- a human just has to sort fulfilment). Best-effort: a
-      // failure here must not block order confirmation or the alerts below.
-      try {
-        for (const item of orderItems) {
-          if (!item?.id) continue;
-          const qty = Number(item.quantity || 0);
-          if (qty <= 0) continue;
-
-          const { data: rows, error: rpcError } = await supabase.rpc("decrement_inventory", {
-            p_product_id: item.id,
-            p_qty: qty,
-          });
-          if (rpcError) {
-            // If this says the function doesn't exist, migration 0041 has
-            // not been run against this database -- fix that first.
-            console.error(`Atomic stock decrement failed for product ${item.id} (is migration 0041 applied?):`, rpcError);
-            continue;
-          }
-          const result = Array.isArray(rows) ? rows[0] : rows;
-          if (!result) continue; // product row gone -- nothing to decrement
-
-          const newInventory = Number(result.new_inventory);
-          const oversoldBy = Number(result.oversold_by) || 0;
-
-          if (oversoldBy > 0) {
-            try {
-              await sendOversellAlert(item.name ?? item.id, qty, qty - oversoldBy);
-            } catch (oversellErr) {
-              console.error("Oversell alert failed:", oversellErr);
-            }
-          }
-
-          // Best-effort low-stock alert to the business WhatsApp number.
+      // accepting further orders. Two paths, same outcome + same alerts:
+      //
+      //  * Reservation on (order has notes.checkoutToken, migration 0043):
+      //    consume_reservation(token) does every line in one call -- row-locks
+      //    each product, decrements (clamped at 0), marks the hold consumed --
+      //    and returns (product_id, new_inventory, oversold_by) per line. If
+      //    the token has no live holds (expired + trimmed, or a duplicate
+      //    webhook already consumed it), it returns nothing and we fall
+      //    through to the legacy path for notes.items.
+      //  * Legacy (no token, or fall-through): the per-item decrement_inventory
+      //    loop (migration 0041) -- one atomic row-locked call each.
+      //
+      // Best-effort: a failure here must not block order confirmation or the
+      // alerts below. oversold_by = units ordered beyond what was in stock at
+      // capture time -- payment is real, so the order still stands; a human
+      // sorts fulfilment via the alert.
+      const runStockAlerts = async (label: string | number, qty: number, newInventory: number, oversoldBy: number) => {
+        if (oversoldBy > 0) {
           try {
-            if (newInventory <= LOW_STOCK_THRESHOLD) {
-              await sendLowStockAlert(item.name ?? item.id, newInventory);
+            await sendOversellAlert(label, qty, Math.max(0, qty - oversoldBy));
+          } catch (oversellErr) {
+            console.error("Oversell alert failed:", oversellErr);
+          }
+        }
+        try {
+          if (newInventory <= LOW_STOCK_THRESHOLD) {
+            await sendLowStockAlert(label, newInventory);
+          }
+        } catch (lowStockErr) {
+          console.error("Low-stock alert failed:", lowStockErr);
+        }
+      };
+
+      try {
+        let consumedViaReservation = false;
+
+        if (checkoutToken) {
+          const { data: consumeRows, error: consumeErr } = await supabase.rpc("consume_reservation", {
+            p_token: checkoutToken,
+          });
+          if (consumeErr) {
+            // Function missing => migration 0043 not applied. Fall through to
+            // the legacy loop so the order's stock still gets deducted.
+            console.error(`consume_reservation failed for ${checkoutToken} (is migration 0043 applied?):`, consumeErr);
+          } else if (Array.isArray(consumeRows) && consumeRows.length > 0) {
+            consumedViaReservation = true;
+            for (const row of consumeRows) {
+              const pid = row.product_id;
+              const matched = orderItems.find((it) => String(it?.id) === String(pid));
+              await runStockAlerts(
+                matched?.name ?? pid,
+                Number(matched?.quantity || 0),
+                Number(row.new_inventory),
+                Number(row.oversold_by) || 0
+              );
             }
-          } catch (lowStockErr) {
-            console.error("Low-stock alert failed:", lowStockErr);
+          }
+          // consumeRows empty => hold already gone; legacy loop below handles it.
+        }
+
+        if (!consumedViaReservation) {
+          for (const item of orderItems) {
+            if (!item?.id) continue;
+            const qty = Number(item.quantity || 0);
+            if (qty <= 0) continue;
+
+            const { data: rows, error: rpcError } = await supabase.rpc("decrement_inventory", {
+              p_product_id: item.id,
+              p_qty: qty,
+            });
+            if (rpcError) {
+              // If this says the function doesn't exist, migration 0041 has
+              // not been run against this database -- fix that first.
+              console.error(`Atomic stock decrement failed for product ${item.id} (is migration 0041 applied?):`, rpcError);
+              continue;
+            }
+            const result = Array.isArray(rows) ? rows[0] : rows;
+            if (!result) continue; // product row gone -- nothing to decrement
+
+            await runStockAlerts(
+              item.name ?? item.id,
+              qty,
+              Number(result.new_inventory),
+              Number(result.oversold_by) || 0
+            );
           }
         }
         // Deliberately NOT calling revalidateTag("products") here either --

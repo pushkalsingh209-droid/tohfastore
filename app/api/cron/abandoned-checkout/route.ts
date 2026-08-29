@@ -79,5 +79,28 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ status: "ok", candidates: candidates?.length || 0, nudged, alreadyOrdered, failed });
+  // Table hygiene only (NOT correctness -- reserve_stock already ignores any
+  // row past its expires_at). Trim stock_reservations rows more than a day
+  // past expiry so the table stays small. Same opportunistic-prune spirit as
+  // rateLimit.ts / track-view. Best-effort: a failure here doesn't matter.
+  let reservationsTrimmed = 0;
+  try {
+    const { data: trimmed } = await supabase
+      .from("stock_reservations")
+      .delete()
+      .lt("expires_at", new Date(now - 24 * 60 * 60 * 1000).toISOString())
+      .select("id");
+    reservationsTrimmed = trimmed?.length ?? 0;
+  } catch (trimErr) {
+    console.error("Abandoned-checkout cron: stock_reservations trim failed:", trimErr);
+  }
+
+  return NextResponse.json({
+    status: "ok",
+    candidates: candidates?.length || 0,
+    nudged,
+    alreadyOrdered,
+    failed,
+    reservationsTrimmed,
+  });
 }

@@ -206,6 +206,104 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>07:30</code></td>
+  <td><strong>#1 &mdash; short-TTL stock reservation at checkout</strong><br>(<code>IMPROVEMENTS.md</code> T1 #1; &#9888;&#9888; payment path; <strong>ships disabled</strong>)</td>
+  <td>
+    Closes the last order-path correctness gap: today stock is only decremented <em>after</em> payment, so two
+    shoppers can both pass <code>/api/razorpay</code>&rsquo;s <code>qty &le; inventory</code> read and both pay for
+    the last unit (the webhook clamps + fires <code>sendOversellAlert</code>, but real money was taken for a unit
+    that doesn&rsquo;t exist).<br>
+    &bull; <strong>Migration 0043</strong> (hand-run, ships disabled): <code>stock_reservations</code> table +
+    <code>reserve_stock(token, items, ttl)</code> (two-pass all-or-nothing; pass 1 row-locks every product and
+    checks <code>inventory &minus; &Sigma;(held, unexpired) &ge; qty</code> inserting nothing, pass 2 inserts the
+    holds under those locks) + <code>consume_reservation(token)</code> (decrement + mark consumed, returns the
+    same <code>(new_inventory, oversold_by)</code> shape as 0041; returns nothing &rarr; caller falls back to the
+    0041 loop). <code>EXECUTE</code> service-role only (0041/0042 grant gotcha). Availability sums only
+    <code>expires_at &gt; now()</code> rows, so an expired hold self-heals with no sweeper.<br>
+    &bull; <strong><code>/api/razorpay</code></strong>: if <code>site_settings.stock_reservations_enabled = '1'</code>,
+    after every existing check &mdash; generate a v4 <code>checkoutToken</code>, <code>reserve_stock(&hellip;, 900s)</code>,
+    400 <code>code:"stock_unavailable"</code> on shortfall (before any order exists), 500 on RPC error (fail
+    closed), token into <code>order.notes</code> + the JSON response.<br>
+    &bull; <strong><code>/api/razorpay-webhook</code> block 1b</strong>: <code>notes.checkoutToken</code> &rarr;
+    <code>consume_reservation</code>; no held rows or RPC error &rarr; legacy <code>decrement_inventory</code> loop.
+    Oversell / low-stock alerts factored into one shared <code>runStockAlerts</code> used by both paths &mdash;
+    identical alerting.<br>
+    &bull; <strong>New <code>POST /api/checkout/release</code></strong> (public, best-effort, always 200):
+    marks a token&rsquo;s <code>held</code> rows <code>released</code>. <code>CheckoutSheet</code> fires it
+    (<code>keepalive</code>) from Razorpay <code>ondismiss</code>, a new <code>rzp.on("payment.failed")</code>
+    handler, and the payment <code>catch</code>. TTL is the backstop.<br>
+    &bull; <code>abandoned-checkout</code> cron: one extra <code>DELETE</code> of <code>stock_reservations</code>
+    &gt; 1 day past expiry (hygiene only). <code>stock.ts</code>: <code>RESERVATION_TTL_SECONDS = 900</code> +
+    key const. New <code>app/utils/reservation.ts</code> <code>computeAvailability</code> (6 tests).<br>
+    &bull; <strong>Kill switch</strong>: <code>site_settings.stock_reservations_enabled</code>. Ship with the
+    feature merged but <code>'0'</code> (behaviour = exactly today; webhook sees no token &rarr; legacy path),
+    apply 0043, run the SQL checks in the migration file, then <code>update site_settings set value='1'</code>
+    from the SQL editor and watch. Flip back instantly if trouble. NOT wired into the admin Settings tab UI
+    (that tab is the parked half of #16); SQL-editor toggle for now.<br>
+    &bull; <strong>Not a goal:</strong> eliminating oversell. A payment that lands after its hold expired still
+    records + alerts, exactly as today. The 15-min TTL makes the checkout-vs-checkout race rare, not the
+    post-expiry one impossible &mdash; a deliberate trade against carts locking stock forever. Design +
+    failure matrix: <code>docs/DESIGN-stock-reservation.md</code>.
+  </td>
+  <td>
+    <code>supabase/migrations/0043_add_stock_reservations.sql</code> (new) &middot;
+    <code>app/utils/reservation.ts</code> + <code>reservation.test.ts</code> (new) &middot;
+    <code>app/api/checkout/release/route.ts</code> (new) &middot; <code>app/utils/stock.ts</code> &middot;
+    <code>app/api/razorpay/route.ts</code> &middot; <code>app/api/razorpay-webhook/route.ts</code> &middot;
+    <code>app/api/cron/abandoned-checkout/route.ts</code> &middot;
+    <code>app/components/checkout/CheckoutSheet.tsx</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>docs/DESIGN-stock-reservation.md</code> &middot; <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>next build</code> exit 0 &middot; <code>tsc --noEmit</code> clean &middot; <code>npm test</code>
+    <strong>102 pass</strong> / 7 skip (+6 <code>reservation.test.ts</code>) &middot; <code>eslint</code> no new
+    errors (webhook stays at its 12-<code>any</code> baseline). <strong>Not run against the live DB or a real
+    payment</strong> &mdash; the RPCs need the owner&rsquo;s SQL checks (in the migration file) and a
+    Razorpay-mode race test before the kill switch is flipped. Payment-path change &rArr; a proposal until then.
+  </td>
+</tr>
+<tr>
+  <td><code>2026-08-30<br>06:00</code></td>
+  <td><strong>#18 phone normalisation + #13 Green API health</strong><br>(<code>IMPROVEMENTS.md</code> #18, #13; &#9888; #18 touches the OTP form)</td>
+  <td>
+    <strong>#18</strong> &mdash; new <code>app/utils/phone.ts</code> <code>normalizeIndianPhone(raw)</code>, the one
+    canonical normaliser (&rarr; <code>91XXXXXXXXXX</code>). Replaced the four near-identical local copies
+    (<code>whatsappOtp.ts</code> <code>normalizePhone</code>, <code>greenApi.ts</code> &times;2 inline,
+    <code>stock-alerts</code>, admin <code>whatsapp-numbers</code> <code>normalizePhoneNumber</code>) + the inline
+    one in admin <code>orders/update-status</code>. Rule: strip non-digits; <code>91</code>+10 &rarr; unchanged;
+    exactly 10 &rarr; prepend <code>91</code>; else the old &ldquo;prefix unless starts 91&rdquo;. Identical output
+    to the old rules for every input that was already <em>valid</em>; the one change is a genuine 10-digit mobile
+    that starts <code>91</code> (e.g. <code>9198765432</code>) now gets its country code instead of being left
+    bare and failing every caller&rsquo;s <code>/^91[6-9]\d{9}$/</code> check &mdash; no in-flight OTP record can
+    exist for such a number today, so nothing that currently works breaks. Admin
+    <code>whatsapp-numbers</code> POST swapped its loose <code>length &lt; 10</code> guard (which the always-prefix
+    normaliser would defeat) for that same regex &mdash; a small, intentional tightening of admin input
+    validation. 7 unit tests. <code>normalizePhoneForRecord</code> (used by <code>/api/razorpay</code> +
+    <code>abandoned-checkout</code>) now re-exports it.<br>
+    <strong>#13</strong> &mdash; <code>/api/keepalive</code> now also stamps <code>last_greenapi_state</code> (from
+    its <code>getStateInstance</code> ping) + <code>last_greenapi_error</code> into <code>site_settings</code>
+    (best-effort, no cache revalidate &mdash; not a public key). The admin <strong>Overview</strong> tab shows a
+    second health card next to the keepalive one: amber &ldquo;Check&rdquo; whenever the state is anything other
+    than <code>authorized</code>, hidden entirely when Green API isn&rsquo;t configured. So a dropped WhatsApp
+    session (silent by design &mdash; <code>greenApi.ts</code> best-effort) is visible on the dashboard instead of
+    surfacing as missing order confirmations. Rider: the 2 pre-existing <code>catch (err: any)</code> in
+    <code>keepalive</code> tidied to <code>unknown</code>.
+  </td>
+  <td>
+    <code>app/utils/phone.ts</code> + <code>phone.test.ts</code> (new) &middot; <code>app/utils/whatsappOtp.ts</code>
+    &middot; <code>app/utils/greenApi.ts</code> &middot; <code>app/api/stock-alerts/route.ts</code> &middot;
+    <code>app/api/admin/whatsapp-numbers/route.ts</code> &middot;
+    <code>app/api/admin/orders/update-status/route.ts</code> &middot; <code>app/api/keepalive/route.ts</code>
+    &middot; <code>app/admin/tabs/OverviewTab.tsx</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>next build</code> exit 0 &middot; <code>tsc --noEmit</code> clean &middot; <code>npm test</code>
+    <strong>96 pass</strong> / 7 skip (+7 <code>phone.test.ts</code>) &middot; <code>eslint</code> clean on every
+    changed file. Not exercised against a live Green API session-drop or a live OTP round trip.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>04:30</code></td>
   <td><strong>#17c &mdash; delete the legacy checkout</strong><br>(<code>IMPROVEMENTS.md</code> #17; &#9888; payment path)</td>
   <td>
@@ -1345,7 +1443,7 @@ RLS: anon <code>SELECT USING (hidden = false)</code>; service role bypasses.</p>
 <tr><td><code>categories</code></td><td><code>name</code> UNIQUE, <code>show_on_home</code> bool=true, <code>gst_rate</code> numeric(5,2)=5.00, <code>default_page_size</code> int, <code>discount_percent</code> numeric=25</td><td>Managed category list. <code>show_on_home=false</code> drops products from the unfiltered homepage but keeps the category reachable. <code>discount_percent</code> is display-only (fake struck-through MRP). <em>(0004&ndash;07, 0011, 0013)</em></td></tr>
 <tr><td><code>reviews</code></td><td><code>product_id</code> FK&rarr;products ON DELETE CASCADE, <code>rating</code> smallint 1&ndash;5, <code>approved</code> bool=false</td><td>Admin-moderated. RLS anon <code>SELECT USING (approved = true)</code>. <em>(0001)</em></td></tr>
 <tr><td><code>coupons</code></td><td><code>code</code> UNIQUE, <code>discount_type</code> flat|percent, <code>discount_value</code> &gt; 0, <code>active</code> bool=true, <code>max_uses</code> int, <code>used_count</code> int=0, <code>expires_at</code>, <code>is_public</code> bool=false</td><td><code>is_public</code> coupons are advertised in the promo banner; private ones still redeem. <code>used_count</code> incremented only on a captured, paid order. RLS: no policies. <em>(0001&ndash;02)</em></td></tr>
-<tr><td><code>site_settings</code></td><td><code>key</code> text PK, <code>value</code> text</td><td>KV store. Keys: <code>default_page_size</code>, <code>brass_price_per_kg</code>, <code>catalog_reveal_batch_size</code>, <code>weight_unit</code>, <code>dimension_unit</code>, <code>default_whatsapp_number</code>, <code>default_photo_filter</code>, <code>ganesha_cooldown_minutes</code>, <code>ganesha_max_auto_shows</code>, <code>ganesha_collapse_delay_seconds</code>, <code>chat_label_in_stock</code>, <code>chat_label_out_of_stock</code>, <code>last_keepalive_at</code> (stamped by <code>/api/keepalive</code>, read by the admin Overview). Public subset via <code>/api/settings</code>. <em>(0011, 0022, 0025)</em></td></tr>
+<tr><td><code>site_settings</code></td><td><code>key</code> text PK, <code>value</code> text</td><td>KV store. Keys: <code>default_page_size</code>, <code>brass_price_per_kg</code>, <code>catalog_reveal_batch_size</code>, <code>weight_unit</code>, <code>dimension_unit</code>, <code>default_whatsapp_number</code>, <code>default_photo_filter</code>, <code>ganesha_cooldown_minutes</code>, <code>ganesha_max_auto_shows</code>, <code>ganesha_collapse_delay_seconds</code>, <code>chat_label_in_stock</code>, <code>chat_label_out_of_stock</code>, <code>last_keepalive_at</code> / <code>last_greenapi_state</code> / <code>last_greenapi_error</code> (all stamped by <code>/api/keepalive</code>, read by the admin Overview), <code>stock_reservations_enabled</code> (<code>'0'</code>/<code>'1'</code> kill switch for the 0043 reservation feature). Public subset via <code>/api/settings</code>. <em>(0011, 0022, 0025, 0043)</em></td></tr>
 <tr><td><code>product_colors</code>, <code>product_materials</code>, <code>labels</code></td><td><code>name</code> UNIQUE (+ <code>labels.photo_filter</code>)</td><td>Managed dropdown lists for the admin product form. Storefront reads distinct in-use labels off <code>products</code> via <code>/api/labels</code> instead. <em>(0017, 0018, 0021, 0023)</em></td></tr>
 <tr><td><code>whatsapp_numbers</code></td><td><code>phone_number</code> UNIQUE (<code>91&hellip;</code>), <code>label</code></td><td>Additional per-product enquiry numbers. The active site-wide default lives in <code>site_settings.default_whatsapp_number</code>. <em>(0019)</em></td></tr>
 <tr><td><code>chat_button_labels</code></td><td><code>kind</code> in_stock|out_of_stock, <code>label</code> 1&ndash;30, UNIQUE(kind,label)</td><td>Preset pool for the &ldquo;Chat for &hellip;&rdquo; product-card button. Active choice is a plain-text <code>site_settings</code> value. <em>(0033)</em></td></tr>
@@ -1425,6 +1523,7 @@ policy exists.</p>
 <tr><td>0039&ndash;0040</td><td>reassert_rls_lockdown / drop_stray_open_policies</td><td>Re-assert intended RLS; drop the four stray <code>ALL/true</code> policies silently granting full anon CRUD.</td></tr>
 <tr><td>0041</td><td>atomic_stock_decrement</td><td><code>decrement_inventory()</code> &mdash; row-locked (<code>SELECT &hellip; FOR UPDATE</code>) atomic stock deduction for the order webhook, returns <code>(new_inventory, oversold_by)</code>; <code>EXECUTE</code> revoked from anon/authenticated. Applied 2026-08-29 before the matching webhook change merged.</td></tr>
 <tr><td>0042</td><td>add_product_sales</td><td><code>product_sales</code> aggregate + <code>apply_product_sales(items jsonb, sign int)</code> RPC (signed per-item delta, clamped at 0, service-role only). Backfilled from non-cancelled orders. Feeds <code>getSoldCounts</code>; maintained +1 by the webhook, &minus;1 by the admin cancel path. Applied 2026-08-29; app wiring verified end-to-end &mdash; see Change log.</td></tr>
+<tr><td>0043</td><td>add_stock_reservations</td><td><code>stock_reservations</code> table (<code>held</code>/<code>consumed</code>/<code>released</code>, <code>expires_at</code>) + <code>reserve_stock(token, items jsonb, ttl_seconds)</code> (two-pass, all-or-nothing, row-locks each product, returns <code>ok</code> / offending product + <code>available</code>) + <code>consume_reservation(token)</code> (decrement + mark consumed, same <code>(new_inventory, oversold_by)</code> shape as 0041; returns nothing if no held rows &rarr; caller falls back to the 0041 loop). <code>EXECUTE</code> service-role only (0041/0042 grant gotcha). Seeds kill switch <code>site_settings.stock_reservations_enabled='0'</code>. <strong>Ships disabled</strong> &mdash; flip to <code>'1'</code> in the SQL editor after the checks in the migration file pass. See &sect;checkout + <code>docs/DESIGN-stock-reservation.md</code>.</td></tr>
 </tbody></table></div>
 
 <p><strong><code>product_sales</code> drift check</strong> &mdash; the tally is only self-correcting for cancellations
@@ -1544,8 +1643,9 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <div class="x"><table>
 <thead><tr><th>Route</th><th>Methods</th><th>Purpose</th></tr></thead>
 <tbody>
-<tr><td><code>/api/razorpay</code></td><td><span class="tag t-post">post</span></td><td>Create a Razorpay order. Re-prices items from DB, re-validates coupon, re-checks stock &amp; <code>hidden</code>, enforces <code>isVerificationTokenValid(phone, token)</code>. Pins <code>items</code>/<code>couponCode</code>/<code>verifiedPhone</code>/<code>customerName</code>/<code>shippingAddress</code> into <code>order.notes</code>. Returns <code>{orderId, amount, subtotal, discount, couponCode, gst}</code>. Error code <code>verification_required</code> when OTP is stale. 5xx bodies are generic (<code>apiError.ts</code>).</td></tr>
-<tr><td><code>/api/razorpay-webhook</code></td><td><span class="tag t-post">post</span></td><td>Handles <code>payment.captured</code> from both the Dashboard webhook (<code>x-razorpay-signature</code> &rarr; <code>isValidWebhookSignature</code>) and the client fast-path (<code>razorpay_signature</code> &rarr; <code>isValidPaymentSignature</code>). Idempotent. Inserts order, increments coupon, deducts stock + low-stock alert, sends WhatsApp + Resend confirmations.</td></tr>
+<tr><td><code>/api/razorpay</code></td><td><span class="tag t-post">post</span></td><td>Create a Razorpay order. Re-prices items from DB, re-validates coupon, re-checks stock &amp; <code>hidden</code>, enforces <code>isVerificationTokenValid(phone, token)</code>. <strong>If <code>stock_reservations_enabled='1'</code> (0043):</strong> after all other checks, <code>reserve_stock(uuid, pricedItems, 900s)</code> &mdash; on shortfall returns 400 <code>code:"stock_unavailable"</code> before any order exists; on RPC error 500 (fail closed); on success the <code>checkoutToken</code> goes into <code>order.notes</code> and the JSON response. Pins <code>items</code>/<code>couponCode</code>/<code>verifiedPhone</code>/<code>customerName</code>/<code>shippingAddress</code>(/<code>checkoutToken</code>) into <code>order.notes</code>. Returns <code>{orderId, amount, subtotal, discount, couponCode, gst, checkoutToken}</code>. Error code <code>verification_required</code> when OTP is stale. 5xx bodies are generic (<code>apiError.ts</code>).</td></tr>
+<tr><td><code>/api/razorpay-webhook</code></td><td><span class="tag t-post">post</span></td><td>Handles <code>payment.captured</code> from both the Dashboard webhook (<code>x-razorpay-signature</code> &rarr; <code>isValidWebhookSignature</code>) and the client fast-path (<code>razorpay_signature</code> &rarr; <code>isValidPaymentSignature</code>). Idempotent. Inserts order, increments coupon, deducts stock + low-stock alert, sends WhatsApp + Resend confirmations. <strong>Stock deduction (block 1b):</strong> if <code>notes.checkoutToken</code> is present, <code>consume_reservation(token)</code> does every line; if it finds no held rows (expired/trimmed, or a duplicate already consumed) it falls back to the legacy per-item <code>decrement_inventory</code> loop &mdash; same alerts either way.</td></tr>
+<tr><td><code>/api/checkout/release</code></td><td><span class="tag t-post">post</span></td><td>Public, best-effort. <code>{checkoutToken}</code> (v4 UUID) &rarr; marks that token&rsquo;s <code>held</code> rows <code>released</code>. Always 200 (incl. 0 rows / bad token). Fired by <code>CheckoutSheet</code> on Razorpay <code>ondismiss</code> / <code>payment.failed</code> so an abandoned checkout frees stock in seconds instead of at TTL. Correctness never depends on it &mdash; the 15-min TTL is the backstop.</td></tr>
 <tr><td><code>/api/coupons/validate</code></td><td><span class="tag t-post">post</span></td><td>UI-preview discount only (not authoritative). Rate-limited <code>coupon-validate</code> 20/10min.</td></tr>
 <tr><td><code>/api/coupons/public</code></td><td><span class="tag t-get">get</span></td><td>Live public coupons (<code>getPublicCoupons</code> + <code>filterLivePublicCoupons</code>, display-safe fields only) for the checkout Review step&rsquo;s tap-to-apply list. <code>Cache-Control</code> 60s / s-maxage 300. Same set the on-site <code>PromoBanner</code> shows.</td></tr>
 <tr><td><code>/api/whatsapp-otp/send</code></td><td><span class="tag t-post">post</span></td><td><code>sendOtp(phone, ip)</code>. All abuse limits live in the util; also prunes aged verification rows.</td></tr>
@@ -1567,8 +1667,8 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/labels</code></td><td><span class="tag t-get">get</span></td><td>Distinct in-use label names + per-label photo-filter map.</td></tr>
 <tr><td><code>/api/settings</code></td><td><span class="tag t-get">get</span></td><td>Public-safe subset of <code>site_settings</code> (photo filter, units, WA number, Ganesha popup, chat labels).</td></tr>
 <tr><td><code>/api/pincode/[code]</code></td><td><span class="tag t-get">get</span></td><td>Proxies India Post PIN lookup (no CORS upstream). <code>{city, state}</code>. Cached 1h.</td></tr>
-<tr><td><code>/api/keepalive</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Pings Supabase (7-day auto-pause) + Green API <code>getStateInstance</code>. External scheduler every 15&ndash;30 min.</td></tr>
-<tr><td><code>/api/cron/abandoned-checkout</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Nudges <code>checkout_started</code> leads 2h&ndash;7d old, not yet <code>contacted</code>, with no matching order since. Every 30&ndash;60 min.</td></tr>
+<tr><td><code>/api/keepalive</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Pings Supabase (7-day auto-pause) + Green API <code>getStateInstance</code>. External scheduler every 15&ndash;30 min. Stamps <code>last_keepalive_at</code> + <code>last_greenapi_state</code> / <code>last_greenapi_error</code> into <code>site_settings</code> (best-effort) &rarr; admin Overview health cards.</td></tr>
+<tr><td><code>/api/cron/abandoned-checkout</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Nudges <code>checkout_started</code> leads 2h&ndash;7d old, not yet <code>contacted</code>, with no matching order since. Every 30&ndash;60 min. Also trims <code>stock_reservations</code> rows &gt; 1 day past <code>expires_at</code> (hygiene only &mdash; <code>reserve_stock</code> already ignores expired rows).</td></tr>
 <tr><td><code>/api/cron/product-sales-reconcile</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Recomputes the units-sold tally from every non-cancelled order and diffs it against <code>product_sales</code> (0042). Drift &rarr; best-effort business WhatsApp; <code>?heal=1</code> also writes the recomputed values back. Alert-only by default. Daily external schedule.</td></tr>
 </tbody></table></div>
 
@@ -1594,7 +1694,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/admin/colors</code>, <code>/api/admin/materials</code>, <code>/api/admin/labels</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> (labels also <span class="tag t-patch">patch</span>)</td><td>Managed dropdown lists. <code>labels</code> also <code>revalidateTag("labels","max")</code>.</td></tr>
 <tr><td><code>/api/admin/labels/bulk-assign</code></td><td><span class="tag t-post">post</span></td><td>Tag many products at once &mdash; <code>mode: "category"</code> or <code>"home"</code> (all homepage-visible).</td></tr>
 <tr><td><code>/api/admin/chat-labels</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-del">delete</span></td><td>Preset pool for the chat button (per <code>kind</code>).</td></tr>
-<tr><td><code>/api/admin/whatsapp-numbers</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span></td><td>Managed enquiry-number list (normalized to <code>91XXXXXXXXXX</code>).</td></tr>
+<tr><td><code>/api/admin/whatsapp-numbers</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span></td><td>Managed enquiry-number list. POST normalises via <code>phone.ts</code> and now validates <code>/^91[6-9]\d{9}$/</code> (was a loose <code>length &lt; 10</code> guard).</td></tr>
 <tr><td><code>/api/admin/whatsapp-numbers/reassign</code></td><td><span class="tag t-post">post</span></td><td>Bulk-move products to a number, filtered by current number or category. <code>revalidateTag("products","max")</code>.</td></tr>
 <tr><td><code>/api/admin/analytics</code></td><td><span class="tag t-get">get</span></td><td>Order metrics computed in JS from <code>orders</code>: totals, AOV, unique/repeat customers (placeholder contacts excluded from identity), 6-month revenue trend.</td></tr>
 <tr><td><code>/api/admin/whatsapp-enquiries</code></td><td><span class="tag t-get">get</span></td><td>Aggregates the <code>whatsapp_enquiries</code> log: totals, by category/product/number/source, 14-day daily trend.</td></tr>
@@ -1716,10 +1816,13 @@ mid-checkout, <code>/api/razorpay</code> refuses (<code>code:"verification_requi
   <li>Mandatory bilingual refund-policy consent checkbox &mdash; the footer <strong>Pay &#8377;X</strong> button is
       disabled until it&rsquo;s ticked.</li>
   <li><strong>Pay:</strong> <code>m.submitPayment()</code> &rarr; <code>POST /api/razorpay</code>. On
-      <code>code:"verification_required"</code> &rarr; <code>m.verificationExpired()</code> (back to step 1). On a
-      non-<code>orderId</code> error &rarr; <code>m.paymentDismissed()</code> (stay on Review). Otherwise open the
-      Razorpay modal (<code>orderId</code>/<code>amount</code>), <code>m.razorpayOpened()</code>; the modal&rsquo;s
-      <code>ondismiss</code> runs <code>m.paymentDismissed()</code>.</li>
+      <code>code:"verification_required"</code> &rarr; <code>m.verificationExpired()</code> (back to step 1). On
+      <code>code:"stock_unavailable"</code> or any other non-<code>orderId</code> error &rarr;
+      <code>m.paymentDismissed()</code> (stay on Review, show the message). Otherwise open the Razorpay modal
+      (<code>orderId</code>/<code>amount</code>), <code>m.razorpayOpened()</code>. The response&rsquo;s
+      <code>checkoutToken</code> (present only when reservations are on) is held in a local; the modal&rsquo;s
+      <code>ondismiss</code> <em>and</em> a <code>rzp.on("payment.failed")</code> handler both run
+      <code>m.paymentDismissed()</code> + fire-and-forget <code>POST /api/checkout/release</code> with it.</li>
   <li><code>handler()</code>: fire-and-forget <code>POST /api/razorpay-webhook</code> (client fast path), stash the
       server-computed summary (incl. <code>gst</code>) in <code>sessionStorage.tohfa_last_order</code>,
       <code>m.reset()</code>, close the drawer, redirect to <code>/success</code>. Byte-for-byte the old body.</li>
@@ -1729,6 +1832,13 @@ mid-checkout, <code>/api/razorpay</code> refuses (<code>code:"verification_requi
 <ul class="tight">
   <li>Every line item re-priced from <code>products</code> by id; unknown/hidden id &rarr; reject &ldquo;no longer available&rdquo;. (Pure + unit-tested: <code>repriceCart</code> in <code>app/utils/repricing.ts</code>.)</li>
   <li>Quantity &gt; stock &rarr; reject (not silently clamped).</li>
+  <li><strong>Stock reservation (0043, when enabled):</strong> before a payable order exists, <code>reserve_stock</code>
+      row-locks each product and checks <code>inventory &minus; &Sigma;(held, unexpired holds) &ge; qty</code>,
+      all-or-nothing for a multi-item cart. A second checkout for the last unit gets 400
+      <code>stock_unavailable</code> and never reaches Razorpay. Holds TTL out in 15 min; the webhook consumes the
+      hold on payment. Does <em>not</em> eliminate oversell &mdash; a payment that lands after its hold expired
+      still records + fires <code>sendOversellAlert</code>, exactly as before &mdash; it closes the
+      checkout-vs-checkout race. Off &rarr; behaviour is exactly as before.</li>
   <li>Coupon re-fetched &amp; re-validated; discount clamped to <code>[0, subtotal]</code>.</li>
   <li>GST computed per item&rsquo;s <em>category</em> rate (<code>calculateOrderGstBreakdown</code>), discount spread proportionally across rate groups.</li>
   <li>OTP: <code>isVerificationTokenValid(phone, token)</code> requires the exact token minted for <em>that</em>
@@ -1799,7 +1909,10 @@ critical editor UI &mdash; too large/risky to move without a running dev server 
 <h2 id="whatsapp">WhatsApp / Green API</h2>
 <p><code>app/utils/greenApi.ts</code> is the single sender. <strong>Best-effort by design:</strong> silently
 no-ops unless all three <code>GREEN_API_*</code> vars are set; callers catch/log and never let a failed send
-block the triggering action.</p>
+block the triggering action. Because it&rsquo;s silent, the admin <strong>Overview</strong> tab surfaces the
+Green API session state (<code>last_greenapi_state</code>, refreshed by <code>/api/keepalive</code>, #13) so a
+dropped session doesn&rsquo;t just mean messages quietly stop. All phone &rarr; <code>91XXXXXXXXXX</code>
+normalisation goes through <code>app/utils/phone.ts</code> (#18).</p>
 <div class="x"><table>
 <thead><tr><th>Feature</th><th>Trigger</th><th>Direction</th></tr></thead>
 <tbody>
@@ -2004,15 +2117,17 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>storeQueries.ts</code></td><td>All cached storefront reads (&sect;16). Exports <code>notInListLiteral</code>.</td></tr>
 <tr><td><code>slug.ts</code></td><td><code>slugify</code>, <code>productHref</code>, <code>productIdFromParam</code>, <code>categoryHref</code>, <code>findCategoryBySlug</code>.</td></tr>
 <tr><td><code>pricing.ts</code>, <code>gst.ts</code>, <code>coupons.ts</code></td><td>Money math (&sect;13). Unit-tested.</td></tr>
-<tr><td><code>stock.ts</code></td><td><em>(new)</em> <code>LOW_STOCK_THRESHOLD</code> &mdash; one cutoff shared by <code>LiveStock</code>, <code>ProductCard</code>, the stock API, the webhook and the admin stats panels.</td></tr>
+<tr><td><code>stock.ts</code></td><td><code>LOW_STOCK_THRESHOLD</code> &mdash; one cutoff shared by <code>LiveStock</code>, <code>ProductCard</code>, the stock API, the webhook and the admin stats panels. <code>RESERVATION_TTL_SECONDS = 900</code> + <code>STOCK_RESERVATIONS_ENABLED_KEY</code> for the 0043 reservation feature.</td></tr>
+<tr><td><code>reservation.ts</code></td><td><code>computeAvailability(inventory, heldQty, requestedQty)</code> &mdash; pure spec of the per-line rule migration 0043&rsquo;s <code>reserve_stock</code> applies (<code>available = inv &minus; held</code>, floored at 0; fits iff <code>&ge; requested</code>). The RPC is authoritative at runtime; this is the unit-tested definition. <strong>6 tests.</strong></td></tr>
 <tr><td><code>apiError.ts</code></td><td><code>serverErrorResponse(context, err, publicMessage)</code> &mdash; logs the real error, returns a generic 5xx body. Wired into <strong>every route under <code>app/api</code></strong> (§22).</td></tr>
 <tr><td><code>rls.test.ts</code></td><td>Anon-key RLS perimeter regression test (§6). Env-gated (skips without Supabase creds).</td></tr>
 <tr><td><code>orderTally.ts</code></td><td><code>tallyUnitsSold(orders, {excludeId?})</code> &mdash; pure line-item quantity tally, shared by <code>getBestsellers</code> / <code>getRelatedProducts</code> via <code>getRecentOrderItems</code>. Unit-tested.</td></tr>
 <tr><td><code>repricing.ts</code></td><td><code>repriceCart(clientItems, dbProducts, categoryGstRates, defaultGstPercent)</code> &mdash; the &ldquo;never trust the client at checkout&rdquo; guard extracted from <code>/api/razorpay</code>: rebuilds every line from the DB price/name/GST rate, rejects unknown/hidden ids and over-stock lines, returns the authoritative subtotal. Byte-for-byte match of the old inline block. <strong>12 unit tests.</strong></td></tr>
 <tr><td><code>bootstrapSettings.ts</code></td><td><code>parseChatLabels</code> / <code>parseGaneshaSettings</code> / <code>parsePhotoFilterIndex</code> / <code>parseDefaultWhatsappNumber</code> &mdash; pure parsers for the storefront <code>site_settings</code> values, run server-side in <code>getBootstrapData()</code> (#11). Reproduce the old per-context parse + clamp + fallback rules exactly. <strong>8 unit tests.</strong></td></tr>
+<tr><td><code>phone.ts</code></td><td><code>normalizeIndianPhone(raw)</code> &mdash; the <em>one</em> canonical Indian-phone normaliser (&rarr; bare digits <code>91XXXXXXXXXX</code>). Replaced 4 near-identical local copies (<code>whatsappOtp.ts</code>, <code>greenApi.ts</code> &times;2, <code>stock-alerts</code>, admin <code>whatsapp-numbers</code>) + an inline one in admin <code>orders/update-status</code>. Does not validate &mdash; callers keep their own <code>/^91[6-9]\d{9}$/</code> check. Unit-tested (7). <em>(#18)</em></td></tr>
 <tr><td><code>whatsapp.ts</code></td><td>Enquiry-link builder + number-resolution priority.</td></tr>
-<tr><td><code>whatsappOtp.ts</code></td><td>OTP send/verify/token-check + all abuse limits + opportunistic verification-row pruning.</td></tr>
-<tr><td><code>greenApi.ts</code></td><td>Green API send (text / image+caption) + <code>checkWhatsappNumber</code>.</td></tr>
+<tr><td><code>whatsappOtp.ts</code></td><td>OTP send/verify/token-check + all abuse limits + opportunistic verification-row pruning. Phone form via <code>phone.ts</code> (<code>normalizePhoneForRecord</code> re-exports it for <code>/api/razorpay</code>).</td></tr>
+<tr><td><code>greenApi.ts</code></td><td>Green API send (text / image+caption) + <code>checkWhatsappNumber</code>. Chat-id / phone form via <code>phone.ts</code>.</td></tr>
 <tr><td><code>razorpaySignature.ts</code></td><td><code>isValidPaymentSignature</code> (client path) + <code>isValidWebhookSignature</code> (Dashboard path). Unit-tested.</td></tr>
 <tr><td><code>adminSession.ts</code></td><td>DB-backed session create/validate/revoke/revoke-all. <code>SESSION_COOKIE_NAME="admin_session"</code>, 12h.</td></tr>
 <tr><td><code>totp.ts</code></td><td>RFC 6238 TOTP (verify + generate). Unit-tested.</td></tr>
@@ -2051,7 +2166,11 @@ drift from <code>product_sales</code>, and (with <code>?heal=1</code>) writes th
 </div>
 <p><code>/api/keepalive</code> stamps <code>site_settings.last_keepalive_at</code> on each run; the admin
 <strong>Overview</strong> tab reads it back and shows an amber &ldquo;Check&rdquo; badge once it is &gt; 90 min
-stale &mdash; the one scheduled job with a health signal.</p>
+stale &mdash; the one scheduled job with a health signal. Since <strong>#13</strong> the same route also stamps
+<code>last_greenapi_state</code> (from its <code>getStateInstance</code> ping) + <code>last_greenapi_error</code>,
+and Overview shows a second card that goes amber whenever the WhatsApp session is anything other than
+<code>authorized</code> &mdash; so a dropped Green API session (no order confirmations / dispatch alerts / checkout
+OTPs going out) is visible immediately instead of via customer complaints.</p>
 
 <h2 id="security">Security model summary</h2>
 <ul class="tight">
@@ -2265,7 +2384,7 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
       <code>revoke all &hellip; from public/anon/authenticated</code> you <strong>must</strong>
       <code>grant execute on function fn(argtypes) to service_role;</code> explicitly &mdash; <code>service_role</code>
       inherits the <code>PUBLIC</code> grant, so the revoke strips it too and the <code>rpc()</code> call then fails.
-      (Bit both 0041 and 0042.)</li>
+      (Bit 0041, 0042 and 0043.)</li>
   <li>Run it by hand in the Supabase dashboard (no CLI wired &mdash; see &sect;24 / backlog #4). Add a row to
       &sect;7. If it touched policies, run <code>rls.test.ts</code> against live.</li>
 </ul>
@@ -2359,6 +2478,10 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
   <li>Both webhook callers stay idempotent: the <code>SELECT payment_id</code> guard <em>and</em>
       <code>UNIQUE(payment_id)</code> (migration 0037). Re-fetch from Razorpay&rsquo;s API; never trust the
       request body. Trusted data is pinned into <code>order.notes</code> at creation time.</li>
+  <li>Anything new (stock reservation, &hellip;) ships behind a <code>site_settings</code> kill switch, seeded
+      <code>'0'</code>, with the webhook&rsquo;s legacy path always intact so flipping it back is instant and
+      needs no redeploy. Reserve <em>before</em> minting a payable order; a reservation error is a 500 with no
+      order (fail closed).</li>
 </ul>
 
 <h3>Every batch, before deploy</h3>
