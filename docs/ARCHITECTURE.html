@@ -206,6 +206,40 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>13:20</code></td>
+  <td><strong>Incremental units-sold tally (<code>product_sales</code>)</strong>
+    <span class="tag" style="color:var(--warn)">proposal</span><br>(<code>IMPROVEMENTS.md</code> T1&nbsp;#2)</td>
+  <td>
+    &bull; <code>supabase/migrations/0042_add_product_sales.sql</code>: new <code>product_sales(product_id,
+    units_sold, updated_at)</code> table (RLS on, service-role only) + <code>apply_product_sales(p_items jsonb,
+    p_sign integer)</code> RPC that applies a signed per-line-item delta, clamped at 0, in one call. <code>EXECUTE</code>
+    revoked from <code>public</code>/<code>anon</code>/<code>authenticated</code>, re-granted to <code>service_role</code>
+    (same inherited-grant gotcha as 0041). One-time backfill from every non-cancelled order&rsquo;s <code>items</code>.
+    <strong>Applied to the live DB 2026-08-29.</strong><br>
+    &bull; <code>app/api/razorpay-webhook/route.ts</code> block <em>1c</em>: after the order insert, one best-effort
+    <code>rpc("apply_product_sales", { p_items: orderItems, p_sign: 1 })</code>.<br>
+    &bull; <code>app/api/admin/orders/update-status/route.ts</code>: reads the prior <code>status</code> before the
+    update; on a genuine transition <em>into</em> <code>cancelled</code> (not a re-save of an already-cancelled
+    order), best-effort <code>apply_product_sales(&hellip; p_sign: -1)</code>.<br>
+    &bull; <code>getSoldCounts</code> (<code>app/utils/storeQueries.ts</code>) now reads <code>product_sales</code>
+    instead of scanning the last 300 non-cancelled orders &mdash; so the customer-facing &ldquo;N sold&rdquo; count
+    no longer silently undercounts once lifetime volume passes 300. Still tagged <code>orders</code> (admin cancel
+    still busts it); any read failure (incl. 0042 not applied) &rarr; <code>{}</code>, as before.
+    <code>getBestsellers</code> / <code>getRelatedProducts</code> keep the 300-order scan &mdash; relative ranking only.<br>
+    &bull; <strong>Not yet deployed.</strong> Static-verified only; needs a live test-mode payment (tally +1) and an
+    admin cancel (tally &minus;1) before it ships. Revert target: <code>d2836b6</code>.
+  </td>
+  <td>
+    <em>new:</em> <code>supabase/migrations/0042_add_product_sales.sql</code><br>
+    <code>app/api/razorpay-webhook/route.ts</code><br>
+    <code>app/api/admin/orders/update-status/route.ts</code><br>
+    <code>app/utils/storeQueries.ts</code>
+  </td>
+  <td><code>next build</code> exit 0 (240 pages) &middot; <code>tsc --noEmit</code> clean &middot;
+    <code>npm test</code> 51 pass / 7 gated. Live +1 / &minus;1 round-trips not yet exercised by a real payment
+    or cancel.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>12:33</code></td>
   <td><strong>Atomic stock decrement + oversell alert</strong><br>(<code>IMPROVEMENTS.md</code> T1&nbsp;#1&ndash;2)</td>
   <td>
@@ -873,6 +907,7 @@ policy exists.</p>
 <tr><td>0038</td><td>add_product_hidden</td><td><code>products.hidden</code> + tighten anon read policy to <code>hidden = false</code>.</td></tr>
 <tr><td>0039&ndash;0040</td><td>reassert_rls_lockdown / drop_stray_open_policies</td><td>Re-assert intended RLS; drop the four stray <code>ALL/true</code> policies silently granting full anon CRUD.</td></tr>
 <tr><td>0041</td><td>atomic_stock_decrement</td><td><code>decrement_inventory()</code> &mdash; row-locked (<code>SELECT &hellip; FOR UPDATE</code>) atomic stock deduction for the order webhook, returns <code>(new_inventory, oversold_by)</code>; <code>EXECUTE</code> revoked from anon/authenticated. Applied 2026-08-29 before the matching webhook change merged.</td></tr>
+<tr><td>0042</td><td>add_product_sales</td><td><code>product_sales</code> aggregate + <code>apply_product_sales(items jsonb, sign int)</code> RPC (signed per-item delta, clamped at 0, service-role only). Backfilled from non-cancelled orders. Feeds <code>getSoldCounts</code>; maintained +1 by the webhook, &minus;1 by the admin cancel path. Applied 2026-08-29. <em>App wiring proposal-stage &mdash; see Change log.</em></td></tr>
 </tbody></table></div>
 
 <h2 id="supabase-clients">Supabase clients &amp; storage</h2>
@@ -1247,7 +1282,8 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       <code>getActiveLabelNames</code>, <code>getLabelPhotoFilters</code>, <code>getSiteSettings</code>,
       <code>getProductUnitSettings</code>, <code>getDefaultWhatsappNumber</code>, <code>getCategoryDefaultPageSize</code>,
       <code>getPublicCoupons</code> (+ live <code>filterLivePublicCoupons</code>), <code>getTotalProductCount</code>,
-      <code>getSoldCounts</code>, <code>getRecentOrderItems</code> (shared last-300-orders scan behind
+      <code>getSoldCounts</code> (reads the <code>product_sales</code> aggregate &mdash; migration 0042 &mdash; not
+      an order scan), <code>getRecentOrderItems</code> (shared last-300-orders scan behind
       <code>getBestsellers</code> + <code>getRelatedProducts</code>; tally is the pure
       <code>orderTally.ts</code>), <code>getCategoryImage</code>.
       <code>notInListLiteral</code> is exported for reuse by <code>/api/admin/labels/bulk-assign</code>.</li>
@@ -1470,9 +1506,12 @@ stale &mdash; the one scheduled job with a health signal.</p>
       post-payment, so two checkouts for the last unit can both pay and one order is then flagged oversold rather
       than prevented &mdash; a short-TTL stock reservation at order creation would close that window
       (<code>IMPROVEMENTS.md</code>). Also owed: one live test payment to confirm the RPC path end-to-end.</li>
-  <li><strong>Sold-count accuracy degrades past ~300 orders</strong> &mdash; <code>getSoldCounts</code> /
-      <code>getBestsellers</code> / <code>getRelatedProducts</code> each scan only the last 300 orders. A
-      <code>product_sales</code> aggregate is the fix.</li>
+  <li><strong>Sold-count accuracy past ~300 orders</strong> &mdash; <code>getSoldCounts</code> now reads the
+      incremental <code>product_sales</code> aggregate (migration 0042), so the customer-facing &ldquo;N sold&rdquo;
+      count is exact regardless of lifetime volume. <code>getBestsellers</code> / <code>getRelatedProducts</code>
+      still scan only the last 300 orders &mdash; deliberate: they rank <em>relative</em> popularity, where the
+      300-order horizon is immaterial. <em>(App wiring is proposal-stage as of 2026-08-29 &mdash; the 0042 table
+      and RPC are live, the webhook +1 / cancel &minus;1 hooks are pending a live test.)</em></li>
   <li><strong>Admin product routes silently drop unknown columns and retry</strong>
       (<code>insert/updateWithFallback</code>) &mdash; a save can partially succeed if a migration hasn&rsquo;t been
       run; the response flags which fields were saved (<code>gallerySaved</code>, <code>hiddenSaved</code>, &hellip;).</li>
@@ -1589,6 +1628,11 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
   <li>Header comment: <em>what</em> + <em>why</em> + &ldquo;run once in the Supabase SQL editor&rdquo;.</li>
   <li>New table &rarr; <code>alter table X enable row level security;</code> and (almost always)
       <strong>no</strong> policy &mdash; service-role only, like <code>orders</code>.</li>
+  <li>New <code>function</code> the server calls via <code>rpc()</code> &rarr; after
+      <code>revoke all &hellip; from public/anon/authenticated</code> you <strong>must</strong>
+      <code>grant execute on function fn(argtypes) to service_role;</code> explicitly &mdash; <code>service_role</code>
+      inherits the <code>PUBLIC</code> grant, so the revoke strips it too and the <code>rpc()</code> call then fails.
+      (Bit both 0041 and 0042.)</li>
   <li>Run it by hand in the Supabase dashboard (no CLI wired &mdash; see &sect;24 / backlog #4). Add a row to
       &sect;7. If it touched policies, run <code>rls.test.ts</code> against live.</li>
 </ul>

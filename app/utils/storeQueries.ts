@@ -383,36 +383,32 @@ export const getTotalProductCount = unstable_cache(
   { tags: ["products"], revalidate: 86400 }
 );
 
-// Real per-product units-sold tally, from actual order line items (same
-// "scan the last 300 orders" approach as getBestsellers/getRelatedProducts
-// below -- kept as its own independent cached query, mirroring how those
-// two already each do their own tally rather than sharing one, so this
-// stays simple and isolated). Excludes cancelled orders -- unlike
-// bestsellers/related-products (which just rank relative popularity, where
-// a cancelled order slipping in barely matters), this number is displayed
-// to customers as a literal count, so it needs to actually be right.
-// Returned as a plain id->count object (not a Map) since unstable_cache
-// results get serialized. Naturally correlates with price on its own -- an
-// expensive item just sells less often, no need to encode that separately.
+// Real per-product units-sold tally, displayed to customers as a literal
+// "N sold" count. Reads the product_sales aggregate (migration 0042), which
+// is maintained incrementally: +1 per line item in the order webhook once a
+// payment is captured, -1 when an order is cancelled in the admin panel.
+// This replaced a "scan the last 300 orders" query that silently undercounted
+// every product once lifetime volume passed 300 (getBestsellers /
+// getRelatedProducts below still use that scan -- they only rank *relative*
+// popularity, where the 300-order horizon is fine).
+//
+// Still tagged ["orders"] so the admin cancel path's revalidateTag("orders")
+// busts this cache too. On any read failure -- including product_sales not
+// existing yet because 0042 hasn't been applied -- returns {} (every product
+// shows no count) rather than throwing; run the migration to populate it.
+// Plain id->count object, not a Map, because unstable_cache serializes.
 export const getSoldCounts = unstable_cache(
   async (): Promise<Record<string, number>> => {
     try {
-      const { data: orders, error } = await supabase
-        .from("orders")
-        .select("items")
-        .neq("status", "cancelled")
-        .order("created_at", { ascending: false })
-        .limit(300);
-      if (error || !orders) return {};
+      const { data: rows, error } = await supabase
+        .from("product_sales")
+        .select("product_id, units_sold");
+      if (error || !rows) return {};
 
       const soldCount: Record<string, number> = {};
-      for (const order of orders as any[]) {
-        const items = Array.isArray(order.items) ? order.items : [];
-        for (const item of items) {
-          if (!item?.id) continue;
-          const key = String(item.id);
-          soldCount[key] = (soldCount[key] || 0) + (Number(item.quantity) || 0);
-        }
+      for (const row of rows as any[]) {
+        if (row?.product_id == null) continue;
+        soldCount[String(row.product_id)] = Number(row.units_sold) || 0;
       }
       return soldCount;
     } catch {

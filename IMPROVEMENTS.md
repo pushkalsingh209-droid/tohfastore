@@ -12,6 +12,25 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Incremental units-sold tally (`product_sales`) — 2026-08-29 13:20 IST — ⚠️ NOT DEPLOYED
+- Migration `0042` — `product_sales(product_id, units_sold, updated_at)` aggregate (RLS on,
+  no policy) + `apply_product_sales(p_items jsonb, p_sign int)` RPC: signed per-line-item
+  delta, `greatest(0, …)` clamp, one call. `EXECUTE` revoked from public/anon/authenticated,
+  re-granted to `service_role` (same inherited-grant gotcha as `0041`). One-time backfill
+  from every non-cancelled order's `items`. **Applied to the live DB 2026-08-29.**
+- `app/api/razorpay-webhook/route.ts` block *1c* — best-effort `rpc("apply_product_sales",
+  { p_items: orderItems, p_sign: 1 })` after the order insert.
+- `app/api/admin/orders/update-status/route.ts` — reads prior `status` before the update;
+  on a real transition *into* `cancelled` (not a re-save), best-effort
+  `apply_product_sales(… p_sign: -1)`.
+- `getSoldCounts` (`app/utils/storeQueries.ts`) — now reads `product_sales` instead of
+  scanning the last 300 non-cancelled orders, so the customer-facing "N sold" count is
+  exact past 300 lifetime orders. Still tag `orders`; any read failure → `{}` as before.
+  `getBestsellers` / `getRelatedProducts` keep the 300-order scan (relative ranking only).
+- Verified static only: `next build` exit 0 (240 pages), `tsc` clean, `npm test` 51/7.
+  **Still owed before deploy:** a live test-mode payment (confirm tally +1) and an admin
+  cancel (confirm tally −1). Revert target `d2836b6`. (was Tier 1 #2.)
+
 ### Batch: Atomic stock decrement + oversell alert — 2026-08-29 12:33 IST
 - Migration `0041` — `decrement_inventory(p_product_id, p_qty)`: `SELECT … FOR UPDATE`
   row lock, one atomic call, returns `(new_inventory, oversold_by)`. `EXECUTE` revoked
@@ -132,11 +151,12 @@ care, land behind tests, never "blind".
    `0041` `decrement_inventory()` + `rpc()` + `sendOversellAlert`. **Owner still owes one
    live test payment** to confirm the RPC path end-to-end (revert target `57ffd29`).
 
-2. **Sold-count accuracy degrades past ~300 orders.**
-   `getSoldCounts` / `getBestsellers` / `getRelatedProducts` each scan only the last 300
-   orders; the customer-facing "N sold" number drifts.
-   *Fix:* a `product_sales` aggregate table incremented in the webhook, decremented on
-   cancel. Migration + webhook change (⚠️ payment path).
+2. **Sold-count accuracy degrades past ~300 orders.** — **code done, not deployed.**
+   Migration `0042` (`product_sales` + `apply_product_sales` RPC) is live; `getSoldCounts`
+   now reads the aggregate, webhook does +1, admin cancel does −1. See Done (2026-08-29
+   13:20). **Owner owes one live test payment (+1) and one admin cancel (−1)** before
+   this deploys (revert target `d2836b6`). `getBestsellers`/`getRelatedProducts` keep the
+   300-order scan on purpose (relative ranking).
 
 3. **Adopt the Supabase CLI for migrations.** `0000_base_schema.sql` now exists (done),
    but migrations are still hand-pasted into the SQL editor. `supabase db pull` /

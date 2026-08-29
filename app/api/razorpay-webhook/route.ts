@@ -260,6 +260,25 @@ export async function POST(req: Request) {
         console.error("Stock deduction after sale failed:", stockError);
       }
 
+      // 1c. Bump the per-product units-sold tally (product_sales, migration
+      // 0042) so the customer-facing "N sold" figure stops being recomputed
+      // from only the last 300 orders once volume passes that. One RPC for
+      // the whole order; clamped server-side. Best-effort -- a failure here
+      // just means getSoldCounts is briefly short by this order's units,
+      // which the next backfill or the 300-order path would still surface.
+      try {
+        const { error: salesError } = await supabase.rpc("apply_product_sales", {
+          p_items: orderItems,
+          p_sign: 1,
+        });
+        if (salesError) {
+          // Function missing => migration 0042 not applied to this DB.
+          console.error("apply_product_sales(+1) failed (is migration 0042 applied?):", salesError);
+        }
+      } catch (salesErr) {
+        console.error("Units-sold tally update failed:", salesErr);
+      }
+
       // Precompute the order summary content shared by both the WhatsApp
       // alerts and the confirmation emails below, so a failure building it
       // can't silently skip one channel while leaving the other running on
