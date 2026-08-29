@@ -1,17 +1,17 @@
 # DESIGN — Multi-step checkout + state-machine extract (#17)
 
-**Status:** **17a + 17b shipped** (2026-08-30). `useCheckoutMachine` + the
-3-step `CheckoutSheet` (`Stepper` + `ContactStep`/`DeliveryStep`/`ReviewStep`)
-+ `GET /api/coupons/public` + `useAvailableCoupons`. `CartDrawer`'s "Proceed
-to Checkout" opens the sheet for everyone; the old inline form is gated
-behind `NEXT_PUBLIC_LEGACY_CHECKOUT=1` as a redeploy fallback. Verified live
-end-to-end by the owner (real product → Razorpay → `/success`).
-**17c pending:** delete the dead legacy form + the `LEGACY_CHECKOUT` flag.
+**Status: DONE — 17a + 17b + 17c shipped (2026-08-30).** `useCheckoutMachine`
++ the 3-step `CheckoutSheet` (`Stepper` + `ContactStep`/`DeliveryStep`/
+`ReviewStep`) + `GET /api/coupons/public` + `useAvailableCoupons`. Verified
+live end-to-end by the owner (real product → Razorpay → `/success`). 17b did
+the cutover behind a `NEXT_PUBLIC_LEGACY_CHECKOUT` env fallback; **17c**
+deleted the old inline single-form path + the flag + every symbol only it
+used — `CartDrawer.tsx` went ~1,220 → ~150 lines and now lints 0.
 The `?checkout=preview` dev flag (§7 / §12.9) was **not built** — the dev
 preview button + the real live test covered the walk-through instead.
-**Backlog:** `IMPROVEMENTS.md` Tier 4 #17. **⚠️ payment path** — `CheckoutSheet`
-now owns OTP verify, the Razorpay modal, the fast-path webhook call, and the
-`/success` redirect (byte-for-byte the old `CartDrawer` body).
+**⚠️ payment path** — `CheckoutSheet` owns OTP verify, the Razorpay modal,
+the fast-path webhook call, and the `/success` redirect (byte-for-byte the
+old `CartDrawer` body). This doc is now historical reference; no open work.
 
 ---
 

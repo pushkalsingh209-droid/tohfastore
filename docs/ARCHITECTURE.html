@@ -206,6 +206,37 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>04:30</code></td>
+  <td><strong>#17c &mdash; delete the legacy checkout</strong><br>(<code>IMPROVEMENTS.md</code> #17; &#9888; payment path)</td>
+  <td>
+    <code>CartDrawer.tsx</code> gutted from <strong>~1,220 lines to ~150</strong>: removed the
+    <code>LEGACY_CHECKOUT</code> flag + the env fallback, the old coupon block, the
+    <code>&lt;form id="checkout-contact-form"&gt;</code>, the footer-submit IIFE, and every symbol only it used
+    &mdash; all the contact/OTP/address/coupon/policy/validation <code>useState</code>, the pincode-lookup +
+    whatsapp-precheck + OTP-reset + cooldown + scroll + lead-beacon <code>useEffect</code>s, the 9 input refs,
+    <code>handleSendOtp</code>/<code>handleVerifyOtp</code>/<code>handleRazorpayPayment</code>/
+    <code>handleApplyCoupon</code>/<code>handleRemoveCoupon</code>/<code>focusInvalidField</code>/
+    <code>showGeneralError</code>/<code>fieldBorderClass</code>/<code>initializeRazorpaySDK</code>, and the
+    <code>useRouter</code>/<code>useCategoryDiscountMap</code>/<code>gst</code>/<code>pricing</code>/
+    <code>INDIAN_STATES</code> imports. What&rsquo;s left: the bag list (qty steppers + <code>PriceDisplay</code> +
+    remove), the &ldquo;chat with us&rdquo; wa.me link, and a subtotal + &ldquo;Proceed to Checkout&rdquo; footer
+    that sets <code>checkingOut</code> &rarr; mounts <code>&lt;CheckoutSheet&gt;</code>. No behaviour change &mdash;
+    the sheet was already the live path since 17b.
+  </td>
+  <td>
+    <code>app/components/CartDrawer.tsx</code> (rewritten) &middot;
+    <code>app/components/checkout/CheckoutSheet.tsx</code> (header comment) &middot;
+    <code>docs/ARCHITECTURE.html</code> &middot; <code>docs/DESIGN-extract-checkout-machine.md</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>next build</code> exit 0 &middot; <code>tsc --noEmit</code> clean &middot; <code>npm test</code> 89 pass
+    / 7 skip &middot; <code>eslint app/components/CartDrawer.tsx</code> &rarr; <strong>0 problems</strong> (was 20
+    &mdash; the dead <code>any</code>-typed handlers + <code>set-state-in-effect</code> effects are gone), so the
+    repo-wide baseline drops by 20 (#19).
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>02:10</code></td>
   <td><strong>#17b &mdash; 3-step checkout shipped (cutover)</strong><br>(<code>IMPROVEMENTS.md</code> #17; &#9888; payment path)</td>
   <td>
@@ -1572,11 +1603,13 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 </tbody></table></div>
 
 <h2 id="checkout">Checkout &amp; payments flow</h2>
-<p>The bag lives in <code>app/components/CartDrawer.tsx</code> (code-split via <code>LazyCartDrawer</code>).
-&ldquo;Proceed to Checkout&rdquo; opens <code>app/components/checkout/CheckoutSheet.tsx</code>, a
-<strong>3-step sheet</strong> that replaces the whole drawer. Since <strong>#17b</strong> (shipped
-2026-08-30) this is the checkout for everyone; the old single inline form survives only as an env fallback
-(<code>NEXT_PUBLIC_LEGACY_CHECKOUT=1</code> + redeploy), removed in 17c.</p>
+<p>The bag lives in <code>app/components/CartDrawer.tsx</code> (code-split via <code>LazyCartDrawer</code>) &mdash;
+since <strong>#17c</strong> (2026-08-30) that file is <em>only</em> the bag list + a &ldquo;Proceed to
+Checkout&rdquo; button (~150 lines, was ~1,220). That button opens
+<code>app/components/checkout/CheckoutSheet.tsx</code>, a <strong>3-step sheet</strong> that replaces the whole
+drawer and is the only checkout path. (17b did the cutover behind a
+<code>NEXT_PUBLIC_LEGACY_CHECKOUT</code> env fallback; 17c deleted the old inline single-form path and the flag
+once the new flow had clean live orders.)</p>
 
 <h4>Structure</h4>
 <ul class="tight">
