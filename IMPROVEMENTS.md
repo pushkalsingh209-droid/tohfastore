@@ -172,10 +172,13 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 2 (security / hardening)
 
-5. **Make CI enforcing.** `.github/workflows/ci.yml` exists and runs the gates, but on
-   the repo it's currently advisory: add the Supabase/Razorpay **Actions secrets** (so
-   the build mirrors Vercel and the RLS test runs) and turn on **branch protection** for
-   `main` requiring the `verify` check — repo-settings actions for the owner.
+5. ~~**Make CI enforcing.**~~ — **done (2026-08-29).** Branch-protection ruleset (Active)
+   on the default branch requires the `verify` status check; confirmed by a direct
+   `git push origin main` being rejected (`GH013 … Required status check "verify" is
+   expected`). Deploy flow is now PR-based — see the Done batch (14:30) and the working
+   agreement. *Remaining polish (not blocking):* confirm the 5 Actions secrets are set so
+   CI's `next build` + RLS test mirror Vercel; `verify` passes without them but coverage
+   is thinner.
 
 7. ~~`/success` shouldn't depend on `sessionStorage`~~ — **done** (2026-08-29). Follow-up:
    link the WhatsApp/email order confirmations to `/success?order_id=` so the buyer has a

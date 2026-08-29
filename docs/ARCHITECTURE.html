@@ -206,6 +206,26 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>14:30</code></td>
+  <td><strong>CI enforcing on <code>main</code> &mdash; deploy flow now PR-based</strong><br>(<code>IMPROVEMENTS.md</code> T2&nbsp;#5)</td>
+  <td>
+    &bull; Owner enabled a branch-protection ruleset (Active) on the default branch requiring the
+    <code>verify</code> status check. <strong>Confirmed live:</strong> a direct <code>git push origin main</code>
+    was rejected &mdash; <code>GH013 &hellip; Required status check "verify" is expected</code>.<br>
+    &bull; <strong>Deploy flow changed.</strong> The old &ldquo;fast-forward <code>main</code> locally + push&rdquo;
+    step no longer works. Every batch now: push the branch &rarr; open a PR &rarr; wait for <code>verify</code>
+    green &rarr; merge the PR (Vercel deploys from the merge commit as before). Recorded in
+    <a href="#build">Build/deploy</a>; &sect;27 / <code>CLAUDE.md</code> working-agreement step 4 to follow.<br>
+    &bull; Docs-only commit &mdash; no code, schema, or behaviour change.
+  </td>
+  <td>
+    <code>docs/ARCHITECTURE.html</code><br>
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>Enforcement confirmed by the rejected push itself. <code>next build</code> exit 0 (240 pages) &middot;
+    <code>tsc --noEmit</code> clean &middot; <code>npm test</code> 51/7 on the docs branch.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>13:20</code></td>
   <td><strong>Incremental units-sold tally (<code>product_sales</code>)</strong><br>(<code>IMPROVEMENTS.md</code> T1&nbsp;#2)</td>
   <td>
@@ -1505,7 +1525,17 @@ stale &mdash; the one scheduled job with a health signal.</p>
 <dl class="kv">
   <dt>Scripts</dt><dd><code>dev</code> = <code>next dev</code>, <code>build</code> = <code>next build</code>, <code>start</code> = <code>next start</code>, <code>lint</code> = <code>eslint</code>, <code>test</code> = <code>vitest run</code></dd>
   <dt>Host</dt><dd>Vercel (Hobby). <code>maxDuration = 60</code> on the two catalogue PDF routes.</dd>
-  <dt>CI</dt><dd><code>.github/workflows/ci.yml</code> (added 2026-08-29) &mdash; <code>tsc --noEmit</code> + <code>npm test</code> + <code>next build</code> on push to <code>main</code> and every PR. RLS test runs if Supabase vars are set as Actions secrets, else self-skips. No ESLint job (pre-existing debt). Vercel&rsquo;s own Git integration is the deploy check.</dd>
+  <dt>CI</dt><dd><code>.github/workflows/ci.yml</code> (added 2026-08-29) &mdash; <code>tsc --noEmit</code> + <code>npm test</code> + <code>next build</code> on push to <code>main</code> and every PR. RLS test runs if Supabase vars are set as Actions secrets, else self-skips. No ESLint job (pre-existing debt). Vercel&rsquo;s own Git integration is the deploy check.
+    <br><strong>Enforcement (Active, confirmed 2026-08-29):</strong> a branch-protection ruleset on the default
+    branch requires the <code>verify</code> status check. Confirmed live &mdash; a direct
+    <code>git push origin main</code> was rejected with <code>GH013 &hellip; Required status check "verify" is
+    expected</code>. <strong>Consequence: changes can no longer be fast-forwarded straight to <code>main</code>
+    locally &mdash; every change now lands via a pull request whose <code>verify</code> run is green.</strong>
+    The five Actions secrets (<code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code>,
+    <code>SUPABASE_SERVICE_ROLE_KEY</code>, <code>NEXT_PUBLIC_RAZORPAY_KEY_ID</code>, <code>RAZORPAY_KEY_SECRET</code>)
+    make the <code>next build</code> + RLS-test steps mirror Vercel exactly; <code>verify</code> passes with or
+    without them (placeholder keys, RLS test self-skips), so a missing secret weakens coverage but never blocks a
+    PR. See the revised deploy step in &sect;27 / the working agreement.</dd>
   <dt>Last verified build</dt><dd><code>next build</code> exit 0 &mdash; 239 SSG pages (156 products), all routes + middleware compiled, <code>tsc --noEmit</code> clean, unit tests pass.</dd>
   <dt>CSP</dt><dd>Enforced only when <code>NODE_ENV === "production"</code> (dev tooling needs looser rules). Directive list compiled by grepping every <code>https://</code> the code loads + each integration&rsquo;s documented requirements; deliberately generous on <code>script/connect/frame</code>.</dd>
   <dt>Images</dt><dd><code>remotePatterns</code>: <code>gxlervcazzddqcoagewy.supabase.co/storage/v1/object/**</code>, <code>images.unsplash.com/**</code>. <code>unoptimized: true</code> (temporary).</dd>
@@ -1758,7 +1788,11 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
       <em>and</em> add a dated Change-log row (IST time, files, how verified). Re-strip the skeleton and
       re-publish the artifact (<code>https://claude.ai/code/artifact/85252c72-364e-44ee-80cf-710ae21d88cb</code>,
       pass as <code>url</code>). Move shipped items to Done in <code>IMPROVEMENTS.md</code>.</li>
-  <li>Only then merge to <code>main</code> / deploy. Re-verify the merged HEAD before pushing.</li>
+  <li>Only then ship. <code>main</code> is branch-protected &mdash; a direct <code>git push origin main</code> is
+      rejected (<code>GH013 &hellip; Required status check "verify"</code>). Push the branch, open a PR, wait for
+      the <code>verify</code> check green, re-verify the merged HEAD (<code>next build</code> + <code>npm test</code>),
+      then merge the PR. Vercel deploys from the merge commit. (<code>gh</code> is not installed in the working
+      environment &mdash; push the branch and have the owner merge, or hit the API with a token.)</li>
   <li>End with a short prioritised &ldquo;what next&rdquo; list; feed anything durable into
       <code>IMPROVEMENTS.md</code>.</li>
 </ol>
