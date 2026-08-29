@@ -158,8 +158,11 @@ care, land behind tests, never "blind".
    — see Done (2026-08-29 12:33): migration `0041` `decrement_inventory()` + `rpc()` +
    `sendOversellAlert`; a live test-mode payment confirmed order + WhatsApp + email +
    inventory −1. What's left is a separate, larger piece: a **short-TTL stock reservation
-   at order creation** so two checkouts for the last unit can't both *pay*. Needs a written
-   design first (⚠️ payment path) — not started; awaiting owner go-ahead.
+   at order creation** so two checkouts for the last unit can't both *pay*.
+   **Design written 2026-08-29 → `docs/DESIGN-stock-reservation.md`** (schema `0043`,
+   `reserve_stock` / `consume_reservation` RPCs, reserve-before-create flow, 15-min TTL,
+   `site_settings` kill switch, failure-mode + test matrix). Awaiting owner review of the
+   5 open questions in §11, then implement behind the kill switch.
 
 2. ~~**Sold-count accuracy degrades past ~300 orders.**~~ — **done + verified end-to-end
    2026-08-29** (see Done, batch 13:20). `product_sales` aggregate + `apply_product_sales`
