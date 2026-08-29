@@ -206,6 +206,43 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>18:30</code></td>
+  <td><strong>#11 &mdash; collapse the client context providers</strong><br>(<code>IMPROVEMENTS.md</code> #11; plan <code>docs/DESIGN-bootstrap-context.md</code>)</td>
+  <td>
+    Seven client contexts &mdash; five each firing <code>GET /api/settings</code> on every page load, plus one
+    <code>/api/categories</code> and one <code>/api/labels</code> &mdash; replaced by <strong>one server-fed
+    <code>BootstrapProvider</code></strong>. Zero client fetches for this data now.<br>
+    &bull; <code>storeQueries.ts</code>: new cached <code>getPublicSettingsMap</code> (tag <code>site-settings</code>)
+    + <code>getCategoryDiscountMap</code> (tag <code>categories</code>); <code>getBootstrapData()</code> composes
+    them with the existing <code>getProductUnitSettings</code> / <code>getLabelPhotoFilters</code>.<br>
+    &bull; <code>app/utils/bootstrapSettings.ts</code> &mdash; pure parsers (chat labels / Ganesha timings /
+    photo-filter index / default WhatsApp number), reproducing each old context&rsquo;s clamp + fallback rules.
+    <strong>8 unit tests.</strong><br>
+    &bull; <code>app/context/BootstrapContext.tsx</code> &mdash; provider + the same 8 hook signatures. The 7 old
+    context files are now one-line re-export shims, so <strong>no call site changed</strong>.<br>
+    &bull; <code>app/layout.tsx</code> is now <code>async</code>: <code>await getBootstrapData()</code>, provider
+    nesting 10 &rarr; 4.<br>
+    &bull; <code>useDefaultPhotoFilterIndex</code> / <code>useLabelPhotoFilters</code> no longer return
+    <code>null</code> (server-provided) &mdash; <code>ProductGallery</code>&rsquo;s <code>== null</code> guard is
+    now dead code, not broken; the filter resolves on first paint instead of after a fetch.<br>
+    &bull; Design-doc open questions answered per its recommendations: hook-name shims (no call-site churn),
+    one provider object, just the 7 current contexts.
+  </td>
+  <td>
+    <em>new:</em> <code>app/context/BootstrapContext.tsx</code>, <code>app/utils/bootstrapSettings.ts</code>,
+    <code>app/utils/bootstrapSettings.test.ts</code><br>
+    <code>app/layout.tsx</code> &middot; <code>app/utils/storeQueries.ts</code> &middot; the 7
+    <code>app/context/*Context.tsx</code> (gutted to shims) &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>next build</code> exit 0 (240 pages, all still static) &middot; <code>tsc --noEmit</code> clean
+    &middot; <code>npm test</code> 71 pass / 7 gated (was 63) &middot; <code>eslint</code> 0 new (storeQueries
+    stays at its 10 pre-existing <code>no-explicit-any</code>). <strong>Owner storefront smoke-check pending</strong>
+    &mdash; the checklist in <code>docs/DESIGN-bootstrap-context.md &sect;6</code> (slashed prices, chat labels,
+    Ganesha timing, photo filter, unit display, default WhatsApp number, label filters; + Network tab shows the
+    7 requests gone).</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>17:45</code></td>
   <td><strong>Decomposition plans: admin split · checkout machine · bootstrap context</strong><br>(<code>IMPROVEMENTS.md</code> #16, #17, #11)</td>
   <td>
@@ -691,7 +728,7 @@ takes a second arg.</p>
 <tr><td>PDF</td><td><code>@react-pdf/renderer</code> 4.5</td><td>Catalogue PDF (pure JS). <code>sharp</code> re-encodes photos to thumbnails first.</td></tr>
 <tr><td>QR</td><td><code>qrcode</code> 1.5</td><td>Admin TOTP re-provisioning QR (SVG).</td></tr>
 <tr><td>Analytics / RUM</td><td><code>@vercel/analytics</code>, <code>@vercel/speed-insights</code>, <code>@next/third-parties</code> (GA4)</td><td>All free-tier. Purchase conversions fired client-side on <code>/success</code> with the real server-verified total.</td></tr>
-<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (63 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>repricing</code>, <code>totp</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
+<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (71 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>bootstrapSettings</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>repricing</code>, <code>totp</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
 <tr><td>Lint</td><td>ESLint 9 + <code>eslint-config-next</code></td><td><code>npm run lint</code>. (Next 16 no longer runs ESLint during <code>next build</code>.)</td></tr>
 </tbody></table></div>
 
@@ -1486,6 +1523,12 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       an order scan), <code>getRecentOrderItems</code> (shared last-300-orders scan behind
       <code>getBestsellers</code> + <code>getRelatedProducts</code>; tally is the pure
       <code>orderTally.ts</code>), <code>getCategoryImage</code>.
+      <strong>Storefront bootstrap (#11):</strong> <code>getPublicSettingsMap</code> (tag <code>site-settings</code>)
+      + <code>getCategoryDiscountMap</code> (tag <code>categories</code>), composed with the existing
+      <code>getProductUnitSettings</code> / <code>getLabelPhotoFilters</code> by the uncached
+      <code>getBootstrapData()</code> &mdash; read once in <code>app/layout.tsx</code> and handed to
+      <code>&lt;BootstrapProvider&gt;</code>. Admin writes already <code>revalidateTag</code> those tags, so it
+      stays fresh.
       <code>notInListLiteral</code> is exported for reuse by <code>/api/admin/labels/bulk-assign</code>.</li>
 </ul>
 
@@ -1531,22 +1574,24 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
 </ul>
 
 <h2 id="state">Client state (contexts)</h2>
-<p>All wrapped around <code>&lt;body&gt;</code> in <code>app/layout.tsx</code> (deeply nested providers).</p>
+<p>Wrapped around <code>&lt;body&gt;</code> in <code>app/layout.tsx</code>. Since #11 (2026-08-29) the nesting
+is just <strong>four</strong>: <code>BootstrapProvider</code> &rarr; <code>CartProvider</code> &rarr;
+<code>WishlistProvider</code> &rarr; <code>CatalogLoadingProvider</code>.</p>
 <div class="x"><table>
 <thead><tr><th>Context</th><th>Holds</th><th>Source / persistence</th></tr></thead>
 <tbody>
+<tr><td><code>BootstrapContext</code></td><td>storefront config: chat-button labels, default enquiry number, Ganesha-popup timings, default photo-filter index, display weight/dimension units, label&rarr;filter map, category&rarr;discount map. Exposes the same 8 hooks the old contexts did (<code>useChatLabels</code>, <code>useCategoryDiscount</code>/<code>Map</code>, <code>useDefaultWhatsappNumber</code>, <code>useGaneshaPopupSettings</code>, <code>useDefaultPhotoFilterIndex</code>, <code>useLabelPhotoFilters</code>, <code>useProductUnitSettings</code>) &mdash; re-exported from the old context files as shims.</td><td><strong>Server-provided</strong> &mdash; <code>getBootstrapData()</code> in <code>storeQueries.ts</code>, read once in the root layout. <strong>No client fetch.</strong> Parsers in <code>bootstrapSettings.ts</code> (unit-tested).</td></tr>
 <tr><td><code>CartContext</code></td><td>cart items, drawer open state, totals; <code>addToCart</code> (stock-clamped), <code>updateQuantity</code>, <code>clearCart</code></td><td><code>localStorage.tohfa_cart</code></td></tr>
 <tr><td><code>WishlistContext</code></td><td>wishlist product list</td><td><code>localStorage</code></td></tr>
 <tr><td><code>CatalogLoadingContext</code></td><td>shared loading overlay state for pagination/filter/menu nav</td><td>in-memory; random message from <code>loadingMessages.ts</code></td></tr>
-<tr><td><code>CategoryDiscountContext</code></td><td>category &rarr; <code>discount_percent</code> map (slashed-price display)</td><td><code>/api/categories</code></td></tr>
-<tr><td><code>PhotoFilterSettingContext</code></td><td>site default photo-filter preset</td><td><code>/api/settings</code></td></tr>
-<tr><td><code>LabelPhotoFilterContext</code></td><td>label &rarr; photo-filter override map</td><td><code>/api/labels</code></td></tr>
-<tr><td><code>ProductUnitSettingContext</code></td><td>display weight/dimension units</td><td><code>/api/settings</code></td></tr>
-<tr><td><code>GaneshaPopupSettingContext</code></td><td>welcome-popup cooldown / max-auto-shows / collapse delay</td><td><code>/api/settings</code></td></tr>
-<tr><td><code>ChatLabelSettingContext</code></td><td>active in-stock / out-of-stock chat-button labels</td><td><code>/api/settings</code></td></tr>
-<tr><td><code>DefaultWhatsappNumberContext</code></td><td>site-wide default enquiry number</td><td><code>/api/settings</code></td></tr>
 <tr><td><code>LiveStockContext</code> (in <code>components/LiveStock.tsx</code>)</td><td>live inventory for the detail-page buy box</td><td><code>/api/stock/[id]</code> on mount</td></tr>
 </tbody></table></div>
+<p><em>Removed in #11:</em> <code>CategoryDiscountContext</code>, <code>PhotoFilterSettingContext</code>,
+<code>LabelPhotoFilterContext</code>, <code>ProductUnitSettingContext</code>, <code>GaneshaPopupSettingContext</code>,
+<code>ChatLabelSettingContext</code>, <code>DefaultWhatsappNumberContext</code> &mdash; seven providers, five of
+which each fired <code>GET /api/settings</code> on every page load. Their files remain as one-line re-export
+shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categories</code>,
+<code>/api/labels</code> stay for their other callers (<code>SearchBar</code>, admin, &hellip;).</p>
 
 <h2 id="components">Component inventory</h2>
 <p><code>app/components/</code> (~60 files). Grouped by role:</p>
@@ -1602,6 +1647,7 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
 <tr><td><code>rls.test.ts</code></td><td>Anon-key RLS perimeter regression test (§6). Env-gated (skips without Supabase creds).</td></tr>
 <tr><td><code>orderTally.ts</code></td><td><code>tallyUnitsSold(orders, {excludeId?})</code> &mdash; pure line-item quantity tally, shared by <code>getBestsellers</code> / <code>getRelatedProducts</code> via <code>getRecentOrderItems</code>. Unit-tested.</td></tr>
 <tr><td><code>repricing.ts</code></td><td><code>repriceCart(clientItems, dbProducts, categoryGstRates, defaultGstPercent)</code> &mdash; the &ldquo;never trust the client at checkout&rdquo; guard extracted from <code>/api/razorpay</code>: rebuilds every line from the DB price/name/GST rate, rejects unknown/hidden ids and over-stock lines, returns the authoritative subtotal. Byte-for-byte match of the old inline block. <strong>12 unit tests.</strong></td></tr>
+<tr><td><code>bootstrapSettings.ts</code></td><td><code>parseChatLabels</code> / <code>parseGaneshaSettings</code> / <code>parsePhotoFilterIndex</code> / <code>parseDefaultWhatsappNumber</code> &mdash; pure parsers for the storefront <code>site_settings</code> values, run server-side in <code>getBootstrapData()</code> (#11). Reproduce the old per-context parse + clamp + fallback rules exactly. <strong>8 unit tests.</strong></td></tr>
 <tr><td><code>whatsapp.ts</code></td><td>Enquiry-link builder + number-resolution priority.</td></tr>
 <tr><td><code>whatsappOtp.ts</code></td><td>OTP send/verify/token-check + all abuse limits + opportunistic verification-row pruning.</td></tr>
 <tr><td><code>greenApi.ts</code></td><td>Green API send (text / image+caption) + <code>checkWhatsappNumber</code>.</td></tr>
@@ -1774,7 +1820,7 @@ stale &mdash; the one scheduled job with a health signal.</p>
 |- vercel.json               2 daily crons
 |- vitest.config.ts          re-declares @ alias
 |- app/
-|  |- layout.tsx             root: 10 context providers, theme script, JSON-LD, GA/Ads/Pixel, footer
+|  |- layout.tsx             root (async): getBootstrapData() + 4 providers, theme script, JSON-LD, GA/Ads/Pixel, footer
 |  |- globals.css            Tailwind v4, --background token, dark variant, focus styles
 |  |- page.tsx               "/" -> StorefrontPage("")
 |  |- loading.tsx / not-found.tsx
@@ -1811,7 +1857,7 @@ npm install
 # create products &amp; orders tables in Supabase (no migration file - see section 24),
 # then run supabase/migrations/0001...0040 in the SQL editor, in order
 npm run dev        # http://localhost:3000   (CSP disabled in dev)
-npm test           # vitest: money math, signatures, totp, backup codes, client-ip, checkout repricing  (63 tests)
+npm test           # vitest: money math, signatures, totp, backup codes, client-ip, checkout repricing, bootstrap settings  (71 tests)
 npm run lint       # note: pre-existing no-explicit-any / set-state-in-effect debt
 
 # RLS regression test — talks to the live project, so it needs the anon creds:

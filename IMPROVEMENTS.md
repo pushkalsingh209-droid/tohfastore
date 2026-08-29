@@ -208,13 +208,14 @@ care, land behind tests, never "blind".
     Premature at ~140 products; revisit at scale with `count: "planned"` + a separately
     cached exact count.
 
-11. **Collapse the 10 context providers.** 7 of them fetch on mount (5× the *identical*
-    `/api/settings`, + `/api/categories`, + `/api/labels`) for data the Server Components
-    already hold cached. **Decomposition plan written 2026-08-29 →
-    `docs/DESIGN-bootstrap-context.md`** (server-fed `getBootstrapData()` + one
-    `BootstrapProvider`, the 7 hooks become selectors keeping their exact signatures,
-    delete the 7 old files; Cart/Wishlist/CatalogLoading untouched; 0 client fetches).
-    Needs a dev server to verify. Awaiting owner review.
+11. ~~**Collapse the 10 context providers.**~~ — **done (2026-08-29), pending owner
+    smoke-check.** `getBootstrapData()` (composes new cached `getPublicSettingsMap` +
+    `getCategoryDiscountMap` with the existing unit/label getters) is read once in the now-
+    `async` `app/layout.tsx` and handed to one `BootstrapProvider`. The 7 old context files
+    are one-line re-export shims (no call site changed); parsers in `bootstrapSettings.ts`
+    with 8 tests. `next build` exit 0 (still all static), `tsc` clean, `npm test` 71/7,
+    0 new eslint. **Owner: run `docs/DESIGN-bootstrap-context.md §6`** before merge (the 7
+    values render correctly + Network tab shows the old requests gone).
 
 12. ~~Share the "last 300 orders" scan~~ — **done** (2026-08-29) for `getBestsellers` +
     `getRelatedProducts` via `getRecentOrderItems`. `getSoldCounts` now reads the

@@ -35,6 +35,13 @@ import {
   type WeightUnit,
   type DimensionUnit,
 } from "@/app/utils/productUnits";
+import {
+  parseChatLabels,
+  parseGaneshaSettings,
+  parsePhotoFilterIndex,
+  parseDefaultWhatsappNumber,
+  type RawSettings,
+} from "@/app/utils/bootstrapSettings";
 
 // PostgREST's "in"/"not.in" list literal: comma-separated, with any value
 // containing a comma or quote wrapped in double quotes (quotes doubled).
@@ -261,6 +268,98 @@ export const getCategoryDefaultPageSize = unstable_cache(
   ["category-default-page-size"],
   { tags: ["categories"], revalidate: 86400 }
 );
+
+// --- Storefront bootstrap (#11) ------------------------------------------
+// Everything below feeds getBootstrapData(), read once server-side in
+// app/layout.tsx and handed to <BootstrapProvider>. Before #11 this data
+// was fetched client-side by seven separate contexts -- five of them each
+// firing GET /api/settings on mount, per page load. See
+// docs/DESIGN-bootstrap-context.md.
+
+// Raw key -> value map of the browser-safe site_settings keys (mirrors
+// PUBLIC_SETTING_KEYS in /api/settings). The /api/settings route stays for
+// other callers; this is the cached server-side read.
+export const getPublicSettingsMap = unstable_cache(
+  async (): Promise<RawSettings> => {
+    try {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("key, value")
+        .in("key", [
+          "default_photo_filter",
+          "weight_unit",
+          "dimension_unit",
+          "default_whatsapp_number",
+          "ganesha_cooldown_minutes",
+          "ganesha_max_auto_shows",
+          "ganesha_collapse_delay_seconds",
+          "chat_label_in_stock",
+          "chat_label_out_of_stock",
+        ]);
+      if (error || !data) return {};
+      const map: RawSettings = {};
+      for (const row of data) map[row.key] = row.value;
+      return map;
+    } catch {
+      return {};
+    }
+  },
+  ["public-settings-map"],
+  { tags: ["site-settings"], revalidate: 86400 }
+);
+
+// Category name -> discount percent, for the slashed-price display. Was
+// CategoryDiscountContext fetching /api/categories client-side.
+export const getCategoryDiscountMap = unstable_cache(
+  async (): Promise<Record<string, number>> => {
+    try {
+      const { data, error } = await supabase.from("categories").select("name, discount_percent");
+      if (error || !data) return {};
+      const map: Record<string, number> = {};
+      for (const row of data) {
+        if (row.name && row.discount_percent != null) map[row.name] = Number(row.discount_percent);
+      }
+      return map;
+    } catch {
+      return {};
+    }
+  },
+  ["category-discount-map"],
+  { tags: ["categories"], revalidate: 86400 }
+);
+
+export interface BootstrapData {
+  chatLabels: ReturnType<typeof parseChatLabels>;
+  defaultWhatsappNumber: string;
+  ganesha: ReturnType<typeof parseGaneshaSettings>;
+  photoFilterIndex: number;
+  productUnits: { weightUnit: WeightUnit; dimensionUnit: DimensionUnit };
+  labelPhotoFilters: Record<string, string>;
+  categoryDiscounts: Record<string, number>;
+}
+
+// One server-side read of everything the storefront's client contexts used
+// to fetch. Composed of the cached getters above (so admin writes that
+// revalidateTag("site-settings" / "categories" / "labels") still refresh
+// it); the parsing is cheap and pure (bootstrapSettings.ts), so this
+// wrapper itself isn't cached.
+export async function getBootstrapData(): Promise<BootstrapData> {
+  const [rawSettings, productUnits, labelPhotoFilters, categoryDiscounts] = await Promise.all([
+    getPublicSettingsMap(),
+    getProductUnitSettings(),
+    getLabelPhotoFilters(),
+    getCategoryDiscountMap(),
+  ]);
+  return {
+    chatLabels: parseChatLabels(rawSettings),
+    defaultWhatsappNumber: parseDefaultWhatsappNumber(rawSettings),
+    ganesha: parseGaneshaSettings(rawSettings),
+    photoFilterIndex: parsePhotoFilterIndex(rawSettings),
+    productUnits,
+    labelPhotoFilters,
+    categoryDiscounts,
+  };
+}
 
 // Active, non-expired, not-maxed-out coupons an admin has marked "public" --
 // shown in the on-site promo banner. Coupons left private are still

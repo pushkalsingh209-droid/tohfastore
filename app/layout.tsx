@@ -7,13 +7,8 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import { CartProvider } from "@/app/context/CartContext";
 import { WishlistProvider } from "@/app/context/WishlistContext";
 import { CatalogLoadingProvider } from "@/app/context/CatalogLoadingContext";
-import { CategoryDiscountProvider } from "@/app/context/CategoryDiscountContext";
-import { PhotoFilterSettingProvider } from "@/app/context/PhotoFilterSettingContext";
-import { LabelPhotoFilterProvider } from "@/app/context/LabelPhotoFilterContext";
-import { ProductUnitSettingProvider } from "@/app/context/ProductUnitSettingContext";
-import { GaneshaPopupSettingProvider } from "@/app/context/GaneshaPopupSettingContext";
-import { ChatLabelSettingProvider } from "@/app/context/ChatLabelSettingContext";
-import { DefaultWhatsappNumberProvider } from "@/app/context/DefaultWhatsappNumberContext";
+import { BootstrapProvider } from "@/app/context/BootstrapContext";
+import { getBootstrapData } from "@/app/utils/storeQueries";
 import LazyCartDrawer from "@/app/components/LazyCartDrawer";
 import HeaderNavbar from "@/app/components/headerNavbar";
 import CatalogLoadingOverlay from "@/app/components/CatalogLoadingOverlay";
@@ -96,11 +91,15 @@ const themeInitScript = `
 })();
 `;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Read once, server-side, from the cached storeQueries getters. Replaces
+  // seven client contexts that each fetched on mount (five of them the same
+  // GET /api/settings) -- see docs/DESIGN-bootstrap-context.md (#11).
+  const bootstrap = await getBootstrapData();
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -120,16 +119,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd).replace(/</g, "\\u003c") }}
         />
       </head>
+      <BootstrapProvider value={bootstrap}>
       <CartProvider>
       <WishlistProvider>
       <CatalogLoadingProvider>
-      <CategoryDiscountProvider>
-      <PhotoFilterSettingProvider>
-      <LabelPhotoFilterProvider>
-      <ProductUnitSettingProvider>
-      <GaneshaPopupSettingProvider>
-      <ChatLabelSettingProvider>
-      <DefaultWhatsappNumberProvider>
         <body className="bg-[var(--background)] dark:bg-stone-950 text-stone-800 dark:text-stone-200 antialiased min-h-screen flex flex-col transition-colors">
 
           {/* Skip link for keyboard/screen-reader users -- visually hidden
@@ -246,16 +239,10 @@ export default function RootLayout({
               same free tier as Analytics above, just a separate script. */}
           <SpeedInsights />
         </body>
-      </DefaultWhatsappNumberProvider>
-      </ChatLabelSettingProvider>
-      </GaneshaPopupSettingProvider>
-      </ProductUnitSettingProvider>
-      </LabelPhotoFilterProvider>
-      </PhotoFilterSettingProvider>
-      </CategoryDiscountProvider>
       </CatalogLoadingProvider>
       </WishlistProvider>
       </CartProvider>
+      </BootstrapProvider>
     </html>
   );
 }
