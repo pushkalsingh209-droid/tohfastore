@@ -206,6 +206,28 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>10:29</code></td>
+  <td><strong>Receipt survives a lost session</strong><br>(<code>IMPROVEMENTS.md</code> T2&nbsp;#7)</td>
+  <td>
+    &bull; New <code>/api/orders/receipt</code> (public, POST) &mdash; phone-gated invoice rebuild, same guard
+    as <code>/api/orders/track</code> (Order ID <em>and</em> last-10-digits phone; single <code>.eq()</code>).
+    Recomputes <code>subtotal</code>/<code>discount</code>/<code>gst</code> from <code>orders.items</code> +
+    <code>amount</code>. Fires <strong>no</strong> purchase analytics.<br>
+    &bull; <code>/success</code>: if <code>sessionStorage</code> is gone but the URL has <code>?order_id=</code>
+    (refresh, reopened tab, later visit), it now shows a phone form and re-fetches the same printable invoice.
+    The sessionStorage fast path + its GA4/Meta conversion firing are unchanged.<br>
+    &bull; <code>CartDrawer</code> post-payment redirect now carries <code>?order_id=</code> so
+    <code>/success</code> survives a refresh.
+  </td>
+  <td>
+    <em>new:</em> <code>app/api/orders/receipt/route.ts</code><br>
+    <code>app/success/page.tsx</code>, <code>app/components/CartDrawer.tsx</code>
+  </td>
+  <td><code>next build</code> exit 0 (240 pages) &middot; <code>tsc --noEmit</code> clean &middot;
+    <code>npm test</code> 43 pass / 7 gated &middot; eslint no new errors. Client recovery flow not
+    exercised end-to-end (no running checkout).</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>03:05</code></td>
   <td><strong>Docs: forward-looking playbooks + docs-before-deploy rule</strong></td>
   <td>
@@ -824,7 +846,7 @@ resets and verify steady-state usage stays under cap.</p>
 <tr><td><code>/collections/[category]</code></td><td>app/collections/[category]/page.tsx</td><td>dynamic over cached queries; <code>generateStaticParams</code> from category names</td><td>Slug &rarr; real name via <code>findCategoryBySlug</code>. Unknown &rarr; <code>notFound()</code>. Non-canonical slug &rarr; <code>permanentRedirect</code>.</td></tr>
 <tr><td><code>/product/[id]</code></td><td>app/product/[id]/page.tsx</td><td><strong>SSG + ISR</strong>, <code>revalidate = 86400</code>, <code>generateStaticParams</code> for all non-hidden products (156 pages at last build)</td><td>Param is <code>&lt;id&gt;-&lt;slug&gt;</code>; <code>productIdFromParam</code> extracts the id. Bare/stale slug &rarr; <code>permanentRedirect</code> to canonical. Hidden/missing &rarr; &ldquo;not found&rdquo; body. Live stock &amp; recent-viewer count fetched client-side so a sale never regenerates the page.</td></tr>
 <tr><td><code>/catalogue</code></td><td>app/catalogue/page.tsx</td><td>client</td><td>Lead-capture form &rarr; <code>POST /api/leads {source:"catalogue_download"}</code> &rarr; opens <code>/api/catalogue</code> PDF.</td></tr>
-<tr><td><code>/success</code></td><td>app/success/page.tsx</td><td>client</td><td>Reads <code>sessionStorage.tohfa_last_order</code>; clears cart; fires deduped GA4/Meta purchase events; printable invoice.</td></tr>
+<tr><td><code>/success</code></td><td>app/success/page.tsx</td><td>client</td><td>Reads <code>sessionStorage.tohfa_last_order</code>; clears cart; fires deduped GA4/Meta purchase events; printable invoice. If sessionStorage is gone but <code>?order_id=</code> is present, offers a phone-gated re-fetch via <code>/api/orders/receipt</code> (no analytics on that path).</td></tr>
 <tr><td><code>/track</code></td><td>app/track/page.tsx</td><td>client</td><td>Reference (order id or AWB) + phone &rarr; <code>POST /api/orders/track</code>.</td></tr>
 <tr><td><code>/wishlist</code></td><td>app/wishlist/page.tsx</td><td>client</td><td>localStorage-backed wishlist grid.</td></tr>
 <tr><td><code>/about</code>, <code>/contact</code>, <code>/corporate</code>, <code>/privacy</code>, <code>/terms</code>, <code>/refunds</code></td><td>app/&lt;name&gt;/page.tsx</td><td>static</td><td><code>/contact</code> + <code>/corporate</code> have forms &rarr; <code>/api/contact</code> / <code>/api/leads</code>.</td></tr>
@@ -883,6 +905,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/whatsapp-otp/verify</code></td><td><span class="tag t-post">post</span></td><td><code>verifyOtp(phone, code)</code> &rarr; <code>{ok, token}</code>.</td></tr>
 <tr><td><code>/api/check-whatsapp-number</code></td><td><span class="tag t-post">post</span></td><td>Green API <code>checkWhatsapp</code> &mdash; is the number registered? <code>{exists: true|false|null}</code> (null = check unavailable &rarr; client fails open).</td></tr>
 <tr><td><code>/api/orders/track</code></td><td><span class="tag t-post">post</span></td><td>Public tracking. Requires reference (<code>order_id</code> <em>or</em> <code>awb_number</code>) <strong>and</strong> matching last-10-digits phone. Two separate <code>.eq()</code> lookups (no user string in a PostgREST filter). Generic 5xx body.</td></tr>
+<tr><td><code>/api/orders/receipt</code></td><td><span class="tag t-post">post</span></td><td>Phone-gated invoice rebuild for <code>/success</code> when the client stash is gone. Same guard as <code>/api/orders/track</code> (Order ID + last-10-digits phone). Recomputes subtotal/discount/GST from the stored order. Fires no analytics.</td></tr>
 <tr><td><code>/api/stock</code></td><td><span class="tag t-get">get</span></td><td><code>?ids=1,2,3</code> (&le; 200) &rarr; <code>{id: {inventory, outOfStock, lowStock}}</code>. <code>force-dynamic</code> + <code>no-store</code>. Hidden &rarr; inventory 0. Used by <code>CatalogSection</code>.</td></tr>
 <tr><td><code>/api/stock/[id]</code></td><td><span class="tag t-get">get</span></td><td>Single-product live stock. Used by <code>LiveStockProvider</code> on the detail page.</td></tr>
 <tr><td><code>/api/recent-views/[id]</code></td><td><span class="tag t-get">get</span></td><td>Distinct viewers in the last 3h. <code>force-dynamic</code>. Used by <code>RecentViewersNoteLive</code>.</td></tr>
@@ -1391,9 +1414,12 @@ stale &mdash; the one scheduled job with a health signal.</p>
   <li><strong>Category / label are plain text on <code>products</code></strong>, not foreign keys &mdash; deleting a
       <code>categories</code>/<code>labels</code> row doesn&rsquo;t cascade; products keep the string value.</li>
   <li><strong><code>discount_percent</code> is display-only</strong> &mdash; never affects the charged amount.</li>
-  <li><strong><code>/success</code> depends on <code>sessionStorage</code></strong> &mdash; closing the tab during the
-      Razorpay redirect leaves the buyer with no on-screen invoice (WhatsApp/email still arrive). A phone-gated
-      <code>/success?order_id=</code> server fetch is an open follow-up.</li>
+  <li><strong><code>/success</code> primary path is <code>sessionStorage</code></strong> &mdash; if the redirect
+      completes but the stash is gone (refresh / reopened tab), the page now recovers via a phone-gated
+      <code>/api/orders/receipt</code> fetch (URL carries <code>?order_id=</code>). If the redirect itself never
+      completes (tab closed mid-redirect), the buyer still has the WhatsApp/email confirmation and
+      <code>/track</code>. Linking the confirmation messages to <code>/success?order_id=</code> is a small
+      follow-up.</li>
 </ul>
 
 <h2 id="filemap">Directory map</h2>
@@ -1419,7 +1445,7 @@ stale &mdash; the one scheduled job with a health signal.</p>
 |  |- admin/page.tsx         ~3,600-line client SPA (7 tabs)
 |  |- admin/login/page.tsx
 |  |- api/
-|  |  |- razorpay/ razorpay-webhook/ coupons/validate/ orders/track/
+|  |  |- razorpay/ razorpay-webhook/ coupons/validate/ orders/track/ orders/receipt/
 |  |  |- whatsapp-otp/{send,verify}/ check-whatsapp-number/ stock/ stock/[id]/
 |  |  |- recent-views/[id]/ track-view/ stock-alerts/ reviews/ enquiries/ leads/
 |  |  |- contact/ catalogue/ categories/ labels/ settings/ pincode/[code]/

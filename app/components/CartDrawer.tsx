@@ -593,7 +593,12 @@ export default function CartDrawer() {
           setCouponInput("");
           setCouponError("");
           setIsOpen(false);
-          router.push("/success");
+          // Carry the order id in the URL so /success survives a refresh /
+          // reopened tab -- if sessionStorage is gone it offers a
+          // phone-gated re-fetch of the invoice (see app/success/page.tsx
+          // + /api/orders/receipt). The sessionStorage fast path above is
+          // unchanged and still the primary route.
+          router.push(`/success?order_id=${encodeURIComponent(data.orderId)}`);
         },
         prefill: {
           name: customerName,

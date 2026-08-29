@@ -12,6 +12,18 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Receipt survives a lost session — 2026-08-29 10:29 IST
+- New `/api/orders/receipt` (public POST, phone-gated like `/api/orders/track`) rebuilds
+  the invoice from the stored order; fires no purchase analytics.
+- `/success` recovers via that route when `sessionStorage` is gone but the URL carries
+  `?order_id=` (refresh / reopened tab). `CartDrawer` redirect now carries `?order_id=`.
+  sessionStorage fast path + conversion firing unchanged. (was Tier 2 #7.)
+- Verified: `next build` exit 0 (240 pages), `tsc` clean, `npm test` 43 pass / 7 gated,
+  eslint no new errors. Client recovery flow not exercised end-to-end (no running
+  checkout) — the API route is fully covered; the page/CartDrawer changes are a small
+  additive redirect + form.
+- Follow-up: link the WhatsApp/email order confirmations to `/success?order_id=`.
+
 ### Batch: Keepalive heartbeat visibility — 2026-08-29 02:55 IST
 - `/api/keepalive` stamps `site_settings.last_keepalive_at` on every run (best-effort,
   no cache revalidation). Admin **Overview** tab shows a heartbeat card + an amber
@@ -105,10 +117,9 @@ care, land behind tests, never "blind".
    the build mirrors Vercel and the RLS test runs) and turn on **branch protection** for
    `main` requiring the `verify` check — repo-settings actions for the owner.
 
-7. **`/success` shouldn't depend on `sessionStorage`.** Closing the tab during the
-   Razorpay redirect leaves the buyer with no on-screen invoice. Add
-   `/success?order_id=` with a phone-gated server fetch like `/track`. Additive, keeps
-   the sessionStorage fast path.
+7. ~~`/success` shouldn't depend on `sessionStorage`~~ — **done** (2026-08-29). Follow-up:
+   link the WhatsApp/email order confirmations to `/success?order_id=` so the buyer has a
+   one-tap route back to a printable invoice.
 
 8. **Prune / retain remaining log tables** with a documented policy (`leads`,
    `whatsapp_enquiries` need a longer retention because of analytics — decide the window

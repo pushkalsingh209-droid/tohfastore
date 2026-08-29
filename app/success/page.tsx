@@ -28,13 +28,27 @@ export default function CheckoutSuccessPage() {
   const [order, setOrder] = useState<StashedOrder | null>(null);
   const categoryDiscounts = useCategoryDiscountMap();
 
+  // Recovery path: the sessionStorage fast path is gone (refresh, reopened
+  // tab, link followed later) but the URL carries ?order_id=. We offer a
+  // phone-gated re-fetch of the same invoice from /api/orders/receipt.
+  // Deliberately no purchase-analytics on this path -- that stays below,
+  // gated on the sessionStorage branch only.
+  const [recoverOrderId, setRecoverOrderId] = useState("");
+  const [recoverPhone, setRecoverPhone] = useState("");
+  const [recoverError, setRecoverError] = useState("");
+  const [recovering, setRecovering] = useState(false);
+
   useEffect(() => {
     // Automatically wipe local persistent memory records clean upon confirmation landing
     clearCart();
 
     try {
       const raw = sessionStorage.getItem("tohfa_last_order");
-      if (!raw) return;
+      if (!raw) {
+        const fromUrl = new URLSearchParams(window.location.search).get("order_id");
+        if (fromUrl) setRecoverOrderId(fromUrl);
+        return;
+      }
       const parsed: StashedOrder = JSON.parse(raw);
       setOrder(parsed);
 
@@ -64,6 +78,29 @@ export default function CheckoutSuccessPage() {
       console.error("Could not read stashed invoice:", e);
     }
   }, [clearCart]);
+
+  async function handleRecover(e: React.FormEvent) {
+    e.preventDefault();
+    setRecoverError("");
+    setRecovering(true);
+    try {
+      const res = await fetch("/api/orders/receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: recoverOrderId, phone: recoverPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRecoverError(data.error || "Could not load that receipt.");
+        return;
+      }
+      setOrder(data as StashedOrder);
+    } catch (err: unknown) {
+      setRecoverError(err instanceof Error ? err.message : "Could not load that receipt.");
+    } finally {
+      setRecovering(false);
+    }
+  }
 
   const gst = order?.gst || null;
 
@@ -132,6 +169,40 @@ export default function CheckoutSuccessPage() {
               <a href="/refunds" className="text-amber-800 dark:text-amber-400 underline font-medium hover:text-amber-700">रद्दीकरण और धनवापसी नीति</a> यहाँ देखें।
             </p>
           </div>
+
+          {/* RECOVERY FORM -- shown only when we arrived with ?order_id= but
+              have no stashed invoice (refresh / reopened tab / later visit). */}
+          {!order && recoverOrderId && (
+            <form
+              onSubmit={handleRecover}
+              className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-6 shadow-sm space-y-4 print:hidden"
+            >
+              <h2 className="text-xs uppercase tracking-wider text-stone-500 font-bold font-serif">View Your Invoice</h2>
+              <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                Enter the phone number you used at checkout to load the invoice for order{" "}
+                <span className="font-mono text-stone-700 dark:text-stone-300">{recoverOrderId}</span>.
+              </p>
+              <input
+                type="tel"
+                required
+                value={recoverPhone}
+                onChange={(ev) => setRecoverPhone(ev.target.value)}
+                placeholder="10-digit phone number"
+                className="w-full px-4 py-3 rounded border border-stone-300 dark:border-stone-700 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200"
+              />
+              {recoverError && <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">{recoverError}</p>}
+              <button
+                type="submit"
+                disabled={recovering}
+                className="w-full bg-stone-950 dark:bg-amber-700 hover:bg-amber-800 dark:hover:bg-amber-600 disabled:opacity-60 text-white font-medium text-xs uppercase tracking-widest py-3 rounded shadow transition active:scale-[0.99]"
+              >
+                {recovering ? "Loading..." : "View Invoice"}
+              </button>
+              <p className="text-[10px] text-stone-400 text-center">
+                You can also track this order any time at <a href="/track" className="underline hover:text-amber-600">/track</a>.
+              </p>
+            </form>
+          )}
 
           {/* PRINTABLE INVOICE */}
           {order && gst && (
