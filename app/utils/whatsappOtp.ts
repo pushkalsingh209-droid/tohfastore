@@ -13,6 +13,7 @@
 import crypto from "crypto";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import { normalizeIndianPhone } from "@/app/utils/phone";
 
 const CODE_LENGTH = 6;
 const CODE_TTL_MS = 5 * 60 * 1000; // how long a sent code is enterable
@@ -22,10 +23,9 @@ const RESEND_COOLDOWN_MS = 45 * 1000;
 const MAX_SENDS_PER_HOUR_PER_PHONE = 5;
 const MAX_SENDS_PER_HOUR_PER_IP = 10;
 
-function normalizePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  return digits.startsWith("91") ? digits : `91${digits}`;
-}
+// Canonical "91XXXXXXXXXX" form (app/utils/phone.ts). Local alias kept so
+// the rest of this file reads unchanged.
+const normalizePhone = normalizeIndianPhone;
 
 // Exposed for /api/razorpay -- it stores this exact normalized form in the
 // Razorpay order's own notes at creation time (immutable by the client
@@ -33,7 +33,7 @@ function normalizePhone(raw: string): string {
 // number instead of Razorpay's own payment.contact, which reflects
 // whatever the payer's checkout session ended up with and isn't
 // necessarily the number that was actually OTP-verified.
-export const normalizePhoneForRecord = normalizePhone;
+export const normalizePhoneForRecord = normalizeIndianPhone;
 
 function hashCode(code: string): string {
   return crypto.createHash("sha256").update(code).digest("hex");

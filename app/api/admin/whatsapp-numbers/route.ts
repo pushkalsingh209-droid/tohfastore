@@ -6,15 +6,13 @@
 import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { normalizeIndianPhone } from "@/app/utils/phone";
 
-// Normalizes "+91 6302672351" / "6302672351" / "916302672351" etc. into the
-// bare-digits "91XXXXXXXXXX" format used everywhere else in the codebase
-// (see app/utils/whatsapp.ts, app/utils/greenApi.ts).
-function normalizePhoneNumber(value: string): string {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length === 10) return `91${digits}`;
-  return digits;
-}
+// Accepted once normalised to "91XXXXXXXXXX": a real 10-digit Indian mobile
+// with its country code. (Replaces the old `digits.length < 10` guard --
+// which, now that normalizeIndianPhone always prepends "91", would never
+// fire; this regex rejects the short/long typos that guard was meant to.)
+const INDIAN_PHONE_REGEX = /^91[6-9]\d{9}$/;
 
 export async function GET() {
   const { data, error } = await supabase.from("whatsapp_numbers").select("*").order("label", { ascending: true });
@@ -25,9 +23,9 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { phone_number, label } = await req.json();
-    const normalized = normalizePhoneNumber(String(phone_number || ""));
-    if (normalized.length < 10) {
-      return NextResponse.json({ error: "Please enter a valid WhatsApp number." }, { status: 400 });
+    const normalized = normalizeIndianPhone(String(phone_number || ""));
+    if (!INDIAN_PHONE_REGEX.test(normalized)) {
+      return NextResponse.json({ error: "Please enter a valid 10-digit Indian WhatsApp number." }, { status: 400 });
     }
 
     const { data, error } = await supabase

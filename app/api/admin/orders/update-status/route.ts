@@ -4,6 +4,7 @@ import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { productHref } from "@/app/utils/slug";
+import { normalizeIndianPhone } from "@/app/utils/phone";
 
 const VALID_STATUSES = ["processing", "shipped", "delivered", "cancelled"];
 
@@ -96,7 +97,7 @@ export async function POST(req: Request) {
                 invoiceLine
               : `Your Tohfa order ${order.order_id} has been delivered. Thank you for shopping with us!${reviewLine}${invoiceLine}`;
 
-          const chatId = customerPhone.startsWith("91") ? `${customerPhone}@c.us` : `91${customerPhone}@c.us`;
+          const chatId = `${normalizeIndianPhone(String(customerPhone))}@c.us`;
 
           const res = await fetch(
             `${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`,
