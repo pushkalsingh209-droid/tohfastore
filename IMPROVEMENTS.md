@@ -249,11 +249,13 @@ care, land behind tests, never "blind".
     `razorpay`, `orders/*`, `admin/products`, `proxy.ts`), several of which look like real
     latent bugs. Own batch: fix those, then delete the hand-written `any`s.
 
-16. **Split `app/admin/page.tsx`** (3,689 lines, one client component). **Decomposition
-    plan written 2026-08-29 → `docs/DESIGN-split-admin-page.md`** (stay one route; per-tab
-    lazy components under `app/admin/tabs/`, shared state via one `AdminDataContext`, keep
-    `loadAll`; ship one PR per tab with a click-through checklist). Needs a dev server to
-    verify each tab. Awaiting owner review.
+16. **Split `app/admin/page.tsx`** — *in progress (2026-08-29).* Plan:
+    `docs/DESIGN-split-admin-page.md` (stay one route; per-tab lazy components under
+    `app/admin/tabs/`, shared state via `AdminDataContext`, keep `loadAll`; one PR per
+    tab + owner click-through). **Done:** scaffold (`apiRequest` → `admin/lib/`,
+    `AdminDataContext`) + `SecurityTab` moved out (page −169 lines, −4 `no-explicit-any`).
+    **Left:** `overview`, `products` (the big one), `orders`, `coupons`, `settings`,
+    `reviews` — one PR each.
 
 17. **Extract the checkout state machine** from `CartDrawer.tsx` (1,159 lines, 26
     `useState`). **⚠️ payment path. Decomposition plan written 2026-08-29 →
