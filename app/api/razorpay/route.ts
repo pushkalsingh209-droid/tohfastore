@@ -6,6 +6,7 @@ import { validateAndCalculateDiscount } from "@/app/utils/coupons";
 import { calculateOrderGstBreakdown, GST_RATE } from "@/app/utils/gst";
 import { isVerificationTokenValid, normalizePhoneForRecord } from "@/app/utils/whatsappOtp";
 import { serverErrorResponse } from "@/app/utils/apiError";
+import { repriceCart, type RepriceProduct } from "@/app/utils/repricing";
 
 // Interface definition to explicitly type incoming shopping bag artifacts
 interface CartItem {
@@ -89,7 +90,7 @@ export async function POST(req: Request) {
     // categories panel); products with no category, or a category that's
     // since been deleted, fall back to the site default rate.
     const categoryNames = Array.from(
-      new Set((dbProducts || []).map((p: any) => p.category).filter(Boolean))
+      new Set(((dbProducts ?? []) as RepriceProduct[]).map((p) => p.category).filter(Boolean))
     );
     const categoryGstRates = new Map<string, number>();
     if (categoryNames.length > 0) {
@@ -99,41 +100,18 @@ export async function POST(req: Request) {
       }
     }
 
-    const pricedItems = (items as CartItem[]).map((item) => {
-      const product = dbProducts?.find((p: any) => String(p.id) === String(item.id));
-      if (!product) return null;
-      const quantity = Math.max(1, Math.floor(Number(item.quantity) || 0));
-      const gstRate = product.category && categoryGstRates.has(product.category)
-        ? categoryGstRates.get(product.category)!
-        : GST_RATE * 100;
-      return { id: product.id, name: product.name, price: Number(product.price), quantity, gstRate, image_url: product.image_url, category: product.category };
-    });
-
-    if (pricedItems.some((i) => i === null)) {
-      return NextResponse.json({ error: "One or more items in your bag are no longer available." }, { status: 400 });
+    // Rebuild every line from the DB (price, name, GST rate), reject
+    // anything not currently on sale in enough stock, and get the
+    // authoritative subtotal. Pure + unit-tested in app/utils/repricing.ts
+    // -- see there for the exact coercion / rejection rules and the reasons
+    // behind them (this was inline here before). `hidden = false` is applied
+    // in the query above, so a hidden product just isn't in dbProducts and
+    // trips the "no longer available" rejection like a deleted one.
+    const repriced = repriceCart(items, (dbProducts ?? []) as RepriceProduct[], categoryGstRates, GST_RATE * 100);
+    if (!repriced.ok) {
+      return NextResponse.json({ error: repriced.error }, { status: repriced.status });
     }
-
-    // Reject rather than silently clamp -- the client's own add-to-cart UI
-    // already tries to keep quantity within stock, but nothing server-side
-    // enforced it before now, so a direct call here could otherwise pay for
-    // more units than actually exist. (Doesn't close the narrower race of
-    // two checkouts for the last unit landing at nearly the same instant --
-    // stock itself is only ever decremented post-payment, in the webhook.)
-    for (const item of pricedItems as { id: number | string; name: string; quantity: number }[]) {
-      const product = dbProducts?.find((p: any) => String(p.id) === String(item.id));
-      if (product && item.quantity > Number(product.inventory)) {
-        return NextResponse.json({ error: `Only ${product.inventory} unit(s) of "${item.name}" are available.` }, { status: 400 });
-      }
-    }
-
-    const subtotal = (pricedItems as { price: number; quantity: number }[]).reduce(
-      (sum, i) => sum + i.price * i.quantity,
-      0
-    );
-
-    if (subtotal <= 0) {
-      return NextResponse.json({ error: "Invalid total transactional calculation." }, { status: 400 });
-    }
+    const { pricedItems, subtotal } = repriced;
 
     // 4. Validate and apply a coupon code server-side, so the discount is
     // authoritative rather than something the client could fabricate.
