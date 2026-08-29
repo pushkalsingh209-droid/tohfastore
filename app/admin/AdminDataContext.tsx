@@ -38,6 +38,24 @@ export interface AdminCoupon {
   is_public: boolean;
 }
 
+export interface AdminOrderItem {
+  name?: string;
+  quantity?: number;
+}
+
+export interface AdminOrder {
+  id: number;
+  order_id: string;
+  payment_id: string;
+  created_at: string;
+  amount: number | string;
+  status?: string;
+  awb_number?: string | null;
+  customer_details?: { name?: string; email?: string; contact?: string } | null;
+  shipping_address?: { line?: string; landmark?: string; city?: string; state?: string; pincode?: string } | null;
+  items?: AdminOrderItem[];
+}
+
 export interface AdminData {
   // --- security tab ---
   loginAttempts: AdminLoginAttempt[];
@@ -49,6 +67,10 @@ export interface AdminData {
   // --- coupons tab ---
   coupons: AdminCoupon[];
   setCoupons: (value: AdminCoupon[]) => void;
+  // --- orders tab ---
+  orders: AdminOrder[];
+  setOrders: (value: AdminOrder[]) => void;
+  loadingOrders: boolean;
 }
 
 const AdminDataContext = createContext<AdminData | null>(null);
