@@ -206,6 +206,29 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>17:45</code></td>
+  <td><strong>Decomposition plans: admin split · checkout machine · bootstrap context</strong><br>(<code>IMPROVEMENTS.md</code> #16, #17, #11)</td>
+  <td>
+    Docs-only &mdash; three refactor plans for review, no code. Each of the three needs a running dev server
+    to verify safely (I have none), so they&rsquo;re written up rather than attempted blind.<br>
+    &bull; <code>docs/DESIGN-split-admin-page.md</code> &mdash; <code>app/admin/page.tsx</code> (3,689 lines)
+    &rarr; per-tab lazy components + one <code>AdminDataContext</code>, stays a single route, one PR per tab.<br>
+    &bull; <code>docs/DESIGN-extract-checkout-machine.md</code> &mdash; ⚠️ <code>CartDrawer</code>&rsquo;s OTP /
+    payment state into a <code>useCheckoutMachine</code> reducer (discriminated <code>phase</code> union, pure
+    unit tests); nothing server-side changes; 3 slices; merge only after a live test-mode checkout.<br>
+    &bull; <code>docs/DESIGN-bootstrap-context.md</code> &mdash; 10 providers (7 fetch on mount, 5&times; the
+    same <code>/api/settings</code>) &rarr; one server-fed <code>BootstrapProvider</code>, hooks become
+    selectors keeping their signatures, 0 client fetches.<br>
+    Each doc ends with a verification checklist and open questions for the owner.
+  </td>
+  <td>
+    <em>new:</em> <code>docs/DESIGN-split-admin-page.md</code>, <code>docs/DESIGN-extract-checkout-machine.md</code>,
+    <code>docs/DESIGN-bootstrap-context.md</code><br>
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>n/a &mdash; docs only.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>17:20</code></td>
   <td><strong>Test the checkout re-price guard (extract <code>repriceCart</code>)</strong><br>(<code>IMPROVEMENTS.md</code> T5&nbsp;#21)</td>
   <td>
