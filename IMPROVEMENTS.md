@@ -269,10 +269,11 @@ care, land behind tests, never "blind".
     + stepper; coupon on step 3 with the available public coupons shown tap-to-apply. Money
     path unchanged — step 3's "Pay ₹X" calls today's `handleRazorpayPayment` verbatim.
     **17a done:** `app/components/checkout/useCheckoutMachine.ts` (pure reducer, `phase` =
-    step, holds no field data) + 17 unit tests. **Left:** 17b `CheckoutSheet` + 3 step
-    components + `?checkout=preview` dev flag (needs a dev-server walk-through + one live
-    ~₹1 order via a ~99%-off private coupon, then refund, to merge); 17c delete the old
-    inline form.
+    step, holds no field data) + 17 unit tests. **17b spec'd** — file-by-file in the design
+    doc §12 (`CheckoutSheet` + `Stepper` + 3 step components + `useAvailableCoupons` +
+    `?checkout=preview`; verbatim moves + minimal `handleRazorpayPayment` edits). **Left:**
+    execute 17b (needs a dev-server walk-through + one live ~₹1 order via a ~99%-off private
+    coupon, then refund, to merge); 17c delete the old inline form.
 
 18. **Consolidate phone normalisation** — reimplemented with slightly different rules in
     `whatsappOtp.ts`, `whatsapp-numbers/route.ts`, `stock-alerts/route.ts`,
