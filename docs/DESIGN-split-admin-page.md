@@ -72,15 +72,46 @@ component. This matches the codebase's existing context pattern and avoids
    still renders every tab inline. Pure plumbing, no visible change. Verify.
 2. **Pull helpers** into `app/admin/lib/` (formatters, draft logic). Verify.
 3. **Move one tab at a time** into `tabs/<Tab>Tab.tsx` + `dynamic()` import,
-   relocating that tab's local state with it. Order: `security` → `reviews` →
-   `coupons` → `overview` → `orders` → `settings` → `products` (smallest and
-   least-risky first; `products` last because the product-editor form is the
-   largest single chunk).
+   relocating that tab's local state with it.
 4. After all seven: the page component should be ~200–300 lines.
 
-**PR strategy:** given the "one PR at a time" rule and that each tab needs a
-manual click-through, ship this as **one PR per tab** (7 small PRs) or **one PR
-for steps 1–2 + one PR per tab**. Not one 3,600-line PR.
+**PR strategy:** one PR per tab, each with a manual click-through before merge.
+Not one 3,600-line PR.
+
+### Progress (2026-08-29)
+
+**Done, merged:** scaffold (`AdminDataContext`, `admin/lib/apiRequest.ts`) +
+`SecurityTab` · `ReviewsTab` · `CouponsTab` · `OrdersTab` · `OverviewTab`.
+Page `app/admin/page.tsx` 3,689 → **2,636 lines**, `no-explicit-any` −28,
+`set-state-in-effect` −1 (OrdersTab's page-reset effect became two change
+handlers).
+
+**Parked: `products` + `settings`.** Investigating `settings` surfaced that the
+two are **mutually entangled** and can't be split one-at-a-time cleanly:
+
+- `labels`, `categories`, `whatsappNumbers` are read **and written** by both
+  tabs.
+- `handleAddLabel` / `handleAddWhatsappNumber` are invoked from the **product
+  form** but mutate data the **settings tab** also manages; `handleAddColor` /
+  `handleAddMaterial` are products-only.
+- Splitting `settings` first would mean threading ~12 products-form handlers +
+  their input state through the context as pass-through — bloat that unwinds
+  when `products` moves anyway.
+
+**Resume order: `products` first, split into 3 sub-PRs:**
+
+| Sub-PR | Scope |
+|---|---|
+| **6a** | Live Catalog & Stock Tracker table + inline handlers (`handleStockUpdate`, `handleInline{Label,PhotoFilter,CostPrice,HiddenToggle}Update`, `handleDisplayOrderUpdate`, `defaultBrassDraft`/`handleBrassSpecUpdate`, `defaultSpecDraft`/`handleSpecUpdate`, `handleTrackerBulkAssignLabel`) + `GroupStatsPanel` + `InventoryInsightsPanel`. Needs `products`+`setProducts`, `categories`, `labels`, `soldCountByProductId`, `settings`, `refetch` in the context. |
+| **6b** | The add/edit **form** — `formData`, `handleSubmit`, `handleEditClick`, `handleCancelEdit`, image-row handlers, `handleWeightUnitChange`/`handleDimensionUnitChange`, the g/cm↔input-unit converter. `visibleProducts` / `paginatedProducts` memos + the `productPage` reset effect (fold into change-handlers like OrdersTab did). |
+| **6c** | Dropdown management — `handleAdd{Color,Material,Label,WhatsappNumber}` + `colors`/`materials`/`newColorName`/etc. Adds `colors`+`setColors`, `materials`+`setMaterials`, `whatsappNumbers`+`setWhatsappNumbers` to the context. |
+
+Then **`settings`** last — by then it only needs read access to shared
+`labels`/`categories`/`whatsappNumbers` + a few setters + `refetch`.
+
+**All of `products` needs a running dev server** (`npm run dev` + admin login)
+to click through — the editor form is the critical path and `next build` + `tsc`
+won't catch a mis-wired setter or a lost effect dep.
 
 ## 5. Risks / traps
 

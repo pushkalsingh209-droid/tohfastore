@@ -206,6 +206,25 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>21:40</code></td>
+  <td><strong>#16 &mdash; park <code>products</code> + <code>settings</code></strong><br>(<code>IMPROVEMENTS.md</code> #16; docs-only)</td>
+  <td>
+    After moving 5 of 7 admin tabs (page 3,689 &rarr; 2,636 lines, &minus;28 <code>no-explicit-any</code>),
+    investigation of <code>settings</code> found it and <code>products</code> mutually entangled &mdash;
+    <code>labels</code> / <code>categories</code> / <code>whatsappNumbers</code> are read <em>and written</em> by
+    both tabs, and the product form&rsquo;s <code>handleAdd{Color,Material,Label,WhatsappNumber}</code> handlers
+    manage data the settings tab also manages. <code>products</code> alone is ~24 functions + ~745 lines of the
+    critical editor and can&rsquo;t be verified without a running dev server. Both parked for a later dev-server
+    session; <code>docs/DESIGN-split-admin-page.md</code> updated with a 3-sub-PR plan for <code>products</code>
+    (stock tracker / editor form / dropdown-mgmt), then <code>settings</code>. No code change.
+  </td>
+  <td>
+    <code>docs/ARCHITECTURE.html</code> &middot; <code>docs/DESIGN-split-admin-page.md</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>n/a &mdash; docs only.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>21:05</code></td>
   <td><strong>#16 &mdash; split <code>admin/page.tsx</code>: <code>OverviewTab</code></strong><br>(<code>IMPROVEMENTS.md</code> #16)</td>
   <td>
@@ -1538,12 +1557,18 @@ alert shows only the real price.</p>
 </ol>
 
 <h3>Tabs (<code>?tab=</code>, <code>ADMIN_TABS</code>)</h3>
-<p class="muted"><strong>Split in progress (#16, <code>docs/DESIGN-split-admin-page.md</code>):</strong>
-<code>app/admin/page.tsx</code> (was 3,689 lines) is being broken into per-tab lazy components under
-<code>app/admin/tabs/</code>. The page stays one route and keeps <code>loadAll()</code>; each extracted tab reads
-its slice of that state through <code>app/admin/AdminDataContext.tsx</code> (<code>useAdminData()</code>), which
-grows one entry per tab moved. Shared helper: <code>app/admin/lib/apiRequest.ts</code>.
-<strong>Done so far:</strong> <code>security</code>, <code>reviews</code>, <code>coupons</code>, <code>orders</code>, <code>overview</code> (2026-08-29).</p>
+<p class="muted"><strong>Split &mdash; 5 of 7 tabs done (#16, <code>docs/DESIGN-split-admin-page.md</code>):</strong>
+<code>app/admin/page.tsx</code> (3,689 &rarr; <strong>2,636 lines</strong>) is being broken into per-tab lazy
+components under <code>app/admin/tabs/</code>. The page stays one route and keeps <code>loadAll()</code>; each
+extracted tab reads its slice of that state through <code>app/admin/AdminDataContext.tsx</code>
+(<code>useAdminData()</code>). Shared helper: <code>app/admin/lib/apiRequest.ts</code>.
+<strong>Moved:</strong> <code>security</code>, <code>reviews</code>, <code>coupons</code>, <code>orders</code>,
+<code>overview</code> (2026-08-29). <strong>Still inline &mdash; parked:</strong> <code>products</code> and
+<code>settings</code>. They&rsquo;re mutually entangled (<code>labels</code> / <code>categories</code> /
+<code>whatsappNumbers</code> are read <em>and written</em> by both; the <code>handleAdd*</code> handlers live with
+the product form but manage settings data), and <code>products</code> alone is ~24 functions + ~745 lines of the
+critical editor UI &mdash; too large/risky to move without a running dev server to click through. Resume with
+<code>products</code> first, split into 3 sub-PRs (see the design doc).</p>
 <div class="x"><table>
 <thead><tr><th>Tab</th><th>Contents</th></tr></thead>
 <tbody>
