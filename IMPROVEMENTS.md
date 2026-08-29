@@ -265,6 +265,12 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 5 (tests)
 
-21. **Integration-test the payment path.** The "reprice every item from DB" guard in
-    `/api/razorpay` is security-critical and untested. Also untested: webhook
-    idempotency, coupon `used_count` increment.
+21. **Integration-test the payment path.** — *mostly done (2026-08-29).* The re-price
+    guard in `/api/razorpay` is extracted to a pure `app/utils/repricing.ts`
+    (`repriceCart`) with 12 unit tests — DB price wins, id-type match, quantity coercion,
+    over-stock rejection, category/default GST, subtotal, empty cart, rejection order.
+    Byte-for-byte behaviour match; route just maps the result. **Left as-is:** webhook
+    idempotency (guaranteed by `UNIQUE(payment_id)`, migration 0037) and coupon
+    `used_count` increment (`validateAndCalculateDiscount` already covered by
+    `coupons.test.ts`; the increment itself is a one-line DB write). A true end-to-end
+    Razorpay-mode test would need a running app + test keys — out of scope here.
