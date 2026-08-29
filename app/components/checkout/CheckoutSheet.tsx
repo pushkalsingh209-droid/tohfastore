@@ -4,16 +4,18 @@
 // phase / OTP / cooldown / verified-credentials. See §12 of
 // docs/DESIGN-extract-checkout-machine.md.
 //
-// BUILD PROGRESS: steps 1–2 of the interactive build done — the shell +
-// Stepper + nav + ContactStep (name/email/phone + WhatsApp OTP). Step 1's
-// footer now gates on real verification. DeliveryStep / ReviewStep and the
-// real handleRazorpayPayment land next; the step-2 footer still advances
-// unconditionally (TEMP).
+// BUILD PROGRESS: steps 1–3 of the interactive build done — the shell +
+// Stepper + nav + ContactStep (name/email/phone + WhatsApp OTP) +
+// DeliveryStep (pincode-first address). Steps 1 & 2 footers gate on real
+// validation. ReviewStep + the real handleRazorpayPayment land next; the
+// step-3 footer is inert (TEMP).
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useCart } from "@/app/context/CartContext";
+import { INDIAN_STATES } from "@/app/utils/indianStates";
 import Stepper from "@/app/components/checkout/Stepper";
 import ContactStep, { type OtpUi } from "@/app/components/checkout/steps/ContactStep";
+import DeliveryStep, { type PincodeLookupStatus } from "@/app/components/checkout/steps/DeliveryStep";
 import { useCheckoutMachine } from "@/app/components/checkout/useCheckoutMachine";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -37,6 +39,15 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
   const [whatsappCheckedPhone, setWhatsappCheckedPhone] = useState("");
   const whatsappCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const validationErrorRef = useRef<HTMLDivElement | null>(null);
+
+  // --- delivery address (step 2) ---
+  const [addressLine, setAddressLine] = useState("");
+  const [landmark, setLandmark] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [city, setCity] = useState("");
+  const [addressState, setAddressState] = useState("");
+  const [pincodeLookupStatus, setPincodeLookupStatus] = useState<PincodeLookupStatus>("idle");
+  const pincodeLookupRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // A phone edit drops any verification -- same trigger as the old OTP
   // reset effect in CartDrawer, but done in the change handler (not an
@@ -99,6 +110,37 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
       if (whatsappCheckRef.current) clearTimeout(whatsappCheckRef.current);
     };
   }, [customerPhone]);
+
+  // City/state lookup from the PIN once 6 digits are in -- verbatim port of
+  // CartDrawer's debounced lookup (own server proxy; the public API has no
+  // CORS). Only overwrites city/state on success; both stay editable.
+  useEffect(() => {
+    if (pincodeLookupRef.current) clearTimeout(pincodeLookupRef.current);
+    if (!/^\d{6}$/.test(pincode)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPincodeLookupStatus("idle");
+      return;
+    }
+    setPincodeLookupStatus("loading");
+    pincodeLookupRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/pincode/${pincode}`);
+        const data = await res.json();
+        if (!res.ok) {
+          setPincodeLookupStatus("error");
+          return;
+        }
+        if (data.city) setCity(data.city);
+        if (data.state && INDIAN_STATES.includes(data.state)) setAddressState(data.state);
+        setPincodeLookupStatus("done");
+      } catch {
+        setPincodeLookupStatus("error");
+      }
+    }, 500);
+    return () => {
+      if (pincodeLookupRef.current) clearTimeout(pincodeLookupRef.current);
+    };
+  }, [pincode]);
 
   function fieldBorderClass(isInvalid: boolean) {
     return isInvalid
@@ -178,6 +220,32 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
     return true;
   }
 
+  function validateDelivery(): boolean {
+    setValidationError("");
+    setInvalidField(null);
+    if (!/^\d{6}$/.test(pincode)) {
+      setValidationError("Please enter a valid 6-digit PIN code.");
+      flagInvalid("pincode");
+      return false;
+    }
+    if (!addressLine.trim()) {
+      setValidationError("Please enter your address (House/Flat No., Street, Area).");
+      flagInvalid("address");
+      return false;
+    }
+    if (!city.trim()) {
+      setValidationError("Please enter your city.");
+      flagInvalid("city");
+      return false;
+    }
+    if (!addressState) {
+      setValidationError("Please select your state.");
+      flagInvalid("state");
+      return false;
+    }
+    return true;
+  }
+
   // --- reducer -> UI adapters for ContactStep ---
   const otpUi: OtpUi =
     m.state.phase === "contact"
@@ -209,8 +277,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
       return;
     }
     if (m.step === 2) {
-      // TEMP until DeliveryStep validation lands
-      m.goReview();
+      if (validateDelivery()) m.goReview();
       return;
     }
     // step 3: payment not wired yet
@@ -220,7 +287,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
     m.step === 1
       ? "Continue"
       : m.step === 2
-      ? "Continue"
+      ? "Continue to Review"
       : `Pay ₹${Math.round(cartTotal).toLocaleString("en-IN")}`;
   const footerDisabled = (m.step === 1 && !m.contactVerified) || m.step === 3;
 
@@ -274,7 +341,26 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
               }}
             />
           )}
-          {m.step === 2 && <Placeholder title="Delivery" body="Pincode-first address form lands here." />}
+          {m.step === 2 && (
+            <DeliveryStep
+              bag={{
+                addressLine,
+                setAddressLine,
+                landmark,
+                setLandmark,
+                pincode,
+                setPincode,
+                city,
+                setCity,
+                addressState,
+                setAddressState,
+                pincodeLookupStatus,
+                invalidField,
+                clearInvalid: () => setInvalidField(null),
+                fieldBorderClass,
+              }}
+            />
+          )}
           {m.step === 3 && (
             <Placeholder
               title="Review & Pay"
