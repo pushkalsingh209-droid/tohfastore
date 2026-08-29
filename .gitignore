@@ -42,3 +42,10 @@ next-env.d.ts
 
 # one-off migration manifests (local run state, not source)
 /scripts/.image-migration-manifest.json
+
+# supabase CLI local state (project ref, pooler URL, cached versions) --
+# created by `supabase link`, not source. config.toml IS committed if we
+# ever run `supabase init`.
+/supabase/.temp/
+/supabase/.branches/
+/schema-snapshot.sql

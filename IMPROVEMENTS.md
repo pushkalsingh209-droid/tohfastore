@@ -124,8 +124,9 @@ care, land behind tests, never "blind".
   **Verified 7/7 against the live project.** (was Tier 2 #5)
 - **`supabase/migrations/0000_base_schema.sql`** — reconstructed base `products`/`orders`
   DDL so a fresh/staging project is reproducible from the folder. `IF NOT EXISTS`
-  throughout (no-op on prod); a few column types flagged "verify against live".
-  (was Tier 1 #4 — partial: the Supabase-CLI adoption half is still open, see #4 below.)
+  throughout (no-op on prod). **Verified against live 2026-08-29** (information_schema
+  introspection) — corrected identity to `BY DEFAULT`, `images` to `text[]`, `inventory`
+  to `bigint`/nullable, and several columns to nullable. (was Tier 1 #4.)
 - **5xx error scrubbing — public routes done.** Extended `serverErrorResponse` to
   `/api/leads`, `/api/contact`, `/api/reviews`, `/api/enquiries`, `/api/track-view`,
   `/api/stock-alerts`, `/api/coupons/validate`. (was Tier 2 #6 — admin routes remain.)
@@ -165,11 +166,15 @@ care, land behind tests, never "blind".
    RPC (`0042`), `getSoldCounts` reads it, webhook +1, admin cancel −1, all confirmed
    against prod. `getBestsellers`/`getRelatedProducts` keep the 300-order scan on purpose.
 
-3. **Adopt the Supabase CLI for migrations.** `0000_base_schema.sql` now exists (done),
-   but migrations are still hand-pasted into the SQL editor. `supabase db pull` /
-   `supabase migration` would make them versioned + repeatable and let `0000` be
-   verified against the real DDL (a few column types in it are still guessed). Also wire
-   an RLS `pg_policies` snapshot check.
+3. **Adopt the Supabase CLI for migrations.** — *partly done (2026-08-29).* CLI installed +
+   linked (project `gxlervcazzddqcoagewy`); `0000_base_schema.sql` **verified against live**
+   via SQL introspection and corrected. **Blocked on Docker** for the rest: `supabase db
+   pull` / `db dump` / `db push` all shell out to a container, and `db push` also needs the
+   43 existing migrations backfilled into the remote `schema_migrations` table (`supabase
+   migration repair --status applied 0000…0042`). Until Docker Desktop is installed,
+   migrations stay hand-pasted into the SQL editor (which works fine). Still open: the RLS
+   `pg_policies` snapshot check (can be a plain SQL query in a scheduled job — no CLI
+   needed).
 
 ## Active — Tier 2 (security / hardening)
 
