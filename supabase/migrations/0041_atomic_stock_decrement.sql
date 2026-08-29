@@ -50,6 +50,11 @@ $$;
 -- Only the service role (used server-side by the webhook) may call this.
 -- A browser holding the anon/publishable key must never be able to
 -- decrement stock via rpc(); mirrors the RLS lockdown on every table.
+--
+-- NOTE: `revoke ... from public` also removes EXECUTE from service_role
+-- (it inherits the default PUBLIC grant), so it must be re-granted
+-- explicitly or the webhook's rpc() call fails.
 revoke all on function decrement_inventory(bigint, integer) from public;
 revoke all on function decrement_inventory(bigint, integer) from anon;
 revoke all on function decrement_inventory(bigint, integer) from authenticated;
+grant execute on function decrement_inventory(bigint, integer) to service_role;
