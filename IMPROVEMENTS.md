@@ -12,6 +12,21 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Atomic stock decrement + oversell alert — 2026-08-29 12:33 IST
+- Migration `0041` — `decrement_inventory(p_product_id, p_qty)`: `SELECT … FOR UPDATE`
+  row lock, one atomic call, returns `(new_inventory, oversold_by)`. `EXECUTE` revoked
+  from public/anon/authenticated. **Applied to the live DB (verified in `pg_proc`) before
+  the code merged.**
+- `app/api/razorpay-webhook/route.ts` — per-item read-modify-write loop → one
+  `supabase.rpc("decrement_inventory", …)` per line. Concurrent webhooks for the same
+  product now serialise on the row lock instead of racing. `oversold_by > 0` fires a
+  business "OVERSELL — action needed" WhatsApp (`sendOversellAlert`). Low-stock alert and
+  the "no revalidateTag" behaviour preserved. (was Tier 1 #1; #2 partly — see #1 below
+  for the remaining reservation-window follow-up.)
+- Verified: `next build` exit 0 (240 pages), `tsc` clean, `npm test` 51 pass / 7 gated,
+  eslint −2 on the webhook. **Owner still owes one live test payment** end-to-end; revert
+  target `57ffd29`.
+
 ### Batch: Share the recent-orders scan — 2026-08-29 11:23 IST
 - New cached `getRecentOrderItems` (last 300 orders' `items`, tag `orders`);
   `getBestsellers` + `getRelatedProducts` share it instead of two near-identical
@@ -106,24 +121,20 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 1 (correctness / money)
 
-1. **⚠️ Non-atomic stock deduction + 2. oversell not surfaced — PROPOSAL DRAFTED.**
-   Branch `proposal-atomic-stock-decrement` (2026-08-29): migration `0041` adds
-   `decrement_inventory()` (`SELECT … FOR UPDATE`, one atomic call, returns
-   `(new_inventory, oversold_by)`, `EXECUTE` revoked from anon/authenticated); the webhook
-   calls it via `rpc()` and fires a business "OVERSELL — action needed" WhatsApp when
-   `oversold_by > 0`. Static checks pass (`next build` / `tsc` / `npm test` 51).
-   **Not on `main`.** To land: (a) run `0041` in the Supabase SQL editor **first**, then
-   (b) deploy the code, then (c) run one live test payment and confirm the order records +
-   confirmations send + inventory drops by the right amount. Full-fix for the oversell
-   window (short-TTL stock reservation at order creation) is still a separate, larger job.
+1. **⚠️ Non-atomic stock deduction in the webhook.**
+   Still a separate, larger follow-up: a **short-TTL stock reservation at order creation**
+   so two checkouts for the last unit can't both *pay*. The race between concurrent
+   webhooks, and surfacing an oversell, are fixed — see Done (2026-08-29 12:33): migration
+   `0041` `decrement_inventory()` + `rpc()` + `sendOversellAlert`. **Owner still owes one
+   live test payment** to confirm the RPC path end-to-end (revert target `57ffd29`).
 
-3. **Sold-count accuracy degrades past ~300 orders.**
+2. **Sold-count accuracy degrades past ~300 orders.**
    `getSoldCounts` / `getBestsellers` / `getRelatedProducts` each scan only the last 300
    orders; the customer-facing "N sold" number drifts.
    *Fix:* a `product_sales` aggregate table incremented in the webhook, decremented on
    cancel. Migration + webhook change (⚠️ payment path).
 
-4. **Adopt the Supabase CLI for migrations.** `0000_base_schema.sql` now exists (done),
+3. **Adopt the Supabase CLI for migrations.** `0000_base_schema.sql` now exists (done),
    but migrations are still hand-pasted into the SQL editor. `supabase db pull` /
    `supabase migration` would make them versioned + repeatable and let `0000` be
    verified against the real DDL (a few column types in it are still guessed). Also wire
