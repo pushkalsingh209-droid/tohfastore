@@ -12,6 +12,36 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: 3-step checkout — 17a + 17b (#17) — 2026-08-30 02:10 IST
+- **⚠️ payment path.** `CartDrawer`'s single inline form is replaced by
+  `app/components/checkout/CheckoutSheet.tsx` — a 3-step sheet (**Contact&Verify → Delivery
+  → Review&Pay**) driven by the `useCheckoutMachine` reducer (17a). Steps are
+  `steps/{ContactStep,DeliveryStep,ReviewStep}.tsx` + a sticky `Stepper.tsx`; JSX lifted
+  verbatim from `CartDrawer`, each step owns its own refs.
+- **Delivery** is pincode-first (PIN leads the DOM so `/api/pincode` fills city/state
+  before the customer gets there). **Review**: collapsible summary (old footer math
+  verbatim), coupon field, **new tap-to-apply list of live public coupons**
+  (`useAvailableCoupons` → new `GET /api/coupons/public`, reuses `getPublicCoupons` +
+  `filterLivePublicCoupons`), bilingual policy consent gating the Pay button.
+- **Payment**: `handleRazorpayPayment` is the byte-for-byte `CartDrawer` body — same
+  `/api/razorpay`, `options`, fast-path `/api/razorpay-webhook`, `sessionStorage` stash,
+  `/success` redirect. Machine dispatches threaded in (DESIGN §12.6): `submitPayment()` /
+  `verificationExpired()` on `code:"verification_required"` / `razorpayOpened()` /
+  `modal.ondismiss → paymentDismissed()` / `reset()` before redirect. OTP token read from
+  `m.credentials`.
+- Reducer: `PAYMENT_DISMISSED` also rewinds `paying → review` (+ test, 18 total). The
+  `checkout_started` lead beacon (`POST /api/leads` on verify, once per phone) ported into
+  the sheet so the §21 abandoned-checkout cron keeps its signal.
+- **Cutover**: "Proceed to Checkout" opens the sheet for everyone. The old coupon block +
+  `<form id="checkout-contact-form">` + footer submit are gated behind `LEGACY_CHECKOUT`
+  (env `NEXT_PUBLIC_LEGACY_CHECKOUT=1` + redeploy) as a fallback.
+- **Verified live end-to-end by the owner** — bought a real product through all 3 steps →
+  Razorpay → `/success`. Local: `next build` exit 0, `tsc` clean, `npm test` 89/7 (18 in
+  `useCheckoutMachine.test.ts`), `eslint` clean on every new checkout file; `CartDrawer`
+  unchanged vs its lint baseline. **17c still open** (see Active #17): delete the dead
+  legacy form + the `LEGACY_CHECKOUT` flag after a few clean days. The `?checkout=preview`
+  dev flag was not built (dev preview button + the live test covered it).
+
 ### Batch: Incremental units-sold tally (`product_sales`) — 2026-08-29 13:20 IST
 - Migration `0042` — `product_sales(product_id, units_sold, updated_at)` aggregate (RLS on,
   no policy) + `apply_product_sales(p_items jsonb, p_sign int)` RPC: signed per-line-item
@@ -261,19 +291,16 @@ care, land behind tests, never "blind".
     Do them **with a dev-server loop**, `products` first (split into 3 sub-PRs: stock
     tracker / editor form / dropdown-mgmt — see the design doc), then `settings`.
 
-17. **Multi-step checkout + state-machine extract** from `CartDrawer.tsx` — *in progress
-    (2026-08-29).* **⚠️ payment path.** Spec locked in
-    `docs/DESIGN-extract-checkout-machine.md` (§11): **3 steps** — Contact&Verify →
-    Delivery (pincode-first) → Review&Pay; mobile full-height sheet with 3-segment progress
-    header + sticky footer button, cart hidden during checkout; desktop keeps drawer height
-    + stepper; coupon on step 3 with the available public coupons shown tap-to-apply. Money
-    path unchanged — step 3's "Pay ₹X" calls today's `handleRazorpayPayment` verbatim.
-    **17a done:** `app/components/checkout/useCheckoutMachine.ts` (pure reducer, `phase` =
-    step, holds no field data) + 17 unit tests. **17b spec'd** — file-by-file in the design
-    doc §12 (`CheckoutSheet` + `Stepper` + 3 step components + `useAvailableCoupons` +
-    `?checkout=preview`; verbatim moves + minimal `handleRazorpayPayment` edits). **Left:**
-    execute 17b (needs a dev-server walk-through + one live ~₹1 order via a ~99%-off private
-    coupon, then refund, to merge); 17c delete the old inline form.
+17. **Multi-step checkout — 17c (cleanup only).** **17a + 17b shipped 2026-08-30** (see
+    Done). All that's left: **delete the dead legacy checkout** from `CartDrawer.tsx` — the
+    `LEGACY_CHECKOUT`-gated coupon block + `<form id="checkout-contact-form">` + footer
+    submit IIFE, the `NEXT_PUBLIC_LEGACY_CHECKOUT` flag, and the now-unused state / refs /
+    handlers / effects at the top of the component (`otpStatus`, `handleSendOtp`,
+    `handleVerifyOtp`, `handleRazorpayPayment`, the pincode-lookup + whatsapp-check +
+    lead-beacon effects, `*InputRef`s, `handleApplyCoupon`, …). Do it only after the new
+    flow has a few clean days of live orders. Verify: `next build` + `tsc` + `npm test` +
+    `eslint` (`CartDrawer` should *drop* well below its current baseline once the dead
+    `any`-typed handlers go).
 
 18. **Consolidate phone normalisation** — reimplemented with slightly different rules in
     `whatsappOtp.ts`, `whatsapp-numbers/route.ts`, `stock-alerts/route.ts`,
