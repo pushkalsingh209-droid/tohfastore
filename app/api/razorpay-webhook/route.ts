@@ -205,39 +205,57 @@ export async function POST(req: Request) {
       }
 
       // 1b. Deduct purchased quantities from live stock so sold-out items stop
-      // accepting further orders. Best-effort: a failure here must not block
-      // order confirmation or the WhatsApp alert below.
+      // accepting further orders. Each decrement is one atomic DB call
+      // (decrement_inventory, migration 0041) that row-locks the product --
+      // so two webhooks for different orders of the same item can't race and
+      // lose a decrement. It also reports oversold_by: units ordered beyond
+      // what was in stock at capture time (payment is real, so the order
+      // still stands -- a human just has to sort fulfilment). Best-effort: a
+      // failure here must not block order confirmation or the alerts below.
       try {
-        const itemIds = orderItems.map((item: any) => item.id).filter(Boolean);
-        if (itemIds.length > 0) {
-          const { data: currentProducts, error: stockFetchError } = await supabase
-            .from("products")
-            .select("id, inventory")
-            .in("id", itemIds);
+        for (const item of orderItems) {
+          if (!item?.id) continue;
+          const qty = Number(item.quantity || 0);
+          if (qty <= 0) continue;
 
-          if (stockFetchError) throw stockFetchError;
+          const { data: rows, error: rpcError } = await supabase.rpc("decrement_inventory", {
+            p_product_id: item.id,
+            p_qty: qty,
+          });
+          if (rpcError) {
+            // If this says the function doesn't exist, migration 0041 has
+            // not been run against this database -- fix that first.
+            console.error(`Atomic stock decrement failed for product ${item.id} (is migration 0041 applied?):`, rpcError);
+            continue;
+          }
+          const result = Array.isArray(rows) ? rows[0] : rows;
+          if (!result) continue; // product row gone -- nothing to decrement
 
-          for (const item of orderItems) {
-            const current = currentProducts?.find((p: any) => p.id === item.id);
-            if (!current) continue;
-            const newInventory = Math.max(0, Number(current.inventory) - Number(item.quantity || 0));
-            await supabase.from("products").update({ inventory: newInventory }).eq("id", item.id);
+          const newInventory = Number(result.new_inventory);
+          const oversoldBy = Number(result.oversold_by) || 0;
 
-            // Best-effort low-stock alert to the business WhatsApp number.
+          if (oversoldBy > 0) {
             try {
-              if (newInventory <= LOW_STOCK_THRESHOLD) {
-                await sendLowStockAlert(item.name ?? current.id, newInventory);
-              }
-            } catch (lowStockErr) {
-              console.error("Low-stock alert failed:", lowStockErr);
+              await sendOversellAlert(item.name ?? item.id, qty, qty - oversoldBy);
+            } catch (oversellErr) {
+              console.error("Oversell alert failed:", oversellErr);
             }
           }
-          // Deliberately NOT calling revalidateTag("products") here either --
-          // same reason as the "orders" tag above. The product page's stock
-          // figure is no longer trusted as fresh anyway; the buy box reads
-          // /api/stock/[id] live on mount. Admin edits still revalidate this
-          // tag from the admin routes, which is the only place it's needed.
+
+          // Best-effort low-stock alert to the business WhatsApp number.
+          try {
+            if (newInventory <= LOW_STOCK_THRESHOLD) {
+              await sendLowStockAlert(item.name ?? item.id, newInventory);
+            }
+          } catch (lowStockErr) {
+            console.error("Low-stock alert failed:", lowStockErr);
+          }
         }
+        // Deliberately NOT calling revalidateTag("products") here either --
+        // same reason as the "orders" tag above. The product page's stock
+        // figure is no longer trusted as fresh anyway; the buy box reads
+        // /api/stock/[id] live on mount. Admin edits still revalidate this
+        // tag from the admin routes, which is the only place it's needed.
       } catch (stockError) {
         console.error("Stock deduction after sale failed:", stockError);
       }
@@ -659,12 +677,29 @@ async function sendOrderEmails(params: {
   }
 }
 
-async function sendLowStockAlert(productName: string, remaining: number) {
+async function sendLowStockAlert(productName: string | number, remaining: number) {
   const message = [
     "Low stock alert!",
     `Product: ${productName}`,
     `Remaining units: ${remaining}`,
     remaining === 0 ? "This item is now OUT OF STOCK." : "Consider restocking soon.",
+  ].join("\n");
+  await sendWhatsappMessage(process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351", message);
+}
+
+// Fired when a captured order asked for more units of an item than were in
+// stock at the moment the webhook ran (see decrement_inventory, migration
+// 0041). The payment is genuine and the order row is recorded -- this is a
+// heads-up that fulfilment for this line can't be met as-is.
+async function sendOversellAlert(productName: string | number, ordered: number, available: number) {
+  const inStock = Math.max(0, available);
+  const message = [
+    "⚠️ OVERSELL — action needed",
+    `Product: ${productName}`,
+    `Ordered: ${ordered} unit(s)`,
+    `In stock when the order landed: ${inStock}`,
+    `Short by: ${ordered - inStock} unit(s)`,
+    "Payment is real and the order is recorded. Restock, split-ship, or refund the shortfall.",
   ].join("\n");
   await sendWhatsappMessage(process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351", message);
 }

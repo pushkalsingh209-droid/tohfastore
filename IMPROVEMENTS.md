@@ -106,20 +106,16 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 1 (correctness / money)
 
-1. **⚠️ Non-atomic stock deduction in the webhook.**
-   `app/api/razorpay-webhook/route.ts` does `select inventory` → `update inventory =
-   max(0, current - qty)` per item. Concurrent webhooks for *different* orders of the
-   same product can lose a decrement.
-   *Fix:* a Postgres function / RPC doing `update products set inventory =
-   greatest(0, inventory - $qty) where id = $id returning inventory`. One round trip,
-   race-free. Needs a migration (`0041_*`) + code wiring. Land with a test.
-
-2. **⚠️ Oversell at checkout is unhandled.**
-   Stock is checked at order-creation but only decremented post-payment, so two buyers
-   can both pay for the last unit.
-   *Minimum fix:* in the webhook, compute `current - qty` *before* clamping; if negative,
-   still insert the order but flag it and fire a business WhatsApp "OVERSOLD — manual
-   refund/expedite". *Full fix:* short-TTL stock reservation at order creation.
+1. **⚠️ Non-atomic stock deduction + 2. oversell not surfaced — PROPOSAL DRAFTED.**
+   Branch `proposal-atomic-stock-decrement` (2026-08-29): migration `0041` adds
+   `decrement_inventory()` (`SELECT … FOR UPDATE`, one atomic call, returns
+   `(new_inventory, oversold_by)`, `EXECUTE` revoked from anon/authenticated); the webhook
+   calls it via `rpc()` and fires a business "OVERSELL — action needed" WhatsApp when
+   `oversold_by > 0`. Static checks pass (`next build` / `tsc` / `npm test` 51).
+   **Not on `main`.** To land: (a) run `0041` in the Supabase SQL editor **first**, then
+   (b) deploy the code, then (c) run one live test payment and confirm the order records +
+   confirmations send + inventory drops by the right amount. Full-fix for the oversell
+   window (short-TTL stock reservation at order creation) is still a separate, larger job.
 
 3. **Sold-count accuracy degrades past ~300 orders.**
    `getSoldCounts` / `getBestsellers` / `getRelatedProducts` each scan only the last 300

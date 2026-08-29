@@ -205,6 +205,30 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr style="background:var(--code-bg)">
+  <td><code>2026-08-29<br>11:38</code></td>
+  <td><span class="tag" style="color:var(--warn)">proposal</span><br><strong>Atomic stock decrement + oversell alert</strong><br>(<code>IMPROVEMENTS.md</code> T1&nbsp;#1&ndash;2)<br><strong>NOT on <code>main</code></strong> &mdash; branch <code>proposal-atomic-stock-decrement</code></td>
+  <td>
+    &bull; <code>supabase/migrations/0041_atomic_stock_decrement.sql</code>: <code>decrement_inventory(p_product_id, p_qty)</code>
+    &mdash; <code>SELECT &hellip; FOR UPDATE</code> row lock, one atomic call, returns <code>(new_inventory,
+    oversold_by)</code>. <code>EXECUTE</code> revoked from <code>public</code>/<code>anon</code>/<code>authenticated</code>
+    (service-role only).<br>
+    &bull; The webhook&rsquo;s per-item read-modify-write loop &rarr; <code>supabase.rpc("decrement_inventory", &hellip;)</code>.
+    Race-free; <code>oversold_by &gt; 0</code> &rarr; a business &ldquo;OVERSELL &mdash; action needed&rdquo;
+    WhatsApp alert (<code>sendOversellAlert</code>). Low-stock alert + &ldquo;no revalidateTag&rdquo; behaviour kept.<br>
+    &bull; <strong>Deploy order:</strong> run <code>0041</code> in Supabase <em>first</em>, then ship the code
+    &mdash; otherwise the RPC errors and stock isn&rsquo;t decremented at all (logged loudly).<br>
+    &bull; <strong>Still to verify (owner):</strong> the migration applied; the RPC return shape; the row lock
+    serialising; the oversell alert; a real captured payment still records the order + sends confirmations.
+  </td>
+  <td>
+    <em>new:</em> <code>supabase/migrations/0041_atomic_stock_decrement.sql</code><br>
+    <code>app/api/razorpay-webhook/route.ts</code>
+  </td>
+  <td>static only: <code>next build</code> exit 0 (240 pages) &middot; <code>tsc --noEmit</code> clean &middot;
+    <code>npm test</code> 51 pass / 7 gated &middot; eslint &minus;2 on the webhook. <strong>Not exercised
+    against a real payment.</strong></td>
+</tr>
 <tr>
   <td><code>2026-08-29<br>11:23</code></td>
   <td><strong>Share the recent-orders scan</strong><br>(<code>IMPROVEMENTS.md</code> T3&nbsp;#12)</td>
@@ -843,6 +867,7 @@ policy exists.</p>
 <tr><td>0037</td><td>add_orders_payment_id_unique</td><td><code>orders_payment_id_key</code> UNIQUE &mdash; DB-level order idempotency.</td></tr>
 <tr><td>0038</td><td>add_product_hidden</td><td><code>products.hidden</code> + tighten anon read policy to <code>hidden = false</code>.</td></tr>
 <tr><td>0039&ndash;0040</td><td>reassert_rls_lockdown / drop_stray_open_policies</td><td>Re-assert intended RLS; drop the four stray <code>ALL/true</code> policies silently granting full anon CRUD.</td></tr>
+<tr><td>0041</td><td>atomic_stock_decrement <span class="tag" style="color:var(--warn)">proposal</span></td><td><code>decrement_inventory()</code> for race-free post-sale stock deduction. <strong>Not yet applied</strong> &mdash; on branch <code>proposal-atomic-stock-decrement</code>, run it before the matching webhook change ships (see the Change-log proposal row).</td></tr>
 </tbody></table></div>
 
 <h2 id="supabase-clients">Supabase clients &amp; storage</h2>
@@ -1433,10 +1458,15 @@ stale &mdash; the one scheduled job with a health signal.</p>
   <li><strong>The webhook intentionally does not <code>revalidateTag("products"/"orders")</code></strong> after a
       sale &mdash; a cost decision, not an oversight. Stock is live client-side; sold counts / bestsellers accept
       24h staleness (see the &sect;16 diagram).</li>
-  <li><strong>Stock deduction after a sale is a non-atomic read-modify-write</strong> per item in the webhook, and
-      stock is only decremented post-payment &mdash; so two concurrent checkouts for the last unit can both
-      succeed (an oversell). The code comment acknowledges this. An atomic SQL decrement (RPC) and an oversell
-      alert are open follow-ups.</li>
+  <li><strong>Stock deduction after a sale is a non-atomic read-modify-write</strong> per item in the webhook
+      <em>on <code>main</code></em> &mdash; two concurrent webhooks for different orders of the same product can
+      lose a decrement, and because stock is only decremented post-payment, two checkouts for the last unit can
+      both succeed (an oversell). <strong>A fix is drafted</strong> on branch
+      <code>proposal-atomic-stock-decrement</code>: migration <code>0041</code> adds
+      <code>decrement_inventory()</code> (row-locked, one atomic call, reports <code>oversold_by</code>) and the
+      webhook calls it via <code>rpc()</code> + fires a business &ldquo;OVERSELL&rdquo; WhatsApp alert. Static
+      checks pass; it is <strong>not on <code>main</code></strong> &mdash; it needs <code>0041</code> run in
+      Supabase first, then a live test payment. See the Change-log <em>proposal</em> row.</li>
   <li><strong>Sold-count accuracy degrades past ~300 orders</strong> &mdash; <code>getSoldCounts</code> /
       <code>getBestsellers</code> / <code>getRelatedProducts</code> each scan only the last 300 orders. A
       <code>product_sales</code> aggregate is the fix.</li>
