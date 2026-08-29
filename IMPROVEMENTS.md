@@ -208,9 +208,13 @@ care, land behind tests, never "blind".
     Premature at ~140 products; revisit at scale with `count: "planned"` + a separately
     cached exact count.
 
-11. **Collapse the 10 context providers.** Most fetch `/api/settings` or `/api/categories`
-    on mount — several client round trips per page load for data the server already has.
-    One `/api/bootstrap` + one provider. Larger refactor — do behind a running app.
+11. **Collapse the 10 context providers.** 7 of them fetch on mount (5× the *identical*
+    `/api/settings`, + `/api/categories`, + `/api/labels`) for data the Server Components
+    already hold cached. **Decomposition plan written 2026-08-29 →
+    `docs/DESIGN-bootstrap-context.md`** (server-fed `getBootstrapData()` + one
+    `BootstrapProvider`, the 7 hooks become selectors keeping their exact signatures,
+    delete the 7 old files; Cart/Wishlist/CatalogLoading untouched; 0 client fetches).
+    Needs a dev server to verify. Awaiting owner review.
 
 12. ~~Share the "last 300 orders" scan~~ — **done** (2026-08-29) for `getBestsellers` +
     `getRelatedProducts` via `getRecentOrderItems`. `getSoldCounts` now reads the
@@ -244,11 +248,20 @@ care, land behind tests, never "blind".
     `razorpay`, `orders/*`, `admin/products`, `proxy.ts`), several of which look like real
     latent bugs. Own batch: fix those, then delete the hand-written `any`s.
 
-16. **Split `app/admin/page.tsx`** (~3,600 lines, one client component) into route
-    segments / lazy tabs. Improves admin TTI and maintainability.
+16. **Split `app/admin/page.tsx`** (3,689 lines, one client component). **Decomposition
+    plan written 2026-08-29 → `docs/DESIGN-split-admin-page.md`** (stay one route; per-tab
+    lazy components under `app/admin/tabs/`, shared state via one `AdminDataContext`, keep
+    `loadAll`; ship one PR per tab with a click-through checklist). Needs a dev server to
+    verify each tab. Awaiting owner review.
 
-17. **Extract the checkout state machine** from `CartDrawer.tsx` (~1,150 lines) into a
-    reducer/hook.
+17. **Extract the checkout state machine** from `CartDrawer.tsx` (1,159 lines, 26
+    `useState`). **⚠️ payment path. Decomposition plan written 2026-08-29 →
+    `docs/DESIGN-extract-checkout-machine.md`** (`useCheckoutMachine` reducer with a
+    discriminated `phase` union + pure unit tests; nothing server-side changes; fields
+    stay in `CartDrawer` so the "verification_required" rewind keeps them; do it in 3
+    slices). **Cannot be verified from the dev environment** — needs `npm run dev` +
+    Razorpay test keys + live Green API; merge only after a full test-mode checkout
+    passes. Awaiting owner review.
 
 18. **Consolidate phone normalisation** — reimplemented with slightly different rules in
     `whatsappOtp.ts`, `whatsapp-numbers/route.ts`, `stock-alerts/route.ts`,
