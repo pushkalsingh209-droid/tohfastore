@@ -1,15 +1,14 @@
 // app/components/checkout/CheckoutSheet.tsx
-// The 3-step checkout shell (#17b). Owns ALL the typed input state and the
-// payment orchestration; the reducer (useCheckoutMachine) owns only the
-// phase / OTP / cooldown / verified-credentials. See §12 of
-// docs/DESIGN-extract-checkout-machine.md.
+// The 3-step checkout (#17). Owns ALL the typed input state and the payment
+// orchestration; the reducer (useCheckoutMachine) owns only the phase / OTP
+// / cooldown / verified-credentials. See docs/DESIGN-extract-checkout-machine.md.
 //
-// BUILD PROGRESS: all 3 steps of the interactive build done — ContactStep
-// (name/email/phone + WhatsApp OTP), DeliveryStep (pincode-first address),
-// ReviewStep (summary + coupon + available-coupons list + policy). Every
-// footer gates on real validation. handleRazorpayPayment is the byte-for-
-// byte body from CartDrawer with the machine dispatches threaded in
-// (§12.6). The legacy CartDrawer form is deleted in 17c, not here.
+// Steps: ContactStep (name/email/phone + WhatsApp OTP) → DeliveryStep
+// (pincode-first address) → ReviewStep (summary + coupon + available-coupons
+// list + policy). Every footer gates on real validation.
+// handleRazorpayPayment is the byte-for-byte body that used to live in
+// CartDrawer, with the machine dispatches threaded in. Since 17c
+// (2026-08-30) this is the only checkout path — CartDrawer just mounts it.
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
