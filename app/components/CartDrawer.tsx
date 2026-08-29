@@ -10,6 +10,7 @@ import { calculateSlashedPrice } from "@/app/utils/pricing";
 import { useCategoryDiscountMap } from "@/app/context/CategoryDiscountContext";
 import { useDefaultWhatsappNumber } from "@/app/context/DefaultWhatsappNumberContext";
 import PriceDisplay from "@/app/components/PriceDisplay";
+import CheckoutSheet from "@/app/components/checkout/CheckoutSheet";
 
 // Module-level (not just local to handleRazorpayPayment) since the render
 // below also needs it, to decide when the OTP send step should appear.
@@ -325,6 +326,17 @@ export default function CartDrawer() {
 
   const router = useRouter();
 
+  // #17b (in progress): the new 3-step checkout. Rendered instead of the
+  // legacy inline form while `checkingOut` is on. Reachable via the preview
+  // button below (dev only for now) until the 3 step components + payment
+  // wiring are finished and verified, then it becomes the default. Reset on
+  // every close path (backdrop / ✕ / CheckoutSheet's own exit).
+  const [checkingOut, setCheckingOut] = useState(false);
+  const closeDrawer = () => {
+    setIsOpen(false);
+    setCheckingOut(false);
+  };
+
   const initializeRazorpaySDK = () => {
     return new Promise((resolve) => {
       if ((window as any).Razorpay) {
@@ -350,6 +362,15 @@ export default function CartDrawer() {
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  if (checkingOut && cart.length > 0) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-hidden">
+        <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm" onClick={closeDrawer} />
+        <CheckoutSheet onExit={() => setCheckingOut(false)} />
+      </div>
+    );
+  }
 
   const handleApplyCoupon = async () => {
     setCouponError("");
@@ -703,6 +724,16 @@ export default function CartDrawer() {
                   </svg>
                   Have a question? Chat with us
                 </a>
+
+                {process.env.NODE_ENV !== "production" && (
+                  <button
+                    type="button"
+                    onClick={() => setCheckingOut(true)}
+                    className="w-full py-2 text-[11px] font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-500 border border-amber-300 dark:border-amber-800 rounded hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
+                  >
+                    ▶ Preview new 3-step checkout (dev)
+                  </button>
+                )}
 
                 {/* Coupon Code */}
                 <div className="pt-2 pb-1">

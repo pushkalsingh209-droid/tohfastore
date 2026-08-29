@@ -122,9 +122,12 @@ export function checkoutReducer(state: CheckoutState, action: CheckoutAction): C
       return state.phase === "paying" ? { phase: "razorpayOpen", token: state.token, phone: state.phone } : state;
 
     case "PAYMENT_DISMISSED":
-      // Modal closed without paying -- back to Review to retry, NOT back to
-      // contact.
-      return state.phase === "razorpayOpen" ? { phase: "review", token: state.token, phone: state.phone } : state;
+      // Modal closed without paying, OR the submit failed before the modal
+      // even opened (network error / non-orderId response) -- either way
+      // back to Review to retry, NOT back to contact.
+      return state.phase === "razorpayOpen" || state.phase === "paying"
+        ? { phase: "review", token: state.token, phone: state.phone }
+        : state;
 
     default:
       return state;
