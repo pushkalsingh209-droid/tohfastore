@@ -206,6 +206,25 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>19:40</code></td>
+  <td><strong>#16 &mdash; split <code>admin/page.tsx</code>: <code>ReviewsTab</code></strong><br>(<code>IMPROVEMENTS.md</code> #16)</td>
+  <td>
+    Second per-tab move, same pattern as <code>SecurityTab</code>. The <code>reviews</code> moderation queue
+    (approve / reject / remove) + <code>handleReviewModerate</code> lifted verbatim into
+    <code>app/admin/tabs/ReviewsTab.tsx</code>; <code>reviews</code> + <code>setReviews</code> added to
+    <code>AdminData</code>. <code>page.tsx</code> renders <code>{activeTab === "reviews" &amp;&amp; &lt;ReviewsTab /&gt;}</code>.
+    &minus;56 lines on <code>page.tsx</code>; <code>no-explicit-any</code> 98 &rarr; 96. No behaviour change.
+  </td>
+  <td>
+    <em>new:</em> <code>app/admin/tabs/ReviewsTab.tsx</code><br>
+    <code>app/admin/page.tsx</code> &middot; <code>app/admin/AdminDataContext.tsx</code> &middot;
+    <code>docs/ARCHITECTURE.html</code> &middot; <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>next build</code> exit 0 (241 pages, <code>/admin</code> static) &middot; <code>tsc</code> clean &middot;
+    <code>npm test</code> 71/7 &middot; <code>eslint</code> clean on the new file. <strong>Owner: click the Reviews
+    tab</strong> &mdash; approve a pending review (goes Live), reject/remove one (disappears), empty state.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>19:10</code></td>
   <td><strong>#16 &mdash; split <code>admin/page.tsx</code>: scaffold + <code>SecurityTab</code></strong><br>(<code>IMPROVEMENTS.md</code> #16; plan <code>docs/DESIGN-split-admin-page.md</code>)</td>
   <td>
@@ -1452,7 +1471,7 @@ alert shows only the real price.</p>
 <code>app/admin/tabs/</code>. The page stays one route and keeps <code>loadAll()</code>; each extracted tab reads
 its slice of that state through <code>app/admin/AdminDataContext.tsx</code> (<code>useAdminData()</code>), which
 grows one entry per tab moved. Shared helper: <code>app/admin/lib/apiRequest.ts</code>.
-<strong>Done so far:</strong> <code>security</code> (2026-08-29).</p>
+<strong>Done so far:</strong> <code>security</code>, <code>reviews</code> (2026-08-29).</p>
 <div class="x"><table>
 <thead><tr><th>Tab</th><th>Contents</th></tr></thead>
 <tbody>
@@ -1864,7 +1883,7 @@ stale &mdash; the one scheduled job with a health signal.</p>
 |  |- product/[id]/page.tsx  SSG+ISR(24h), canonical redirects, LiveStockProvider
 |  |- catalogue|success|track|wishlist|about|contact|corporate|privacy|terms|refunds/page.tsx
 |  |- admin/page.tsx         client SPA (7 tabs); AdminDataContext + per-tab components in admin/tabs/ (split in progress)
-|  |- admin/tabs/            SecurityTab (more moving here per DESIGN-split-admin-page.md)
+|  |- admin/tabs/            SecurityTab, ReviewsTab (more moving here per DESIGN-split-admin-page.md)
 |  |- admin/lib/apiRequest.ts  shared admin fetch wrapper
 |  |- admin/login/page.tsx
 |  |- api/

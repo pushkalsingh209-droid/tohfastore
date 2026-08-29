@@ -16,11 +16,24 @@ export interface AdminLoginAttempt {
   reason?: string;
 }
 
+export interface AdminReview {
+  id: number;
+  rating: number;
+  customer_name: string;
+  review_text?: string;
+  approved: boolean;
+  product_id: number;
+  products?: { name?: string } | null;
+}
+
 export interface AdminData {
   // --- security tab ---
   loginAttempts: AdminLoginAttempt[];
   backupCodesRemaining: number | null;
   setBackupCodesRemaining: (n: number | null) => void;
+  // --- reviews tab ---
+  reviews: AdminReview[];
+  setReviews: (value: AdminReview[]) => void;
 }
 
 const AdminDataContext = createContext<AdminData | null>(null);

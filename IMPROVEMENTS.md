@@ -253,9 +253,9 @@ care, land behind tests, never "blind".
     `docs/DESIGN-split-admin-page.md` (stay one route; per-tab lazy components under
     `app/admin/tabs/`, shared state via `AdminDataContext`, keep `loadAll`; one PR per
     tab + owner click-through). **Done:** scaffold (`apiRequest` → `admin/lib/`,
-    `AdminDataContext`) + `SecurityTab` moved out (page −169 lines, −4 `no-explicit-any`).
-    **Left:** `overview`, `products` (the big one), `orders`, `coupons`, `settings`,
-    `reviews` — one PR each.
+    `AdminDataContext`) + `SecurityTab` + `ReviewsTab` (page −225 lines so far, −6
+    `no-explicit-any`). **Left:** `coupons`, `overview`, `orders`, `settings`,
+    `products` (the big one) — one PR each.
 
 17. **Extract the checkout state machine** from `CartDrawer.tsx` (1,159 lines, 26
     `useState`). **⚠️ payment path. Decomposition plan written 2026-08-29 →
