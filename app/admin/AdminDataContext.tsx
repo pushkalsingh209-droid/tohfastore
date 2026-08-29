@@ -56,6 +56,52 @@ export interface AdminOrder {
   items?: AdminOrderItem[];
 }
 
+// Minimal shape -- only what the overview tab's FinanceInsightsPanel reads.
+// Expands when the products tab itself moves out (#16).
+export interface AdminProduct {
+  id: number | string;
+  label?: string | null;
+}
+
+export interface AdminAnalytics {
+  totalOrders: number;
+  totalRevenue: number;
+  averageOrderValue: number;
+  repeatPurchaseRate: number;
+  repeatCustomers: number;
+  totalCustomers: number;
+  monthlyTrend: { label: string; revenue: number }[];
+}
+
+export interface AdminEnquiryAnalytics {
+  totalEnquiries: number;
+  outOfStockEnquiries: number;
+  byCategory: { category: string; count: number }[];
+  topProducts: { productId: string | number; productName: string; count: number }[];
+  dailyTrend: { label: string; count: number }[];
+  byNumber: { whatsappNumber: string; count: number }[];
+  bySource: { source: string; count: number }[];
+}
+
+export interface AdminLead {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  source: string;
+  contacted: boolean;
+  contacted_at?: string;
+  created_at: string;
+  details?: {
+    company?: string;
+    quantity?: string | number;
+    occasion?: string;
+    message?: string;
+    cartItems?: { name?: string; quantity?: number }[];
+    cartTotal?: number;
+  } | null;
+}
+
 export interface AdminData {
   // --- security tab ---
   loginAttempts: AdminLoginAttempt[];
@@ -71,6 +117,14 @@ export interface AdminData {
   orders: AdminOrder[];
   setOrders: (value: AdminOrder[]) => void;
   loadingOrders: boolean;
+  // --- overview tab ---
+  analytics: AdminAnalytics | null;
+  enquiryAnalytics: AdminEnquiryAnalytics | null;
+  leads: AdminLead[];
+  setLeads: (value: AdminLead[]) => void;
+  keepaliveStale: boolean;
+  settings: Record<string, string>;
+  products: AdminProduct[];
 }
 
 const AdminDataContext = createContext<AdminData | null>(null);

@@ -206,6 +206,30 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>21:05</code></td>
+  <td><strong>#16 &mdash; split <code>admin/page.tsx</code>: <code>OverviewTab</code></strong><br>(<code>IMPROVEMENTS.md</code> #16)</td>
+  <td>
+    Fifth per-tab move. The whole <code>overview</code> tab &mdash; keepalive heartbeat card, Business Overview
+    (order analytics + 6-month revenue chart), <code>FinanceInsightsPanel</code>, WhatsApp Enquiries analytics,
+    and the Leads table (<code>handleLeadFollowUp</code> / <code>handleDeleteLead</code>) &mdash; into
+    <code>app/admin/tabs/OverviewTab.tsx</code>. Added to <code>AdminData</code>: <code>analytics</code>,
+    <code>enquiryAnalytics</code> (both now typed, not <code>any</code>), <code>leads</code> + <code>setLeads</code>,
+    <code>keepaliveStale</code>, <code>settings</code>, <code>products</code> (minimal shape &mdash; expands when
+    the products tab moves).<br>
+    &bull; <code>page.tsx</code> &minus;321 lines; <code>no-explicit-any</code> 86 &rarr; 74 (the analytics maps
+    were a big cluster of untyped callbacks). No behaviour change.
+  </td>
+  <td>
+    <em>new:</em> <code>app/admin/tabs/OverviewTab.tsx</code><br>
+    <code>app/admin/page.tsx</code> &middot; <code>app/admin/AdminDataContext.tsx</code> &middot;
+    <code>docs/ARCHITECTURE.html</code> &middot; <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>next build</code> exit 0 (241 pages, <code>/admin</code> static) &middot; <code>tsc</code> clean &middot;
+    <code>npm test</code> 71/7 &middot; <code>eslint</code> clean on the new file. <strong>Owner: click the Overview
+    tab</strong> &mdash; keepalive card, the 4 analytics stat tiles + revenue bars, Finance Insights, WhatsApp
+    Enquiries charts, Leads table (Send WhatsApp / Mark done / Delete).</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>20:35</code></td>
   <td><strong>#16 &mdash; split <code>admin/page.tsx</code>: <code>OrdersTab</code></strong><br>(<code>IMPROVEMENTS.md</code> #16)</td>
   <td>
@@ -1519,7 +1543,7 @@ alert shows only the real price.</p>
 <code>app/admin/tabs/</code>. The page stays one route and keeps <code>loadAll()</code>; each extracted tab reads
 its slice of that state through <code>app/admin/AdminDataContext.tsx</code> (<code>useAdminData()</code>), which
 grows one entry per tab moved. Shared helper: <code>app/admin/lib/apiRequest.ts</code>.
-<strong>Done so far:</strong> <code>security</code>, <code>reviews</code>, <code>coupons</code>, <code>orders</code> (2026-08-29).</p>
+<strong>Done so far:</strong> <code>security</code>, <code>reviews</code>, <code>coupons</code>, <code>orders</code>, <code>overview</code> (2026-08-29).</p>
 <div class="x"><table>
 <thead><tr><th>Tab</th><th>Contents</th></tr></thead>
 <tbody>
@@ -1931,7 +1955,7 @@ stale &mdash; the one scheduled job with a health signal.</p>
 |  |- product/[id]/page.tsx  SSG+ISR(24h), canonical redirects, LiveStockProvider
 |  |- catalogue|success|track|wishlist|about|contact|corporate|privacy|terms|refunds/page.tsx
 |  |- admin/page.tsx         client SPA (7 tabs); AdminDataContext + per-tab components in admin/tabs/ (split in progress)
-|  |- admin/tabs/            SecurityTab, ReviewsTab, CouponsTab, OrdersTab (more moving here per DESIGN-split-admin-page.md)
+|  |- admin/tabs/            SecurityTab, ReviewsTab, CouponsTab, OrdersTab, OverviewTab (more moving here per DESIGN-split-admin-page.md)
 |  |- admin/lib/apiRequest.ts  shared admin fetch wrapper
 |  |- admin/login/page.tsx
 |  |- api/
