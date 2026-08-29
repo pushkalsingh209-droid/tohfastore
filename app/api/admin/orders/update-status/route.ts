@@ -56,12 +56,14 @@ export async function POST(req: Request) {
           const reviewLine = firstItem?.id
             ? `\n\nWe'd love your feedback! Leave a review here: https://tohfaonline.com${productHref(firstItem)}`
             : "";
+          const invoiceLine = `\n\n📄 Invoice: https://tohfaonline.com/success?order_id=${encodeURIComponent(order.order_id)}`;
 
           const message =
             status === "shipped"
               ? `Good news! Your Tohfa order ${order.order_id} has shipped and is on its way.` +
-                (order.awb_number ? ` Tracking No: ${order.awb_number}` : "")
-              : `Your Tohfa order ${order.order_id} has been delivered. Thank you for shopping with us!${reviewLine}`;
+                (order.awb_number ? ` Tracking No: ${order.awb_number}` : "") +
+                invoiceLine
+              : `Your Tohfa order ${order.order_id} has been delivered. Thank you for shopping with us!${reviewLine}${invoiceLine}`;
 
           const chatId = customerPhone.startsWith("91") ? `${customerPhone}@c.us` : `91${customerPhone}@c.us`;
 

@@ -12,6 +12,17 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Confirmations link to the invoice — 2026-08-29 10:46 IST
+- Customer order-confirmation WhatsApp + email (`/api/razorpay-webhook`) now carry a
+  `/success?order_id=` link / "View / print invoice" button (`invoiceUrl` param, customer
+  email copy only). The shipped + delivered WhatsApp messages
+  (`/api/admin/orders/update-status`) get the same link.
+- Copy-only inside the webhook's best-effort notification block — no touch to signature
+  checks, idempotency, the order insert, stock, or coupons.
+- Verified: `next build` exit 0 (240 pages), `tsc` clean, `npm test` 43 pass / 7 gated,
+  eslint no new errors. Not exercised against a live message send.
+- Closes the follow-up noted on the batch below.
+
 ### Batch: Receipt survives a lost session — 2026-08-29 10:29 IST
 - New `/api/orders/receipt` (public POST, phone-gated like `/api/orders/track`) rebuilds
   the invoice from the stored order; fires no purchase analytics.
@@ -22,7 +33,8 @@ care, land behind tests, never "blind".
   eslint no new errors. Client recovery flow not exercised end-to-end (no running
   checkout) — the API route is fully covered; the page/CartDrawer changes are a small
   additive redirect + form.
-- Follow-up: link the WhatsApp/email order confirmations to `/success?order_id=`.
+- Follow-up (done — see the batch above): link the WhatsApp/email confirmations to
+  `/success?order_id=`.
 
 ### Batch: Keepalive heartbeat visibility — 2026-08-29 02:55 IST
 - `/api/keepalive` stamps `site_settings.last_keepalive_at` on every run (best-effort,

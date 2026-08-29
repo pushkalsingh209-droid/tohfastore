@@ -358,6 +358,8 @@ export async function POST(req: Request) {
           "रद्दीकरण और धनवापसी नीति: डिस्पैच के बाद मन बदलने पर रिटर्न स्वीकार नहीं होगा। क्षतिग्रस्त, दोषपूर्ण या गलत उत्पाद के लिए डिलीवरी के 48 घंटों में बिना एडिट की गई अनबॉक्सिंग वीडियो के साथ संपर्क करें।",
           `Full policy: ${SITE_URL}/refunds`,
           "",
+          `📄 View / print your invoice any time: ${SITE_URL}/success?order_id=${encodeURIComponent(orderId)}`,
+          "",
           `Any questions? Reply here on WhatsApp (+${businessWhatsappNumber}) any time.`,
         ].join("\n");
       } catch (buildErr) {
@@ -515,8 +517,9 @@ function buildOrderEmailHtml(params: {
   showCustomerContact: boolean;
   includeRefundPolicy: boolean;
   categoryDiscounts?: Record<string, number>;
+  invoiceUrl?: string;
 }): string {
-  const { heading, intro, orderId, customerName, customerPhone, customerEmail, formattedAddress, orderItems, gst, showCustomerContact, includeRefundPolicy, categoryDiscounts } = params;
+  const { heading, intro, orderId, customerName, customerPhone, customerEmail, formattedAddress, orderItems, gst, showCustomerContact, includeRefundPolicy, categoryDiscounts, invoiceUrl } = params;
 
   const gstRows = gst.byRate
     .map(
@@ -566,6 +569,11 @@ function buildOrderEmailHtml(params: {
           ${gstRows}
           <tr><td style="padding:8px 0 0;font-weight:bold;font-size:15px;color:#1c1917;">Total</td><td style="padding:8px 0 0;text-align:right;font-weight:bold;font-size:16px;color:#b45309;font-family:monospace;">&#8377;${gst.totalPrice.toLocaleString("en-IN")}</td></tr>
         </table>
+        ${
+          invoiceUrl
+            ? `<p style="text-align:center;margin:18px 0 4px;"><a href="${invoiceUrl}" style="display:inline-block;background:#3d1113;color:#e8c468;text-decoration:none;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;padding:10px 22px;border-radius:6px;">View / print invoice</a></p>`
+            : ""
+        }
         ${includeRefundPolicy ? refundPolicyHtml() : ""}
       </div>
       <div style="background:#fafaf9;padding:16px 24px;text-align:center;font-size:11px;color:#a8a29e;border-top:1px solid #e7e5e4;">
@@ -639,6 +647,7 @@ async function sendOrderEmails(params: {
           showCustomerContact: false,
           includeRefundPolicy: true,
           categoryDiscounts,
+          invoiceUrl: `${SITE_URL}/success?order_id=${encodeURIComponent(orderId)}`,
         }),
       })
     );

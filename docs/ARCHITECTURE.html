@@ -206,6 +206,24 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>10:46</code></td>
+  <td><strong>Confirmations link to the invoice</strong><br>(follow-up to the 10:29 batch)</td>
+  <td>
+    &bull; The customer order-confirmation <strong>WhatsApp</strong> message and <strong>email</strong>
+    (<code>/api/razorpay-webhook</code>) now carry a <code>&#8230;/success?order_id=&#8230;</code> link /
+    &ldquo;View&nbsp;/&nbsp;print invoice&rdquo; button. Added an optional <code>invoiceUrl</code> to
+    <code>buildOrderEmailHtml</code> (customer copy only; business copy unchanged).<br>
+    &bull; The <strong>shipped</strong> and <strong>delivered</strong> WhatsApp messages
+    (<code>/api/admin/orders/update-status</code>) get the same invoice link.<br>
+    &bull; Copy-only change inside the webhook&rsquo;s best-effort notification block &mdash; no touch to
+    signature checks, idempotency, the order insert, stock, or coupons.
+  </td>
+  <td><code>app/api/razorpay-webhook/route.ts</code>, <code>app/api/admin/orders/update-status/route.ts</code></td>
+  <td><code>next build</code> exit 0 (240 pages) &middot; <code>tsc --noEmit</code> clean &middot;
+    <code>npm test</code> 43 pass / 7 gated &middot; eslint no new errors. Message rendering not
+    exercised against a live send.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>10:29</code></td>
   <td><strong>Receipt survives a lost session</strong><br>(<code>IMPROVEMENTS.md</code> T2&nbsp;#7)</td>
   <td>
@@ -1099,10 +1117,10 @@ block the triggering action.</p>
 <tbody>
 <tr><td>Product enquiry link</td><td>&ldquo;Chat&rdquo; buttons on card/detail (<code>getProductWhatsappLink</code>)</td><td>opens <code>wa.me</code>; click logged via <code>/api/enquiries</code> beacon. Number priority: product&rsquo;s own <code>whatsapp_number</code> &gt; (out-of-stock &amp;&amp; &ldquo;Misc&rdquo; &rarr; <code>919058542074</code>) &gt; site default (<code>site_settings.default_whatsapp_number</code>) &gt; hardcoded <code>916302672351</code>.</td></tr>
 <tr><td>Checkout OTP</td><td><code>/api/whatsapp-otp/send</code></td><td>&rarr; customer (6-digit code, 5-min TTL)</td></tr>
-<tr><td>Order confirmation</td><td><code>/api/razorpay-webhook</code></td><td>&rarr; business (ops alert) + &rarr; customer (GST invoice), both as image-with-caption using the first item photo</td></tr>
+<tr><td>Order confirmation</td><td><code>/api/razorpay-webhook</code></td><td>&rarr; business (ops alert) + &rarr; customer (GST invoice + a <code>/success?order_id=</code> link), both as image-with-caption using the first item photo. The customer email carries a &ldquo;View / print invoice&rdquo; button (<code>invoiceUrl</code> param, customer copy only).</td></tr>
 <tr><td>Low-stock alert</td><td>webhook, inventory &le; 3 after a sale</td><td>&rarr; business</td></tr>
 <tr><td>Back-in-stock</td><td>admin product PATCH, inventory 0 &rarr; &gt; 0</td><td>&rarr; each pending <code>stock_alert_subscriptions</code> phone</td></tr>
-<tr><td>Ship / deliver</td><td><code>/api/admin/orders/update-status</code></td><td>&rarr; customer (delivered also links to the review form)</td></tr>
+<tr><td>Ship / deliver</td><td><code>/api/admin/orders/update-status</code></td><td>&rarr; customer (both carry a <code>/success?order_id=</code> invoice link; delivered also links to the review form)</td></tr>
 <tr><td>Lead follow-up</td><td><code>/api/leads</code> (auto) or <code>/api/admin/leads/follow-up</code> (manual)</td><td>&rarr; lead</td></tr>
 <tr><td>Abandoned checkout</td><td><code>/api/cron/abandoned-checkout</code></td><td>&rarr; lead (once, 2h&ndash;7d old)</td></tr>
 <tr><td>Session keepalive</td><td><code>/api/keepalive</code></td><td><code>getStateInstance</code> ping (no message)</td></tr>
@@ -1415,11 +1433,11 @@ stale &mdash; the one scheduled job with a health signal.</p>
       <code>categories</code>/<code>labels</code> row doesn&rsquo;t cascade; products keep the string value.</li>
   <li><strong><code>discount_percent</code> is display-only</strong> &mdash; never affects the charged amount.</li>
   <li><strong><code>/success</code> primary path is <code>sessionStorage</code></strong> &mdash; if the redirect
-      completes but the stash is gone (refresh / reopened tab), the page now recovers via a phone-gated
+      completes but the stash is gone (refresh / reopened tab), the page recovers via a phone-gated
       <code>/api/orders/receipt</code> fetch (URL carries <code>?order_id=</code>). If the redirect itself never
-      completes (tab closed mid-redirect), the buyer still has the WhatsApp/email confirmation and
-      <code>/track</code>. Linking the confirmation messages to <code>/success?order_id=</code> is a small
-      follow-up.</li>
+      completes (tab closed mid-redirect), the buyer has <code>/track</code> plus a
+      <code>/success?order_id=</code> link in the WhatsApp confirmation, the confirmation email, and the
+      shipped/delivered messages.</li>
 </ul>
 
 <h2 id="filemap">Directory map</h2>
