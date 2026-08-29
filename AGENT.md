@@ -27,8 +27,9 @@ file (`AGENT.md`, singular) carries the boundaries.
    still count — they need a human to create the account.
 
 4. **Secrets & env.** Don't add, print, commit, or send env values anywhere. Don't
-   rename/remove an env var that might be set in Vercel without confirming
-   (`ADMIN_SESSION_SECRET` is confirmed-dead — safe to drop).
+   rename/remove an env var that might be set in Vercel without confirming.
+   (`ADMIN_SESSION_SECRET` was confirmed-dead, dropped from the docs, and deleted from the
+   Vercel env on 2026-08-29.)
 
 5. **Destructive data ops.** No `DELETE` without a `WHERE` and a retention rationale; no
    `drop`/`truncate`; no bulk `update` across `products`/`orders` outside the existing
