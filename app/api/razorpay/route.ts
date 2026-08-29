@@ -1,4 +1,5 @@
 // app/api/razorpay/route.ts
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
@@ -7,6 +8,7 @@ import { calculateOrderGstBreakdown, GST_RATE } from "@/app/utils/gst";
 import { isVerificationTokenValid, normalizePhoneForRecord } from "@/app/utils/whatsappOtp";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { repriceCart, type RepriceProduct } from "@/app/utils/repricing";
+import { RESERVATION_TTL_SECONDS, STOCK_RESERVATIONS_ENABLED_KEY } from "@/app/utils/stock";
 
 // Interface definition to explicitly type incoming shopping bag artifacts
 interface CartItem {
@@ -137,6 +139,54 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Order total must be greater than zero." }, { status: 400 });
     }
 
+    // 5. Reserve the stock for the length of this checkout (migration 0043,
+    // IMPROVEMENTS.md T1 #1) BEFORE minting a payable Razorpay order, so two
+    // shoppers racing for the last unit can't both reach payment -- the
+    // second one is stopped right here. Gated behind a site_settings kill
+    // switch: default off => this whole block is skipped and behaviour is
+    // exactly as before (the webhook then sees no checkoutToken in notes and
+    // runs its legacy decrement_inventory path). Reserving BEFORE
+    // orders.create means we never create an order we can't honour; if
+    // orders.create then throws, the hold just TTL-expires. Fail closed: a
+    // reserve_stock error creates no order.
+    let checkoutToken: string | null = null;
+    const { data: killRow } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", STOCK_RESERVATIONS_ENABLED_KEY)
+      .maybeSingle();
+    if (killRow?.value === "1") {
+      checkoutToken = randomUUID();
+      const { data: reserveRows, error: reserveErr } = await supabase.rpc("reserve_stock", {
+        p_token: checkoutToken,
+        p_items: pricedItems,
+        p_ttl_seconds: RESERVATION_TTL_SECONDS,
+      });
+      if (reserveErr) {
+        // Function missing => migration 0043 not applied to this DB.
+        return serverErrorResponse(
+          "reserve_stock failed (is migration 0043 applied?)",
+          reserveErr,
+          "We couldn't start your payment just now. Please try again in a moment."
+        );
+      }
+      const reserveResult = Array.isArray(reserveRows) ? reserveRows[0] : reserveRows;
+      if (!reserveResult?.ok) {
+        const name = reserveResult?.product_name || "an item";
+        const available = Number(reserveResult?.available ?? 0);
+        return NextResponse.json(
+          {
+            error:
+              available > 0
+                ? `Only ${available} unit(s) of "${name}" are still available.`
+                : `"${name}" just sold out. Please remove it from your bag to continue.`,
+            code: "stock_unavailable",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Compile formal option configurations to fulfill standard Razorpay API schemas
     const options = {
       amount: Math.round(totalAmount * 100), // Enforce precise integer type in Paise (INR x 100)
@@ -166,6 +216,10 @@ export async function POST(req: Request) {
           state: String(shippingAddress?.state || "").trim().slice(0, 100),
           pincode: String(shippingAddress?.pincode || "").trim().slice(0, 10),
         }),
+        // Present only when the reservation feature is on. Immutable by the
+        // client after creation; the webhook reads it via orders.fetch and
+        // calls consume_reservation(token) instead of the legacy loop.
+        ...(checkoutToken ? { checkoutToken } : {}),
       }
     };
 
@@ -177,7 +231,10 @@ export async function POST(req: Request) {
     // it client-side with a flat rate.
     const gst = calculateOrderGstBreakdown(pricedItems as { price: number; quantity: number; gstRate: number }[], discount);
 
-    // Pass structural tokens back to client interceptor drawers cleanly
+    // Pass structural tokens back to client interceptor drawers cleanly.
+    // checkoutToken (when set) lets the client free the hold immediately on
+    // a dismissed / failed payment via POST /api/checkout/release instead of
+    // waiting out the TTL.
     return NextResponse.json({
       orderId: order.id,
       amount: order.amount,
@@ -185,6 +242,7 @@ export async function POST(req: Request) {
       discount,
       couponCode: appliedCouponCode,
       gst,
+      checkoutToken,
     });
 
   } catch (err: unknown) {

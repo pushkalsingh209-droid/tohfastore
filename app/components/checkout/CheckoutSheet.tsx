@@ -343,6 +343,21 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
     setCouponError("");
   };
 
+  // Free this checkout's stock holds immediately when the shopper backs out
+  // (migration 0043 -- only present when the reservation feature is on;
+  // otherwise `checkoutToken` is null and this no-ops). Fire-and-forget,
+  // `keepalive` so it survives the tab losing focus; the 15-min TTL is the
+  // backstop if it never lands.
+  const releaseHold = (token: string | null | undefined) => {
+    if (!token) return;
+    fetch("/api/checkout/release", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ checkoutToken: token }),
+      keepalive: true,
+    }).catch(() => {});
+  };
+
   // --- payment. Byte-for-byte the CartDrawer body, with the machine
   // dispatches from §12.6 threaded in and the OTP token read from the
   // reducer instead of a local state var. The money path itself is
@@ -365,6 +380,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
     }
 
     setLoading(true);
+    let checkoutToken: string | null = null;
     try {
       const isSDKLoaded = await initializeRazorpaySDK();
       if (!isSDKLoaded) {
@@ -394,6 +410,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
       });
 
       const data = await res.json();
+      checkoutToken = data.checkoutToken ?? null; // null unless reservations are on
 
       if (!data.orderId) {
         if (data.code === "verification_required") {
@@ -478,8 +495,10 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
         // order notes' verifiedPhone over Razorpay's payment.contact).
         readonly: { contact: true, email: true },
         modal: {
-          // Closing the modal without paying returns cleanly to Review.
+          // Closing the modal without paying returns cleanly to Review and
+          // frees the stock hold now rather than at TTL.
           ondismiss: () => {
+            releaseHold(checkoutToken);
             m.paymentDismissed();
             setLoading(false);
           },
@@ -487,11 +506,21 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
         theme: { color: "#b45309" },
       };
 
-      const rzp = new (window as unknown as { Razorpay: new (o: unknown) => { open: () => void } }).Razorpay(options);
+      const rzp = new (window as unknown as {
+        Razorpay: new (o: unknown) => { open: () => void; on: (evt: string, cb: (resp?: unknown) => void) => void };
+      }).Razorpay(options);
+      // A declined card / failed UPI collect -- same treatment as a dismiss:
+      // free the hold, drop back to Review.
+      rzp.on("payment.failed", () => {
+        releaseHold(checkoutToken);
+        m.paymentDismissed();
+        setLoading(false);
+      });
       rzp.open();
       m.razorpayOpened();
     } catch (err: unknown) {
       setValidationError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      releaseHold(checkoutToken);
       m.paymentDismissed();
     } finally {
       setLoading(false);

@@ -12,6 +12,42 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Short-TTL stock reservation at checkout (#1) — 2026-08-30 07:30 IST — ⚠️⚠️ payment path, SHIPS DISABLED
+- Closes the checkout-vs-checkout race: stock is decremented only *after* payment today, so
+  two shoppers can both pass `/api/razorpay`'s `qty <= inventory` read and both pay for the
+  last unit.
+- **Migration `0043`** (hand-run, ships disabled): `stock_reservations` table +
+  `reserve_stock(token, items, ttl)` (two-pass, all-or-nothing, row-locks every product,
+  returns `ok` / offending product + `available`) + `consume_reservation(token)`
+  (decrement + mark consumed, same `(new_inventory, oversold_by)` shape as `0041`; returns
+  nothing → caller falls back to the `0041` loop). `EXECUTE` service-role only (grant
+  gotcha). Availability sums only unexpired holds → expired holds self-heal, no sweeper.
+- `/api/razorpay`: when `stock_reservations_enabled = '1'`, after every existing check →
+  `reserve_stock(…, 900s)`, `400 code:"stock_unavailable"` on shortfall (before an order
+  exists), `500` on RPC error (fail closed), `checkoutToken` into `order.notes` + response.
+- `/api/razorpay-webhook` block 1b: `notes.checkoutToken` → `consume_reservation`; no held
+  rows / RPC error → legacy `decrement_inventory` loop. Alerts factored into one shared
+  `runStockAlerts` used by both paths.
+- **New `POST /api/checkout/release`** (public, best-effort, always 200) — marks a token's
+  `held` rows `released`. `CheckoutSheet` fires it (`keepalive`) on Razorpay `ondismiss`, a
+  new `rzp.on("payment.failed")`, and the payment `catch`. TTL is the backstop.
+- `abandoned-checkout` cron: `DELETE` `stock_reservations` > 1 day past expiry (hygiene).
+  `stock.ts` gains `RESERVATION_TTL_SECONDS = 900`. New pure `app/utils/reservation.ts`
+  `computeAvailability` + 6 tests.
+- **Kill switch:** `site_settings.stock_reservations_enabled`, seeded `'0'` (= exactly
+  today's behaviour). **Owner:** apply `0043`, run the SQL checks in the migration file's
+  footer, one Razorpay-mode race test, then `update site_settings set value='1' where
+  key='stock_reservations_enabled';` from the SQL editor. Flip back to `'0'` instantly if
+  anything looks wrong. Not wired into the admin Settings tab UI (that tab is parked, #16).
+- **Not a goal:** eliminating oversell. A payment landing after its hold expired still
+  records + fires `sendOversellAlert`, exactly as today — this closes the
+  checkout-vs-checkout race, not the post-expiry one. Design + failure matrix:
+  `docs/DESIGN-stock-reservation.md`.
+- Verified: `next build` exit 0, `tsc` clean, `npm test` **102 pass** / 7 skip (+6
+  `reservation.test.ts`), `eslint` no new errors. **Not run against the live DB or a real
+  payment** — a proposal until the owner's SQL checks + race test pass and the switch is
+  flipped.
+
 ### Batch: Phone normalisation (#18) + Green-API health card (#13) — 2026-08-30 06:00 IST
 - **#18 — one canonical normaliser.** New `app/utils/phone.ts` `normalizeIndianPhone(raw)`
   (→ bare `91XXXXXXXXXX`). Retired 4 near-identical local copies (`whatsappOtp.ts`
@@ -227,16 +263,16 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 1 (correctness / money)
 
-1. **⚠️ Non-atomic stock deduction in the webhook.**
-   The concurrent-webhook race and oversell surfacing are fixed and **verified end-to-end**
-   — see Done (2026-08-29 12:33): migration `0041` `decrement_inventory()` + `rpc()` +
-   `sendOversellAlert`; a live test-mode payment confirmed order + WhatsApp + email +
-   inventory −1. What's left is a separate, larger piece: a **short-TTL stock reservation
-   at order creation** so two checkouts for the last unit can't both *pay*.
-   **Design written 2026-08-29 → `docs/DESIGN-stock-reservation.md`** (schema `0043`,
-   `reserve_stock` / `consume_reservation` RPCs, reserve-before-create flow, 15-min TTL,
-   `site_settings` kill switch, failure-mode + test matrix). Awaiting owner review of the
-   5 open questions in §11, then implement behind the kill switch.
+1. ~~**⚠️ Non-atomic stock deduction / checkout-vs-checkout race.**~~ — **code done
+   2026-08-30, ships disabled** (see Done). Migration `0043` (`stock_reservations` +
+   `reserve_stock` / `consume_reservation`), `/api/razorpay` reserves before minting the
+   order, webhook consumes (legacy `decrement_inventory` fallback), `/api/checkout/release`
+   + `CheckoutSheet` free the hold on dismiss/fail, `abandoned-checkout` cron trims.
+   All behind `site_settings.stock_reservations_enabled` (seeded `'0'`).
+   **Owner to finish:** apply `0043`, run the SQL checks in the migration file, one
+   Razorpay-mode race test, then `update site_settings set value='1' …` from the SQL
+   editor. Flip back to `'0'` instantly if trouble — the webhook's legacy path is intact.
+   *(The 0041 webhook-vs-webhook race + oversell detection were already done 2026-08-29.)*
 
 2. ~~**Sold-count accuracy degrades past ~300 orders.**~~ — **done + verified end-to-end
    2026-08-29** (see Done, batch 13:20). `product_sales` aggregate + `apply_product_sales`
