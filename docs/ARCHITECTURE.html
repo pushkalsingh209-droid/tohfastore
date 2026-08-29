@@ -206,6 +206,23 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>23:10</code></td>
+  <td><strong>#17b implementation spec</strong><br>(<code>IMPROVEMENTS.md</code> #17; docs-only)</td>
+  <td>
+    Added <strong>&sect;12</strong> to <code>docs/DESIGN-extract-checkout-machine.md</code> &mdash; a
+    file-by-file spec for 17b (<code>CheckoutSheet</code> + <code>Stepper</code> + 3 step components +
+    <code>useAvailableCoupons</code> + the <code>?checkout=preview</code> flag): which <code>CartDrawer</code>
+    state/effects/JSX blocks move where (verbatim), the minimal <code>handleRazorpayPayment</code> edits (read the
+    token from the machine; dispatch <code>submitPayment</code>/<code>paymentDismissed</code>/
+    <code>verificationExpired</code>/<code>reset</code> around an otherwise byte-for-byte body), per-step
+    validators split from the one big block, and the exact verification gate. 17b needs a dev-server
+    walk-through + one live ~₹1 order to merge, so it&rsquo;s spec&rsquo;d now for a fast execution later. No code.
+  </td>
+  <td><code>docs/DESIGN-extract-checkout-machine.md</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>IMPROVEMENTS.md</code></td>
+  <td>n/a &mdash; docs only.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>22:45</code></td>
   <td><strong>#17a &mdash; <code>useCheckoutMachine</code> reducer + tests</strong><br>(<code>IMPROVEMENTS.md</code> #17)</td>
   <td>

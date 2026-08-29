@@ -212,3 +212,270 @@ Razorpay is **live-only** here. End-to-end check after **17b**:
 4. **Coupon on step 3 only.**
 5. **Available coupons are shown at the coupon field** (tap-to-apply), sourced
    from the existing public-coupon fetch.
+
+---
+
+## 12. 17b implementation spec
+
+Everything below is against `app/components/CartDrawer.tsx` at
+`main` (1,159 lines). Line numbers are approximate — grep the identifiers.
+**It's a move + re-layout, not a rewrite.** Copy blocks verbatim; only change
+where state lives and how steps are gated.
+
+### 12.1 New files
+
+```
+app/components/checkout/
+  CheckoutSheet.tsx       # owner of ALL input state + handleRazorpayPayment; renders the shell + active step
+  Stepper.tsx             # sticky header: ‹Back · title · 3-seg progress · "Step 2 of 3 · Delivery"
+  useAvailableCoupons.ts  # small hook: fetch /api/coupons once when the sheet opens -> {code, label, minSubtotal?, expiresAt?}[]
+  steps/
+    ContactStep.tsx       # name/email/phone + WhatsApp pre-check + OTP block
+    DeliveryStep.tsx      # pincode-first address
+    ReviewStep.tsx        # collapsible summary + coupon (+ available list) + policy + Pay
+```
+
+`useCheckoutMachine.ts` / `.test.ts` already exist (17a).
+
+### 12.2 What `CheckoutSheet` owns (lift verbatim from `CartDrawer`)
+
+**State (all of it — the reducer holds none of this):**
+`customerName/Phone/Email`, `addressLine`, `landmark`, `pincode`, `city`,
+`addressState`, `pincodeLookupStatus`, `whatsappCheckStatus`,
+`whatsappCheckedPhone`, `otpCode` (the typed digits — *not* the status),
+`otpError` (display text), `validationError`, `invalidField`, `agreedToPolicy`,
+`couponInput`, `appliedCoupon`, `couponError`, `applyingCoupon`, `loading`.
+
+**Refs:** `pincodeLookupRef`, `whatsappCheckRef`, `otpInputRef`,
+`nameInputRef`, `emailInputRef`, `phoneInputRef`, `addressInputRef`,
+`pincodeInputRef`, `cityInputRef`, `stateSelectRef`, `policyCheckboxRef`,
+`validationErrorRef`, `leadCapturedPhoneRef`.
+
+**Effects (verbatim):** pincode lookup (CartDrawer ~56–81), WhatsApp pre-check
+(~98–136), Razorpay SDK preload (~348–350), lead beacon (~250–268). **Drop**
+the two OTP effects (~154–166) and the `contactVerified` scroll effect
+(~237–242) — the reducer + step transitions replace them.
+
+**Functions (verbatim):** `initializeRazorpaySDK`, `handleApplyCoupon`,
+`handleRemoveCoupon`, `focusInvalidField`, `showGeneralError`,
+`fieldBorderClass`, `handleRazorpayPayment` — see 12.6 for the small edits to
+the last one.
+
+**From context:** `useCart()`, `useCategoryDiscountMap()`,
+`useDefaultWhatsappNumber()`, `useRouter()`, and now
+`const m = useCheckoutMachine()`.
+
+### 12.3 `CheckoutSheet` shell
+
+```tsx
+// mounted by CartDrawer only while checking out (12.7)
+<div role="dialog" aria-modal="true" className={/* mobile: fixed inset-0 full sheet;
+     sm: absolute inset-y-0 right-0 w-screen max-w-md (today's drawer box) */}>
+  <Stepper step={m.step} onBack={handleBack} />        {/* sticky top */}
+  <div className="flex-1 overflow-y-auto">
+    <StepTransition key={m.step} step={m.step}>        {/* slide L/R; fade on prefers-reduced-motion */}
+      {m.step === 1 && <ContactStep .../>}
+      {m.step === 2 && <DeliveryStep .../>}
+      {m.step === 3 && <ReviewStep .../>}
+    </StepTransition>
+  </div>
+  <div className="sticky bottom-0 ...">               {/* sticky footer */}
+    {validationError && <p ref={validationErrorRef} className="text-rose-600 text-xs mb-2" aria-live="polite">{validationError}</p>}
+    <button type="button" disabled={footerDisabled} onClick={handleFooterClick} className="w-full ...">
+      {footerLabel}
+    </button>
+  </div>
+</div>
+```
+
+- **`StepTransition`**: a tiny wrapper — `translateX` in/out keyed on `step`,
+  200ms; `@media (prefers-reduced-motion: reduce)` → opacity only. Pure CSS +
+  a mount/unmount key; no animation lib.
+- **`footerLabel`**: step 1 `Continue`, step 2 `Continue`, step 3
+  `Pay ₹{grandTotal}` (or `Verifying…` while `loading`).
+- **`footerDisabled`**: step 1 → `!m.contactVerified`; step 2 → `false`
+  (validation on click, like today); step 3 → `loading`.
+- **`handleFooterClick`**: step 1 → `validateContact()` then `m.goDelivery()`;
+  step 2 → `validateDelivery()` then `m.goReview()`; step 3 →
+  `handleRazorpayPayment(e)`.
+- **`handleBack`**: step 2 → `m.goContact()`; step 3 → `m.goDelivery()`;
+  step 1 → close the sheet (back to cart). Never clears any field state.
+- On `m.step` change: `focus` the step's `<h2>` (a11y).
+
+### 12.4 `Stepper.tsx`
+
+Props `{ step: 1|2|3, onBack: () => void }`. Renders: a left chevron button
+(`aria-label="Back"`), the step title (`["Contact","Delivery","Review & Pay"][step-1]`),
+a 3-segment bar (`segment i` filled if `i < step`, `aria-current="step"` on
+`i === step-1`), and `Step {step} of 3 · {title}` text. ~40 lines, no state.
+
+### 12.5 Step components — where the CartDrawer JSX goes
+
+Each step is a presentational component. It gets the field values + setters +
+refs + the machine (or just the dispatch helpers it needs) as props.
+`CheckoutSheet` passes a `bag` object to keep prop lists sane.
+
+**`ContactStep`** — from CartDrawer JSX ~744–920 (the "Step 1" card):
+- name / email / phone inputs (verbatim, incl. `fieldBorderClass`,
+  `invalidField` borders, the phone `pattern`/`inputMode`).
+- The WhatsApp pre-check status line (~818–840).
+- **OTP block** (~842–918): shows once
+  `PHONE_REGEX.test(customerPhone) && (whatsappCheckStatus === "valid" || "unknown")`.
+  Wire the buttons to the machine:
+  - `Send code` → `m.sendOtp()` then the existing `handleSendOtp` fetch; on ok
+    `m.otpSent()`, on fail `m.otpFailed(msg)`. (Move `handleSendOtp` into
+    `ContactStep` or keep in `CheckoutSheet` and pass down — either; it needs
+    `customerPhone` + `otpInputRef` + `setOtpError`.)
+  - code input → local `otpCode` (in `CheckoutSheet`).
+  - `Verify` → `m.verifyOtp()` then `handleVerifyOtp` fetch; on ok
+    `m.otpVerified(data.token, cleanPhone)`, on fail `m.otpFailed(msg)`.
+  - `Resend` disabled while `m.state.phase==="contact" && m.state.otp.s==="sent"
+    && m.state.otp.cooldown > 0`; label shows the countdown from
+    `m.state.otp.cooldown`.
+  - The `phoneChanged` effect: in `CheckoutSheet`, an
+    `useEffect(() => m.phoneChanged(), [customerPhone])` — same trigger as the
+    old OTP-reset effect. (First run on mount is a harmless no-op:
+    `PHONE_CHANGED` from a fresh `contact` state returns an equal fresh state.)
+  - The old `whatsappCheckStatus === "invalid"` branch that **clears the phone
+    and refocuses** — keep verbatim (it's in the pre-check effect, already in
+    `CheckoutSheet`).
+- The "✓ Verified — [Change details]" affordance (~921+): show when
+  `m.contactVerified`; the "Change details" link just scrolls to / focuses the
+  name field (no dispatch needed — they're already on step 1). The footer
+  `Continue` is what advances.
+
+**`DeliveryStep`** — from CartDrawer JSX (the "Step 2" card, address fields):
+- **pincode first** in the DOM order: pincode input (6-digit, `inputMode`),
+  then the `pincodeLookupStatus` line ("Looking up…" / "✓ {city}, {state}" /
+  "Couldn't find that PIN — enter city/state below"), then address line,
+  landmark, `city` (editable), `addressState` `<select>` from `INDIAN_STATES`.
+  The lookup effect stays in `CheckoutSheet` (already listed).
+
+**`ReviewStep`** — from CartDrawer JSX ~921–1140 (the order-summary + coupon +
+policy region):
+- **Collapsible order summary**: a `<details>` (open by default on desktop,
+  closed on mobile) with the cart lines (`item.name × qty`, per-line price via
+  `calculateSlashedPrice` + `categoryDiscounts` — verbatim from the cart-list
+  render ~660–740), subtotal, the GST line (`calculateGstBreakdown(grandTotal,
+  GST_RATE*100)` — verbatim), discount line if `appliedCoupon`, grand total.
+- **Coupon field**: input + `Apply` (`handleApplyCoupon`) / applied-state with
+  `Remove` (`handleRemoveCoupon`) + `couponError` — verbatim.
+- **Available-coupons list** (NEW): under the input, render
+  `useAvailableCoupons()` results as tappable rows — `CODE` · `₹X off` / `Y%
+  off` · `min ₹N` / `expires DD Mon` if present. Disabled row (greyed, "min
+  order ₹N") when `cartTotal < minSubtotal`. Tap → `setCouponInput(code)` then
+  `handleApplyCoupon()`. Hide the whole list once `appliedCoupon` is set.
+- **Policy checkbox** (`agreedToPolicy`, bilingual label) — verbatim.
+- No Pay button here — it's the sheet footer.
+
+### 12.6 `handleRazorpayPayment` edits (minimal)
+
+Keep the entire body. Changes:
+
+1. It now runs only from step 3, so the name/email/phone/OTP validation blocks
+   (~397–430) are **redundant** but harmless — leave them as a final assert, OR
+   move them into `validateContact()` and keep only a
+   `if (!m.contactVerified) { m.verificationExpired(); return; }` guard here.
+   Simplest + safest: **leave the asserts**, add nothing.
+2. Read the token from the machine:
+   `const token = m.credentials?.token; const cleanPhone = m.credentials?.phone ?? customerPhone.replace(/\D/g,"")`.
+   (`m.credentials` is non-null on step 3.) Use `token` where
+   `otpVerificationToken` was.
+3. Around the flow: `m.submitPayment()` right before the `fetch("/api/razorpay")`;
+   in the `handler` before `router.push`, `m.reset()`; on
+   `data.code === "verification_required"` call `m.verificationExpired()`
+   instead of the three `setOtp*` calls (keep the `setValidationError` +
+   scroll); on the Razorpay modal's `modal.ondismiss` (add one) →
+   `m.paymentDismissed()`.
+4. `options.modal = { ondismiss: () => m.paymentDismissed() }` — new, so
+   closing the modal returns cleanly to Review.
+
+Everything else — SDK load, the `fetch` body, `options`, the fast-path webhook
+call, the `sessionStorage.setItem` block, `setIsOpen(false)`, `router.push` —
+**byte-for-byte unchanged**.
+
+### 12.7 `CartDrawer` changes
+
+- Add `const [checkingOut, setCheckingOut] = useState(false)`.
+- The cart list + "Proceed to Checkout" button stay. That button →
+  `setCheckingOut(true)` (guard: `cart.length > 0`).
+- `{checkingOut && <CheckoutSheet onExit={() => setCheckingOut(false)} .../>}`.
+  On the sheet's `handleBack` from step 1, or on successful order (after
+  `router.push`), call `onExit()` and `m.reset()`.
+- When `isOpen` goes false (drawer closed) → `setCheckingOut(false)` +
+  `m.reset()` (an effect). Empty-cart-during-checkout → same.
+- Everything from the old inline `<form id="checkout-contact-form">` down to its
+  close is **deleted in 17c**, not 17b — 17b leaves it in place but unreachable
+  (the "Proceed to Checkout" button now opens the sheet instead of expanding
+  the form) so the diff is reviewable and a revert is trivial.
+
+### 12.8 `useAvailableCoupons.ts`
+
+```ts
+export function useAvailableCoupons(active: boolean) {
+  const [coupons, setCoupons] = useState<PublicCoupon[]>([]);
+  useEffect(() => {
+    if (!active) return;
+    let cancelled = false;
+    fetch("/api/coupons").then(r => r.json()).then(d => {
+      if (!cancelled) setCoupons(Array.isArray(d?.coupons) ? d.coupons : []);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [active]);
+  return coupons;
+}
+```
+
+Confirm the route path + response shape — grep for the promo banner's fetch
+(`PromoBanner` / `getPublicCoupons` consumer). Reuse exactly that. **Do not**
+add an endpoint; **do not** surface private coupons (the route already filters
+to `is_public` + live).
+
+### 12.9 `?checkout=preview` flag
+
+In `CartDrawer`:
+
+```ts
+const previewMode =
+  process.env.NODE_ENV !== "production" &&
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("checkout") === "preview";
+
+useEffect(() => { if (previewMode) { /* seed a stub cart via CartContext */ setCheckingOut(true); } }, [previewMode]);
+```
+
+In `CheckoutSheet`, pass `preview={previewMode}`; when `preview`, the footer's
+step-3 handler logs the `options` object it *would* pass to Razorpay and
+returns — no `new Razorpay(...)`, no `fetch`. Everything else (all 3 steps,
+Back, transitions, validation, the coupon list) runs normally. OTP still hits
+the real endpoints unless you also stub those — recommend a
+`preview && phone==="9999999999"` shortcut in the OTP handlers that fakes
+`m.otpVerified("preview-token", phone)` so a full walk needs no WhatsApp.
+
+### 12.10 Per-step validators (split from the one big block)
+
+```ts
+function validateContact(): boolean {
+  // name, email regex, PHONE_REGEX(cleanPhone), m.contactVerified — the first
+  // four blocks of the old handleRazorpayPayment, verbatim, returning false +
+  // focusInvalidField instead of `return`.
+}
+function validateDelivery(): boolean {
+  // addressLine, /^\d{6}$/.test(pincode), city, addressState — blocks 5–8.
+}
+// policy + agreedToPolicy stays inside handleRazorpayPayment (step 3).
+```
+
+### 12.11 Test additions
+
+- `useAvailableCoupons` — pure enough to test with a mocked `fetch` (or skip;
+  it's a thin wrapper).
+- No new reducer tests (17a covers it). The step components are visual —
+  covered by the owner walk-through, not unit tests.
+
+### 12.12 Verification — see §10
+
+Owner runs the `?checkout=preview` walk-through (all 3 steps, Back keeps
+input, phone-edit drops verification, reduced-motion, empty-cart snap, coupon
+list tap-to-apply) **and** one live ~₹1 order via a ~99%-off private coupon,
+then refunds. 17b does not merge until both pass.
