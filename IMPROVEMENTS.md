@@ -153,11 +153,12 @@ care, land behind tests, never "blind".
 ## Active — Tier 1 (correctness / money)
 
 1. **⚠️ Non-atomic stock deduction in the webhook.**
-   Still a separate, larger follow-up: a **short-TTL stock reservation at order creation**
-   so two checkouts for the last unit can't both *pay*. The race between concurrent
-   webhooks, and surfacing an oversell, are fixed — see Done (2026-08-29 12:33): migration
-   `0041` `decrement_inventory()` + `rpc()` + `sendOversellAlert`. **Owner still owes one
-   live test payment** to confirm the RPC path end-to-end (revert target `57ffd29`).
+   The concurrent-webhook race and oversell surfacing are fixed and **verified end-to-end**
+   — see Done (2026-08-29 12:33): migration `0041` `decrement_inventory()` + `rpc()` +
+   `sendOversellAlert`; a live test-mode payment confirmed order + WhatsApp + email +
+   inventory −1. What's left is a separate, larger piece: a **short-TTL stock reservation
+   at order creation** so two checkouts for the last unit can't both *pay*. Needs a written
+   design first (⚠️ payment path) — not started; awaiting owner go-ahead.
 
 2. ~~**Sold-count accuracy degrades past ~300 orders.**~~ — **done + verified end-to-end
    2026-08-29** (see Done, batch 13:20). `product_sales` aggregate + `apply_product_sales`
@@ -172,28 +173,28 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 2 (security / hardening)
 
-5. ~~**Make CI enforcing.**~~ — **done (2026-08-29).** Branch-protection ruleset (Active)
-   on the default branch requires the `verify` status check; confirmed by a direct
-   `git push origin main` being rejected (`GH013 … Required status check "verify" is
-   expected`). Deploy flow is now PR-based — see the Done batch (14:30) and the working
-   agreement. *Remaining polish (not blocking):* confirm the 5 Actions secrets are set so
-   CI's `next build` + RLS test mirror Vercel; `verify` passes without them but coverage
-   is thinner.
+5. ~~**Make CI enforcing.**~~ — **done + confirmed (2026-08-29).** Branch-protection
+   ruleset (Active) on the default branch requires the `verify` status check; a direct
+   `git push origin main` is rejected (`GH013 … Required status check "verify" is
+   expected`). The 5 Actions secrets are set — PR #3's `verify` run passed all checks with
+   the real build. Deploy flow is now PR-based (see Done batch 14:30 + working agreement).
 
 7. ~~`/success` shouldn't depend on `sessionStorage`~~ — **done** (2026-08-29). Follow-up:
    link the WhatsApp/email order confirmations to `/success?order_id=` so the buyer has a
    one-tap route back to a printable invoice.
 
-8. **Prune / retain remaining log tables** with a documented policy (`leads`,
-   `whatsapp_enquiries` need a longer retention because of analytics — decide the window
-   with the owner).
+8. ~~Prune / retain remaining log tables (`leads`, `whatsapp_enquiries`).~~ — **deferred
+   by owner (2026-08-29): leave as-is.** Both tables stay unbounded. They're small and
+   `whatsapp_enquiries` feeds all-time admin analytics, so no automatic prune. Revisit only
+   if row counts ever become a real cost/perf problem.
 
 ## Active — Tier 3 (cost / performance — several are 💰)
 
-9. **💰 Re-enable Image Optimization** once the Vercel quota cycle resets (tracked in
-   auto-memory `vercel_image_optimization_unoptimized_flag.md`). Interim: Supabase
-   Storage image transforms (`?width=`) — **note: Supabase image transforms require the
-   Pro plan**, so this is 💰 unless already on Pro.
+9. **💰 Re-enable Image Optimization** — **on hold, no-cost path only (owner, 2026-08-29).**
+   `images.unoptimized: true` stays until the Vercel quota cycle resets and it can be
+   dropped for free (tracked in auto-memory `vercel_image_optimization_unoptimized_flag.md`).
+   Supabase Storage image transforms (`?width=`) are ruled out — they need the Pro plan (💰).
+   No action until the free trigger; then just remove the flag.
 
 10. **`count: "exact"` on every catalog query** (`getCatalogPage`) is a full scan.
     Premature at ~140 products; revisit at scale with `count: "planned"` + a separately

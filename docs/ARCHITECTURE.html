@@ -206,6 +206,31 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>15:10</code></td>
+  <td><strong>Bookkeeping: CI secrets confirmed + backlog decisions</strong><br>(<code>IMPROVEMENTS.md</code> T1&nbsp;#1, T2&nbsp;#5, T2&nbsp;#8, T3&nbsp;#9)</td>
+  <td>
+    Docs-only, recording owner decisions &mdash; no code, schema, or behaviour change.<br>
+    &bull; <strong>CI (T2 #5):</strong> the 5 Actions secrets are set; PR #3&rsquo;s <code>verify</code> ran the
+    real build and all checks passed. Item closed &mdash; CI now genuinely mirrors Vercel.<br>
+    &bull; <strong>Green API:</strong> owner rotated the <code>GREEN_API_*</code> secrets and redeployed;
+    verified live via the checkout OTP send.<br>
+    &bull; <strong>Log retention (T2 #8):</strong> deferred by owner &mdash; <code>leads</code> and
+    <code>whatsapp_enquiries</code> stay unbounded (small; the latter feeds all-time analytics). No auto-prune.<br>
+    &bull; <strong>Image optimization (T3 #9):</strong> no-cost path only &mdash; <code>images.unoptimized: true</code>
+    holds until the Vercel quota resets and the flag can be dropped for free. Supabase transforms (Pro-only) ruled
+    out.<br>
+    &bull; <strong>T1 #1:</strong> stale &ldquo;owner owes a live test payment&rdquo; line removed &mdash; the
+    <code>0041</code> RPC path was verified by a live test-mode payment earlier the same day. Only the (not-started)
+    stock-reservation design remains under that item.
+  </td>
+  <td>
+    <code>docs/ARCHITECTURE.html</code><br>
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>n/a &mdash; docs only. <code>next build</code> exit 0 (240 pages) &middot; <code>tsc --noEmit</code> clean
+    &middot; <code>npm test</code> 51/7 on the branch.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>14:30</code></td>
   <td><strong>CI enforcing on <code>main</code> &mdash; deploy flow now PR-based</strong><br>(<code>IMPROVEMENTS.md</code> T2&nbsp;#5)</td>
   <td>
@@ -1533,12 +1558,13 @@ stale &mdash; the one scheduled job with a health signal.</p>
     locally &mdash; every change now lands via a pull request whose <code>verify</code> run is green.</strong>
     The five Actions secrets (<code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code>,
     <code>SUPABASE_SERVICE_ROLE_KEY</code>, <code>NEXT_PUBLIC_RAZORPAY_KEY_ID</code>, <code>RAZORPAY_KEY_SECRET</code>)
-    make the <code>next build</code> + RLS-test steps mirror Vercel exactly; <code>verify</code> passes with or
-    without them (placeholder keys, RLS test self-skips), so a missing secret weakens coverage but never blocks a
-    PR. See the revised deploy step in &sect;27 / the working agreement.</dd>
+    are set (confirmed on PR #3 &mdash; <code>verify</code> ran the real build, all checks passed), so CI&rsquo;s
+    <code>next build</code> + RLS test mirror Vercel exactly. <code>verify</code> is still designed to pass without
+    them (placeholder keys, RLS test self-skips) so a future secret rotation can&rsquo;t wedge the pipeline. See
+    the revised deploy step in &sect;27 / the working agreement.</dd>
   <dt>Last verified build</dt><dd><code>next build</code> exit 0 &mdash; 239 SSG pages (156 products), all routes + middleware compiled, <code>tsc --noEmit</code> clean, unit tests pass.</dd>
   <dt>CSP</dt><dd>Enforced only when <code>NODE_ENV === "production"</code> (dev tooling needs looser rules). Directive list compiled by grepping every <code>https://</code> the code loads + each integration&rsquo;s documented requirements; deliberately generous on <code>script/connect/frame</code>.</dd>
-  <dt>Images</dt><dd><code>remotePatterns</code>: <code>gxlervcazzddqcoagewy.supabase.co/storage/v1/object/**</code>, <code>images.unsplash.com/**</code>. <code>unoptimized: true</code> (temporary).</dd>
+  <dt>Images</dt><dd><code>remotePatterns</code>: <code>gxlervcazzddqcoagewy.supabase.co/storage/v1/object/**</code>, <code>images.unsplash.com/**</code>. <code>unoptimized: true</code> &mdash; on hold by owner decision (2026-08-29): stays until the Vercel quota cycle resets and the flag can be dropped for free. Supabase image transforms (Pro-only) are ruled out.</dd>
   <dt>Lint debt</dt><dd>The repo carries pre-existing <code>@typescript-eslint/no-explicit-any</code> and <code>react-hooks/set-state-in-effect</code> errors (<code>npm run lint</code> is not clean). Next 16 does not run ESLint during <code>next build</code>, so deploys are unaffected.</dd>
   <dt>tsconfig</dt><dd><code>paths: { "@/*": ["./*"] }</code>, <code>strict</code>, <code>noEmit</code>, incremental.</dd>
   <dt>Not committed</dt><dd><code>.env*</code>, <code>.next/</code>, <code>*.tsbuildinfo</code>, <code>scripts/.image-migration-manifest.json</code>.</dd>
