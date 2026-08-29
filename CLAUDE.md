@@ -77,9 +77,13 @@ This is the standing SOP for any multi-change piece of work (the audit/refactor 
    `url`). Move shipped items to Done in `IMPROVEMENTS.md`. **Never deploy a batch whose
    docs aren't already updated.** If token budget is too low to document properly, stop
    before deploying and say exactly what's undocumented.
-4. **Deploy** (only when the owner says so, and only after step 3). Branch from `main`,
-   commit, push; on "deploy", fast-forward `main` and **re-verify the merged HEAD**
-   (`next build` + `npm test`) before `git push origin main`. Delete the merged branch.
+4. **Deploy** (only when the owner says so, and only after step 3). **`main` is
+   branch-protected — direct `git push origin main` is rejected (`GH013 … Required status
+   check "verify"`).** Flow: branch from `main`, commit, push the branch; open a PR; wait
+   for the `verify` check (CI: `tsc` + `npm test` + `next build`) to go green; on "deploy",
+   **re-verify the merged HEAD** (`next build` + `npm test`) and merge the PR (Vercel
+   deploys from the merge commit). Delete the merged branch. `gh` is not installed here —
+   push the branch and have the owner click Merge, or use the API with a token if provided.
 5. **Recommend.** End with a short, prioritised "what next" — new issues found, deferred
    items, follow-ups. Feed anything durable into `IMPROVEMENTS.md`.
 
