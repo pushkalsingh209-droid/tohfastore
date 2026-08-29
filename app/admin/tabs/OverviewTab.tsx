@@ -83,6 +83,47 @@ export default function OverviewTab() {
       </div>
     )}
 
+    {/* SYSTEM HEALTH: Green API (WhatsApp) session state. /api/keepalive
+        stamps site_settings.last_greenapi_state from its getStateInstance
+        ping. Anything other than "authorized" means order-confirmation /
+        dispatch / OTP messages are silently not going out -- surface it
+        here instead of finding out from a customer. Hidden entirely when
+        Green API isn't configured ("skipped"). */}
+    {settings.last_greenapi_state && settings.last_greenapi_state !== "skipped" && (() => {
+      const state = settings.last_greenapi_state;
+      const healthy = state === "authorized";
+      return (
+        <div
+          className={`rounded-lg border p-4 mb-6 flex items-center justify-between gap-4 ${
+            healthy ? "bg-stone-50 border-stone-200" : "bg-amber-50 border-amber-300"
+          }`}
+        >
+          <div>
+            <p className="text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-stone-500">WhatsApp (Green API) session</p>
+            <p className={`text-sm font-mono ${healthy ? "text-stone-700" : "text-amber-800 font-semibold"}`}>
+              {healthy ? "authorized" : state}
+            </p>
+            <p className="text-[10px] text-stone-400 mt-0.5">
+              {healthy
+                ? "Session is live — order updates, dispatch alerts and checkout OTPs are sending."
+                : state === "error"
+                ? `Last check failed${settings.last_greenapi_error ? `: ${settings.last_greenapi_error}` : ""} — WhatsApp messages may not be delivering.`
+                : "Not authorized — re-link the Green API instance (QR scan). Order confirmations and checkout OTPs are NOT being delivered."}
+            </p>
+          </div>
+          <span
+            className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full border ${
+              healthy
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-amber-100 text-amber-800 border-amber-300"
+            }`}
+          >
+            {healthy ? "OK" : "Check"}
+          </span>
+        </div>
+      );
+    })()}
+
     {/* SECTION OVERVIEW: BUSINESS ANALYTICS */}
     <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
       <div className="border-b border-stone-200 pb-4 mb-6">

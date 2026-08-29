@@ -23,9 +23,9 @@ async function pingSupabase(): Promise<{ status: string; message?: string }> {
     const { error } = await supabase.from("products").select("id", { count: "exact", head: true }).limit(1);
     if (error) throw error;
     return { status: "ok" };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Keepalive: Supabase ping failed:", err);
-    return { status: "error", message: err.message };
+    return { status: "error", message: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -40,9 +40,9 @@ async function pingGreenApi(): Promise<{ status: string; message?: string }> {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
     return { status: data.stateInstance || "unknown" };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Keepalive: Green API ping failed:", err);
-    return { status: "error", message: err.message };
+    return { status: "error", message: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -60,16 +60,24 @@ export async function GET(req: Request) {
 
   // Record a heartbeat regardless of whether the individual pings were
   // healthy -- the point is "the scheduler is alive and hitting this route".
-  // The admin Overview tab reads this back and flags it if it goes stale,
-  // so a dead cron-job.org schedule surfaces there instead of only showing
-  // up days later as Green API silently going idle. Best-effort: a failure
-  // here must not change the ping result. Deliberately no
-  // revalidateTag("site-settings") -- this key isn't part of any cached
+  // Also stamp the Green API session state (from the getStateInstance ping
+  // above) so the admin Overview can flag a WhatsApp session that's gone
+  // "notAuthorized"/idle -- otherwise that only surfaces days later as
+  // order-confirmation messages silently not arriving. The admin Overview
+  // reads all three keys back (see app/admin/tabs/OverviewTab.tsx).
+  // Best-effort: a failure here must not change the ping result. Deliberately
+  // no revalidateTag("site-settings") -- these keys aren't part of any cached
   // storefront query (see getSiteSettings / PUBLIC_SETTING_KEYS).
   try {
-    await supabase
-      .from("site_settings")
-      .upsert({ key: "last_keepalive_at", value: new Date().toISOString() }, { onConflict: "key" });
+    const now = new Date().toISOString();
+    await supabase.from("site_settings").upsert(
+      [
+        { key: "last_keepalive_at", value: now },
+        { key: "last_greenapi_state", value: greenApiResult.status },
+        { key: "last_greenapi_error", value: greenApiResult.message || "" },
+      ],
+      { onConflict: "key" }
+    );
   } catch (err) {
     console.error("Keepalive: heartbeat write failed:", err);
   }

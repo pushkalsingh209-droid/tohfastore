@@ -206,6 +206,47 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>06:00</code></td>
+  <td><strong>#18 phone normalisation + #13 Green API health</strong><br>(<code>IMPROVEMENTS.md</code> #18, #13; &#9888; #18 touches the OTP form)</td>
+  <td>
+    <strong>#18</strong> &mdash; new <code>app/utils/phone.ts</code> <code>normalizeIndianPhone(raw)</code>, the one
+    canonical normaliser (&rarr; <code>91XXXXXXXXXX</code>). Replaced the four near-identical local copies
+    (<code>whatsappOtp.ts</code> <code>normalizePhone</code>, <code>greenApi.ts</code> &times;2 inline,
+    <code>stock-alerts</code>, admin <code>whatsapp-numbers</code> <code>normalizePhoneNumber</code>) + the inline
+    one in admin <code>orders/update-status</code>. Rule: strip non-digits; <code>91</code>+10 &rarr; unchanged;
+    exactly 10 &rarr; prepend <code>91</code>; else the old &ldquo;prefix unless starts 91&rdquo;. Identical output
+    to the old rules for every input that was already <em>valid</em>; the one change is a genuine 10-digit mobile
+    that starts <code>91</code> (e.g. <code>9198765432</code>) now gets its country code instead of being left
+    bare and failing every caller&rsquo;s <code>/^91[6-9]\d{9}$/</code> check &mdash; no in-flight OTP record can
+    exist for such a number today, so nothing that currently works breaks. Admin
+    <code>whatsapp-numbers</code> POST swapped its loose <code>length &lt; 10</code> guard (which the always-prefix
+    normaliser would defeat) for that same regex &mdash; a small, intentional tightening of admin input
+    validation. 7 unit tests. <code>normalizePhoneForRecord</code> (used by <code>/api/razorpay</code> +
+    <code>abandoned-checkout</code>) now re-exports it.<br>
+    <strong>#13</strong> &mdash; <code>/api/keepalive</code> now also stamps <code>last_greenapi_state</code> (from
+    its <code>getStateInstance</code> ping) + <code>last_greenapi_error</code> into <code>site_settings</code>
+    (best-effort, no cache revalidate &mdash; not a public key). The admin <strong>Overview</strong> tab shows a
+    second health card next to the keepalive one: amber &ldquo;Check&rdquo; whenever the state is anything other
+    than <code>authorized</code>, hidden entirely when Green API isn&rsquo;t configured. So a dropped WhatsApp
+    session (silent by design &mdash; <code>greenApi.ts</code> best-effort) is visible on the dashboard instead of
+    surfacing as missing order confirmations. Rider: the 2 pre-existing <code>catch (err: any)</code> in
+    <code>keepalive</code> tidied to <code>unknown</code>.
+  </td>
+  <td>
+    <code>app/utils/phone.ts</code> + <code>phone.test.ts</code> (new) &middot; <code>app/utils/whatsappOtp.ts</code>
+    &middot; <code>app/utils/greenApi.ts</code> &middot; <code>app/api/stock-alerts/route.ts</code> &middot;
+    <code>app/api/admin/whatsapp-numbers/route.ts</code> &middot;
+    <code>app/api/admin/orders/update-status/route.ts</code> &middot; <code>app/api/keepalive/route.ts</code>
+    &middot; <code>app/admin/tabs/OverviewTab.tsx</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>next build</code> exit 0 &middot; <code>tsc --noEmit</code> clean &middot; <code>npm test</code>
+    <strong>96 pass</strong> / 7 skip (+7 <code>phone.test.ts</code>) &middot; <code>eslint</code> clean on every
+    changed file. Not exercised against a live Green API session-drop or a live OTP round trip.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>04:30</code></td>
   <td><strong>#17c &mdash; delete the legacy checkout</strong><br>(<code>IMPROVEMENTS.md</code> #17; &#9888; payment path)</td>
   <td>
@@ -1345,7 +1386,7 @@ RLS: anon <code>SELECT USING (hidden = false)</code>; service role bypasses.</p>
 <tr><td><code>categories</code></td><td><code>name</code> UNIQUE, <code>show_on_home</code> bool=true, <code>gst_rate</code> numeric(5,2)=5.00, <code>default_page_size</code> int, <code>discount_percent</code> numeric=25</td><td>Managed category list. <code>show_on_home=false</code> drops products from the unfiltered homepage but keeps the category reachable. <code>discount_percent</code> is display-only (fake struck-through MRP). <em>(0004&ndash;07, 0011, 0013)</em></td></tr>
 <tr><td><code>reviews</code></td><td><code>product_id</code> FK&rarr;products ON DELETE CASCADE, <code>rating</code> smallint 1&ndash;5, <code>approved</code> bool=false</td><td>Admin-moderated. RLS anon <code>SELECT USING (approved = true)</code>. <em>(0001)</em></td></tr>
 <tr><td><code>coupons</code></td><td><code>code</code> UNIQUE, <code>discount_type</code> flat|percent, <code>discount_value</code> &gt; 0, <code>active</code> bool=true, <code>max_uses</code> int, <code>used_count</code> int=0, <code>expires_at</code>, <code>is_public</code> bool=false</td><td><code>is_public</code> coupons are advertised in the promo banner; private ones still redeem. <code>used_count</code> incremented only on a captured, paid order. RLS: no policies. <em>(0001&ndash;02)</em></td></tr>
-<tr><td><code>site_settings</code></td><td><code>key</code> text PK, <code>value</code> text</td><td>KV store. Keys: <code>default_page_size</code>, <code>brass_price_per_kg</code>, <code>catalog_reveal_batch_size</code>, <code>weight_unit</code>, <code>dimension_unit</code>, <code>default_whatsapp_number</code>, <code>default_photo_filter</code>, <code>ganesha_cooldown_minutes</code>, <code>ganesha_max_auto_shows</code>, <code>ganesha_collapse_delay_seconds</code>, <code>chat_label_in_stock</code>, <code>chat_label_out_of_stock</code>, <code>last_keepalive_at</code> (stamped by <code>/api/keepalive</code>, read by the admin Overview). Public subset via <code>/api/settings</code>. <em>(0011, 0022, 0025)</em></td></tr>
+<tr><td><code>site_settings</code></td><td><code>key</code> text PK, <code>value</code> text</td><td>KV store. Keys: <code>default_page_size</code>, <code>brass_price_per_kg</code>, <code>catalog_reveal_batch_size</code>, <code>weight_unit</code>, <code>dimension_unit</code>, <code>default_whatsapp_number</code>, <code>default_photo_filter</code>, <code>ganesha_cooldown_minutes</code>, <code>ganesha_max_auto_shows</code>, <code>ganesha_collapse_delay_seconds</code>, <code>chat_label_in_stock</code>, <code>chat_label_out_of_stock</code>, <code>last_keepalive_at</code> / <code>last_greenapi_state</code> / <code>last_greenapi_error</code> (all stamped by <code>/api/keepalive</code>, read by the admin Overview). Public subset via <code>/api/settings</code>. <em>(0011, 0022, 0025)</em></td></tr>
 <tr><td><code>product_colors</code>, <code>product_materials</code>, <code>labels</code></td><td><code>name</code> UNIQUE (+ <code>labels.photo_filter</code>)</td><td>Managed dropdown lists for the admin product form. Storefront reads distinct in-use labels off <code>products</code> via <code>/api/labels</code> instead. <em>(0017, 0018, 0021, 0023)</em></td></tr>
 <tr><td><code>whatsapp_numbers</code></td><td><code>phone_number</code> UNIQUE (<code>91&hellip;</code>), <code>label</code></td><td>Additional per-product enquiry numbers. The active site-wide default lives in <code>site_settings.default_whatsapp_number</code>. <em>(0019)</em></td></tr>
 <tr><td><code>chat_button_labels</code></td><td><code>kind</code> in_stock|out_of_stock, <code>label</code> 1&ndash;30, UNIQUE(kind,label)</td><td>Preset pool for the &ldquo;Chat for &hellip;&rdquo; product-card button. Active choice is a plain-text <code>site_settings</code> value. <em>(0033)</em></td></tr>
@@ -1567,7 +1608,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/labels</code></td><td><span class="tag t-get">get</span></td><td>Distinct in-use label names + per-label photo-filter map.</td></tr>
 <tr><td><code>/api/settings</code></td><td><span class="tag t-get">get</span></td><td>Public-safe subset of <code>site_settings</code> (photo filter, units, WA number, Ganesha popup, chat labels).</td></tr>
 <tr><td><code>/api/pincode/[code]</code></td><td><span class="tag t-get">get</span></td><td>Proxies India Post PIN lookup (no CORS upstream). <code>{city, state}</code>. Cached 1h.</td></tr>
-<tr><td><code>/api/keepalive</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Pings Supabase (7-day auto-pause) + Green API <code>getStateInstance</code>. External scheduler every 15&ndash;30 min.</td></tr>
+<tr><td><code>/api/keepalive</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Pings Supabase (7-day auto-pause) + Green API <code>getStateInstance</code>. External scheduler every 15&ndash;30 min. Stamps <code>last_keepalive_at</code> + <code>last_greenapi_state</code> / <code>last_greenapi_error</code> into <code>site_settings</code> (best-effort) &rarr; admin Overview health cards.</td></tr>
 <tr><td><code>/api/cron/abandoned-checkout</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Nudges <code>checkout_started</code> leads 2h&ndash;7d old, not yet <code>contacted</code>, with no matching order since. Every 30&ndash;60 min.</td></tr>
 <tr><td><code>/api/cron/product-sales-reconcile</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Recomputes the units-sold tally from every non-cancelled order and diffs it against <code>product_sales</code> (0042). Drift &rarr; best-effort business WhatsApp; <code>?heal=1</code> also writes the recomputed values back. Alert-only by default. Daily external schedule.</td></tr>
 </tbody></table></div>
@@ -1594,7 +1635,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/admin/colors</code>, <code>/api/admin/materials</code>, <code>/api/admin/labels</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> (labels also <span class="tag t-patch">patch</span>)</td><td>Managed dropdown lists. <code>labels</code> also <code>revalidateTag("labels","max")</code>.</td></tr>
 <tr><td><code>/api/admin/labels/bulk-assign</code></td><td><span class="tag t-post">post</span></td><td>Tag many products at once &mdash; <code>mode: "category"</code> or <code>"home"</code> (all homepage-visible).</td></tr>
 <tr><td><code>/api/admin/chat-labels</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-del">delete</span></td><td>Preset pool for the chat button (per <code>kind</code>).</td></tr>
-<tr><td><code>/api/admin/whatsapp-numbers</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span></td><td>Managed enquiry-number list (normalized to <code>91XXXXXXXXXX</code>).</td></tr>
+<tr><td><code>/api/admin/whatsapp-numbers</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span></td><td>Managed enquiry-number list. POST normalises via <code>phone.ts</code> and now validates <code>/^91[6-9]\d{9}$/</code> (was a loose <code>length &lt; 10</code> guard).</td></tr>
 <tr><td><code>/api/admin/whatsapp-numbers/reassign</code></td><td><span class="tag t-post">post</span></td><td>Bulk-move products to a number, filtered by current number or category. <code>revalidateTag("products","max")</code>.</td></tr>
 <tr><td><code>/api/admin/analytics</code></td><td><span class="tag t-get">get</span></td><td>Order metrics computed in JS from <code>orders</code>: totals, AOV, unique/repeat customers (placeholder contacts excluded from identity), 6-month revenue trend.</td></tr>
 <tr><td><code>/api/admin/whatsapp-enquiries</code></td><td><span class="tag t-get">get</span></td><td>Aggregates the <code>whatsapp_enquiries</code> log: totals, by category/product/number/source, 14-day daily trend.</td></tr>
@@ -1799,7 +1840,10 @@ critical editor UI &mdash; too large/risky to move without a running dev server 
 <h2 id="whatsapp">WhatsApp / Green API</h2>
 <p><code>app/utils/greenApi.ts</code> is the single sender. <strong>Best-effort by design:</strong> silently
 no-ops unless all three <code>GREEN_API_*</code> vars are set; callers catch/log and never let a failed send
-block the triggering action.</p>
+block the triggering action. Because it&rsquo;s silent, the admin <strong>Overview</strong> tab surfaces the
+Green API session state (<code>last_greenapi_state</code>, refreshed by <code>/api/keepalive</code>, #13) so a
+dropped session doesn&rsquo;t just mean messages quietly stop. All phone &rarr; <code>91XXXXXXXXXX</code>
+normalisation goes through <code>app/utils/phone.ts</code> (#18).</p>
 <div class="x"><table>
 <thead><tr><th>Feature</th><th>Trigger</th><th>Direction</th></tr></thead>
 <tbody>
@@ -2010,9 +2054,10 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>orderTally.ts</code></td><td><code>tallyUnitsSold(orders, {excludeId?})</code> &mdash; pure line-item quantity tally, shared by <code>getBestsellers</code> / <code>getRelatedProducts</code> via <code>getRecentOrderItems</code>. Unit-tested.</td></tr>
 <tr><td><code>repricing.ts</code></td><td><code>repriceCart(clientItems, dbProducts, categoryGstRates, defaultGstPercent)</code> &mdash; the &ldquo;never trust the client at checkout&rdquo; guard extracted from <code>/api/razorpay</code>: rebuilds every line from the DB price/name/GST rate, rejects unknown/hidden ids and over-stock lines, returns the authoritative subtotal. Byte-for-byte match of the old inline block. <strong>12 unit tests.</strong></td></tr>
 <tr><td><code>bootstrapSettings.ts</code></td><td><code>parseChatLabels</code> / <code>parseGaneshaSettings</code> / <code>parsePhotoFilterIndex</code> / <code>parseDefaultWhatsappNumber</code> &mdash; pure parsers for the storefront <code>site_settings</code> values, run server-side in <code>getBootstrapData()</code> (#11). Reproduce the old per-context parse + clamp + fallback rules exactly. <strong>8 unit tests.</strong></td></tr>
+<tr><td><code>phone.ts</code></td><td><code>normalizeIndianPhone(raw)</code> &mdash; the <em>one</em> canonical Indian-phone normaliser (&rarr; bare digits <code>91XXXXXXXXXX</code>). Replaced 4 near-identical local copies (<code>whatsappOtp.ts</code>, <code>greenApi.ts</code> &times;2, <code>stock-alerts</code>, admin <code>whatsapp-numbers</code>) + an inline one in admin <code>orders/update-status</code>. Does not validate &mdash; callers keep their own <code>/^91[6-9]\d{9}$/</code> check. Unit-tested (7). <em>(#18)</em></td></tr>
 <tr><td><code>whatsapp.ts</code></td><td>Enquiry-link builder + number-resolution priority.</td></tr>
-<tr><td><code>whatsappOtp.ts</code></td><td>OTP send/verify/token-check + all abuse limits + opportunistic verification-row pruning.</td></tr>
-<tr><td><code>greenApi.ts</code></td><td>Green API send (text / image+caption) + <code>checkWhatsappNumber</code>.</td></tr>
+<tr><td><code>whatsappOtp.ts</code></td><td>OTP send/verify/token-check + all abuse limits + opportunistic verification-row pruning. Phone form via <code>phone.ts</code> (<code>normalizePhoneForRecord</code> re-exports it for <code>/api/razorpay</code>).</td></tr>
+<tr><td><code>greenApi.ts</code></td><td>Green API send (text / image+caption) + <code>checkWhatsappNumber</code>. Chat-id / phone form via <code>phone.ts</code>.</td></tr>
 <tr><td><code>razorpaySignature.ts</code></td><td><code>isValidPaymentSignature</code> (client path) + <code>isValidWebhookSignature</code> (Dashboard path). Unit-tested.</td></tr>
 <tr><td><code>adminSession.ts</code></td><td>DB-backed session create/validate/revoke/revoke-all. <code>SESSION_COOKIE_NAME="admin_session"</code>, 12h.</td></tr>
 <tr><td><code>totp.ts</code></td><td>RFC 6238 TOTP (verify + generate). Unit-tested.</td></tr>
@@ -2051,7 +2096,11 @@ drift from <code>product_sales</code>, and (with <code>?heal=1</code>) writes th
 </div>
 <p><code>/api/keepalive</code> stamps <code>site_settings.last_keepalive_at</code> on each run; the admin
 <strong>Overview</strong> tab reads it back and shows an amber &ldquo;Check&rdquo; badge once it is &gt; 90 min
-stale &mdash; the one scheduled job with a health signal.</p>
+stale &mdash; the one scheduled job with a health signal. Since <strong>#13</strong> the same route also stamps
+<code>last_greenapi_state</code> (from its <code>getStateInstance</code> ping) + <code>last_greenapi_error</code>,
+and Overview shows a second card that goes amber whenever the WhatsApp session is anything other than
+<code>authorized</code> &mdash; so a dropped Green API session (no order confirmations / dispatch alerts / checkout
+OTPs going out) is visible immediately instead of via customer complaints.</p>
 
 <h2 id="security">Security model summary</h2>
 <ul class="tight">
