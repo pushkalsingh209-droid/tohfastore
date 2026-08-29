@@ -206,6 +206,33 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>22:45</code></td>
+  <td><strong>#17a &mdash; <code>useCheckoutMachine</code> reducer + tests</strong><br>(<code>IMPROVEMENTS.md</code> #17)</td>
+  <td>
+    First slice of the checkout redesign. <code>app/components/checkout/useCheckoutMachine.ts</code> &mdash; a pure
+    <code>useReducer</code> whose <code>phase</code> is the current step of the <strong>3-step</strong> flow
+    (contact&amp;verify &rarr; delivery &rarr; review, then paying / razorpayOpen). Holds only the phase, the OTP
+    sub-state, the resend cooldown, and the verified <code>{token, phone}</code> &mdash; <strong>no field data</strong>,
+    so Back / <code>verification_required</code> can never lose or leak what&rsquo;s typed. Runs the cooldown tick
+    internally; exposes <code>step</code>, <code>contactVerified</code>, <code>credentials</code> + typed dispatch
+    helpers. <strong>17 unit tests</strong> (<code>useCheckoutMachine.test.ts</code>): OTP sub-machine, step nav,
+    Back keeps verification, <code>PHONE_CHANGED</code>/<code>VERIFICATION_EXPIRED</code> drop it,
+    <code>PAYMENT_DISMISSED</code> &rarr; review not contact, cooldown floor, illegal transitions are no-ops.<br>
+    &bull; <strong>Not wired into <code>CartDrawer</code> yet</strong> &mdash; that&rsquo;s 17b (the sheet + 3 step
+    components + <code>?checkout=preview</code> dev flag), which needs a dev-server walk-through + one live ~₹1
+    order to merge. Design doc locked with the owner&rsquo;s answers (3 steps, pincode-first, desktop keeps drawer
+    height, coupon on step 3 with the available-coupons list shown).
+  </td>
+  <td>
+    <em>new:</em> <code>app/components/checkout/useCheckoutMachine.ts</code>,
+    <code>app/components/checkout/useCheckoutMachine.test.ts</code><br>
+    <code>docs/DESIGN-extract-checkout-machine.md</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>next build</code> exit 0 (241 pages) &middot; <code>tsc --noEmit</code> clean &middot;
+    <code>npm test</code> 88/7 (was 71) &middot; <code>eslint</code> clean. Pure module, nothing imports it yet.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>22:10</code></td>
   <td><strong>#17 design (revised): 4-step checkout + state machine</strong><br>(<code>IMPROVEMENTS.md</code> #17; docs-only)</td>
   <td>
@@ -884,7 +911,7 @@ takes a second arg.</p>
 <tr><td>PDF</td><td><code>@react-pdf/renderer</code> 4.5</td><td>Catalogue PDF (pure JS). <code>sharp</code> re-encodes photos to thumbnails first.</td></tr>
 <tr><td>QR</td><td><code>qrcode</code> 1.5</td><td>Admin TOTP re-provisioning QR (SVG).</td></tr>
 <tr><td>Analytics / RUM</td><td><code>@vercel/analytics</code>, <code>@vercel/speed-insights</code>, <code>@next/third-parties</code> (GA4)</td><td>All free-tier. Purchase conversions fired client-side on <code>/success</code> with the real server-verified total.</td></tr>
-<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (71 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>bootstrapSettings</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>repricing</code>, <code>totp</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
+<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (88 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>bootstrapSettings</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>repricing</code>, <code>totp</code>, <code>useCheckoutMachine</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
 <tr><td>Lint</td><td>ESLint 9 + <code>eslint-config-next</code></td><td><code>npm run lint</code>. (Next 16 no longer runs ESLint during <code>next build</code>.)</td></tr>
 </tbody></table></div>
 
@@ -2027,7 +2054,7 @@ npm install
 # create products &amp; orders tables in Supabase (no migration file - see section 24),
 # then run supabase/migrations/0001...0040 in the SQL editor, in order
 npm run dev        # http://localhost:3000   (CSP disabled in dev)
-npm test           # vitest: money math, signatures, totp, backup codes, client-ip, checkout repricing, bootstrap settings  (71 tests)
+npm test           # vitest: money math, signatures, totp, backup codes, client-ip, checkout repricing, bootstrap settings, checkout machine  (88 tests)
 npm run lint       # note: pre-existing no-explicit-any / set-state-in-effect debt
 
 # RLS regression test — talks to the live project, so it needs the anon creds:
