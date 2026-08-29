@@ -206,6 +206,27 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>23:40</code></td>
+  <td><strong>Fix: infinite render loop on <code>/success</code></strong><br>(bug)</td>
+  <td>
+    <code>app/success/page.tsx</code> runs <code>clearCart()</code> from an effect keyed on <code>[clearCart]</code>.
+    <code>clearCart</code> was a fresh closure every render of <code>CartProvider</code>, so the effect re-ran &rarr;
+    <code>setCart([])</code> (a new array, always a state change) &rarr; re-render &rarr; new <code>clearCart</code>
+    &rarr; loop (&ldquo;Maximum update depth exceeded&rdquo;). Surfaced after a real payment landed on
+    <code>/success</code>. <strong>The order itself was fine</strong> &mdash; the webhook records it independently.<br>
+    &bull; <code>app/context/CartContext.tsx</code>: <code>clearCart</code> / <code>removeFromCart</code> /
+    <code>updateQuantity</code> wrapped in <code>useCallback([])</code>; <code>addToCart</code> in
+    <code>useCallback([cart])</code> (it reads <code>cart</code> for the max-units pre-check); the context
+    <code>value</code> object <code>useMemo</code>&rsquo;d. <code>clearCart</code> also bails via
+    <code>setCart(prev =&gt; prev.length === 0 ? prev : [])</code> so a revisit of <code>/success</code> with an
+    empty cart triggers no render at all.
+  </td>
+  <td><code>app/context/CartContext.tsx</code> &middot; <code>docs/ARCHITECTURE.html</code></td>
+  <td><code>next build</code> exit 0 (241 pages) &middot; <code>tsc --noEmit</code> clean &middot;
+    <code>npm test</code> 88/7 &middot; <code>eslint</code> no new (CartContext stays at its 6 pre-existing).
+    Runtime fix &mdash; owner to confirm <code>/success</code> loads after a dev-server restart.</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>23:10</code></td>
   <td><strong>#17b implementation spec</strong><br>(<code>IMPROVEMENTS.md</code> #17; docs-only)</td>
   <td>
