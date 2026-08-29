@@ -206,6 +206,35 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-29<br>19:10</code></td>
+  <td><strong>#16 &mdash; split <code>admin/page.tsx</code>: scaffold + <code>SecurityTab</code></strong><br>(<code>IMPROVEMENTS.md</code> #16; plan <code>docs/DESIGN-split-admin-page.md</code>)</td>
+  <td>
+    First of the per-tab moves. No behaviour change.<br>
+    &bull; <code>app/admin/lib/apiRequest.ts</code> &mdash; the fetch wrapper, extracted verbatim so tab components
+    share it.<br>
+    &bull; <code>app/admin/AdminDataContext.tsx</code> &mdash; <code>useAdminData()</code>. The page keeps
+    <code>loadAll()</code> and stays the state owner; the context exposes only the slice an extracted tab needs
+    (for now: <code>loginAttempts</code>, <code>backupCodesRemaining</code> + its setter). Grows one entry per
+    tab moved.<br>
+    &bull; <code>app/admin/tabs/SecurityTab.tsx</code> &mdash; the <code>security</code> tab JSX + its three
+    handlers + its tab-local state, lifted out verbatim. <code>page.tsx</code> now
+    <code>dynamic(() =&gt; import(&hellip;), {ssr:false})</code>s it and renders
+    <code>{activeTab === "security" &amp;&amp; &lt;SecurityTab /&gt;}</code>.<br>
+    &bull; <code>page.tsx</code>: &minus;169 lines net; the 5 security-local <code>useState</code> and 3 handlers
+    removed; <code>no-explicit-any</code> 102 &rarr; 98.
+  </td>
+  <td>
+    <em>new:</em> <code>app/admin/lib/apiRequest.ts</code>, <code>app/admin/AdminDataContext.tsx</code>,
+    <code>app/admin/tabs/SecurityTab.tsx</code><br>
+    <code>app/admin/page.tsx</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>next build</code> exit 0 (240 pages, <code>/admin</code> still static) &middot; <code>tsc --noEmit</code>
+    clean &middot; <code>npm test</code> 71/7 &middot; <code>eslint</code> clean on the 3 new files, <code>page.tsx</code>
+    &minus;4 <code>no-explicit-any</code>. <strong>Owner click-through of the Security tab pending</strong> (backup
+    codes remaining + regenerate, TOTP QR show/hide, Log Out Everywhere, login-attempts list).</td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>18:30</code></td>
   <td><strong>#11 &mdash; collapse the client context providers</strong><br>(<code>IMPROVEMENTS.md</code> #11; plan <code>docs/DESIGN-bootstrap-context.md</code>)</td>
   <td>
@@ -1193,7 +1222,7 @@ resets and verify steady-state usage stays under cap.</p>
 <tr><td><code>/track</code></td><td>app/track/page.tsx</td><td>client</td><td>Reference (order id or AWB) + phone &rarr; <code>POST /api/orders/track</code>.</td></tr>
 <tr><td><code>/wishlist</code></td><td>app/wishlist/page.tsx</td><td>client</td><td>localStorage-backed wishlist grid.</td></tr>
 <tr><td><code>/about</code>, <code>/contact</code>, <code>/corporate</code>, <code>/privacy</code>, <code>/terms</code>, <code>/refunds</code></td><td>app/&lt;name&gt;/page.tsx</td><td>static</td><td><code>/contact</code> + <code>/corporate</code> have forms &rarr; <code>/api/contact</code> / <code>/api/leads</code>.</td></tr>
-<tr><td><code>/admin</code></td><td>app/admin/page.tsx (~3,600 lines, client)</td><td>client SPA behind proxy auth</td><td>Tabs via <code>?tab=</code>. See &sect;14.</td></tr>
+<tr><td><code>/admin</code></td><td>app/admin/page.tsx (client SPA) + per-tab lazy components in <code>app/admin/tabs/</code> (#16, in progress)</td><td>client SPA behind proxy auth</td><td>Tabs via <code>?tab=</code>. See &sect;14.</td></tr>
 <tr><td><code>/admin/login</code></td><td>app/admin/login/page.tsx</td><td>client</td><td>Password + TOTP/backup code &rarr; <code>POST /api/admin/login</code>.</td></tr>
 <tr><td>404 / loading</td><td>app/not-found.tsx, app/loading.tsx</td><td>&mdash;</td><td><code>loading.tsx</code> (branded spinner) makes <em>every</em> route stream &mdash; which is why <code>proxy.ts</code> must emit real status codes before the page (&sect;10).</td></tr>
 </tbody></table></div>
@@ -1418,6 +1447,12 @@ alert shows only the real price.</p>
 </ol>
 
 <h3>Tabs (<code>?tab=</code>, <code>ADMIN_TABS</code>)</h3>
+<p class="muted"><strong>Split in progress (#16, <code>docs/DESIGN-split-admin-page.md</code>):</strong>
+<code>app/admin/page.tsx</code> (was 3,689 lines) is being broken into per-tab lazy components under
+<code>app/admin/tabs/</code>. The page stays one route and keeps <code>loadAll()</code>; each extracted tab reads
+its slice of that state through <code>app/admin/AdminDataContext.tsx</code> (<code>useAdminData()</code>), which
+grows one entry per tab moved. Shared helper: <code>app/admin/lib/apiRequest.ts</code>.
+<strong>Done so far:</strong> <code>security</code> (2026-08-29).</p>
 <div class="x"><table>
 <thead><tr><th>Tab</th><th>Contents</th></tr></thead>
 <tbody>
@@ -1828,7 +1863,9 @@ stale &mdash; the one scheduled job with a health signal.</p>
 |  |- collections/[category]/page.tsx
 |  |- product/[id]/page.tsx  SSG+ISR(24h), canonical redirects, LiveStockProvider
 |  |- catalogue|success|track|wishlist|about|contact|corporate|privacy|terms|refunds/page.tsx
-|  |- admin/page.tsx         ~3,600-line client SPA (7 tabs)
+|  |- admin/page.tsx         client SPA (7 tabs); AdminDataContext + per-tab components in admin/tabs/ (split in progress)
+|  |- admin/tabs/            SecurityTab (more moving here per DESIGN-split-admin-page.md)
+|  |- admin/lib/apiRequest.ts  shared admin fetch wrapper
 |  |- admin/login/page.tsx
 |  |- api/
 |  |  |- razorpay/ razorpay-webhook/ coupons/validate/ orders/track/ orders/receipt/
@@ -1969,10 +2006,16 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
 
 <h3>Add an admin tab / panel</h3>
 <ul class="tight">
-  <li>Add the key to <code>ADMIN_TABS</code> in <code>app/admin/page.tsx</code>, a <code>{ key, label }</code>
-      entry to the tab list, and a <code>{activeTab === "&lt;key&gt;" &amp;&amp; (&hellip;)}</code> block.</li>
-  <li>Data from a new <code>/api/admin/*</code> route, loaded in the <code>Promise.allSettled</code> in
-      <code>loadAll()</code>.</li>
+  <li>Add the key to <code>ADMIN_TABS</code> in <code>app/admin/page.tsx</code> + a <code>{ key, label }</code>
+      entry to the tab list. New tabs are their own component in <code>app/admin/tabs/&lt;Key&gt;Tab.tsx</code>
+      (default export), <code>dynamic(() =&gt; import(&hellip;), { ssr:false })</code> at the page&rsquo;s module
+      top, rendered as <code>{activeTab === "&lt;key&gt;" &amp;&amp; &lt;KeyTab /&gt;}</code>. (#16 &mdash; some
+      older tabs are still inline until moved.)</li>
+  <li>Shared data still loads in <code>loadAll()</code> (<code>Promise.allSettled</code>) on the page; the tab
+      reads what it needs via <code>useAdminData()</code> (add the field to <code>AdminData</code> in
+      <code>app/admin/AdminDataContext.tsx</code> and to the provider&rsquo;s value). Tab-only state (form
+      drafts, status strings) lives in the tab component. Use <code>apiRequest</code> from
+      <code>app/admin/lib/apiRequest.ts</code>.</li>
   <li>Compute stats client-side from already-loaded data where you can (pattern: the
       <code>components/admin/*</code> panels); CSV export via <code>app/utils/downloadCsv.ts</code>.</li>
   <li>This file already carries pre-existing <code>no-explicit-any</code> / <code>set-state-in-effect</code> lint
