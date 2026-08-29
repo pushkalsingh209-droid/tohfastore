@@ -207,8 +207,7 @@ Newest first.</p>
 <tbody>
 <tr>
   <td><code>2026-08-29<br>13:20</code></td>
-  <td><strong>Incremental units-sold tally (<code>product_sales</code>)</strong>
-    <span class="tag" style="color:var(--warn)">proposal</span><br>(<code>IMPROVEMENTS.md</code> T1&nbsp;#2)</td>
+  <td><strong>Incremental units-sold tally (<code>product_sales</code>)</strong><br>(<code>IMPROVEMENTS.md</code> T1&nbsp;#2)</td>
   <td>
     &bull; <code>supabase/migrations/0042_add_product_sales.sql</code>: new <code>product_sales(product_id,
     units_sold, updated_at)</code> table (RLS on, service-role only) + <code>apply_product_sales(p_items jsonb,
@@ -226,8 +225,12 @@ Newest first.</p>
     no longer silently undercounts once lifetime volume passes 300. Still tagged <code>orders</code> (admin cancel
     still busts it); any read failure (incl. 0042 not applied) &rarr; <code>{}</code>, as before.
     <code>getBestsellers</code> / <code>getRelatedProducts</code> keep the 300-order scan &mdash; relative ranking only.<br>
-    &bull; <strong>Not yet deployed.</strong> Static-verified only; needs a live test-mode payment (tally +1) and an
-    admin cancel (tally &minus;1) before it ships. Revert target: <code>d2836b6</code>.
+    &bull; <strong>Verified end-to-end 2026-08-29.</strong> Clean isolated test on a zero-sales product: a live
+    test-mode order took <code>product_sales.units_sold</code> <code>0&nbsp;&rarr;&nbsp;1</code>; cancelling that
+    order in the admin panel took it <code>1&nbsp;&rarr;&nbsp;0</code>; a re-save of the already-cancelled order
+    left it at <code>0</code> (the prior-status guard held). One backfill straddler (a product-87 order counted by
+    the backfill, then cancelled before this hook existed) left that row <code>+1</code> high &mdash; corrected by
+    hand; the &sect;7 drift-scan query is the standing safety net. Revert target: <code>d2836b6</code>.
   </td>
   <td>
     <em>new:</em> <code>supabase/migrations/0042_add_product_sales.sql</code><br>
@@ -236,8 +239,8 @@ Newest first.</p>
     <code>app/utils/storeQueries.ts</code>
   </td>
   <td><code>next build</code> exit 0 (240 pages) &middot; <code>tsc --noEmit</code> clean &middot;
-    <code>npm test</code> 51 pass / 7 gated. Live +1 / &minus;1 round-trips not yet exercised by a real payment
-    or cancel.</td>
+    <code>npm test</code> 51 pass / 7 gated &middot; live +1 / &minus;1 / re-cancel round-trips confirmed against
+    the production DB.</td>
 </tr>
 <tr>
   <td><code>2026-08-29<br>12:33</code></td>
@@ -907,8 +910,30 @@ policy exists.</p>
 <tr><td>0038</td><td>add_product_hidden</td><td><code>products.hidden</code> + tighten anon read policy to <code>hidden = false</code>.</td></tr>
 <tr><td>0039&ndash;0040</td><td>reassert_rls_lockdown / drop_stray_open_policies</td><td>Re-assert intended RLS; drop the four stray <code>ALL/true</code> policies silently granting full anon CRUD.</td></tr>
 <tr><td>0041</td><td>atomic_stock_decrement</td><td><code>decrement_inventory()</code> &mdash; row-locked (<code>SELECT &hellip; FOR UPDATE</code>) atomic stock deduction for the order webhook, returns <code>(new_inventory, oversold_by)</code>; <code>EXECUTE</code> revoked from anon/authenticated. Applied 2026-08-29 before the matching webhook change merged.</td></tr>
-<tr><td>0042</td><td>add_product_sales</td><td><code>product_sales</code> aggregate + <code>apply_product_sales(items jsonb, sign int)</code> RPC (signed per-item delta, clamped at 0, service-role only). Backfilled from non-cancelled orders. Feeds <code>getSoldCounts</code>; maintained +1 by the webhook, &minus;1 by the admin cancel path. Applied 2026-08-29. <em>App wiring proposal-stage &mdash; see Change log.</em></td></tr>
+<tr><td>0042</td><td>add_product_sales</td><td><code>product_sales</code> aggregate + <code>apply_product_sales(items jsonb, sign int)</code> RPC (signed per-item delta, clamped at 0, service-role only). Backfilled from non-cancelled orders. Feeds <code>getSoldCounts</code>; maintained +1 by the webhook, &minus;1 by the admin cancel path. Applied 2026-08-29; app wiring verified end-to-end &mdash; see Change log.</td></tr>
 </tbody></table></div>
+
+<p><strong><code>product_sales</code> drift check</strong> &mdash; the tally is only self-correcting for cancellations
+that go through <code>/api/admin/orders/update-status</code>. A cancel via any other path (a direct DB edit, a
+future bulk tool, an order cancelled before the &minus;1 hook existed) leaves it high. Run this any time to find
+drift; expected result is zero rows:</p>
+<pre><code>with recomputed as (
+  select (i-&gt;&gt;'id')::bigint as pid,
+         sum(coalesce((i-&gt;&gt;'quantity')::int, 0)) as units
+  from orders o
+  cross join lateral jsonb_array_elements(coalesce(o.items, '[]'::jsonb)) i
+  where o.status &lt;&gt; 'cancelled' and (i-&gt;&gt;'id') ~ '^\d+$'
+  group by 1
+)
+select coalesce(r.pid, ps.product_id) as product_id,
+       coalesce(r.units, 0) as should_be,
+       coalesce(ps.units_sold, 0) as stored
+from recomputed r
+full outer join product_sales ps on ps.product_id = r.pid
+where coalesce(r.units, 0) &lt;&gt; coalesce(ps.units_sold, 0);</code></pre>
+<p>To repair, <code>update product_sales set units_sold = &lt;should_be&gt;, updated_at = now() where product_id = &lt;id&gt;;</code>
+(or re-run the <code>0042</code> backfill block, which is an idempotent upsert &mdash; but that only fixes rows the
+recompute covers, not a product whose every order is now cancelled; those need the explicit <code>update &hellip; = 0</code>).</p>
 
 <h2 id="supabase-clients">Supabase clients &amp; storage</h2>
 <div class="x"><table>
@@ -1510,8 +1535,9 @@ stale &mdash; the one scheduled job with a health signal.</p>
       incremental <code>product_sales</code> aggregate (migration 0042), so the customer-facing &ldquo;N sold&rdquo;
       count is exact regardless of lifetime volume. <code>getBestsellers</code> / <code>getRelatedProducts</code>
       still scan only the last 300 orders &mdash; deliberate: they rank <em>relative</em> popularity, where the
-      300-order horizon is immaterial. <em>(App wiring is proposal-stage as of 2026-08-29 &mdash; the 0042 table
-      and RPC are live, the webhook +1 / cancel &minus;1 hooks are pending a live test.)</em></li>
+      300-order horizon is immaterial. <em>(Live since 2026-08-29; webhook +1 / cancel &minus;1 hooks verified
+      end-to-end against the production DB. The tally can still drift if an order is cancelled outside the admin
+      <code>update-status</code> route &mdash; run the &sect;7 drift-scan query to catch it.)</em></li>
   <li><strong>Admin product routes silently drop unknown columns and retry</strong>
       (<code>insert/updateWithFallback</code>) &mdash; a save can partially succeed if a migration hasn&rsquo;t been
       run; the response flags which fields were saved (<code>gallerySaved</code>, <code>hiddenSaved</code>, &hellip;).</li>

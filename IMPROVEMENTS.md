@@ -12,7 +12,7 @@ care, land behind tests, never "blind".
 
 ## Done
 
-### Batch: Incremental units-sold tally (`product_sales`) — 2026-08-29 13:20 IST — ⚠️ NOT DEPLOYED
+### Batch: Incremental units-sold tally (`product_sales`) — 2026-08-29 13:20 IST
 - Migration `0042` — `product_sales(product_id, units_sold, updated_at)` aggregate (RLS on,
   no policy) + `apply_product_sales(p_items jsonb, p_sign int)` RPC: signed per-line-item
   delta, `greatest(0, …)` clamp, one call. `EXECUTE` revoked from public/anon/authenticated,
@@ -27,9 +27,17 @@ care, land behind tests, never "blind".
   scanning the last 300 non-cancelled orders, so the customer-facing "N sold" count is
   exact past 300 lifetime orders. Still tag `orders`; any read failure → `{}` as before.
   `getBestsellers` / `getRelatedProducts` keep the 300-order scan (relative ranking only).
-- Verified static only: `next build` exit 0 (240 pages), `tsc` clean, `npm test` 51/7.
-  **Still owed before deploy:** a live test-mode payment (confirm tally +1) and an admin
-  cancel (confirm tally −1). Revert target `d2836b6`. (was Tier 1 #2.)
+- **Verified end-to-end 2026-08-29.** Static: `next build` exit 0 (240 pages), `tsc`
+  clean, `npm test` 51/7. Deployed (`c876eee` → `main`), then a clean isolated test on a
+  zero-sales product against the production DB: test-mode order took the tally `0 → 1`;
+  admin-panel cancel took it `1 → 0`; re-saving the already-cancelled order left it at `0`
+  (prior-status guard held). One backfill straddler (a product-87 order counted by the
+  backfill, then cancelled before this hook shipped) sat `+1` high — corrected by hand.
+  Revert target `d2836b6`. (was Tier 1 #2.)
+- **Known limitation:** the tally only self-corrects for cancels via
+  `/api/admin/orders/update-status`. Any other cancel path leaves it high — the drift-scan
+  query (now in ARCHITECTURE.html §7) is the standing check. A scheduled reconcile is a
+  possible follow-up (Tier 4).
 
 ### Batch: Atomic stock decrement + oversell alert — 2026-08-29 12:33 IST
 - Migration `0041` — `decrement_inventory(p_product_id, p_qty)`: `SELECT … FOR UPDATE`
@@ -151,12 +159,10 @@ care, land behind tests, never "blind".
    `0041` `decrement_inventory()` + `rpc()` + `sendOversellAlert`. **Owner still owes one
    live test payment** to confirm the RPC path end-to-end (revert target `57ffd29`).
 
-2. **Sold-count accuracy degrades past ~300 orders.** — **code done, not deployed.**
-   Migration `0042` (`product_sales` + `apply_product_sales` RPC) is live; `getSoldCounts`
-   now reads the aggregate, webhook does +1, admin cancel does −1. See Done (2026-08-29
-   13:20). **Owner owes one live test payment (+1) and one admin cancel (−1)** before
-   this deploys (revert target `d2836b6`). `getBestsellers`/`getRelatedProducts` keep the
-   300-order scan on purpose (relative ranking).
+2. ~~**Sold-count accuracy degrades past ~300 orders.**~~ — **done + verified end-to-end
+   2026-08-29** (see Done, batch 13:20). `product_sales` aggregate + `apply_product_sales`
+   RPC (`0042`), `getSoldCounts` reads it, webhook +1, admin cancel −1, all confirmed
+   against prod. `getBestsellers`/`getRelatedProducts` keep the 300-order scan on purpose.
 
 3. **Adopt the Supabase CLI for migrations.** `0000_base_schema.sql` now exists (done),
    but migrations are still hand-pasted into the SQL editor. `supabase db pull` /
@@ -195,10 +201,16 @@ care, land behind tests, never "blind".
     One `/api/bootstrap` + one provider. Larger refactor — do behind a running app.
 
 12. ~~Share the "last 300 orders" scan~~ — **done** (2026-08-29) for `getBestsellers` +
-    `getRelatedProducts` via `getRecentOrderItems`. `getSoldCounts` left separate (it
-    needs the 300 most recent *non-cancelled* orders).
+    `getRelatedProducts` via `getRecentOrderItems`. `getSoldCounts` now reads the
+    `product_sales` aggregate instead (`0042`, 2026-08-29).
 
 ## Active — Tier 4 (maintainability / observability)
+
+16. **`product_sales` reconcile check.** The tally (`0042`) only self-corrects for cancels
+    via `/api/admin/orders/update-status`; any other cancel path leaves it high. The
+    drift-scan query is in ARCHITECTURE.html §7 but has to be run by hand. Options: a
+    weekly cron that runs the recompute and alerts on any mismatch, or fold it into the
+    existing keepalive/health cron. Cheap, free, no payment-path risk.
 
 13. **💰 Error monitoring (Sentry / Vercel).** Dozens of best-effort `console.error`
     (WhatsApp, email, stock deduction) vanish in logs — a systematically failing Green
