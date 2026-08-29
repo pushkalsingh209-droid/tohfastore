@@ -206,6 +206,57 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>02:10</code></td>
+  <td><strong>#17b &mdash; 3-step checkout shipped (cutover)</strong><br>(<code>IMPROVEMENTS.md</code> #17; &#9888; payment path)</td>
+  <td>
+    The cart&rsquo;s one long inline form is replaced by <code>app/components/checkout/CheckoutSheet.tsx</code> &mdash;
+    a 3-step sheet (<strong>Contact&nbsp;&amp;&nbsp;Verify &rarr; Delivery &rarr; Review&nbsp;&amp;&nbsp;Pay</strong>)
+    driven by the <code>useCheckoutMachine</code> reducer shipped in 17a. Each step is its own component
+    (<code>steps/ContactStep</code>, <code>steps/DeliveryStep</code>, <code>steps/ReviewStep</code>) lifted
+    <em>verbatim</em> from the old <code>CartDrawer</code> JSX; a sticky <code>Stepper</code> shows progress and a
+    Back button that never loses typed input.<br>
+    &bull; <strong>Delivery step is pincode-first</strong> &mdash; the PIN leads the DOM order so its
+    <code>/api/pincode</code> city/state lookup fills the fields below before the customer reaches them.<br>
+    &bull; <strong>Review step</strong>: collapsible order summary (line items + MRP/GST/coupon math verbatim from
+    the old footer), coupon field, a <strong>new tap-to-apply list of the live public coupons</strong>
+    (<code>useAvailableCoupons</code> &rarr; new <code>GET /api/coupons/public</code>, reusing
+    <code>getPublicCoupons</code> + <code>filterLivePublicCoupons</code>), and the bilingual Cancellation &amp;
+    Refund Policy consent (verbatim).<br>
+    &bull; <strong>Payment</strong>: <code>handleRazorpayPayment</code> is the byte-for-byte <code>CartDrawer</code>
+    body &mdash; same <code>POST /api/razorpay</code>, same <code>options</code>, same fast-path
+    <code>POST /api/razorpay-webhook</code>, same <code>sessionStorage.tohfa_last_order</code> stash, same
+    <code>/success</code> redirect. Machine dispatches threaded in per DESIGN &sect;12.6:
+    <code>submitPayment()</code> before the fetch, <code>verificationExpired()</code> on
+    <code>code:"verification_required"</code>, <code>razorpayOpened()</code> after <code>rzp.open()</code>,
+    <code>modal.ondismiss &rarr; paymentDismissed()</code>, <code>reset()</code> before the redirect. The OTP token
+    is read from <code>m.credentials</code>, not a local var.<br>
+    &bull; <strong>Reducer</strong>: <code>PAYMENT_DISMISSED</code> now also rewinds <code>paying &rarr; review</code>
+    (a submit that fails before the modal opens), + a test (18 total).<br>
+    &bull; The <code>checkout_started</code> lead beacon (<code>POST /api/leads</code> on OTP verify, once per phone)
+    is ported into the sheet, so the &sect;21 abandoned-checkout cron keeps its signal.<br>
+    &bull; <strong>Cutover</strong>: <code>CartDrawer</code>&rsquo;s &ldquo;Proceed to Checkout&rdquo; opens the
+    sheet (which replaces the whole drawer). The old coupon block + <code>&lt;form
+    id="checkout-contact-form"&gt;</code> + footer submit are gated behind <code>LEGACY_CHECKOUT</code>
+    (env <code>NEXT_PUBLIC_LEGACY_CHECKOUT=1</code> + redeploy) as a fallback &mdash; that dead path and the flag
+    are removed in <strong>17c</strong> after a few clean days of live orders.
+  </td>
+  <td>
+    <code>app/components/checkout/CheckoutSheet.tsx</code>, <code>Stepper.tsx</code>,
+    <code>steps/{ContactStep,DeliveryStep,ReviewStep}.tsx</code>, <code>useAvailableCoupons.ts</code>,
+    <code>useCheckoutMachine.ts</code> + <code>.test.ts</code> &middot;
+    <code>app/api/coupons/public/route.ts</code> (new) &middot; <code>app/components/CartDrawer.tsx</code> &middot;
+    <code>docs/ARCHITECTURE.html</code> &middot; <code>docs/DESIGN-extract-checkout-machine.md</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <strong>Live end-to-end by the owner</strong> &mdash; bought a real product through all 3 steps &rarr; Razorpay
+    &rarr; <code>/success</code>. Local: <code>next build</code> exit 0 &middot; <code>tsc --noEmit</code> clean
+    &middot; <code>npm test</code> 89 pass / 7 skip (18 in <code>useCheckoutMachine.test.ts</code>) &middot;
+    <code>eslint</code> clean on every new checkout file; <code>CartDrawer</code> unchanged vs baseline
+    (20 problems, 0 new).
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-29<br>23:40</code></td>
   <td><strong>Fix: infinite render loop on <code>/success</code></strong><br>(bug)</td>
   <td>
@@ -1465,6 +1516,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/razorpay</code></td><td><span class="tag t-post">post</span></td><td>Create a Razorpay order. Re-prices items from DB, re-validates coupon, re-checks stock &amp; <code>hidden</code>, enforces <code>isVerificationTokenValid(phone, token)</code>. Pins <code>items</code>/<code>couponCode</code>/<code>verifiedPhone</code>/<code>customerName</code>/<code>shippingAddress</code> into <code>order.notes</code>. Returns <code>{orderId, amount, subtotal, discount, couponCode, gst}</code>. Error code <code>verification_required</code> when OTP is stale. 5xx bodies are generic (<code>apiError.ts</code>).</td></tr>
 <tr><td><code>/api/razorpay-webhook</code></td><td><span class="tag t-post">post</span></td><td>Handles <code>payment.captured</code> from both the Dashboard webhook (<code>x-razorpay-signature</code> &rarr; <code>isValidWebhookSignature</code>) and the client fast-path (<code>razorpay_signature</code> &rarr; <code>isValidPaymentSignature</code>). Idempotent. Inserts order, increments coupon, deducts stock + low-stock alert, sends WhatsApp + Resend confirmations.</td></tr>
 <tr><td><code>/api/coupons/validate</code></td><td><span class="tag t-post">post</span></td><td>UI-preview discount only (not authoritative). Rate-limited <code>coupon-validate</code> 20/10min.</td></tr>
+<tr><td><code>/api/coupons/public</code></td><td><span class="tag t-get">get</span></td><td>Live public coupons (<code>getPublicCoupons</code> + <code>filterLivePublicCoupons</code>, display-safe fields only) for the checkout Review step&rsquo;s tap-to-apply list. <code>Cache-Control</code> 60s / s-maxage 300. Same set the on-site <code>PromoBanner</code> shows.</td></tr>
 <tr><td><code>/api/whatsapp-otp/send</code></td><td><span class="tag t-post">post</span></td><td><code>sendOtp(phone, ip)</code>. All abuse limits live in the util; also prunes aged verification rows.</td></tr>
 <tr><td><code>/api/whatsapp-otp/verify</code></td><td><span class="tag t-post">post</span></td><td><code>verifyOtp(phone, code)</code> &rarr; <code>{ok, token}</code>.</td></tr>
 <tr><td><code>/api/check-whatsapp-number</code></td><td><span class="tag t-post">post</span></td><td>Green API <code>checkWhatsapp</code> &mdash; is the number registered? <code>{exists: true|false|null}</code> (null = check unavailable &rarr; client fails open).</td></tr>
@@ -1520,10 +1572,30 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 </tbody></table></div>
 
 <h2 id="checkout">Checkout &amp; payments flow</h2>
-<p>Driven by <code>app/components/CartDrawer.tsx</code> (~1,150 lines, code-split via <code>LazyCartDrawer</code>).</p>
+<p>The bag lives in <code>app/components/CartDrawer.tsx</code> (code-split via <code>LazyCartDrawer</code>).
+&ldquo;Proceed to Checkout&rdquo; opens <code>app/components/checkout/CheckoutSheet.tsx</code>, a
+<strong>3-step sheet</strong> that replaces the whole drawer. Since <strong>#17b</strong> (shipped
+2026-08-30) this is the checkout for everyone; the old single inline form survives only as an env fallback
+(<code>NEXT_PUBLIC_LEGACY_CHECKOUT=1</code> + redeploy), removed in 17c.</p>
+
+<h4>Structure</h4>
+<ul class="tight">
+  <li><strong><code>useCheckoutMachine.ts</code></strong> (#17a) &mdash; a pure <code>useReducer</code>. Its
+      <code>phase</code> <em>is</em> the step: <code>contact &rarr; delivery &rarr; review</code>, then
+      <code>paying &rarr; razorpayOpen</code> while the modal is up. It holds only the phase, the OTP sub-state,
+      the resend cooldown, and the <code>{token, phone}</code> pair once verified &mdash; <em>never</em> the typed
+      field values, so a Back nav or a <code>verification_required</code> rewind can&rsquo;t clear them. Unit-tested
+      (<code>useCheckoutMachine.test.ts</code>, 18 cases).</li>
+  <li><strong><code>CheckoutSheet.tsx</code></strong> owns every typed value (name/email/phone, OTP code, address,
+      coupon, policy consent) and the payment orchestration. Renders <code>Stepper</code> + one of
+      <code>steps/{ContactStep,DeliveryStep,ReviewStep}</code>. Each step component is a near-verbatim lift of the
+      old <code>CartDrawer</code> JSX; each owns its own input refs and self-manages focus.</li>
+  <li><code>Stepper.tsx</code> &mdash; sticky header: Back chevron (never loses input) + step title + 3-segment
+      progress bar + &ldquo;Step N of 3&rdquo;.</li>
+</ul>
 
 <figure>
-<svg role="img" aria-label="Checkout state machine. From the cart, Step 1 collects details and runs a WhatsApp OTP; on verify a single-use token is issued and Step 2 mounts. Step 2 collects the address and confirms, then POST /api/razorpay server-re-checks the token before opening the Razorpay modal, which on success goes to /success. If the 60-minute token window lapses, /api/razorpay returns verification_required and the UI rewinds to Step 1 keeping typed values." viewBox="0 0 820 250">
+<svg role="img" aria-label="3-step checkout. From the cart, the Contact step collects details and runs a WhatsApp OTP; on verify a single-use token is issued. The Delivery step collects a pincode-first address. The Review step shows the summary, coupon and policy consent, then POST /api/razorpay server-re-checks the token before opening the Razorpay modal, which on success goes to /success. If the 60-minute token window lapses, /api/razorpay returns verification_required and the sheet rewinds to the Contact step keeping every typed value." viewBox="0 0 900 250">
   <defs>
     <marker id="arrF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
@@ -1533,67 +1605,91 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
     </marker>
   </defs>
 
-  <rect class="svg-fill-faint" x="16" y="92" width="92" height="44" rx="8"/>
-  <text class="svg-t-b" x="62" y="118" text-anchor="middle">Cart</text>
+  <rect class="svg-fill-faint" x="12" y="92" width="76" height="44" rx="8"/>
+  <text class="svg-t-b" x="50" y="118" text-anchor="middle">Cart</text>
 
-  <rect class="svg-box" x="148" y="82" width="170" height="64" rx="8"/>
-  <text class="svg-t-b" x="233" y="104" text-anchor="middle">Step 1</text>
-  <text class="svg-t-sm" x="233" y="121" text-anchor="middle">details + WhatsApp</text>
-  <text class="svg-t-sm" x="233" y="135" text-anchor="middle">OTP send / verify</text>
+  <rect class="svg-box" x="118" y="82" width="150" height="64" rx="8"/>
+  <text class="svg-t-b" x="193" y="104" text-anchor="middle">1 &middot; Contact</text>
+  <text class="svg-t-sm" x="193" y="121" text-anchor="middle">details + WhatsApp</text>
+  <text class="svg-t-sm" x="193" y="135" text-anchor="middle">OTP send / verify</text>
 
-  <rect class="svg-box" x="368" y="82" width="170" height="64" rx="8"/>
-  <text class="svg-t-b" x="453" y="104" text-anchor="middle">Step 2</text>
-  <text class="svg-t-sm" x="453" y="121" text-anchor="middle">shipping + coupon</text>
-  <text class="svg-t-sm" x="453" y="135" text-anchor="middle">+ policy consent</text>
+  <rect class="svg-box" x="298" y="82" width="150" height="64" rx="8"/>
+  <text class="svg-t-b" x="373" y="104" text-anchor="middle">2 &middot; Delivery</text>
+  <text class="svg-t-sm" x="373" y="121" text-anchor="middle">pincode-first</text>
+  <text class="svg-t-sm" x="373" y="135" text-anchor="middle">address</text>
 
-  <rect class="svg-box" x="588" y="82" width="140" height="64" rx="8"/>
-  <text class="svg-t-b" x="658" y="104" text-anchor="middle">Razorpay</text>
-  <text class="svg-t-sm" x="658" y="121" text-anchor="middle">hosted modal</text>
-  <text class="svg-t-sm" x="658" y="135" text-anchor="middle">pay</text>
+  <rect class="svg-box" x="478" y="82" width="150" height="64" rx="8"/>
+  <text class="svg-t-b" x="553" y="104" text-anchor="middle">3 &middot; Review</text>
+  <text class="svg-t-sm" x="553" y="121" text-anchor="middle">summary + coupon</text>
+  <text class="svg-t-sm" x="553" y="135" text-anchor="middle">+ policy consent</text>
 
-  <rect class="svg-fill-faint" x="748" y="92" width="60" height="44" rx="8"/>
-  <text class="svg-t-b" x="778" y="118" text-anchor="middle">/success</text>
+  <rect class="svg-box" x="658" y="82" width="130" height="64" rx="8"/>
+  <text class="svg-t-b" x="723" y="104" text-anchor="middle">Razorpay</text>
+  <text class="svg-t-sm" x="723" y="121" text-anchor="middle">hosted modal</text>
+  <text class="svg-t-sm" x="723" y="135" text-anchor="middle">pay</text>
 
-  <line class="svg-edge" x1="108" y1="114" x2="146" y2="114" marker-end="url(#arrF)"/>
-  <line class="svg-edge" x1="318" y1="114" x2="366" y2="114" marker-end="url(#arrF)"/>
-  <line class="svg-edge" x1="538" y1="114" x2="586" y2="114" marker-end="url(#arrF)"/>
-  <line class="svg-edge" x1="728" y1="114" x2="746" y2="114" marker-end="url(#arrF)"/>
+  <rect class="svg-fill-faint" x="818" y="92" width="66" height="44" rx="8"/>
+  <text class="svg-t-b" x="851" y="118" text-anchor="middle">/success</text>
 
-  <text class="svg-t-accent" x="328" y="70">token issued</text>
-  <text class="svg-t-sm" x="548" y="70">POST /api/razorpay</text>
-  <text class="svg-t-sm" x="548" y="82" >re-checks token</text>
+  <line class="svg-edge" x1="88" y1="114" x2="116" y2="114" marker-end="url(#arrF)"/>
+  <line class="svg-edge" x1="268" y1="114" x2="296" y2="114" marker-end="url(#arrF)"/>
+  <line class="svg-edge" x1="448" y1="114" x2="476" y2="114" marker-end="url(#arrF)"/>
+  <line class="svg-edge" x1="628" y1="114" x2="656" y2="114" marker-end="url(#arrF)"/>
+  <line class="svg-edge" x1="788" y1="114" x2="816" y2="114" marker-end="url(#arrF)"/>
 
-  <path class="svg-edge-accent" d="M430 146 C 400 210 280 210 250 150" marker-end="url(#arrFacc)"/>
-  <text class="svg-t-accent" x="340" y="212" text-anchor="middle">token expired (60 min) &rarr; verification_required &rarr; rewind, keep inputs</text>
+  <text class="svg-t-accent" x="283" y="70">token issued</text>
+  <text class="svg-t-sm" x="643" y="70">POST /api/razorpay</text>
+  <text class="svg-t-sm" x="643" y="82">re-checks token</text>
+
+  <path class="svg-edge-accent" d="M520 146 C 470 214 250 214 193 150" marker-end="url(#arrFacc)"/>
+  <text class="svg-t-accent" x="360" y="214" text-anchor="middle">token expired (60 min) &rarr; verification_required &rarr; rewind to step 1, keep inputs</text>
 </svg>
-<figcaption><strong>Step 2 is gated on a live, server-verified OTP token</strong> &mdash; not a client boolean.
-The token is single-use and bound to the exact verification event; if its 60-minute window lapses mid-checkout,
-<code>/api/razorpay</code> refuses and the drawer drops cleanly back to Step 1 without losing what was typed.</figcaption>
+<figcaption><strong>The Review step&rsquo;s Pay is gated on a live, server-verified OTP token</strong> &mdash; not a
+client boolean. The token is single-use and bound to the exact verification event; if its 60-minute window lapses
+mid-checkout, <code>/api/razorpay</code> refuses (<code>code:"verification_required"</code>), the reducer runs
+<code>VERIFICATION_EXPIRED</code>, and the sheet drops back to the Contact step without losing anything typed.</figcaption>
 </figure>
 
-<h4>Step 1 &mdash; Your details</h4>
+<h4>Step 1 &mdash; Contact &amp; Verify</h4>
 <ul class="tight">
-  <li>Name, email (optional), WhatsApp number.</li>
+  <li>Name, email, WhatsApp number.</li>
   <li>On a valid 10-digit number, <code>POST /api/check-whatsapp-number</code> live-validates registration
-      (<code>valid</code>/<code>invalid</code>/<code>unknown</code>). <code>unknown</code> (Green API off) still lets checkout proceed.</li>
-  <li><strong>OTP gate:</strong> <code>/api/whatsapp-otp/send</code> &rarr; user enters code &rarr; <code>/api/whatsapp-otp/verify</code>
-      &rarr; client stores the returned single-use <code>otpVerificationToken</code>. 45s resend cooldown surfaced in the UI.</li>
-  <li>On successful verify, fire-and-forget <code>POST /api/leads {source:"checkout_started", details:{cartTotal,&hellip;}}</code>
-      so an abandoned checkout is recoverable (cron in &sect;21).</li>
-  <li>Step 2 only mounts once Step 1 is verified; leaving/returning keeps typed values but re-collapses Step 2.</li>
+      (<code>valid</code>/<code>invalid</code>/<code>unknown</code>). <code>unknown</code> (Green API off) still lets
+      checkout proceed; <code>invalid</code> clears the field. A phone edit runs <code>PHONE_CHANGED</code> &mdash;
+      drops any verification.</li>
+  <li><strong>OTP gate:</strong> <code>/api/whatsapp-otp/send</code> &rarr; user enters code &rarr;
+      <code>/api/whatsapp-otp/verify</code> &rarr; the reducer stores the returned single-use token in
+      <code>state.verified</code>. 45s resend cooldown ticked by the machine, surfaced in the UI.</li>
+  <li>The <strong>Continue</strong> footer button is disabled until <code>m.contactVerified</code> is genuinely true.</li>
+  <li>On successful verify, fire-and-forget <code>POST /api/leads {source:"checkout_started",
+      details:{cartItems,cartTotal}}</code> (once per verified phone) so an abandoned checkout is recoverable
+      (&sect;21 cron).</li>
 </ul>
 
-<h4>Step 2 &mdash; Shipping &amp; confirm</h4>
+<h4>Step 2 &mdash; Delivery</h4>
 <ul class="tight">
-  <li>Address line, landmark, PIN (&rarr; <code>/api/pincode/[code]</code> auto-fills city/state), state dropdown (<code>INDIAN_STATES</code>).</li>
-  <li>Coupon field &rarr; <code>/api/coupons/validate</code> (preview only).</li>
-  <li>Mandatory bilingual refund-policy consent checkbox.</li>
-  <li><strong>Pay:</strong> <code>POST /api/razorpay</code>. If it returns <code>code:"verification_required"</code>
-      (token expired mid-checkout), the UI drops cleanly back to Step 1.</li>
-  <li>On success, open the Razorpay modal with the returned <code>orderId</code>/<code>amount</code>.</li>
+  <li><strong>PIN first</strong> in the DOM &mdash; 6 digits &rarr; debounced <code>/api/pincode/[code]</code>
+      auto-fills city/state (both stay editable). Then address line, landmark (optional), city, state dropdown
+      (<code>INDIAN_STATES</code>).</li>
+  <li><code>validateDelivery()</code> (pincode / address / city / state) gates the Continue button.</li>
+</ul>
+
+<h4>Step 3 &mdash; Review &amp; Pay</h4>
+<ul class="tight">
+  <li>Collapsible order summary &mdash; line items, MRP subtotal, per-category GST line, coupon line, grand total
+      (same math as the old footer).</li>
+  <li>Coupon field &rarr; <code>/api/coupons/validate</code> (preview only), plus a <strong>tap-to-apply list of
+      the live public coupons</strong> from <code>GET /api/coupons/public</code> (hidden once one is applied).</li>
+  <li>Mandatory bilingual refund-policy consent checkbox &mdash; the footer <strong>Pay &#8377;X</strong> button is
+      disabled until it&rsquo;s ticked.</li>
+  <li><strong>Pay:</strong> <code>m.submitPayment()</code> &rarr; <code>POST /api/razorpay</code>. On
+      <code>code:"verification_required"</code> &rarr; <code>m.verificationExpired()</code> (back to step 1). On a
+      non-<code>orderId</code> error &rarr; <code>m.paymentDismissed()</code> (stay on Review). Otherwise open the
+      Razorpay modal (<code>orderId</code>/<code>amount</code>), <code>m.razorpayOpened()</code>; the modal&rsquo;s
+      <code>ondismiss</code> runs <code>m.paymentDismissed()</code>.</li>
   <li><code>handler()</code>: fire-and-forget <code>POST /api/razorpay-webhook</code> (client fast path), stash the
-      server-computed summary (incl. <code>gst</code> breakdown) in <code>sessionStorage.tohfa_last_order</code>,
-      redirect to <code>/success</code>.</li>
+      server-computed summary (incl. <code>gst</code>) in <code>sessionStorage.tohfa_last_order</code>,
+      <code>m.reset()</code>, close the drawer, redirect to <code>/success</code>. Byte-for-byte the old body.</li>
 </ul>
 
 <h4>Server-side guarantees (never trust the client)</h4>

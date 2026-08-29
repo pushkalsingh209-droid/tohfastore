@@ -61,6 +61,10 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
   const [whatsappCheckedPhone, setWhatsappCheckedPhone] = useState("");
   const whatsappCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const validationErrorRef = useRef<HTMLDivElement | null>(null);
+  // Fires the "checkout_started" lead beacon once per verified phone (ported
+  // from CartDrawer -- feeds the admin Leads view + the abandoned-checkout
+  // cron in §21). Best-effort: a failure never interrupts checkout.
+  const leadCapturedPhoneRef = useRef<string>("");
 
   // --- delivery address (step 2) ---
   const [addressLine, setAddressLine] = useState("");
@@ -225,6 +229,29 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
         return;
       }
       m.otpVerified(data.token || "", customerPhone);
+
+      // Best-effort "verified but not yet paid" signal -- once per phone.
+      if (leadCapturedPhoneRef.current !== customerPhone) {
+        leadCapturedPhoneRef.current = customerPhone;
+        fetch("/api/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: customerName,
+            email: customerEmail,
+            phone: customerPhone,
+            source: "checkout_started",
+            details: {
+              cartItems: cart.map((item: { name: string; quantity: number; price: number }) => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+              })),
+              cartTotal,
+            },
+          }),
+        }).catch((e) => console.error("Checkout-started lead capture failed:", e));
+      }
     } catch (err: unknown) {
       m.otpFailed(err instanceof Error ? err.message : "Could not verify the code.");
     }
