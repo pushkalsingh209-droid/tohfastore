@@ -206,6 +206,39 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>11:30</code></td>
+  <td><strong>#19 &mdash; lint-debt sweep (part 1)</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-debt</code>, in progress)</td>
+  <td>
+    <code>eslint .</code> <strong>246 &rarr; 177 problems</strong> across 5 commits. Cleared: all 24
+    <code>react/no-unescaped-entities</code> (raw <code>'</code>/<code>"</code> in JSX text); all 8
+    <code>@next/next/no-html-link-for-pages</code> (<code>&lt;a href="/"&gt;</code> &rarr;
+    <code>&lt;Link&gt;</code>); 8 <code>catch (err: any)</code> &rarr; <code>unknown</code> +
+    <code>err instanceof Error</code>; <code>storeQueries.ts</code>/<code>proxy.ts</code> row-type
+    <code>any</code>s (dropped now the client is typed &mdash; new <code>isRenderableProduct</code> guard
+    filters null-name/price rows out of <code>getBestsellers</code>/<code>getRelatedProducts</code>,
+    <code>filterLivePublicCoupons</code> is generic); new <code>types/globals.d.ts</code>
+    (<code>declare global { interface Window }</code> for <code>fbq</code>/<code>gtag</code>/<code>Razorpay</code>
+    + a minimal <code>SpeechRecognition</code> shape) kills the <code>(window as any)</code> casts;
+    <code>eslint.config.mjs</code> gains the standard <code>no-unused-vars</code>
+    <code>^_</code>/<code>ignoreRestSiblings</code> options and ignores generated <code>types/db.ts</code>.
+    <strong>Left:</strong> ~146 <code>no-explicit-any</code> (mostly <code>app/admin/page.tsx</code> &mdash; folds
+    into #16 &mdash; the admin panels, the contexts, and <code>razorpay-webhook</code> which needs its own
+    &#9888; pass) + 24 <code>react-hooks/set-state-in-effect</code>. Continues on the same branch.
+  </td>
+  <td>
+    <em>new:</em> <code>types/globals.d.ts</code> &middot; <code>eslint.config.mjs</code> &middot;
+    <code>storeQueries.ts</code>, <code>proxy.ts</code>, <code>metaPixel.ts</code>, <code>SearchBar.tsx</code>,
+    <code>WelcomeGaneshaPopup.tsx</code>, <code>PromoBanner.tsx</code>, <code>ProductGallery.tsx</code>,
+    ~15 page/component/route files (JSX text, <code>&lt;Link&gt;</code>, <code>catch</code>) &middot;
+    <code>docs/ARCHITECTURE.html</code> &middot; <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>next build</code> exit 0 &middot; <code>tsc --noEmit</code> clean &middot; <code>npm test</code>
+    102 pass / 7 skip &middot; no behaviour change (JSX entity escapes, <code>&lt;a&gt;&rarr;&lt;Link&gt;</code>
+    with <code>onClick</code>/<code>preventDefault</code> preserved, <code>any</code>&rarr;concrete types).
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>10:30</code></td>
   <td><strong>#15 &mdash; typed Supabase clients</strong><br>(<code>IMPROVEMENTS.md</code> #15)</td>
   <td>
