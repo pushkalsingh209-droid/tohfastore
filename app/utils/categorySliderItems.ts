@@ -24,8 +24,8 @@ export async function getCategorySliderItems(): Promise<CategorySliderItem[]> {
       .gt("inventory", 0);
     if (error || !data) return [];
 
-    const byCategory = new Map<string, { id: number; name: string; image_url: string }[]>();
-    for (const p of data as any[]) {
+    const byCategory = new Map<string, { id: number; name: string | null; image_url: string }[]>();
+    for (const p of data) {
       if (!p.category) continue;
       if (!byCategory.has(p.category)) byCategory.set(p.category, []);
       byCategory.get(p.category)!.push(p);
@@ -34,7 +34,7 @@ export async function getCategorySliderItems(): Promise<CategorySliderItem[]> {
     return Array.from(byCategory.entries())
       .map(([name, products]) => ({
         name,
-        product: products[Math.floor(Math.random() * products.length)],
+        product: (() => { const p = products[Math.floor(Math.random() * products.length)]; return { ...p, name: p.name ?? "" }; })(),
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   } catch {

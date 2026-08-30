@@ -3,8 +3,9 @@ import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import type { Insert } from "@/types/tables";
 
-function isMissingColumn(error: any, columnHint: string) {
+function isMissingColumn(error: { code?: string; message?: string } | null, columnHint: string) {
   const msg = error?.message || "";
   return (
     error?.code === "42703" ||
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Please provide a code and a discount value greater than 0." }, { status: 400 });
     }
 
-    let payload: any = {
+    let payload: Record<string, unknown> = {
       code: body.code.trim().toUpperCase(),
       discount_type: body.discountType,
       discount_value: discountValue,
@@ -38,13 +39,13 @@ export async function POST(req: Request) {
     };
 
     let publicSaved = true;
-    let { data, error } = await supabase.from("coupons").insert([payload]).select();
+    let { data, error } = await supabase.from("coupons").insert([payload as Insert<"coupons">]).select();
 
     if (error && isMissingColumn(error, "is_public")) {
       publicSaved = false;
       const { is_public, ...rest } = payload;
       payload = rest;
-      ({ data, error } = await supabase.from("coupons").insert([payload]).select());
+      ({ data, error } = await supabase.from("coupons").insert([payload as Insert<"coupons">]).select());
     }
 
     if (error) return serverErrorResponse("admin coupons", error);

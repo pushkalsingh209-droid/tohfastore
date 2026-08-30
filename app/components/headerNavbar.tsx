@@ -32,8 +32,8 @@ export default function HeaderNavbar() {
       .then((data) => {
         if (cancelled) return;
         const hidden = (data.categories || [])
-          .filter((c: any) => c.show_on_home === false)
-          .map((c: any) => c.name);
+          .filter((c: { show_on_home?: boolean }) => c.show_on_home === false)
+          .map((c: { name: string }) => c.name);
         setMenuCategories(hidden);
       })
       .catch(() => {});

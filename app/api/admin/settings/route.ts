@@ -111,7 +111,7 @@ export async function PATCH(req: Request) {
 
     if (body.weight_unit !== undefined) {
       const unit = String(body.weight_unit);
-      if (!WEIGHT_UNITS.includes(unit as any)) {
+      if (!(WEIGHT_UNITS as readonly string[]).includes(unit)) {
         return NextResponse.json({ error: "Invalid weight unit." }, { status: 400 });
       }
       updates.push({ key: "weight_unit", value: unit });
@@ -119,7 +119,7 @@ export async function PATCH(req: Request) {
 
     if (body.dimension_unit !== undefined) {
       const unit = String(body.dimension_unit);
-      if (!DIMENSION_UNITS.includes(unit as any)) {
+      if (!(DIMENSION_UNITS as readonly string[]).includes(unit)) {
         return NextResponse.json({ error: "Invalid dimension unit." }, { status: 400 });
       }
       updates.push({ key: "dimension_unit", value: unit });
