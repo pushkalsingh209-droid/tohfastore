@@ -206,6 +206,39 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>12:45</code></td>
+  <td><strong>#19 &mdash; lint-debt sweep (part 3)</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-debt-3</code>, in progress)</td>
+  <td>
+    <code>eslint .</code> <strong>151 &rarr; 134 problems</strong> (106 errors + 28 warnings;
+    <code>no-explicit-any</code> 120 &rarr; 103).
+    <strong><code>react-hooks/set-state-in-effect</code> &rarr; <code>warn</code></strong> in
+    <code>eslint.config.mjs</code>: of the 24 hits, ~18 are the standard Next-SSR pattern of hydrating
+    state from a client-only source (<code>localStorage</code> / cookie / <code>matchMedia</code> /
+    <code>document</code> class / URL) in a mount effect &mdash; not the cascading-render bug the rule
+    targets (the one real case, <code>CheckoutSheet</code>'s WhatsApp pre-check, is already handled). Kept
+    as warnings so a bad new one still surfaces.
+    Plus ~15 isolated <code>any</code> singles typed properly: <code>admin/{coupons,settings,analytics,
+    whatsapp-enquiries}</code> routes, <code>catalogueGenerator</code> (Footer render args, grouped Map,
+    a scoped disable for the react-pdf <code>renderToBuffer</code> element-type friction),
+    <code>GoogleTranslateWidget</code> (<code>window.google</code>), <code>InstallPrompt</code> (local
+    <code>BeforeInstallPromptEvent</code>), <code>headerNavbar</code>, the product page's review reduce/map.
+    <strong>Left:</strong> <code>app/admin/page.tsx</code> (74, &rarr; #16), <code>razorpay-webhook</code>
+    (12, &#9888;), the <code>ProductCard</code>/<code>CartContext</code>/<code>WishlistContext</code> cluster
+    (~15).
+  </td>
+  <td>
+    <code>eslint.config.mjs</code> &middot; <code>app/api/admin/{coupons,settings,analytics,whatsapp-enquiries}/route.ts</code>
+    &middot; <code>app/utils/{catalogueGenerator,categorySliderItems}.ts</code> &middot;
+    <code>app/components/{GoogleTranslateWidget,InstallPrompt,StorefrontPage,headerNavbar}.tsx</code> &middot;
+    <code>app/product/[id]/page.tsx</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>next build</code> exit 0 &middot; <code>tsc --noEmit</code> clean &middot; <code>npm test</code>
+    102 pass / 7 skip &middot; no behaviour change.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>12:15</code></td>
   <td><strong>Exclude cancelled orders from analytics + bestsellers</strong><br>(fix; no <code>IMPROVEMENTS.md</code> item)</td>
   <td>
