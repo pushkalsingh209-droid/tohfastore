@@ -1,4 +1,12 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TOHFA Handbook</title>
+<!-- These two <meta> tags matter only when this file is opened straight from
+     disk (file://) or served as a plain .html -- without the viewport tag a
+     phone lays the page out at ~980px and scales it down, which reads as
+     "not mobile friendly". When published as a Claude artifact the wrapper
+     injects its own charset+viewport; these are then harmless duplicates.
+     Kept here so the repo copy CLAUDE.md tells you to open works on a phone. -->
 <!-- Self-contained: no CDN, no external fonts, zero scripts. System fonts,
      inline SVG. Mobile-first: base rules are the phone layout, @media
      (min-width:820px) enhances up. Tabs are pure CSS (:target + :has());
