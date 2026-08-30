@@ -24,9 +24,14 @@ function customerKey(order: any): string {
 
 export async function GET() {
   try {
+    // Cancelled orders are excluded everywhere -- a cancelled order isn't
+    // revenue, isn't a real purchase, and shouldn't count toward AOV /
+    // customer / repeat-rate / monthly-trend figures. (The admin Orders
+    // list still shows them; this is only the metrics view.)
     const { data: orders, error } = await supabase
       .from("orders")
       .select("id, amount, created_at, customer_details")
+      .neq("status", "cancelled")
       .order("created_at", { ascending: true });
     if (error) return serverErrorResponse("admin analytics", error);
 

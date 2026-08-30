@@ -547,19 +547,20 @@ export interface BestsellerItem {
   unitsSold: number;
 }
 
-// The last 300 orders' line items, shared by getBestsellers and
-// getRelatedProducts so a cold cache scans the orders table once for both
-// instead of twice. Each caller still does its own tally (via
-// tallyUnitsSold) and its own product re-fetch. getSoldCounts keeps its
-// own separate query -- it needs the 300 most recent *non-cancelled*
-// orders, which is a different set than "300 most recent, cancelled ones
-// filtered out afterward".
+// The last 300 *non-cancelled* orders' line items, shared by getBestsellers
+// and getRelatedProducts so a cold cache scans the orders table once for
+// both instead of twice. Each caller still does its own tally (via
+// tallyUnitsSold) and its own product re-fetch. Cancelled orders are
+// excluded so a returned/refunded purchase doesn't count toward "top
+// sellers" or "customers also bought". (getSoldCounts -- the customer-
+// facing "N sold" figure -- reads the product_sales aggregate instead.)
 export const getRecentOrderItems = unstable_cache(
   async (): Promise<{ items: unknown }[]> => {
     try {
       const { data, error } = await supabase
         .from("orders")
         .select("items")
+        .neq("status", "cancelled")
         .order("created_at", { ascending: false })
         .limit(300);
       if (error || !data) return [];
