@@ -206,6 +206,39 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>23:00</code></td>
+  <td><strong>Narrow <code>getCatalogPage</code>'s product <code>SELECT</code></strong><br>(Vercel Fluid Compute / Active-CPU pass; <code>IMPROVEMENTS.md</code> Tier 3 #13)</td>
+  <td>
+    <code>getCatalogPage</code> (<code>app/utils/storeQueries.ts</code>) was
+    <code>select("*")</code> &mdash; all 24 <code>products</code> columns deserialized into
+    Node per cache-miss, for up to <code>pageSize</code> rows. Narrowed to the 17 a
+    storefront card / the product page actually render
+    (<code>id, name, price, description, image_url, images, category, inventory, label,
+    photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm,
+    breadth_cm</code>). Dropped: <code>cost_price</code> / <code>cost_price_per_kg</code> /
+    <code>price_per_kg</code> / <code>last_restocked_at</code> (admin margin/restock stats
+    only &mdash; and no reason to ship cost figures to the browser) and
+    <code>created_at</code> / <code>display_order</code> / <code>hidden</code> (used by the
+    <code>.eq</code>/<code>.order</code> clauses, which don't need the column in the
+    <code>select</code> list). Inside <code>unstable_cache</code>, so the saving is
+    per-miss, not per-request; no behaviour change (nothing downstream reads a dropped
+    column). Also updated <code>StoreProduct</code>-typed flow: the narrowed row still
+    passes through <code>attachThumbUrls</code> (generic on <code>{ image_url? }</code>) and
+    stays assignable to <code>CatalogSection</code>'s <code>StoreProduct[]</code> prop.
+  </td>
+  <td>
+    <code>app/utils/storeQueries.ts</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>tsc --noEmit</code> clean &middot; <code>next build</code> exit 0 (86/86) &middot;
+    <code>npm test</code> 110 pass / 1 skip &middot; no new eslint. The bigger Active-CPU
+    lever &mdash; moving <code>/product/[id]</code> + catalog back to on-demand ISR &mdash;
+    is written up in <code>IMPROVEMENTS.md</code> Tier 3 #13, deferred pending
+    Observability &rarr; Functions data.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>22:00</code></td>
   <td><strong>#19 done &mdash; lint-debt: last 3 errors</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-render-smells</code>)</td>
   <td>
