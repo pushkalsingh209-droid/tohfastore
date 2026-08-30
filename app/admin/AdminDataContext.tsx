@@ -60,10 +60,40 @@ export interface AdminOrder {
   items?: AdminOrderItem[];
 }
 
-// Minimal shape -- only what the overview tab's FinanceInsightsPanel reads.
-// Expands when the products tab itself moves out (#16).
+// The overview tab's FinanceInsightsPanel only reads `.label`; the products
+// tab (ProductsTab, #16) reads ~20 columns off each row and passes them
+// straight to <Image>, Number(), inline PATCH bodies, etc. Typing every
+// column here would force null-guard edits all through the moved JSX and turn
+// a mechanical move into a rewrite (see docs/DESIGN-split-admin-page.md), so
+// the row stays permissively typed until the products tab gets its own
+// typing pass.
 export interface AdminProduct {
   id: number | string;
+  label?: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+// Dropdown/lookup lists shared between the products form and the settings
+// tab. Only the fields actually read via the context are declared; the
+// settings tab still reads its own page-local copies for the columns it
+// alone manages (show_on_home, gst_rate, ...).
+export interface AdminCategory {
+  id: number | string;
+  name: string;
+}
+export interface AdminLabel {
+  id: number | string;
+  name: string;
+  photo_filter?: string | null;
+}
+export interface AdminNamedOption {
+  id: number | string;
+  name: string;
+}
+export interface AdminWhatsappNumber {
+  id: number | string;
+  phone_number: string;
   label?: string | null;
 }
 
@@ -129,7 +159,23 @@ export interface AdminData {
   keepaliveStale: boolean;
   abandonedCheckoutStale: boolean;
   settings: Record<string, string>;
+  // --- products tab (#16) ---
   products: AdminProduct[];
+  setProducts: (value: AdminProduct[]) => void;
+  categories: AdminCategory[];
+  setCategories: (value: AdminCategory[]) => void;
+  labels: AdminLabel[];
+  setLabels: (value: AdminLabel[]) => void;
+  colors: AdminNamedOption[];
+  setColors: (value: AdminNamedOption[]) => void;
+  materials: AdminNamedOption[];
+  setMaterials: (value: AdminNamedOption[]) => void;
+  whatsappNumbers: AdminWhatsappNumber[];
+  setWhatsappNumbers: (value: AdminWhatsappNumber[]) => void;
+  // Re-runs the page's loadAll() -- products handlers that touch many rows
+  // at once (bulk label assign, full add/edit) refetch rather than trying to
+  // patch local state.
+  refetch: () => void;
 }
 
 const AdminDataContext = createContext<AdminData | null>(null);

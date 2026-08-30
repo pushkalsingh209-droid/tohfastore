@@ -396,17 +396,21 @@ care, land behind tests, never "blind".
     `getProduct`, `coupons.discount_type` widened to `string`, admin `.update()` payloads
     typed via `types/tables.ts`). 4 dead `@supabase/ssr` scaffold files removed.
 
-16. **Split `app/admin/page.tsx`** — *5 of 7 tabs done (2026-08-29); rest parked.* Plan:
-    `docs/DESIGN-split-admin-page.md`. **Done:** scaffold (`apiRequest` → `admin/lib/`,
-    `AdminDataContext`) + `SecurityTab` + `ReviewsTab` + `CouponsTab` + `OrdersTab` +
-    `OverviewTab` (page 3,689 → **2,636 lines**, −28 `no-explicit-any`, −1
-    `set-state-in-effect`), all merged & click-through-verified.
-    **Parked — `products` + `settings`:** they're mutually entangled (`labels` /
-    `categories` / `whatsappNumbers` are read *and written* by both; the `handleAdd*`
-    handlers live with the product form but manage settings data). `products` alone is
-    ~24 fns + ~745 lines of JSX and is the critical editor — not safe to move blind.
-    Do them **with a dev-server loop**, `products` first (split into 3 sub-PRs: stock
-    tracker / editor form / dropdown-mgmt — see the design doc), then `settings`.
+16. **Split `app/admin/page.tsx`** — *6 of 7 tabs done; `settings` remains.* Plan:
+    `docs/DESIGN-split-admin-page.md`. **Done, merged & click-through-verified:** scaffold
+    (`apiRequest` → `admin/lib/`, `AdminDataContext`) + `SecurityTab` + `ReviewsTab` +
+    `CouponsTab` + `OrdersTab` + `OverviewTab` (−28 `no-explicit-any`, −1
+    `set-state-in-effect`). **Pushed, awaiting owner click-through + merge (2026-08-30):**
+    `ProductsTab` — the 3-sub-PR split was abandoned (form + tracker share the
+    weight/dimension input-unit state and the `editingProductId`/`formData` bridge), so
+    the whole tab moved in one PR: form + Product Statistics panels + Live Storefront
+    Catalog & Stock Tracker + ~28 handlers into `app/admin/tabs/ProductsTab.tsx`. Context
+    gained `setProducts`, `categories`/`labels`/`colors`/`materials`/`whatsappNumbers`
+    (+ setters) and `refetch`. `tsc` clean · `next build` 86/86 · `npm test` 102 pass ·
+    `eslint .` 164 → 135 (no new `any`). Page `app/admin/page.tsx` now ~530 lines.
+    **Left — `settings` (~600 lines inline):** no products entanglement remains; it needs
+    only shared `labels`/`categories`/`whatsappNumbers` reads + `setSettings` + `refetch`.
+    Do it with a dev-server loop (edit each field group, save, confirm it persists).
 
 17. ~~**Multi-step checkout + state-machine extract.**~~ — **done (2026-08-30, 17a + 17b +
     17c).** See Done. `CartDrawer.tsx` is now bag-list-only; the 3-step `CheckoutSheet` is
@@ -426,7 +430,9 @@ care, land behind tests, never "blind".
     cascading-render bug; kept visible as warnings); ~15 isolated `any` singles across
     `admin/{coupons,settings,analytics,whatsapp-enquiries}`, `catalogueGenerator`,
     `GoogleTranslateWidget`, `InstallPrompt`, `headerNavbar`, product-page reviews, etc.
-    **Left (~103 `no-explicit-any`):** `app/admin/page.tsx` (74 — fold into #16);
+    **Left (~103 `no-explicit-any`):** `app/admin/tabs/ProductsTab.tsx` (~75 — moved here
+    from `page.tsx` by #16, still the untyped `product: any` / `catch (err: any)` debt;
+    a focused typing pass once the row shape is pinned down);
     `razorpay-webhook` (12 — needs a stricter `OrderItem` w/ required price/qty + coercion
     at the parse boundary, its own ⚠️ pass); `ProductCard` + `CartContext` +
     `WishlistContext` + consumers (~15 — cascades: nullable name/price hits helper
