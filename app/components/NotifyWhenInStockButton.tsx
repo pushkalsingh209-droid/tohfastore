@@ -47,9 +47,9 @@ export default function NotifyWhenInStockButton({
         return;
       }
       setStatus("done");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus("error");
-      setError(err.message || "Could not save your request.");
+      setError(err instanceof Error ? err.message : "Could not save your request.");
     }
   }
 

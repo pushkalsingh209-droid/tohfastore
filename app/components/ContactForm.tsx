@@ -30,8 +30,8 @@ export default function ContactForm() {
       setName("");
       setEmail("");
       setMessage("");
-    } catch (err: any) {
-      setError(err.message || "Could not send your message.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not send your message.");
     } finally {
       setLoading(false);
     }

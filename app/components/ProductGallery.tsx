@@ -153,7 +153,6 @@ export default function ProductGallery({
       clearTimeout(settleTimer);
       clearTimeout(loopTimer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, gallery.length]);
 
   // Gates the `flip-3d-live` class (see globals.css) that turns on

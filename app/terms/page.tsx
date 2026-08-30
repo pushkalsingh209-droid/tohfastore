@@ -25,7 +25,7 @@ export default function TermsAndConditions() {
               1. Storefront Information
             </h2>
             <p className="text-stone-600 dark:text-stone-400">
-              The term "TOHFA", "us", or "we" refers to the owner of the website. The term "you" refers to the user or viewer of our website.
+              The term “TOHFA”, “us”, or “we” refers to the owner of the website. The term “you” refers to the user or viewer of our website.
             </p>
           </div>
           

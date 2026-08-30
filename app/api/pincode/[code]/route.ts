@@ -30,7 +30,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ code: st
       city: postOffice.District || postOffice.Block || "",
       state: postOffice.State || "",
     });
-  } catch (err: any) {
+  } catch {
     return NextResponse.json({ error: "PIN code lookup is unavailable right now." }, { status: 502 });
   }
 }

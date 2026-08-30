@@ -1,6 +1,7 @@
 // app/success/page.tsx
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { sendGAEvent } from "@next/third-parties/google";
 import { useCart } from "@/app/context/CartContext";
 import { BUSINESS_GSTIN, type OrderGstBreakdown } from "@/app/utils/gst";
@@ -140,17 +141,17 @@ export default function CheckoutSuccessPage() {
                 Your payment via Razorpay has cleared successfully. Our regional Indian artisans are already packing your handcrafted premium brass artifacts for delivery.
               </p>
               <p className="text-amber-800 dark:text-amber-500 font-medium">
-                📱 We'll send your order confirmation and delivery updates on WhatsApp only, to the number you entered at checkout.
+                📱 We’ll send your order confirmation and delivery updates on WhatsApp only, to the number you entered at checkout.
               </p>
             </div>
 
             {/* Return Call-To-Action Control Key */}
-            <a 
-              href="/" 
+            <Link
+              href="/"
               className="inline-block w-full bg-stone-950 hover:bg-amber-700 text-white font-medium text-xs uppercase tracking-widest py-4 rounded shadow transition duration-150 active:scale-[0.99] text-center"
             >
               Return To Collections
-            </a>
+            </Link>
           </div>
 
           {/* CANCELLATION & REFUND POLICY REMINDER -- bilingual, mirrors the

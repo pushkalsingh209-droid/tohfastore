@@ -43,7 +43,7 @@ export default function PrivacyPolicy() {
               3. Payment Gateway Disclosures
             </h2>
             <p className="text-stone-600 dark:text-stone-400">
-              Your payment information is not stored directly on our servers. All financial data transactions are securely handled by Razorpay's encrypted API network infrastructure layers conforming to PCI-DSS standards.
+              Your payment information is not stored directly on our servers. All financial data transactions are securely handled by Razorpay’s encrypted API network infrastructure layers conforming to PCI-DSS standards.
             </p>
           </div>
         </div>

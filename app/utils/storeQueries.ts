@@ -58,7 +58,7 @@ export const getAllCategoryNames = unstable_cache(
     try {
       const { data, error } = await supabase.from("categories").select("name");
       if (error) return [];
-      return (data || []).map((row: any) => row.name).filter(Boolean);
+      return (data || []).map((row) => row.name).filter((n): n is string => Boolean(n));
     } catch {
       return [];
     }
@@ -122,7 +122,7 @@ export const getActiveLabelNames = unstable_cache(
     try {
       const { data, error } = await supabase.from("products").select("label").not("label", "is", null);
       if (error) return [];
-      return Array.from(new Set((data || []).map((row: any) => row.label).filter(Boolean))).sort();
+      return Array.from(new Set((data || []).map((row) => row.label).filter((l): l is string => Boolean(l)))).sort();
     } catch {
       return [];
     }
@@ -384,11 +384,11 @@ export const getPublicCoupons = unstable_cache(
   { tags: ["coupons"], revalidate: 86400 }
 );
 
-export function filterLivePublicCoupons(coupons: any[]) {
+export function filterLivePublicCoupons<T extends { expires_at: string | null; max_uses: number | null; used_count: number | null }>(coupons: T[]): T[] {
   const now = new Date();
   return coupons.filter((c) => {
     if (c.expires_at && new Date(c.expires_at) < now) return false;
-    if (c.max_uses != null && c.used_count >= c.max_uses) return false;
+    if (c.max_uses != null && (c.used_count ?? 0) >= c.max_uses) return false;
     return true;
   });
 }
@@ -455,7 +455,7 @@ export const getCatalogPage = unstable_cache(
         return { products: [], count: totalCount, page };
       }
       const [withThumbs, soldCounts] = await Promise.all([attachThumbUrls(data || []), getSoldCounts()]);
-      const products = withThumbs.map((p: any) => ({ ...p, sold_count: soldCounts[String(p.id)] || 0 }));
+      const products = withThumbs.map((p) => ({ ...p, sold_count: soldCounts[String(p.id)] || 0 }));
       return { products, count: totalCount, page };
     } catch (err) {
       console.error("Failed to compile database records:", err);
@@ -505,7 +505,7 @@ export const getSoldCounts = unstable_cache(
       if (error || !rows) return {};
 
       const soldCount: Record<string, number> = {};
-      for (const row of rows as any[]) {
+      for (const row of rows) {
         if (row?.product_id == null) continue;
         soldCount[String(row.product_id)] = Number(row.units_sold) || 0;
       }
@@ -527,6 +527,14 @@ export const getSoldCounts = unstable_cache(
 // regeneration per product per minute under traffic, against Vercel's
 // metered quota. It's now fetched client-side, uncached, from
 // /api/recent-views/[id]; see app/components/RecentViewersNoteLive.tsx.
+
+// A product row is renderable in a strip only if it has the fields those
+// cards actually read. The DB doesn't enforce NOT NULL on them.
+function isRenderableProduct<T extends { name: string | null; price: number | null; image_url: string | null; inventory: number | null }>(
+  p: T
+): p is T & { name: string; price: number; image_url: string; inventory: number } {
+  return p.name != null && p.price != null && p.image_url != null && p.inventory != null;
+}
 
 export interface BestsellerItem {
   id: number;
@@ -586,8 +594,9 @@ export const getBestsellers = unstable_cache(
         .eq("hidden", false);
       if (productsError || !products) return [];
 
-      const withThumbs = await attachThumbUrls(products as any[]);
+      const withThumbs = await attachThumbUrls(products);
       return withThumbs
+        .filter(isRenderableProduct)
         .map((p) => ({ ...p, unitsSold: soldCount[String(p.id)] || 0 }))
         .sort((a, b) => b.unitsSold - a.unitsSold);
     } catch {
@@ -602,6 +611,8 @@ export const getBestsellers = unstable_cache(
 // co-purchase counts from recent orders first, then tops up with other
 // in-category products (unranked, unitsSold 0) so the strip isn't empty
 // right after launch or for a category with little order history yet.
+type RelatedRow = { id: number; name: string | null; price: number | null; image_url: string | null; inventory: number | null; category: string | null };
+
 export const getRelatedProducts = unstable_cache(
   async (category: string, excludeId: number, limit = 8): Promise<BestsellerItem[]> => {
     try {
@@ -609,7 +620,7 @@ export const getRelatedProducts = unstable_cache(
 
       const soldCount = tallyUnitsSold(await getRecentOrderItems(), { excludeId });
 
-      const productMap = new Map<string, any>();
+      const productMap = new Map<string, RelatedRow>();
 
       const rankedIds = Object.keys(soldCount);
       if (rankedIds.length > 0) {
@@ -618,7 +629,7 @@ export const getRelatedProducts = unstable_cache(
           .select("id, name, price, image_url, inventory, category")
           .in("id", rankedIds.map(Number))
           .eq("hidden", false);
-        for (const p of (ranked as any[]) || []) {
+        for (const p of ranked || []) {
           if (p.category === category) productMap.set(String(p.id), p);
         }
       }
@@ -631,12 +642,13 @@ export const getRelatedProducts = unstable_cache(
           .eq("hidden", false)
           .neq("id", excludeId)
           .limit(limit * 2);
-        for (const p of (fallback as any[]) || []) {
+        for (const p of fallback || []) {
           if (!productMap.has(String(p.id))) productMap.set(String(p.id), p);
         }
       }
 
       const top = Array.from(productMap.values())
+        .filter(isRenderableProduct)
         .map((p) => ({ ...p, unitsSold: soldCount[String(p.id)] || 0 }))
         .sort((a, b) => b.unitsSold - a.unitsSold)
         .slice(0, limit);

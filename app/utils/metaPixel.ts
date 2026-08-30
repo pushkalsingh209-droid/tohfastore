@@ -3,7 +3,7 @@
 // script never loaded (NEXT_PUBLIC_META_PIXEL_ID unset), same as the GA4
 // purchase event this runs alongside on the success page.
 export function trackMetaPurchase(value: number, currency: string = "INR") {
-  if (typeof window !== "undefined" && typeof (window as any).fbq === "function") {
-    (window as any).fbq("track", "Purchase", { value, currency });
+  if (typeof window !== "undefined" && typeof window.fbq === "function") {
+    window.fbq("track", "Purchase", { value, currency });
   }
 }

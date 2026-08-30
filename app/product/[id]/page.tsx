@@ -1,5 +1,6 @@
 // app/product/[id]/page.tsx
 import { cache } from "react";
+import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
@@ -289,9 +290,9 @@ export default async function ProductDetailPage({
         {!product ? (
           <div className="text-center py-24 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
             <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">This artifact could not be found.</p>
-            <a href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">
+            <Link href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">
               Return to Collections
-            </a>
+            </Link>
           </div>
         ) : (
           <>
