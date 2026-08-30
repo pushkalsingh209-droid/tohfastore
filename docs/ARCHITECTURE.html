@@ -206,6 +206,37 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>11:45</code></td>
+  <td><strong>#19 &mdash; lint-debt sweep (part 2)</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-debt-2</code>, in progress)</td>
+  <td>
+    <code>eslint .</code> <strong>177 &rarr; 151 problems</strong> (<code>no-explicit-any</code> 146 &rarr; 120).
+    Typed the admin <code>InventoryInsightsPanel</code> (new local <code>InventoryProduct</code> prop type;
+    the 4 card computations + CSV builders drop <code>(p: any)</code>/<code>as any</code>) and
+    <code>FinanceInsightsPanel</code> (props &rarr; <code>AdminOrder[]</code>/<code>AdminProduct[]</code>;
+    <code>AdminOrderItem</code> gained the <code>id</code>/<code>price</code>/<code>gstRate</code>/<code>category</code>
+    fields it reads). New shared <code>app/types/product.ts</code>
+    (<code>StoreProduct</code>/<code>CartItem</code>) wired into the leaf prop components that just annotate +
+    forward (<code>AddToCartButton</code>, <code>StickyAddToCartBar</code>, <code>WishlistButton</code>);
+    <code>sitemap.ts</code> drops its <code>(product: any)</code>.<br>
+    <strong>Deferred (each cascades through consumers):</strong> <code>ProductCard</code> (reads ~20 product
+    fields, passes to helpers that want non-null <code>name</code>/<code>price</code>),
+    <code>CartContext</code>/<code>WishlistContext</code>, <code>razorpay-webhook</code> (&#9888;),
+    <code>app/admin/page.tsx</code> (74 &mdash; folds into #16), and all 24
+    <code>react-hooks/set-state-in-effect</code>.
+  </td>
+  <td>
+    <em>new:</em> <code>app/types/product.ts</code> &middot; <code>AdminDataContext.tsx</code>,
+    <code>InventoryInsightsPanel.tsx</code>, <code>FinanceInsightsPanel.tsx</code>,
+    <code>AddToCartButton.tsx</code>, <code>StickyAddToCartBar.tsx</code>, <code>WishlistButton.tsx</code>,
+    <code>sitemap.ts</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot; <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>next build</code> exit 0 &middot; <code>tsc --noEmit</code> clean &middot; <code>npm test</code>
+    102 pass / 7 skip &middot; no behaviour change (<code>any</code> &rarr; concrete types + <code>Number()</code>
+    coercions where a string could arrive).
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>11:30</code></td>
   <td><strong>#19 &mdash; lint-debt sweep (part 1)</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-debt</code>, in progress)</td>
   <td>

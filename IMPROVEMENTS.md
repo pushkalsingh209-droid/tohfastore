@@ -409,20 +409,23 @@ care, land behind tests, never "blind".
 18. ~~**Consolidate phone normalisation.**~~ — **done (2026-08-30).** See Done. One
     `app/utils/phone.ts` `normalizeIndianPhone`, 4 local copies + 1 inline retired, 7 tests.
 
-19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 177 problems.*
-    **Done** (branch `lint-debt`, 5 commits): all 24 `react/no-unescaped-entities`; all 8
+19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 151 problems;
+    `no-explicit-any` 174 → 120.*
+    **Done** — PR #27 (`lint-debt`, 6 commits): all 24 `react/no-unescaped-entities`; all 8
     `@next/next/no-html-link-for-pages` (`<a href="/">` → `<Link>`); 8 `catch (err: any)` →
-    `unknown`; `storeQueries`/`proxy` row types (dropped `(row: any)` / `as any[]` now the
-    client is typed — added `isRenderableProduct` guard + generic `filterLivePublicCoupons`);
-    `types/globals.d.ts` for `window.{fbq,gtag,Razorpay}` + SpeechRecognition; `no-unused-vars`
-    config (`^_` + `ignoreRestSiblings`); 2 stale `eslint-disable` directives.
-    **Left (~146 `no-explicit-any` + 24 `react-hooks/set-state-in-effect` + a few misc):**
-    `app/admin/page.tsx` (74 `any` — entangled with #16, do together), the admin
-    Inventory/Finance panels (~21 — need `AdminOrder`/`AdminProduct` types),
-    `razorpay-webhook` (12 — needs a real `OrderItem` with required price/qty, its own
-    ⚠️ pass), the contexts + `product: any` component props (~15 — need a shared
-    `StoreProduct` type), and all 24 `set-state-in-effect` (per-case judgement, some are
-    intentional-with-comment). Continue in tranches on the same branch.
+    `unknown`; `storeQueries`/`proxy` row types (`isRenderableProduct` guard + generic
+    `filterLivePublicCoupons`); `types/globals.d.ts` for `window.{fbq,gtag,Razorpay}` +
+    SpeechRecognition; `no-unused-vars` config; 2 stale directives.
+    **Done** — branch `lint-debt-2`: the admin `Inventory`/`Finance` insight panels (new
+    `InventoryProduct` type; `AdminOrderItem` gained `id`/`price`/`gstRate`/`category`);
+    new shared `app/types/product.ts` (`StoreProduct`/`CartItem`) wired into the leaf prop
+    components (`AddToCartButton`, `StickyAddToCartBar`, `WishlistButton`, `sitemap`).
+    **Left (~120 `no-explicit-any` + 24 `set-state-in-effect` + ~4 misc):**
+    `app/admin/page.tsx` (74 — fold into #16); `razorpay-webhook` (12 — needs a real
+    `OrderItem` w/ required price/qty, its own ⚠️ pass); `ProductCard` + `CartContext` +
+    `WishlistContext` and their consumers (~20 — each cascades: nullable name/price hits
+    helper signatures that want non-null); all 24 `set-state-in-effect` (per-case). Each
+    remaining cluster is a focused pass, not mechanical.
 
 20. ~~**Delete vestigial `ADMIN_SESSION_SECRET`.**~~ — **done (2026-08-29, Batch A).** No
     code ever read it; removed from the docs / env table / gotcha list / AGENT.md, and
