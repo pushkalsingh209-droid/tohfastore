@@ -7,7 +7,7 @@
 type EnquirySource = "card_front" | "card_back" | "product_detail";
 
 export function trackWhatsappEnquiry(
-  product: { id?: number | string; name?: string; category?: string | null; price?: number | string },
+  product: { id?: number | string; name?: string | null; category?: string | null; price?: number | string | null },
   outOfStock: boolean,
   whatsappNumber: string,
   source: EnquirySource

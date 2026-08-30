@@ -7,18 +7,6 @@ import { useDefaultWhatsappNumber } from "@/app/context/DefaultWhatsappNumberCon
 import PriceDisplay from "@/app/components/PriceDisplay";
 import CheckoutSheet from "@/app/components/checkout/CheckoutSheet";
 
-// `cart` from CartContext is `any[]`; the few fields this drawer reads.
-type BagItem = {
-  id: string | number;
-  name: string;
-  price: number;
-  quantity: number;
-  category?: string | null;
-  thumb_url?: string | null;
-  image_url?: string | null;
-  inventory?: number | string | null;
-};
-
 // The cart drawer is now just the bag list + a "Proceed to Checkout" button.
 // That button opens the 3-step <CheckoutSheet> (#17b), which takes over the
 // whole drawer. Everything to do with contact / WhatsApp OTP / address /
@@ -51,7 +39,7 @@ export default function CartDrawer() {
   // checkout flow, so a shopper can ask a question without losing their bag.
   const chatWithUsLink = `https://wa.me/${defaultWhatsappNumber}?text=${encodeURIComponent(
     `Hi! I have a question before completing my order on TOHFA${
-      cart.length > 0 ? ` (${cart.map((item: BagItem) => item.name).join(", ")})` : ""
+      cart.length > 0 ? ` (${cart.map((item) => item.name).join(", ")})` : ""
     }.`
   )}`;
 
@@ -72,11 +60,11 @@ export default function CartDrawer() {
             ) : (
               <>
                 <div className="space-y-4 max-h-[35vh] overflow-y-auto border-b dark:border-stone-800 pb-4">
-                  {cart.map((item: BagItem) => (
+                  {cart.map((item) => (
                     <div key={item.id} className="flex items-center gap-4 pb-2">
                       <div className="relative w-12 h-12 rounded overflow-hidden border dark:border-stone-700 bg-stone-50 flex-shrink-0">
                         {(item.thumb_url || item.image_url) && (
-                          <Image src={item.thumb_url || item.image_url || ""} alt={item.name} fill sizes="48px" className="object-cover" />
+                          <Image src={item.thumb_url || item.image_url || ""} alt={item.name ?? ""} fill sizes="48px" className="object-cover" />
                         )}
                       </div>
                       <div className="flex-grow">
@@ -103,7 +91,7 @@ export default function CartDrawer() {
                         </div>
                         <div className="mt-1">
                           <PriceDisplay
-                            price={item.price * item.quantity}
+                            price={(Number(item.price) || 0) * item.quantity}
                             category={item.category}
                             className="text-xs text-amber-800 dark:text-amber-500 font-bold font-mono"
                             originalClassName="text-stone-400 dark:text-stone-500 line-through font-mono text-[10px]"

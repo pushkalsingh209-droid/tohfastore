@@ -7,19 +7,6 @@ import { useCart } from "@/app/context/CartContext";
 import PriceDisplay from "@/app/components/PriceDisplay";
 import { productHref } from "@/app/utils/slug";
 
-// The trimmed row WishlistContext.toggleWishlist() stores (and this page
-// renders) -- always written with these fields set, so they're non-null here
-// even though the shared StoreProduct type keeps them optional.
-type WishlistItem = {
-  id: string | number;
-  name: string;
-  price: number | string;
-  image_url: string;
-  thumb_url?: string | null;
-  inventory?: number | string | null;
-  category?: string | null;
-};
-
 export default function WishlistPage() {
   const { wishlist, removeFromWishlist } = useWishlist();
   const { addToCart } = useCart();
@@ -40,10 +27,10 @@ export default function WishlistPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-            {wishlist.map((product: WishlistItem) => (
+            {wishlist.map((product) => (
               <div key={product.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden shadow-sm">
                 <Link href={productHref(product)} className="block relative w-full h-32 sm:h-36 bg-stone-50">
-                  <Image src={product.thumb_url || product.image_url} alt={product.name} fill sizes="180px" className="object-cover" />
+                  <Image src={product.thumb_url || product.image_url || ""} alt={product.name ?? ""} fill sizes="180px" className="object-cover" />
                 </Link>
                 <div className="p-3">
                   <Link href={productHref(product)}>
