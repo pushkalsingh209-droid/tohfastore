@@ -54,8 +54,8 @@ trusting it (which page, which admin action, which webhook). Don't mark it done.
 
 Do this *before* anything merges to `main` (see `CLAUDE.md` / `AGENT.md`).
 
-- `docs/ARCHITECTURE.html`: update any section the structure change affects (file map,
-  utils table, module names, §27 playbooks) + a dated **Change log** row (IST time,
+- `docs/HANDBOOK.html`: update any section the structure change affects (file map,
+  utils table, module names, §27 playbooks) + a dated row in the **Change Log** tab (IST time,
   files, how verified). Re-strip the skeleton and re-publish the artifact (pass its
   `url`).
 - `IMPROVEMENTS.md`: shipped item → Done; any new duplication/complexity you noticed →
