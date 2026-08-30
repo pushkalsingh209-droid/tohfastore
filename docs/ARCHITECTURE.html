@@ -206,6 +206,30 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>18:45</code></td>
+  <td><strong>#19 &mdash; lint-debt: admin page + products route</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-admin-page</code>)</td>
+  <td>
+    <code>app/admin/page.tsx</code> 14 <code>no-explicit-any</code> &rarr; 0 &mdash; the 14
+    <code>useState&lt;any[]&gt;</code> holding <code>loadAll()</code>'s state now use the
+    <code>AdminProduct</code>/<code>AdminOrder</code>/<code>AdminReview</code>/&hellip; interfaces
+    <code>AdminDataContext</code> already exports (so the page's state and what it hands the
+    provider are now the same types). <code>app/api/admin/products/route.ts</code> 5 &rarr; 0
+    &mdash; the two dynamic <code>Record&lt;string, any&gt;</code> insert/update payloads &rarr;
+    <code>Record&lt;string, unknown&gt;</code>, and <code>isMissingColumn(error: unknown)</code>
+    narrowed to <code>{ message?; code? }</code>. Type-only; no runtime change.
+    <code>eslint .</code> 74 &rarr; <strong>55 problems</strong> (27 errors + 28 warnings).
+  </td>
+  <td>
+    <code>app/admin/page.tsx</code>, <code>app/api/admin/products/route.ts</code> &middot;
+    <code>docs/ARCHITECTURE.html</code> &middot; <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>tsc --noEmit</code> clean &middot; <code>next build</code> exit 0 (86/86) &middot;
+    <code>npm test</code> 102 pass / 1 skip &middot; <code>eslint .</code> 74 &rarr; 55
+    (&minus;19, all <code>no-explicit-any</code>; no new). Type annotations only.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>18:00</code></td>
   <td><strong>#19 &mdash; lint-debt: admin tabs</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-admin-tabs</code>)</td>
   <td>
