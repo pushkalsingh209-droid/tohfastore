@@ -7,7 +7,7 @@ description: On-demand vulnerability & dependency audit SOP for the TOHFA storef
 
 # SOP: security & dependency audit
 
-Read `docs/ARCHITECTURE.html` §6 (RLS), §12 (checkout), §22 (security summary) first.
+Read `docs/HANDBOOK.html` §6 (RLS), §12 (checkout), §22 (security summary) first.
 This is a defensive audit of the team's own app — in scope.
 
 ## 1. RLS / data perimeter
@@ -78,7 +78,7 @@ only read the migrations.
 
 Do this *before* anything merges to `main` (see `CLAUDE.md` / `AGENT.md`).
 
-- `docs/ARCHITECTURE.html`: affected sections + dated **Change log** row; check the §27
+- `docs/HANDBOOK.html`: affected sections + dated **Change log** row; check the §27
   playbook if a new kind of thing was added. Re-strip the skeleton, re-publish the
   artifact (`url`).
 - `IMPROVEMENTS.md`: shipped → Done; findings → Active with tier + 💰/⚠️ flags.

@@ -40,7 +40,7 @@ file (`AGENT.md`, singular) carries the boundaries.
    remote state, emailing/WhatsApp-ing real customers from a script — confirm first.
 
 7. **Docs stay self-contained.** No CDN link, `<script>`, remote font, or external image
-   in `docs/ARCHITECTURE.html`. System fonts + inline SVG only.
+   in `docs/HANDBOOK.html`. System fonts + inline SVG only.
 
 ## Always-safe (batch and ship without asking)
 
@@ -80,13 +80,13 @@ Follow the SOP in `CLAUDE.md` → "batch → verify → document → deploy → 
 
 **One PR at a time.** Push a branch, wait for the owner to merge it, resync `main`, delete
 the branch — *then* start the next. Never open a second PR while one is pending: stacked
-branches all touch `IMPROVEMENTS.md` + the ARCHITECTURE.html Change log and conflict at the
+branches all touch `IMPROVEMENTS.md` + the HANDBOOK.html Change log and conflict at the
 top of the same table. Ready work waits in a queue, not in a parallel branch.
 
-**The documentation step gates the deploy.** `docs/ARCHITECTURE.html` (affected sections
+**The documentation step gates the deploy.** `docs/HANDBOOK.html` (affected sections
 + a dated Change-log row), the re-published artifact, and `IMPROVEMENTS.md` are updated
 *before* the batch merges to `main` — never after, never "I'll document it later". A
 batch whose docs aren't current is not deployable. If a new kind of thing was added
 (route / migration / setting / notification / cron / admin tab), confirm its **§27
-playbook** in ARCHITECTURE.html still matches reality. Then re-verify the merged HEAD
+playbook** in HANDBOOK.html still matches reality. Then re-verify the merged HEAD
 (`next build` + `npm test`) before pushing `main`.

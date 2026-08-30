@@ -12,7 +12,7 @@ TOHFA — a single-store Indian e-commerce site (premium brass handicrafts + adj
 categories). Next.js 16 App Router · React 19 · TypeScript (strict) · Supabase
 (Postgres + Storage) · Razorpay payments · WhatsApp via Green API · Vercel (Hobby).
 
-**Read `docs/ARCHITECTURE.html` before any architectural change.** It is the full
+**Read `docs/HANDBOOK.html` before any architectural change.** It is the full
 reference — schema + all 40 migrations, RLS model, every API route, checkout/payments,
 caching strategy, admin panel, WhatsApp integration, gotchas, and a dated **Change log**.
 
@@ -31,7 +31,7 @@ caching strategy, admin panel, WhatsApp integration, gotchas, and a dated **Chan
   yours. |
 
 There is **no** `.env.local.example`. Populate `.env.local` from §4 of
-`docs/ARCHITECTURE.html`. Migrations are hand-run SQL in `supabase/migrations/` (no CLI
+`docs/HANDBOOK.html`. Migrations are hand-run SQL in `supabase/migrations/` (no CLI
 wired up) — the two base tables (`products`, `orders`) have no migration file.
 
 ## Code style (match the surrounding file)
@@ -54,7 +54,7 @@ wired up) — the two base tables (`products`, `orders`) have no migration file.
   log the real error, don't echo it. (4xx validation messages are user-facing and fine.)
 - TypeScript strict; path alias `@/*` → repo root (mirrored in `vitest.config.ts`).
 - Tailwind v4; dark mode is class-based via a blocking script in `layout.tsx`.
-- **Docs are self-contained.** `docs/ARCHITECTURE.html` must stay CDN-free — system
+- **Docs are self-contained.** `docs/HANDBOOK.html` must stay CDN-free — system
   fonts, inline SVG, no `<script>`, no external assets.
 
 ## Working agreement — batch → verify → document → deploy → recommend
@@ -66,7 +66,7 @@ This is the standing SOP for any multi-change piece of work (the audit/refactor 
    to reason about; keep the diff surgical. **One PR at a time** — finish a batch, push
    its branch, wait for the owner to merge it, then `git checkout main && git pull` and
    delete the branch *before* starting the next branch. Never have two PRs open at once
-   (stacked branches all edit `IMPROVEMENTS.md` + the ARCHITECTURE.html Change log and
+   (stacked branches all edit `IMPROVEMENTS.md` + the HANDBOOK.html Change log and
    collide at the top of the same table — the owner does not want to resolve that). If
    several independent changes are ready, ship them as a sequential queue, not in
    parallel. A large batch stays one PR and iterates on that same branch.
@@ -75,13 +75,16 @@ This is the standing SOP for any multi-change piece of work (the audit/refactor 
    Report the actual results — if something can't be verified (no running app, no live
    Supabase/Razorpay), say so, and treat a payment-path change as a proposal, not done.
 3. **Document — this GATES the deploy.** Before merging anything, update
-   `docs/ARCHITECTURE.html`: the affected sections *and* a new dated row in the **Change
+   `docs/HANDBOOK.html`: the affected sections *and* a new dated row in the **Change
    log** (date + time IST, files touched, how verified). If the batch adds a new kind of
-   thing (route, migration, setting, notification…), check its **§27 playbook** still
-   describes reality. Re-strip the skeleton and re-publish the artifact
-   (`https://claude.ai/code/artifact/85252c72-364e-44ee-80cf-710ae21d88cb`, pass as
-   `url`). Move shipped items to Done in `IMPROVEMENTS.md`. **Never deploy a batch whose
-   docs aren't already updated.** If token budget is too low to document properly, stop
+   thing (route, migration, setting, notification…), check its **§27 playbook** (in the
+   Architecture tab) still describes reality. Re-publish the handbook artifact
+   (`https://claude.ai/code/artifact/7aa7da6c-f415-4e08-a840-669955210d9d`, pass as
+   `url`) — `docs/HANDBOOK.html` is already in publish-ready form (its own `<title>` +
+   `<style>` at the top, content directly, no `<!doctype>`/`<head>`/`<body>` wrapper), so
+   there is no skeleton to strip. Move shipped items to Done in `IMPROVEMENTS.md`.
+   **Never deploy a batch whose docs aren't already updated.** If token budget is too low
+   to document properly, stop
    before deploying and say exactly what's undocumented.
 4. **Deploy** (only when the owner says so, and only after step 3). **`main` is
    branch-protected — direct `git push origin main` is rejected (`GH013 … Required status

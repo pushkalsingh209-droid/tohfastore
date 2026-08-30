@@ -9,7 +9,7 @@ description: On-demand performance profiling SOP for the TOHFA storefront — fi
 
 Goal: reduce **metered cost** (Vercel ISR writes + Image Optimization transforms,
 Supabase API requests) and **latency** (TTFB, LCP, client waterfalls) without changing
-behaviour. Read `docs/ARCHITECTURE.html` §16 first — the caching model is deliberate.
+behaviour. Read `docs/HANDBOOK.html` §16 first — the caching model is deliberate.
 
 ## 1. Measure / locate (don't guess)
 
@@ -61,7 +61,7 @@ new errors).
 Do this *before* anything merges to `main`; a batch whose docs aren't current is not
 deployable (see `CLAUDE.md` / `AGENT.md`).
 
-- Update `docs/ARCHITECTURE.html`: affected sections + a dated **Change log** row (IST
+- Update `docs/HANDBOOK.html`: affected sections + a dated row in the **Change Log** tab (IST
   time, files, verification); if a new kind of thing was added, check its §27 playbook.
   Re-strip the skeleton and re-publish the artifact (pass its `url`).
 - Update `IMPROVEMENTS.md`: shipped → Done; new findings → Active with tier + flags.
