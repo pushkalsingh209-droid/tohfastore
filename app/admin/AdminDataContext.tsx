@@ -6,7 +6,7 @@
 // tab writes. It grows one entry at a time as each tab moves out.
 // See docs/DESIGN-split-admin-page.md.
 "use client";
-import { createContext, useContext } from "react";
+import { createContext, useContext, type Dispatch, type SetStateAction } from "react";
 
 export interface AdminLoginAttempt {
   id: number | string;
@@ -74,27 +74,39 @@ export interface AdminProduct {
   [key: string]: any;
 }
 
-// Dropdown/lookup lists shared between the products form and the settings
-// tab. Only the fields actually read via the context are declared; the
-// settings tab still reads its own page-local copies for the columns it
-// alone manages (show_on_home, gst_rate, ...).
+// Dropdown/lookup lists shared between the products form (ProductsTab) and
+// the settings tab (SettingsTab). ids are bigint PKs -> always numeric in
+// the API JSON. The products form only reads id/name off these; the extra
+// columns below are what the settings tab manages.
 export interface AdminCategory {
-  id: number | string;
+  id: number;
   name: string;
+  show_on_home?: boolean;
+  gst_rate?: number | string;
+  discount_percent?: number | string;
+  default_page_size?: number | string | null;
 }
 export interface AdminLabel {
-  id: number | string;
+  id: number;
   name: string;
   photo_filter?: string | null;
 }
 export interface AdminNamedOption {
-  id: number | string;
+  id: number;
   name: string;
 }
 export interface AdminWhatsappNumber {
-  id: number | string;
+  id: number;
   phone_number: string;
   label?: string | null;
+}
+
+// Preset "Chat for ..." button labels (chat_button_labels table) -- managed
+// by the settings tab's Chat Button Labels panel.
+export interface AdminChatLabel {
+  id: number;
+  kind: string;
+  label: string;
 }
 
 export interface AdminAnalytics {
@@ -158,7 +170,11 @@ export interface AdminData {
   setLeads: (value: AdminLead[]) => void;
   keepaliveStale: boolean;
   abandonedCheckoutStale: boolean;
+  // --- settings tab (#16) ---
   settings: Record<string, string>;
+  setSettings: Dispatch<SetStateAction<Record<string, string>>>;
+  chatLabelPresets: AdminChatLabel[];
+  setChatLabelPresets: Dispatch<SetStateAction<AdminChatLabel[]>>;
   // --- products tab (#16) ---
   products: AdminProduct[];
   setProducts: (value: AdminProduct[]) => void;
