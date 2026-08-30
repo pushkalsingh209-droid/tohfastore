@@ -1,12 +1,14 @@
 <title>TOHFA Handbook</title>
 <!-- Self-contained: no CDN, no external fonts, zero scripts. System fonts,
      inline SVG. Mobile-first: base rules are the phone layout, @media
-     (min-width:700px) enhances up. Tabs are pure CSS (:target + :has());
-     the phone nav is a checkbox hamburger. The Architecture + Change Log
-     tabs are the former docs/ARCHITECTURE.html, folded in with its styles
-     @scope'd to .archdoc so the two stylesheets don't collide. This one
-     file is the whole reference: system appreciation, code flows, developer
-     guide, admin/owner guide, architecture, change log. -->
+     (min-width:820px) enhances up. Tabs are pure CSS (:target + :has());
+     the nav is one horizontal strip -- side-scrolls on a phone, wraps on a
+     wide screen, no hamburger / no open state. Header + strip stick as one
+     .chrome block. The Architecture + Change Log tabs are the former
+     docs/ARCHITECTURE.html, folded in with its styles @scope'd to .archdoc
+     so the two stylesheets don't collide. This one file is the whole
+     reference: system appreciation, code flows, developer guide,
+     admin/owner guide, architecture, change log. -->
 <style>
   :root{
     --ground:#fbf7ec; --surface:#ffffff; --raise:#fdfaf1; --ink:#2b1a17; --muted:#6f5f54;
@@ -36,58 +38,55 @@
   }
 
   /* ============================================================
-     Mobile-first: the base rules are the phone layout; @media
-     (min-width:) blocks progressively enhance for wider screens.
+     Mobile-first. Base rules ARE the phone layout; @media
+     (min-width:820px) enhances up. Tabs are one component: a
+     horizontal, one-tap strip that scrolls sideways on a phone
+     and wraps on a wide screen. No hamburger, no open/close state.
      ============================================================ */
   *{box-sizing:border-box}
   html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
   @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  html,body{max-width:100%;overflow-x:clip}
   body{
     margin:0;background:var(--ground);color:var(--ink);
-    font-family:var(--font-body);font-size:15px;line-height:1.62;
+    font-family:var(--font-body);font-size:16px;line-height:1.62;
     -webkit-font-smoothing:antialiased;overflow-wrap:break-word;
   }
-  .wrap{max-width:960px;margin:0 auto;padding:0 15px 72px}
+  img,svg,table,pre{max-width:100%}
+  .wrap{max-width:960px;margin:0 auto;padding:0 18px 80px}
 
-  /* --- header (phone) --- */
-  header.top{border-bottom:3px solid var(--spine);background:var(--surface);position:sticky;top:0;z-index:20}
-  header.top .inner{padding:11px 15px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  /* header + strip stick as one block -- the strip never has to guess
+     the header's height, which varies with the wrapped subtitle line. */
+  .chrome{position:sticky;top:0;z-index:20}
+  header.top{border-bottom:3px solid var(--spine);background:var(--surface)}
+  header.top .inner{max-width:960px;margin:0 auto;padding:13px 18px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
   header.top h1{
-    font-family:var(--font-display);font-size:clamp(17px,4.6vw,21px);margin:0;font-weight:700;letter-spacing:.3px;
+    font-family:var(--font-display);font-size:clamp(18px,4.8vw,22px);margin:0;font-weight:700;letter-spacing:.3px;
     display:flex;align-items:center;gap:8px;
   }
-  header.top .brass{width:20px;height:20px;flex:0 0 auto}
-  header.top .sub{color:var(--muted);font-size:12px;width:100%;order:3}
+  header.top .brass{width:21px;height:21px;flex:0 0 auto;align-self:center}
+  header.top .sub{color:var(--muted);font-size:13px;width:100%;order:3}
   header.top .sub a{color:var(--accent);text-decoration:none;font-weight:600}
 
-  /* --- pure-CSS tabs: :target selects the shown section; :has() picks the
-         default when the URL has no matching hash. Real anchors, so cross-tab
-         links and back/forward work. On phones the tab list is a hamburger
-         drawer (a checkbox); from 700px up it becomes a horizontal bar. --- */
-  input.navtoggle{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
-
-  .burger{
-    display:inline-flex;align-items:center;gap:7px;cursor:pointer;color:var(--accent);
-    font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
-    border:1px solid var(--line);border-radius:6px;padding:8px 11px;margin-left:auto;
-    -webkit-tap-highlight-color:transparent;
+  /* --- tab strip (pure CSS: :target picks the shown section, :has() the
+         default). Anchors, so cross-tab links + back/forward work. --- */
+  nav.tabs{
+    display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;
+    background:var(--surface);border-bottom:1px solid var(--line);
+    padding:0 8px;-webkit-overflow-scrolling:touch;
   }
-  nav.tabs{display:none;flex-direction:column;border-bottom:1px solid var(--line);background:var(--surface)}
-  .navtoggle:checked ~ nav.tabs{display:flex}
+  nav.tabs::-webkit-scrollbar{display:none}
   nav.tabs a{
-    font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-    padding:13px 16px;color:var(--muted);text-decoration:none;border-bottom:1px solid var(--line);
-    -webkit-tap-highlight-color:transparent;
+    flex:0 0 auto;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+    padding:13px 12px;color:var(--muted);text-decoration:none;white-space:nowrap;
+    border-bottom:3px solid transparent;-webkit-tap-highlight-color:transparent;
   }
-  nav.tabs a:last-child{border-bottom:none}
-  nav.tabs a:hover{color:var(--ink);background:var(--raise)}
+  nav.tabs a:hover{color:var(--ink)}
 
-  main>section.tab{display:none;padding-top:20px}
-  main>section.tab, h2[id], h3[id], .wrap [id]{scroll-margin-top:64px}
-  /* a tab shows when it (or anything inside it, e.g. a TOC anchor) is the :target */
+  main>section.tab{display:none;padding-top:22px}
+  main>section.tab, h2[id], h3[id], .wrap [id]{scroll-margin-top:132px}
   main>section.tab:target,
   main>section.tab:has(:target){display:block}
-  /* default = Overview, when nothing anywhere in a tab is targeted */
   body:not(:has(main>section.tab:target)):not(:has(main>section.tab :target)) #s-overview{display:block}
 
   body:has(#s-overview:target) nav.tabs a[href="#s-overview"],
@@ -103,27 +102,23 @@
   body:has(#s-changelog:target)   nav.tabs a[href="#s-changelog"],
   body:has(#s-changelog :target)  nav.tabs a[href="#s-changelog"],
   body:not(:has(main>section.tab:target)):not(:has(main>section.tab :target)) nav.tabs a[href="#s-overview"]{
-    color:var(--accent);background:var(--raise);
-    box-shadow:inset 3px 0 0 var(--accent);
+    color:var(--accent);border-bottom-color:var(--accent);background:var(--raise);
   }
 
-  /* ---- tablet / desktop: horizontal tab bar, sticky nav, roomier ---- */
-  @media (min-width:700px){
-    .wrap{padding:0 20px 96px}
-    header.top .inner{padding:15px 20px;gap:14px}
+  /* ---- wide screens: roomier, wrapping tab bar ---- */
+  @media (min-width:820px){
+    body{font-size:15.5px}
+    .wrap{padding:0 24px 100px}
+    header.top .inner{padding:16px 24px;gap:14px}
     header.top .sub{width:auto;order:0;margin-left:auto;font-size:12.5px;text-align:right}
-    .burger{display:none}
     nav.tabs{
-      display:flex;flex-direction:row;gap:6px;flex-wrap:wrap;
-      max-width:960px;margin:0 auto;padding:10px 20px 0;
-      background:var(--ground);border-bottom:1px solid var(--line);
-      position:sticky;top:56px;z-index:19;
+      flex-wrap:wrap;overflow:visible;gap:6px;max-width:960px;margin:0 auto;
+      padding:10px 24px 0;background:var(--ground);
     }
     nav.tabs a{
       border-bottom:none;border:1px solid transparent;border-radius:6px 6px 0 0;
-      padding:9px 13px;letter-spacing:.7px;white-space:nowrap;
+      padding:9px 13px;letter-spacing:.7px;
     }
-    nav.tabs a:last-child{border-bottom:none}
     body:has(#s-overview:target) nav.tabs a[href="#s-overview"],
     body:has(#s-overview :target) nav.tabs a[href="#s-overview"],
     body:has(#s-flows:target) nav.tabs a[href="#s-flows"],
@@ -137,11 +132,11 @@
     body:has(#s-changelog:target) nav.tabs a[href="#s-changelog"],
     body:has(#s-changelog :target) nav.tabs a[href="#s-changelog"],
     body:not(:has(main>section.tab:target)):not(:has(main>section.tab :target)) nav.tabs a[href="#s-overview"]{
-      background:var(--surface);border-color:var(--line);
+      background:var(--surface);border-color:var(--line);border-bottom-color:var(--line);
       box-shadow:inset 0 3px 0 var(--accent);
     }
-    main>section.tab{padding-top:26px}
-    main>section.tab, h2[id], h3[id], .wrap [id]{scroll-margin-top:112px}
+    main>section.tab{padding-top:28px}
+    main>section.tab, h2[id], h3[id], .wrap [id]{scroll-margin-top:120px}
   }
 
   /* --- typography (phone base; clamps scale up) --- */
@@ -207,16 +202,19 @@
 
   svg text{font-family:var(--font-body)}
 
-  /* Architecture / Change Log tabs on a phone: no side rail, full-width
-     content, tables scroll inside their own wrapper (they already do). */
-  @media (max-width:699px){
-    .archdoc .wrap{display:block}
+  /* Architecture / Change Log tabs on a phone: drop the side rail, go
+     full-width with a real 16px gutter, let wide tables scroll inside
+     their own wrapper. Matches the 820px chrome breakpoint. */
+  @media (max-width:819px){
+    .archdoc .wrap{display:block;padding:0 16px 80px}
     .archdoc nav.toc{display:none}
-    .archdoc .archmain{max-width:100%;padding:20px 2px 72px}
+    .archdoc .archmain{max-width:100%;padding:24px 0 96px}
     .archdoc .x{overflow-x:auto}
-    .archdoc table{min-width:560px}
-    .archdoc h1.doctitle{font-size:clamp(20px,5vw,26px)}
-    #s-changelog .wrap{padding-left:2px;padding-right:2px}
+    .archdoc table{min-width:540px}
+    .archdoc h1.doctitle{font-size:clamp(23px,6.4vw,30px)}
+    .archdoc h2{font-size:20px;margin-top:40px}
+    .archdoc h3{font-size:16px}
+    .archdoc .lead{font-size:15.5px}
   }
 
   /* ===== folded in from docs/ARCHITECTURE.html, scoped so the two
@@ -319,32 +317,30 @@
   }
 </style>
 
-<input class="navtoggle" type="checkbox" id="navtoggle">
+<!-- header + tab strip stick to the top as one unit, so the strip's offset
+     never has to track a variable header height (phones especially). -->
+<div class="chrome">
+  <header class="top">
+    <div class="inner">
+      <h1>
+        <svg class="brass" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" aria-hidden="true">
+          <path d="M12 2c2 3 2 5 0 7-2-2-2-4 0-7Z"/><path d="M5 12h14l-2 8H7l-2-8Z"/><path d="M9 12v-2a3 3 0 0 1 6 0v2"/>
+        </svg>
+        TOHFA Handbook
+      </h1>
+      <span class="sub">One reference &mdash; the system, the code, and running the shop.</span>
+    </div>
+  </header>
 
-<header class="top">
-  <div class="inner">
-    <h1>
-      <svg class="brass" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" aria-hidden="true">
-        <path d="M12 2c2 3 2 5 0 7-2-2-2-4 0-7Z"/><path d="M5 12h14l-2 8H7l-2-8Z"/><path d="M9 12v-2a3 3 0 0 1 6 0v2"/>
-      </svg>
-      TOHFA Handbook
-    </h1>
-    <label class="burger" for="navtoggle" aria-label="Toggle navigation">
-      <svg width="15" height="12" viewBox="0 0 15 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M0 1h15M0 6h15M0 11h15"/></svg>
-      Menu
-    </label>
-    <span class="sub">The TOHFA store &mdash; one reference for the system, the code, and running the shop.</span>
-  </div>
-</header>
-
-<nav class="tabs">
-  <a href="#s-overview">Overview</a>
-  <a href="#s-flows">Code Flows</a>
-  <a href="#s-dev">Developer Guide</a>
-  <a href="#s-owner">Admin &amp; Owner Guide</a>
-  <a href="#s-arch">Architecture</a>
-  <a href="#s-changelog">Change Log</a>
-</nav>
+  <nav class="tabs">
+    <a href="#s-overview">Overview</a>
+    <a href="#s-flows">Code Flows</a>
+    <a href="#s-dev">Developer Guide</a>
+    <a href="#s-owner">Admin &amp; Owner Guide</a>
+    <a href="#s-arch">Architecture</a>
+    <a href="#s-changelog">Change Log</a>
+  </nav>
+</div>
 
 <main>
 
@@ -2650,6 +2646,23 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-08-31<br>03:30</code></td>
+  <td><strong>Handbook nav + spacing made mobile-first</strong><br>(docs consolidation, PR&nbsp;3)</td>
+  <td>
+    The phone layout is now the base stylesheet and <code>@media (min-width:820px)</code> enhances up
+    (was a 700px desktop-first split). The checkbox hamburger is gone: the six-tab nav is one
+    horizontal strip that side-scrolls on a phone (hidden scrollbar, one tap, no open/close state)
+    and wraps to a bar on a wide screen. Header&nbsp;+&nbsp;strip stick to the top as one
+    <code>.chrome</code> block, so the strip's offset no longer has to track a variable header
+    height. Body text is 16px on phones (was 15px); the Architecture / Change Log tabs get a real
+    16px gutter and larger headings on mobile (was <code>padding:20px&nbsp;2px</code>). Still
+    pure-CSS <code>:target</code>&nbsp;+&nbsp;<code>:has()</code>, no <code>&lt;script&gt;</code>,
+    CDN-free.
+  </td>
+  <td><code>docs/HANDBOOK.html</code></td>
+  <td>Static HTML/CSS &mdash; nothing to build or test. Tag balance, 0 scripts, 6 tabs verified; checked at 360/390/768/1200px; re-published as the handbook artifact.</td>
+</tr>
 <tr>
   <td><code>2026-08-31<br>02:45</code></td>
   <td><strong>Folded <code>ARCHITECTURE.html</code> into the handbook</strong><br>(docs consolidation, PR&nbsp;2)</td>
