@@ -124,10 +124,16 @@ export default async function StorefrontPage({
   // of running a second query for the same information.
   const categories = categorySliderItems.map((item) => item.name);
   const publicCoupons = filterLivePublicCoupons(rawPublicCoupons);
+  // This is an async Server Component -- it renders once per request on the
+  // server and never hydrates, so a random pick here is a deliberate
+  // per-request rotation of the hero (when no category is selected), not a
+  // hydration hazard. react-hooks/purity can't tell RSC from client render.
+  // eslint-disable-next-line react-hooks/purity
+  const heroRandomIndex = Math.floor(Math.random() * categorySliderItems.length);
   const heroProduct =
     categorySliderItems.length > 0
       ? (category && categorySliderItems.find((item) => item.name === category)) ||
-        categorySliderItems[Math.floor(Math.random() * categorySliderItems.length)]
+        categorySliderItems[heroRandomIndex]
       : null;
 
   const itemListJsonLd = {

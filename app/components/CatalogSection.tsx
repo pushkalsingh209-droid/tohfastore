@@ -9,6 +9,7 @@ import CatalogPagination from "@/app/components/CatalogPagination";
 import CatalogFilters from "@/app/components/CatalogFilters";
 import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
 import { categoryHref } from "@/app/utils/slug";
+import type { StoreProduct } from "@/app/types/product";
 
 // How far above the viewport a card needs to have scrolled (in px) before
 // its contents are actually unmounted, and how early (also in px) they get
@@ -44,7 +45,7 @@ export default function CatalogSection({
   heading,
   revealBatchSize,
 }: {
-  products: any[];
+  products: StoreProduct[];
   count: number;
   page: number;
   pageSize: number;
@@ -324,6 +325,15 @@ export default function CatalogSection({
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {/* Reads cardHeightsRef.current during render (below) on
+                  purpose: it's a measured-height cache for cards that are
+                  currently *unmounted*, used only as a `minHeight`
+                  placeholder so the scrollbar doesn't jump. Promoting it to
+                  state would re-render the whole grid on every card
+                  measurement -- exactly the churn the ref exists to avoid;
+                  a stale value here just leaves a placeholder a few px off
+                  until that card remounts and re-measures. */}
+              {/* eslint-disable-next-line react-hooks/refs */}
               {visibleProducts.map((product, index) => {
                 // Batch 0 (index 0) needs a sentinel too, same as every
                 // other batch boundary -- without one, once the first batch

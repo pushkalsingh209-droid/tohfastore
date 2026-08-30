@@ -416,8 +416,11 @@ care, land behind tests, never "blind".
 18. ~~**Consolidate phone normalisation.**~~ — **done (2026-08-30).** See Done. One
     `app/utils/phone.ts` `normalizeIndianPhone`, 4 local copies + 1 inline retired, 7 tests.
 
-19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 31 problems
-    (3 errors + 28 warnings); `no-explicit-any` 174 → 1.*
+19. ~~**Clear the pre-existing lint debt.**~~ — **done (2026-08-30): 246 → 28 problems,
+    all warnings (0 errors, was ~135); `no-explicit-any` 174 → 0.** The 28 remaining are
+    the deliberately-kept `react-hooks/set-state-in-effect` / `exhaustive-deps` warnings on
+    the standard Next-SSR "hydrate on mount" pattern (rule downgraded to `warn` on purpose;
+    kept visible, not silenced).
     **Done** — PR #27 (`lint-debt`): 24 `no-unescaped-entities`; 8 `no-html-link-for-pages`;
     8 `catch (err: any)`; `storeQueries`/`proxy` row types; `types/globals.d.ts`;
     `no-unused-vars` config. — PR #28 (`lint-debt-2`): admin `Inventory`/`Finance` insight
@@ -465,11 +468,14 @@ care, land behind tests, never "blind".
     (CartDrawer), `CartLine` (ReviewStep), `WishlistItem` (wishlist/page) local aliases
     dropped for `CartItem`/`StoreProduct`, with `?? ""` on `<Image alt>` and
     `Number(item.price)` where a loose field meets a strict consumer.
-    **Left (3 errors, none `no-explicit-any`-mechanical):**
-    `CatalogSection` `products: any[]` (1 — cascades to the server `getCatalogPage` fetch
-    types) **and** it reads a ref during render (`react-hooks/refs`); `StorefrontPage`
-    calls `Math.random()` in render to pick a hero category (`react-hooks/purity`). Each is
-    a real fix, its own pass — not lint mechanics.
+    branch `lint-render-smells` (2026-08-30, the last 3 errors): `CatalogSection`
+    `products: any[]` → `StoreProduct[]` (the server `getCatalogPage` result is already
+    structurally that). Its `cardHeightsRef.current` read during render (`react-hooks/refs`)
+    and `StorefrontPage`'s per-request `Math.random()` hero pick (`react-hooks/purity`) are
+    both **intentional** — a measured-height placeholder cache that must not trigger
+    re-renders, and a deliberate hero rotation in an async Server Component that never
+    hydrates — so each got a scoped `eslint-disable` + rationale rather than a churny
+    "fix". `eslint .` now reports **0 errors**.
 
 20. ~~**Delete vestigial `ADMIN_SESSION_SECRET`.**~~ — **done (2026-08-29, Batch A).** No
     code ever read it; removed from the docs / env table / gotcha list / AGENT.md, and

@@ -206,6 +206,35 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>22:00</code></td>
+  <td><strong>#19 done &mdash; lint-debt: last 3 errors</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-render-smells</code>)</td>
+  <td>
+    <code>CatalogSection</code> <code>products: any[]</code> &rarr; <code>StoreProduct[]</code>
+    (the server <code>getCatalogPage</code> result is already structurally that &mdash; no
+    call-site change). The two remaining <code>react-hooks</code> errors are both flagging
+    <em>intentional</em> code, so each got a scoped <code>eslint-disable</code> + a
+    rationale comment rather than a behaviour-changing "fix": <code>CatalogSection</code>
+    reads <code>cardHeightsRef.current</code> during render on purpose (a measured-height
+    cache for <em>unmounted</em> cards, used only as a <code>minHeight</code> placeholder;
+    promoting it to state would re-render the whole grid on every card measurement), and
+    <code>StorefrontPage</code>'s <code>Math.random()</code> hero pick is a deliberate
+    per-request rotation in an async Server Component that never hydrates. <strong>#19 is
+    complete:</strong> <code>eslint .</code> 246 &rarr; <strong>28 problems, 0 errors</strong>
+    (was ~135 errors); <code>no-explicit-any</code> 174 &rarr; 0. The 28 remaining are the
+    deliberately-kept <code>react-hooks/set-state-in-effect</code> /
+    <code>exhaustive-deps</code> warnings on the standard Next-SSR hydrate-on-mount pattern.
+  </td>
+  <td>
+    <code>app/components/CatalogSection.tsx</code>, <code>app/components/StorefrontPage.tsx</code> &middot;
+    <code>docs/ARCHITECTURE.html</code> &middot; <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>tsc --noEmit</code> clean &middot; <code>next build</code> exit 0 (86/86) &middot;
+    <code>npm test</code> 110 pass / 1 skip &middot; <code>eslint .</code> 31 &rarr; 28
+    (0 errors). Type annotation + two scoped disables; no logic change.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>21:15</code></td>
   <td><strong>#19 &mdash; lint-debt: type the cart / wishlist contexts + <code>ProductCard</code></strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-productcard-contexts</code>)</td>
   <td>
