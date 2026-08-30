@@ -20,18 +20,31 @@ function daysSince(iso: string | null | undefined): number | null {
 // units-sold map (see soldCountByProductId in app/admin/page.tsx), no
 // extra API calls. Kept as one component (not four) since they share the
 // same props and are always shown together.
+
+// Only the columns these cards read. The admin `products` list is still
+// loosely typed in app/admin/page.tsx (#16); this pins down what matters here.
+export interface InventoryProduct {
+  id: number | string;
+  name?: string | null;
+  inventory?: number | string | null;
+  price?: number | string | null;
+  cost_price?: number | string | null;
+  created_at?: string | null;
+  last_restocked_at?: string | null;
+}
+
 export default function InventoryInsightsPanel({
   products,
   soldCountByProductId,
 }: {
-  products: any[];
+  products: InventoryProduct[];
   soldCountByProductId: Map<string, number>;
 }) {
   const topValueProducts = useMemo(() => {
     return products
-      .map((p: any) => ({ ...p, lockedValue: (Number(p.inventory) || 0) * (Number(p.price) || 0) }))
-      .filter((p: any) => p.lockedValue > 0)
-      .sort((a: any, b: any) => b.lockedValue - a.lockedValue)
+      .map((p) => ({ ...p, lockedValue: (Number(p.inventory) || 0) * (Number(p.price) || 0) }))
+      .filter((p) => p.lockedValue > 0)
+      .sort((a, b) => b.lockedValue - a.lockedValue)
       .slice(0, 10);
   }, [products]);
 
@@ -40,15 +53,15 @@ export default function InventoryInsightsPanel({
   // likely explanation.
   const deadStockProducts = useMemo(() => {
     return products
-      .filter((p: any) => {
+      .filter((p) => {
         const inventory = Number(p.inventory) || 0;
         if (inventory <= 0) return false;
         if ((soldCountByProductId.get(String(p.id)) || 0) > 0) return false;
         const live = daysSince(p.created_at);
         return live !== null && live >= DEAD_STOCK_DAYS;
       })
-      .map((p: any) => ({ ...p, liveDays: daysSince(p.created_at), lockedValue: (Number(p.inventory) || 0) * (Number(p.price) || 0) }))
-      .sort((a: any, b: any) => b.lockedValue - a.lockedValue);
+      .map((p) => ({ ...p, liveDays: daysSince(p.created_at), lockedValue: (Number(p.inventory) || 0) * (Number(p.price) || 0) }))
+      .sort((a, b) => b.lockedValue - a.lockedValue);
   }, [products, soldCountByProductId]);
 
   // Oldest-restocked-first, in-stock products with restock history --
@@ -56,7 +69,7 @@ export default function InventoryInsightsPanel({
   // feature shipped, so products never restocked since then simply have
   // no data yet rather than showing as infinitely old.
   const { stockAgingRows, productsWithoutRestockData } = useMemo(() => {
-    const withData: any[] = [];
+    const withData: Array<InventoryProduct & { restockAgeDays: number; lockedValue: number }> = [];
     let missing = 0;
     for (const p of products) {
       const inventory = Number(p.inventory) || 0;
@@ -108,21 +121,21 @@ export default function InventoryInsightsPanel({
     downloadCsv(
       `tohfa-top-value-products-${today}.csv`,
       ["Product", "Stock", "Price (INR)", "Value Locked (INR)"],
-      topValueProducts.map((p: any) => [p.name, p.inventory, Math.round(Number(p.price)), Math.round(p.lockedValue)])
+      topValueProducts.map((p) => [p.name ?? "", Number(p.inventory) || 0, Math.round(Number(p.price) || 0), Math.round(p.lockedValue)])
     );
 
   const handleDownloadDeadStock = () =>
     downloadCsv(
       `tohfa-dead-stock-${today}.csv`,
       ["Product", "Days Live", "Stock", "Value Locked (INR)"],
-      deadStockProducts.map((p: any) => [p.name, p.liveDays, p.inventory, Math.round(p.lockedValue)])
+      deadStockProducts.map((p) => [p.name ?? "", p.liveDays ?? 0, Number(p.inventory) || 0, Math.round(p.lockedValue)])
     );
 
   const handleDownloadStockAging = () =>
     downloadCsv(
       `tohfa-stock-aging-${today}.csv`,
       ["Product", "Days Since Restock", "Stock", "Value Locked (INR)"],
-      stockAgingRows.map((p: any) => [p.name, p.restockAgeDays, p.inventory, Math.round(p.lockedValue)])
+      stockAgingRows.map((p) => [p.name ?? "", p.restockAgeDays, Number(p.inventory) || 0, Math.round(p.lockedValue)])
     );
 
   const handleDownloadCostMargin = () =>
@@ -160,7 +173,7 @@ export default function InventoryInsightsPanel({
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {topValueProducts.map((p: any) => (
+                {topValueProducts.map((p) => (
                   <tr key={p.id}>
                     <td className="p-3 text-stone-800 font-medium">{p.name}</td>
                     <td className="p-3 text-right font-mono text-stone-700">{p.inventory}</td>
@@ -199,7 +212,7 @@ export default function InventoryInsightsPanel({
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {deadStockProducts.map((p: any) => (
+                {deadStockProducts.map((p) => (
                   <tr key={p.id}>
                     <td className="p-3 text-stone-800 font-medium">{p.name}</td>
                     <td className="p-3 text-right font-mono text-rose-600">{p.liveDays}</td>
@@ -239,7 +252,7 @@ export default function InventoryInsightsPanel({
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {stockAgingRows.map((p: any) => (
+                {stockAgingRows.map((p) => (
                   <tr key={p.id}>
                     <td className="p-3 text-stone-800 font-medium">{p.name}</td>
                     <td className="p-3 text-right font-mono text-orange-600">{p.restockAgeDays}</td>

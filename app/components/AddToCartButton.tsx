@@ -3,7 +3,9 @@
 import { useCart } from "@/app/context/CartContext";
 import { useLiveStock } from "@/app/components/LiveStock";
 
-export default function AddToCartButton({ product }: { product: any }) {
+import type { StoreProduct } from "@/app/types/product";
+
+export default function AddToCartButton({ product }: { product: StoreProduct }) {
   const { addToCart, cart } = useCart();
   const liveStock = useLiveStock();
 
@@ -12,7 +14,7 @@ export default function AddToCartButton({ product }: { product: any }) {
   // -- see app/components/LiveStock.tsx. Falls back to product.inventory when
   // rendered outside a LiveStockProvider (e.g. on a product card).
   const stock = liveStock ? liveStock.inventory : Number(product.inventory) || 0;
-  const cartQty = cart?.find((item: any) => item.id === product.id)?.quantity || 0;
+  const cartQty = cart?.find((item: { id: string | number }) => item.id === product.id)?.quantity || 0;
   const outOfStock = stock <= 0;
   const atMaxInCart = !outOfStock && cartQty >= stock;
   const addToCartDisabled = outOfStock || atMaxInCart;
