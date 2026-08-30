@@ -317,9 +317,13 @@ care, land behind tests, never "blind".
    pull` / `db dump` / `db push` all shell out to a container, and `db push` also needs the
    43 existing migrations backfilled into the remote `schema_migrations` table (`supabase
    migration repair --status applied 0000…0042`). Until Docker Desktop is installed,
-   migrations stay hand-pasted into the SQL editor (which works fine). Still open: the RLS
-   `pg_policies` snapshot check (can be a plain SQL query in a scheduled job — no CLI
-   needed).
+   migrations stay hand-pasted into the SQL editor (which works fine). **RLS check — done
+   (2026-08-30):** `/api/cron/rls-check` + `app/utils/rlsProbes.ts` — runnable anon-key
+   probes (shared with `rls.test.ts`) run daily against the live project, WhatsApp the
+   business on any violation. (A behavioural probe, not a `pg_policies` metadata diff —
+   catches the same thing more directly: whatever the policies are, can the anon key
+   actually reach what it shouldn't.) **Left:** the Docker-gated `db pull`/`push` migration
+   workflow.
 
 ## Active — Tier 2 (security / hardening)
 
@@ -380,8 +384,10 @@ care, land behind tests, never "blind".
     log drains for the deeper per-send failure signal. Revisit if/when traffic justifies
     the upgrade.
 
-14. ~~Keepalive staleness alert~~ — **done** (2026-08-29). Follow-up: the
-    `abandoned-checkout` cron still has no health signal; same pattern could cover it.
+14. ~~Keepalive staleness alert~~ — **done** (2026-08-29). ~~Follow-up: the
+    `abandoned-checkout` cron still has no health signal.~~ — **done (2026-08-30):** it now
+    stamps `site_settings.last_abandoned_checkout_run_at`; admin Overview shows a 3rd
+    heartbeat card (amber if > 3h stale).
 
 15. ~~**Generate DB types + wire into the clients.**~~ — **done (2026-08-30).** See Done.
     `supabaseAdmin` + `SearchBar`'s anon client are `createClient<Database>`; the 39

@@ -18,6 +18,7 @@ export default function OverviewTab() {
     leads,
     setLeads,
     keepaliveStale,
+    abandonedCheckoutStale,
     settings,
     orders,
     products,
@@ -79,6 +80,42 @@ export default function OverviewTab() {
           }`}
         >
           {keepaliveStale ? "Check" : "OK"}
+        </span>
+      </div>
+    )}
+
+    {/* SYSTEM HEALTH: abandoned-checkout cron heartbeat. Same story as the
+        keepalive one -- it runs on an external schedule (cron-job.org),
+        isn't on Vercel cron (Hobby 2-cap), so nothing else proves it's
+        alive. It stamps site_settings.last_abandoned_checkout_run_at each
+        run; if that stops advancing, verified-but-abandoned checkouts stop
+        getting their WhatsApp nudge. `abandonedCheckoutStale` is derived
+        in loadAll() (> 3h). */}
+    {settings.last_abandoned_checkout_run_at && (
+      <div
+        className={`rounded-lg border p-4 mb-6 flex items-center justify-between gap-4 ${
+          abandonedCheckoutStale ? "bg-amber-50 border-amber-300" : "bg-stone-50 border-stone-200"
+        }`}
+      >
+        <div>
+          <p className="text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-stone-500">Abandoned-checkout cron</p>
+          <p className={`text-sm font-mono ${abandonedCheckoutStale ? "text-amber-800 font-semibold" : "text-stone-700"}`}>
+            Last ran {new Date(settings.last_abandoned_checkout_run_at).toLocaleString("en-IN")}
+          </p>
+          <p className="text-[10px] text-stone-400 mt-0.5">
+            {abandonedCheckoutStale
+              ? "Over 3h ago — the external scheduler may be down; abandoned-cart nudges aren't going out."
+              : "The external scheduler should hit /api/cron/abandoned-checkout every 30–60 min."}
+          </p>
+        </div>
+        <span
+          className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full border ${
+            abandonedCheckoutStale
+              ? "bg-amber-100 text-amber-800 border-amber-300"
+              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+          }`}
+        >
+          {abandonedCheckoutStale ? "Check" : "OK"}
         </span>
       </div>
     )}

@@ -127,6 +127,7 @@ export interface AdminData {
   leads: AdminLead[];
   setLeads: (value: AdminLead[]) => void;
   keepaliveStale: boolean;
+  abandonedCheckoutStale: boolean;
   settings: Record<string, string>;
   products: AdminProduct[];
 }
