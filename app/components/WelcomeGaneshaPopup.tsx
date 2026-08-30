@@ -64,11 +64,11 @@ function saveFreqState(state: FreqState) {
 
 function trackEvent(name: string) {
   try {
-    if (typeof window !== "undefined" && typeof (window as any).gtag === "function") {
-      (window as any).gtag("event", name, { event_category: "welcome_popup" });
+    if (typeof window !== "undefined" && typeof window.gtag === "function") {
+      window.gtag("event", name, { event_category: "welcome_popup" });
     }
-    if (typeof window !== "undefined" && typeof (window as any).fbq === "function") {
-      (window as any).fbq("trackCustom", name);
+    if (typeof window !== "undefined" && typeof window.fbq === "function") {
+      window.fbq("trackCustom", name);
     }
   } catch {}
 }
@@ -196,7 +196,6 @@ export default function WelcomeGaneshaPopup() {
     // just once, until the frequency gate above kicks in. cooldownMs and
     // effectiveMaxAutoShows are included so this re-evaluates once the
     // real admin-configured values replace the defaults shortly after mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParamsKey, catalogLoading, cooldownMs, effectiveMaxAutoShows]);
 
   // Phase advancement is driven by fixed timers matching the CSS animation's

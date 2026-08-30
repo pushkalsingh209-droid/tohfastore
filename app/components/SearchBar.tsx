@@ -42,7 +42,7 @@ export default function SearchBar() {
   const [listening, setListening] = useState(false);
   const [voiceLang, setVoiceLang] = useState("en-IN");
   const containerRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   // Web Speech API -- runs entirely in the browser (Chrome/Edge send audio
   // to their own speech service under the hood, but there's no server cost
@@ -51,12 +51,12 @@ export default function SearchBar() {
   // never renders on browsers without support (notably iOS Safari) rather
   // than showing a button that wouldn't work.
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
     const recognition = new SpeechRecognition();
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       const transcript = event.results?.[0]?.[0]?.transcript;
       if (!transcript) return;
 
