@@ -396,21 +396,18 @@ care, land behind tests, never "blind".
     `getProduct`, `coupons.discount_type` widened to `string`, admin `.update()` payloads
     typed via `types/tables.ts`). 4 dead `@supabase/ssr` scaffold files removed.
 
-16. **Split `app/admin/page.tsx`** — *6 of 7 tabs done; `settings` remains.* Plan:
-    `docs/DESIGN-split-admin-page.md`. **Done, merged & click-through-verified:** scaffold
-    (`apiRequest` → `admin/lib/`, `AdminDataContext`) + `SecurityTab` + `ReviewsTab` +
-    `CouponsTab` + `OrdersTab` + `OverviewTab` (−28 `no-explicit-any`, −1
-    `set-state-in-effect`). **Pushed, awaiting owner click-through + merge (2026-08-30):**
-    `ProductsTab` — the 3-sub-PR split was abandoned (form + tracker share the
-    weight/dimension input-unit state and the `editingProductId`/`formData` bridge), so
-    the whole tab moved in one PR: form + Product Statistics panels + Live Storefront
-    Catalog & Stock Tracker + ~28 handlers into `app/admin/tabs/ProductsTab.tsx`. Context
-    gained `setProducts`, `categories`/`labels`/`colors`/`materials`/`whatsappNumbers`
-    (+ setters) and `refetch`. `tsc` clean · `next build` 86/86 · `npm test` 102 pass ·
-    `eslint .` 164 → 135 (no new `any`). Page `app/admin/page.tsx` now ~530 lines.
-    **Left — `settings` (~600 lines inline):** no products entanglement remains; it needs
-    only shared `labels`/`categories`/`whatsappNumbers` reads + `setSettings` + `refetch`.
-    Do it with a dev-server loop (edit each field group, save, confirm it persists).
+16. ~~**Split `app/admin/page.tsx`.**~~ — **done (2026-08-30).** Plan:
+    `docs/DESIGN-split-admin-page.md`. All 7 tab bodies moved to `app/admin/tabs/`
+    (`SecurityTab`/`ReviewsTab`/`CouponsTab`/`OrdersTab`/`OverviewTab`, then `ProductsTab`
+    as one PR — the 3-sub-PR split was dropped because the form + tracker share the
+    weight/dimension input-unit state and the `editingProductId`/`formData` bridge — then
+    `SettingsTab`). `app/admin/page.tsx` **3,689 → 231 lines** (auth gate + `loadAll()` +
+    `?tab=` URL sync + tab nav + `AdminDataProvider`); one route, one `loadAll()`, one
+    context, as planned. Each tab reads its slice via `useAdminData()`; shared helper
+    `app/admin/lib/apiRequest.ts`. `no-explicit-any` net −28 across the series (the
+    products/settings `any` moved with their JSX — a follow-up typing pass, see #19).
+    Each tab was `tsc` + `next build` + `npm test` verified and owner click-tested before
+    merge.
 
 17. ~~**Multi-step checkout + state-machine extract.**~~ — **done (2026-08-30, 17a + 17b +
     17c).** See Done. `CartDrawer.tsx` is now bag-list-only; the 3-step `CheckoutSheet` is
@@ -430,9 +427,10 @@ care, land behind tests, never "blind".
     cascading-render bug; kept visible as warnings); ~15 isolated `any` singles across
     `admin/{coupons,settings,analytics,whatsapp-enquiries}`, `catalogueGenerator`,
     `GoogleTranslateWidget`, `InstallPrompt`, `headerNavbar`, product-page reviews, etc.
-    **Left (~103 `no-explicit-any`):** `app/admin/tabs/ProductsTab.tsx` (~75 — moved here
-    from `page.tsx` by #16, still the untyped `product: any` / `catch (err: any)` debt;
-    a focused typing pass once the row shape is pinned down);
+    **Left (~103 `no-explicit-any`):** `app/admin/tabs/{ProductsTab,SettingsTab}.tsx`
+    (~75 + ~15 — moved here from `page.tsx` by #16, still the untyped `product: any` /
+    `(c: any)` map casts / `catch (err: any)` debt; a focused typing pass on both, now
+    that `AdminProduct`/`AdminCategory` are partly typed in the context);
     `razorpay-webhook` (12 — needs a stricter `OrderItem` w/ required price/qty + coercion
     at the parse boundary, its own ⚠️ pass); `ProductCard` + `CartContext` +
     `WishlistContext` + consumers (~15 — cascades: nullable name/price hits helper

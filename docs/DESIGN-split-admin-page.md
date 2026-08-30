@@ -1,6 +1,9 @@
 # DESIGN — Split `app/admin/page.tsx` (#16)
 
-**Status:** decomposition plan, awaiting owner review. No code until approved.
+**Status:** ✅ **DONE (2026-08-30).** All 7 tab bodies moved to `app/admin/tabs/`;
+`app/admin/page.tsx` is 3,689 → **231 lines** (auth gate + `loadAll()` + `?tab=`
+URL sync + tab nav + `AdminDataProvider`). Kept as one route, one `loadAll()`,
+one context — as planned. Notes below are the historical plan + progress log.
 **Backlog:** `IMPROVEMENTS.md` Tier 4 #16. Not payment path, admin-only.
 **Date:** 2026-08-29.
 
@@ -103,9 +106,22 @@ stay in `page.tsx` too (Settings' Product Labels panel still uses them; the
 problems (the tab's `any`s moved with it, none new). `app/admin/page.tsx`
 2,636 → **~530 lines**.
 
-Only **`settings`** remains inline (~600 lines). By now it needs only read
-access to shared `labels`/`categories`/`whatsappNumbers` + `setSettings` +
-`refetch` — a clean final extraction, no products entanglement left.
+**Done, merged:** `ProductsTab` (as above).
+
+**Done (2026-08-30) — `SettingsTab`, the last tab.** Moved the whole
+`{activeTab === "settings"}` block (storefront defaults, WhatsApp numbers +
+bulk reassign, chat button labels, product labels + bulk-assign, per-category
+GST/discount/page-size/home-visibility) + all 23 remaining `handle*` functions
+(everything except `handleLogout`) + their form-draft state into
+`app/admin/tabs/SettingsTab.tsx`. Context gained `setSettings`,
+`chatLabelPresets` + `setChatLabelPresets` (all still loaded once in
+`loadAll()`); `AdminCategory` widened with the columns settings manages
+(`show_on_home`/`gst_rate`/`discount_percent`/`default_page_size`); the four
+lookup interfaces' `id` narrowed `number | string` → `number` (bigint PKs).
+`bulkAssign`/`bulkReassign` `fetchData()` → `refetch()`. Verified: `tsc`
+clean, `next build` 86/86, `npm test` 102 pass, `eslint .` 135 problems
+(unchanged — the moved `any`s are the same debt in a new file).
+**`app/admin/page.tsx` is now 231 lines.** #16 complete.
 
 **Parked: `products` + `settings`.** Investigating `settings` surfaced that the
 two are **mutually entangled** and can't be split one-at-a-time cleanly:

@@ -206,6 +206,45 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>17:00</code></td>
+  <td><strong>#16 &mdash; split <code>admin/page.tsx</code>: <code>SettingsTab</code> (last tab &mdash; #16 done)</strong><br>(<code>IMPROVEMENTS.md</code> #16)</td>
+  <td>
+    The <code>settings</code> tab &mdash; the final inline block &mdash; moved to
+    <code>app/admin/tabs/SettingsTab.tsx</code>: storefront defaults (page size, reveal
+    batch, photo look, weight/dimension display units, brass ₹/kg, Ganesha popup
+    cadence), the WhatsApp-numbers table + bulk reassign, chat button labels, product
+    labels + bulk-assign, and per-category GST / discount / page-size / home-visibility.
+    All 23 remaining <code>handle*</code> functions (everything except
+    <code>handleLogout</code>) + their form-draft state went with it. <code>AdminData</code>
+    gained <code>setSettings</code> and <code>chatLabelPresets</code> + <code>setChatLabelPresets</code>
+    (still all loaded once in <code>loadAll()</code>); <code>AdminCategory</code> widened
+    with the columns settings manages (<code>show_on_home</code>, <code>gst_rate</code>,
+    <code>discount_percent</code>, <code>default_page_size</code>); the four lookup
+    interfaces' <code>id</code> narrowed <code>number | string</code> &rarr; <code>number</code>.
+    <strong><code>app/admin/page.tsx</code> is now 231 lines</strong> (3,689 at the start
+    of #16) &mdash; auth gate + <code>loadAll()</code> + <code>?tab=</code> URL sync + tab
+    nav + <code>AdminDataProvider</code>. One route, one <code>loadAll()</code>, one
+    context, as the design doc planned. No behaviour change.
+  </td>
+  <td>
+    <em>new:</em> <code>app/admin/tabs/SettingsTab.tsx</code><br>
+    <code>app/admin/page.tsx</code> &middot; <code>app/admin/AdminDataContext.tsx</code> &middot;
+    <code>docs/DESIGN-split-admin-page.md</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>tsc --noEmit</code> clean &middot; <code>next build</code> exit 0 (86/86) &middot;
+    <code>npm test</code> 102 pass / 1 skip &middot; <code>eslint .</code> 135 problems
+    (unchanged &mdash; the moved <code>any</code>s are the same debt in a new file).
+    <strong>Not</strong> click-tested against a running dev server here &mdash;
+    <strong>owner</strong> must, before merge: each storefront-settings field saves and
+    persists on reload; add/set-default/reset a WhatsApp number; bulk reassign; add /
+    activate / delete a chat label for both stock states; add a product label + set its
+    photo look; bulk-assign a label; add a category and edit its GST / % off / per-page /
+    on-homepage / delete.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>15:30</code></td>
   <td><strong>#16 &mdash; split <code>admin/page.tsx</code>: <code>ProductsTab</code></strong><br>(<code>IMPROVEMENTS.md</code> #16)</td>
   <td>
@@ -1860,7 +1899,7 @@ resets and verify steady-state usage stays under cap.</p>
 <tr><td><code>/track</code></td><td>app/track/page.tsx</td><td>client</td><td>Reference (order id or AWB) + phone &rarr; <code>POST /api/orders/track</code>.</td></tr>
 <tr><td><code>/wishlist</code></td><td>app/wishlist/page.tsx</td><td>client</td><td>localStorage-backed wishlist grid.</td></tr>
 <tr><td><code>/about</code>, <code>/contact</code>, <code>/corporate</code>, <code>/privacy</code>, <code>/terms</code>, <code>/refunds</code></td><td>app/&lt;name&gt;/page.tsx</td><td>static</td><td><code>/contact</code> + <code>/corporate</code> have forms &rarr; <code>/api/contact</code> / <code>/api/leads</code>.</td></tr>
-<tr><td><code>/admin</code></td><td>app/admin/page.tsx (client SPA, ~530 lines) + per-tab lazy components in <code>app/admin/tabs/</code> (#16, <code>settings</code> tab still inline)</td><td>client SPA behind proxy auth</td><td>Tabs via <code>?tab=</code>. See &sect;14.</td></tr>
+<tr><td><code>/admin</code></td><td>app/admin/page.tsx (client SPA shell, 231 lines) + all 7 tab bodies as lazy components in <code>app/admin/tabs/</code> (#16 done)</td><td>client SPA behind proxy auth</td><td>Tabs via <code>?tab=</code>. See &sect;14.</td></tr>
 <tr><td><code>/admin/login</code></td><td>app/admin/login/page.tsx</td><td>client</td><td>Password + TOTP/backup code &rarr; <code>POST /api/admin/login</code>.</td></tr>
 <tr><td>404 / loading</td><td>app/not-found.tsx, app/loading.tsx</td><td>&mdash;</td><td><code>loading.tsx</code> (branded spinner) makes <em>every</em> route stream &mdash; which is why <code>proxy.ts</code> must emit real status codes before the page (&sect;10).</td></tr>
 </tbody></table></div>
@@ -2144,18 +2183,20 @@ alert shows only the real price.</p>
 </ol>
 
 <h3>Tabs (<code>?tab=</code>, <code>ADMIN_TABS</code>)</h3>
-<p class="muted"><strong>Split &mdash; 6 of 7 tabs done (#16, <code>docs/DESIGN-split-admin-page.md</code>):</strong>
-<code>app/admin/page.tsx</code> (3,689 &rarr; <strong>~530 lines</strong>) is being broken into per-tab lazy
-components under <code>app/admin/tabs/</code>. The page stays one route and keeps <code>loadAll()</code>; each
-extracted tab reads its slice of that state through <code>app/admin/AdminDataContext.tsx</code>
-(<code>useAdminData()</code>). Shared helper: <code>app/admin/lib/apiRequest.ts</code>.
-<strong>Moved:</strong> <code>security</code>, <code>reviews</code>, <code>coupons</code>, <code>orders</code>,
-<code>overview</code> (2026-08-29); <code>products</code> (2026-08-30 &mdash; the whole tab, form + stats panels
-+ Live Storefront Catalog &amp; Stock Tracker + ~28 handlers, in one <code>ProductsTab.tsx</code>; the planned
-3-sub-PR split was dropped because the form and tracker share too much state). <strong>Still inline:</strong>
-<code>settings</code> only (~600 lines) &mdash; no longer entangled with <code>products</code>, needs just shared
-<code>labels</code>/<code>categories</code>/<code>whatsappNumbers</code> reads + <code>setSettings</code> +
-<code>refetch</code>. It&rsquo;s the last one; do it with a running dev server.</p>
+<p class="muted"><strong>Split &mdash; done (#16, 2026-08-30; <code>docs/DESIGN-split-admin-page.md</code>):</strong>
+<code>app/admin/page.tsx</code> went <strong>3,689 &rarr; 231 lines</strong> &mdash; all seven tab bodies are
+per-tab lazy components under <code>app/admin/tabs/</code> (<code>{activeTab === "x" &amp;&amp; &lt;XTab /&gt;}</code>,
+each <code>dynamic(&hellip;, { ssr:false })</code>). The page is now just the auth gate,
+<code>loadAll()</code>, the <code>?tab=</code> URL sync, the tab nav, and the
+<code>AdminDataProvider</code>. Each tab reads its slice of <code>loadAll()</code>'s state through
+<code>app/admin/AdminDataContext.tsx</code> (<code>useAdminData()</code>) and writes back through the
+setters / <code>refetch</code> it exposes; shared fetch helper <code>app/admin/lib/apiRequest.ts</code>.
+Stayed one route, one <code>loadAll()</code>, one context. Order moved:
+<code>security</code>/<code>reviews</code>/<code>coupons</code>/<code>orders</code>/<code>overview</code>
+(2026-08-29), then <code>products</code> (whole tab in one <code>ProductsTab.tsx</code> &mdash; the planned
+3-sub-PR split was dropped because the form and tracker share too much state), then
+<code>settings</code> (<code>SettingsTab.tsx</code>). The products / settings tabs still carry the
+untyped <code>any</code> the JSX always had (a follow-up typing pass, <code>IMPROVEMENTS.md</code> #19).</p>
 <div class="x"><table>
 <thead><tr><th>Tab</th><th>Contents</th></tr></thead>
 <tbody>
@@ -2581,8 +2622,8 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
 |  |- collections/[category]/page.tsx
 |  |- product/[id]/page.tsx  SSG+ISR(24h), canonical redirects, LiveStockProvider
 |  |- catalogue|success|track|wishlist|about|contact|corporate|privacy|terms|refunds/page.tsx
-|  |- admin/page.tsx         client SPA (~530 lines); AdminDataContext + per-tab components in admin/tabs/ (only `settings` tab still inline)
-|  |- admin/tabs/            SecurityTab, ReviewsTab, CouponsTab, OrdersTab, OverviewTab, ProductsTab (settings still in page.tsx per DESIGN-split-admin-page.md)
+|  |- admin/page.tsx         client SPA shell (231 lines): auth gate + loadAll() + ?tab= sync + tab nav + AdminDataProvider
+|  |- admin/tabs/            all 7 tab bodies: Overview, Products, Orders, Coupons, Settings, Reviews, Security (#16 done)
 |  |- admin/lib/apiRequest.ts  shared admin fetch wrapper
 |  |- admin/login/page.tsx
 |  |- api/
@@ -2727,8 +2768,8 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
   <li>Add the key to <code>ADMIN_TABS</code> in <code>app/admin/page.tsx</code> + a <code>{ key, label }</code>
       entry to the tab list. New tabs are their own component in <code>app/admin/tabs/&lt;Key&gt;Tab.tsx</code>
       (default export), <code>dynamic(() =&gt; import(&hellip;), { ssr:false })</code> at the page&rsquo;s module
-      top, rendered as <code>{activeTab === "&lt;key&gt;" &amp;&amp; &lt;KeyTab /&gt;}</code>. (#16 &mdash; the
-      <code>settings</code> tab is still inline until moved; every other tab follows this shape.)</li>
+      top, rendered as <code>{activeTab === "&lt;key&gt;" &amp;&amp; &lt;KeyTab /&gt;}</code>. All 7 existing tabs
+      follow this shape (#16).</li>
   <li>Shared data still loads in <code>loadAll()</code> (<code>Promise.allSettled</code>) on the page; the tab
       reads what it needs via <code>useAdminData()</code> (add the field to <code>AdminData</code> in
       <code>app/admin/AdminDataContext.tsx</code> and to the provider&rsquo;s value). Tab-only state (form
