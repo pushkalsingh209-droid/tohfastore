@@ -20,6 +20,15 @@ export interface StoreProduct {
   label?: string | null;
   photo_filter?: string | null;
   sold_count?: number;
+  // Optional attributes / dimensions -- shown on the card flip-back and the
+  // product page when filled in. Same loose typing rationale as above
+  // (mirrors ProductAttributeFields / ProductDimensionFields).
+  material?: string | null;
+  color?: string | null;
+  weight_g?: number | string | null;
+  height_cm?: number | string | null;
+  depth_cm?: number | string | null;
+  breadth_cm?: number | string | null;
 }
 
 export type CartItem = StoreProduct & { quantity: number };

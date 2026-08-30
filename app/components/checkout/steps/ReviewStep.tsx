@@ -11,19 +11,10 @@ import { calculateGstBreakdown, GST_RATE } from "@/app/utils/gst";
 import { calculateSlashedPrice } from "@/app/utils/pricing";
 import PriceDisplay from "@/app/components/PriceDisplay";
 import { useAvailableCoupons, couponUrgencyText } from "@/app/components/checkout/useAvailableCoupons";
-
-interface CartLine {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  category?: string | null;
-  thumb_url?: string | null;
-  image_url?: string | null;
-}
+import type { CartItem } from "@/app/types/product";
 
 export interface ReviewBag {
-  cart: CartLine[];
+  cart: CartItem[];
   cartTotal: number;
   categoryDiscounts: Record<string, number>;
 
@@ -50,8 +41,9 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
   const gst = calculateGstBreakdown(finalTotal);
 
   const mrpSubtotal = b.cart.reduce((sum, item) => {
-    const slashed = calculateSlashedPrice(item.price * item.quantity, b.categoryDiscounts[item.category ?? ""]);
-    return sum + (slashed ? slashed.originalPrice : item.price * item.quantity);
+    const lineTotal = (Number(item.price) || 0) * item.quantity;
+    const slashed = calculateSlashedPrice(lineTotal, b.categoryDiscounts[item.category ?? ""]);
+    return sum + (slashed ? slashed.originalPrice : lineTotal);
   }, 0);
   const hasMrpSavings = mrpSubtotal > b.cartTotal;
   const mrpSavingsPercent = hasMrpSavings ? Math.round(((mrpSubtotal - b.cartTotal) / mrpSubtotal) * 100) : 0;
@@ -77,7 +69,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
             <div key={item.id} className="flex items-center gap-3 px-3 py-2.5">
               <div className="relative w-10 h-10 rounded overflow-hidden border border-stone-200 dark:border-stone-700 bg-stone-50 flex-shrink-0">
                 {(item.thumb_url || item.image_url) && (
-                  <Image src={item.thumb_url || item.image_url || ""} alt={item.name} fill sizes="40px" className="object-cover" />
+                  <Image src={item.thumb_url || item.image_url || ""} alt={item.name ?? ""} fill sizes="40px" className="object-cover" />
                 )}
               </div>
               <div className="flex-grow min-w-0">
@@ -85,7 +77,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
                 <p className="text-[10px] text-stone-400 font-mono">Qty {item.quantity}</p>
               </div>
               <PriceDisplay
-                price={item.price * item.quantity}
+                price={(Number(item.price) || 0) * item.quantity}
                 category={item.category}
                 className="text-xs text-amber-800 dark:text-amber-500 font-bold font-mono"
                 originalClassName="text-stone-400 dark:text-stone-500 line-through font-mono text-[10px]"

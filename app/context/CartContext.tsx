@@ -1,14 +1,22 @@
 // app/context/CartContext.tsx
 "use client";
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type Dispatch, type SetStateAction } from "react";
 import type { StoreProduct, CartItem } from "@/app/types/product";
 
-// The context value's full shape (see `value` below) isn't declared yet;
-// consumers still read it untyped. Tightening this cascades into
-// CartDrawer/CheckoutSheet's own local line types -- a follow-up
-// (IMPROVEMENTS.md #19).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CartContext = createContext<any>(null);
+export interface CartContextValue {
+  cart: CartItem[];
+  isOpen: boolean;
+  setIsOpen: Dispatch<SetStateAction<boolean>>;
+  // Returns false when the item is out of stock / already at its stock cap.
+  addToCart: (product: StoreProduct) => boolean;
+  removeFromCart: (id: string | number) => void;
+  updateQuantity: (id: string | number, delta: number) => void;
+  clearCart: () => void;
+  cartTotal: number;
+  cartCount: number;
+}
+
+const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -61,7 +69,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [cart],
   );
 
-  const removeFromCart = useCallback((id: string) => {
+  const removeFromCart = useCallback((id: string | number) => {
     setCart((prev) => {
       const updated = prev.filter((item) => item.id !== id);
       localStorage.setItem("tohfa_cart", JSON.stringify(updated));
@@ -72,7 +80,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Clamps to [0, item's stock snapshot] and drops the line entirely once
   // it hits 0, so the +/- stepper in the cart drawer doubles as a remove
   // action without a separate code path.
-  const updateQuantity = useCallback((id: string, delta: number) => {
+  const updateQuantity = useCallback((id: string | number, delta: number) => {
     setCart((prev) => {
       const updated = prev
         .map((item) => {
@@ -121,4 +129,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
-export const useCart = () => useContext(CartContext);
+export function useCart(): CartContextValue {
+  const ctx = useContext(CartContext);
+  if (!ctx) throw new Error("useCart must be used within <CartProvider>");
+  return ctx;
+}

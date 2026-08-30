@@ -30,7 +30,7 @@ export function resolveProductWhatsappNumber(
 }
 
 export function getProductWhatsappLink(
-  product: { name: string; price: number | string; category?: string | null; whatsapp_number?: string | null },
+  product: { name?: string | null; price?: number | string | null; category?: string | null; whatsapp_number?: string | null },
   outOfStock: boolean = false,
   // Admin-configurable site-wide default (Storefront Settings -> WhatsApp
   // Numbers -> "Set as Default"), falling back to the hardcoded number

@@ -416,8 +416,8 @@ care, land behind tests, never "blind".
 18. ~~**Consolidate phone normalisation.**~~ — **done (2026-08-30).** See Done. One
     `app/utils/phone.ts` `normalizeIndianPhone`, 4 local copies + 1 inline retired, 7 tests.
 
-19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 33 problems
-    (5 errors + 28 warnings); `no-explicit-any` 174 → ~3.*
+19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 31 problems
+    (3 errors + 28 warnings); `no-explicit-any` 174 → 1.*
     **Done** — PR #27 (`lint-debt`): 24 `no-unescaped-entities`; 8 `no-html-link-for-pages`;
     8 `catch (err: any)`; `storeQueries`/`proxy` row types; `types/globals.d.ts`;
     `no-unused-vars` config. — PR #28 (`lint-debt-2`): admin `Inventory`/`Finance` insight
@@ -455,14 +455,21 @@ care, land behind tests, never "blind".
     `decrement_inventory` gets `Number(item.id)`, `apply_product_sales` `p_items` cast to
     `Json`. Behaviour for a well-formed order is identical; only malformed/legacy note data
     fails safer (0 instead of NaN in totals, skip instead of a bad RPC call). Owner to
-    watch a couple of live orders after deploy.
-    **Left (5 errors):**
-    `ProductCard` `product: any` (2 — reads ~20 fields incl. `material`/`color` not on
-    `StoreProduct`, passes to gallery/whatsapp helpers wanting concrete types — cascades);
-    the two `createContext<any>` above; and 2 genuine `react-hooks` render smells not in
-    this sweep's scope — `CatalogSection` reads a ref during render (`react-hooks/refs`),
-    `StorefrontPage` calls `Math.random()` in render to pick a hero category
-    (`react-hooks/purity`) — each a real fix, own pass.
+    watch a couple of live orders after deploy. —
+    branch `lint-productcard-contexts` (2026-08-30): `CartContext`/`WishlistContext` values
+    fully typed (`CartContextValue`/`WishlistContextValue`; `useCart`/`useWishlist` now
+    throw-if-outside-provider like `useAdminData`), removing the two scoped
+    `eslint-disable`s. `ProductCard` `product: any` → `StoreProduct` (+ `material`/`color` +
+    weight/dimension fields added to `StoreProduct`; `getProductWhatsappLink` /
+    `trackWhatsappEnquiry` `name`/`price` params loosened to `| null`). The `BagItem`
+    (CartDrawer), `CartLine` (ReviewStep), `WishlistItem` (wishlist/page) local aliases
+    dropped for `CartItem`/`StoreProduct`, with `?? ""` on `<Image alt>` and
+    `Number(item.price)` where a loose field meets a strict consumer.
+    **Left (3 errors, none `no-explicit-any`-mechanical):**
+    `CatalogSection` `products: any[]` (1 — cascades to the server `getCatalogPage` fetch
+    types) **and** it reads a ref during render (`react-hooks/refs`); `StorefrontPage`
+    calls `Math.random()` in render to pick a hero category (`react-hooks/purity`). Each is
+    a real fix, its own pass — not lint mechanics.
 
 20. ~~**Delete vestigial `ADMIN_SESSION_SECRET`.**~~ — **done (2026-08-29, Batch A).** No
     code ever read it; removed from the docs / env table / gotcha list / AGENT.md, and

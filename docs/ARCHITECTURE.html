@@ -206,6 +206,46 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>21:15</code></td>
+  <td><strong>#19 &mdash; lint-debt: type the cart / wishlist contexts + <code>ProductCard</code></strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-productcard-contexts</code>)</td>
+  <td>
+    <code>CartContext</code> / <code>WishlistContext</code> get real value interfaces
+    (<code>CartContextValue</code> / <code>WishlistContextValue</code>); <code>useCart()</code> /
+    <code>useWishlist()</code> now throw when called outside their provider, matching
+    <code>useAdminData()</code> &mdash; which retires the two scoped <code>eslint-disable</code>s
+    added last round. <code>ProductCard</code>'s <code>product: any</code> &rarr;
+    <code>StoreProduct</code>; <code>material</code> / <code>color</code> and the
+    weight/dimension fields were added to <code>StoreProduct</code> (it already fed
+    <code>formatProductAttributesLine</code> / <code>formatProductDimensionsLine</code>), and
+    <code>getProductWhatsappLink</code> / <code>trackWhatsappEnquiry</code> had their
+    <code>name</code> / <code>price</code> params loosened to accept <code>null</code>. The
+    <code>BagItem</code> (CartDrawer), <code>CartLine</code> (ReviewStep) and
+    <code>WishlistItem</code> (wishlist page) local re-declarations are deleted in favour of
+    the shared <code>CartItem</code> / <code>StoreProduct</code>, with <code>?? ""</code> on
+    <code>&lt;Image alt&gt;</code> and <code>Number(item.price)</code> where a loose field
+    meets a strict consumer (<code>cartTotal</code> / line subtotals were already coerced).
+    Type-only. <code>eslint .</code> 33 &rarr; <strong>31 problems</strong> (3 errors + 28
+    warnings); <code>no-explicit-any</code> is now down to a single site
+    (<code>CatalogSection</code>).
+  </td>
+  <td>
+    <code>app/types/product.ts</code>, <code>app/context/{CartContext,WishlistContext}.tsx</code>,
+    <code>app/components/{ProductCard,CartDrawer}.tsx</code>,
+    <code>app/components/checkout/CheckoutSheet.tsx</code>,
+    <code>app/components/checkout/steps/ReviewStep.tsx</code>,
+    <code>app/wishlist/page.tsx</code>, <code>app/utils/{whatsapp,trackWhatsappEnquiry}.ts</code> &middot;
+    <code>docs/ARCHITECTURE.html</code> &middot; <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>tsc --noEmit</code> clean &middot; <code>next build</code> exit 0 (86/86) &middot;
+    <code>npm test</code> 110 pass / 1 skip &middot; <code>eslint .</code> 33 &rarr; 31.
+    Storefront cart / wishlist / checkout summary &mdash; type annotations + a few
+    <code>Number()</code> / <code>?? ""</code> guards, no logic change. A quick manual pass
+    (add to bag, open drawer, wishlist add/remove, reach the review step) is worthwhile but
+    not critical.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>20:30</code></td>
   <td><strong>&#9888; #19 &mdash; lint-debt: razorpay-webhook item types + parse-boundary coercion</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-webhook-types</code>)</td>
   <td>

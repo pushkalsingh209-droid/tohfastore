@@ -241,10 +241,10 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
             phone: customerPhone,
             source: "checkout_started",
             details: {
-              cartItems: cart.map((item: { name: string; quantity: number; price: number }) => ({
+              cartItems: cart.map((item) => ({
                 name: item.name,
                 quantity: item.quantity,
-                price: item.price,
+                price: Number(item.price) || 0,
               })),
               cartTotal,
             },
@@ -465,11 +465,11 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
                 customerName,
                 customerPhone: cleanPhone,
                 customerEmail,
-                items: cart.map((item: { name: string; price: number; quantity: number; category?: string | null }) => ({
+                items: cart.map((item) => ({
                   name: item.name,
-                  price: item.price,
+                  price: Number(item.price) || 0,
                   quantity: item.quantity,
-                  category: item.category,
+                  category: item.category ?? null,
                 })),
                 subtotal: cartTotal,
                 discount: appliedCoupon?.discount || 0,

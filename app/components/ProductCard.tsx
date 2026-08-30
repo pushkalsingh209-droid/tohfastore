@@ -18,6 +18,7 @@ import { useChatLabels } from "@/app/context/ChatLabelSettingContext";
 import StockStatusBadge from "@/app/components/StockStatusBadge";
 import { productHref } from "@/app/utils/slug";
 import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
+import type { StoreProduct, CartItem } from "@/app/types/product";
 
 const DOUBLE_TAP_WINDOW_MS = 350;
 const FLIP_HINT_SEEN_KEY = "tohfa_card_flip_seen";
@@ -28,7 +29,7 @@ export default function ProductCard({
   priority = false,
   liveInventory,
 }: {
-  product: any;
+  product: StoreProduct;
   priority?: boolean;
   // Real-time stock for this product, fetched once by the grid (see
   // CatalogSection). Undefined until it arrives / if the fetch failed, in
@@ -77,7 +78,7 @@ export default function ProductCard({
   }
 
   const stock = typeof liveInventory === "number" ? liveInventory : Number(product.inventory) || 0;
-  const cartQty = cart?.find((item: any) => item.id === product.id)?.quantity || 0;
+  const cartQty = cart?.find((item: CartItem) => item.id === product.id)?.quantity || 0;
   const outOfStock = stock <= 0;
   const lowStock = !outOfStock && stock <= LOW_STOCK_THRESHOLD;
   const atMaxInCart = !outOfStock && cartQty >= stock;
@@ -127,7 +128,7 @@ export default function ProductCard({
         onMouseLeave={() => isDesktop && setActive(false)}
         onClick={handleImageClick}
       >
-        <ProductGallery images={gallery} productName={product.name} active={active} size="card" priority={priority} label={product.label} photoFilterOverride={product.photo_filter} />
+        <ProductGallery images={gallery} productName={product.name ?? ""} active={active} size="card" priority={priority} label={product.label} photoFilterOverride={product.photo_filter} />
 
         {/* Cross-cutting classification tag (e.g. "Lightweight Brass",
             "Board Game") -- set from the admin panel, independent of

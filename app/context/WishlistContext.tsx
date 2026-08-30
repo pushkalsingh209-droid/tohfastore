@@ -3,10 +3,14 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import type { StoreProduct } from "@/app/types/product";
 
-// The context value shape isn't declared yet; consumers read it untyped.
-// A follow-up (IMPROVEMENTS.md #19).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const WishlistContext = createContext<any>(null);
+export interface WishlistContextValue {
+  wishlist: StoreProduct[];
+  isWishlisted: (id: string | number) => boolean;
+  toggleWishlist: (product: StoreProduct) => void;
+  removeFromWishlist: (id: string | number) => void;
+}
+
+const WishlistContext = createContext<WishlistContextValue | null>(null);
 const STORAGE_KEY = "tohfa_wishlist";
 
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
@@ -61,4 +65,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useWishlist = () => useContext(WishlistContext);
+export function useWishlist(): WishlistContextValue {
+  const ctx = useContext(WishlistContext);
+  if (!ctx) throw new Error("useWishlist must be used within <WishlistProvider>");
+  return ctx;
+}
