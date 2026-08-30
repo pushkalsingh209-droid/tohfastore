@@ -416,8 +416,8 @@ care, land behind tests, never "blind".
 18. ~~**Consolidate phone normalisation.**~~ — **done (2026-08-30).** See Done. One
     `app/utils/phone.ts` `normalizeIndianPhone`, 4 local copies + 1 inline retired, 7 tests.
 
-19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 74 problems
-    (46 errors + 28 warnings); `no-explicit-any` 174 → ~46.*
+19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 55 problems
+    (27 errors + 28 warnings); `no-explicit-any` 174 → ~27.*
     **Done** — PR #27 (`lint-debt`): 24 `no-unescaped-entities`; 8 `no-html-link-for-pages`;
     8 `catch (err: any)`; `storeQueries`/`proxy` row types; `types/globals.d.ts`;
     `no-unused-vars` config. — PR #28 (`lint-debt-2`): admin `Inventory`/`Finance` insight
@@ -433,11 +433,15 @@ care, land behind tests, never "blind".
     `CouponsTab`); the `.map((c: any) =>` casts dropped now that `AdminCategory` etc. are
     typed in the context; `computeGroupStats` + the brass/spec draft helpers +
     `handleEditClick` take `AdminProduct`; the inline-update handlers' `productId` widened
-    `string` → `string | number` (they always received the numeric row id at runtime).
-    **Left (~46 `no-explicit-any`):**
+    `string` → `string | number` (they always received the numeric row id at runtime). —
+    branch `lint-admin-page` (2026-08-30): `app/admin/page.tsx` 14 → 0 (the 14
+    `useState<any[]>` for `loadAll()`'s state now use the `AdminX` interfaces the context
+    already exports) + `app/api/admin/products/route.ts` 5 → 0 (`Record<string, any>`
+    payloads → `Record<string, unknown>`, `isMissingColumn(error: unknown)` narrowed).
+    **Left (~27 `no-explicit-any`):**
     `razorpay-webhook` (12 — needs a stricter `OrderItem` w/ required price/qty + coercion
     at the parse boundary, its own ⚠️ pass); `ProductCard` + `CartContext` +
-    `WishlistContext` + consumers (~15 — cascades: nullable name/price hits helper
+    `WishlistContext` + consumers (~11 — cascades: nullable name/price hits helper
     signatures wanting non-null); scattered singles. Each remaining cluster is a focused
     pass, not mechanical.
 

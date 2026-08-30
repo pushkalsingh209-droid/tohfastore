@@ -15,16 +15,17 @@ import type { Insert, Update } from "@/types/tables";
 // instead of failing the whole save.
 const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg", "hidden"];
 
-function isMissingColumn(error: any, columnHint: string) {
-  const msg = error?.message || "";
+function isMissingColumn(error: unknown, columnHint: string) {
+  const e = (error ?? {}) as { message?: string; code?: string };
+  const msg = e.message || "";
   return (
-    error?.code === "42703" ||
-    error?.code === "PGRST204" ||
+    e.code === "42703" ||
+    e.code === "PGRST204" ||
     (new RegExp(columnHint, "i").test(msg) && /(schema cache|does not exist|could not find)/i.test(msg))
   );
 }
 
-async function insertWithFallback(payload: Record<string, any>) {
+async function insertWithFallback(payload: Record<string, unknown>) {
   let currentPayload = { ...payload };
   const droppedColumns: string[] = [];
   while (true) {
@@ -41,7 +42,7 @@ async function insertWithFallback(payload: Record<string, any>) {
   }
 }
 
-async function updateWithFallback(id: string, payload: Record<string, any>) {
+async function updateWithFallback(id: string, payload: Record<string, unknown>) {
   let currentPayload = { ...payload };
   const droppedColumns: string[] = [];
   while (true) {
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       name: body.name,
       price: parseFloat(body.price),
       description: body.description,
@@ -160,7 +161,7 @@ export async function PATCH(req: Request) {
     const { id, ...fields } = body;
     if (!id) return NextResponse.json({ error: "Missing product id." }, { status: 400 });
 
-    const payload: any = {};
+    const payload: Record<string, unknown> = {};
     if (fields.name !== undefined) payload.name = fields.name;
     if (fields.price !== undefined) payload.price = parseFloat(fields.price);
     if (fields.description !== undefined) payload.description = fields.description;

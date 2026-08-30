@@ -4,7 +4,22 @@ import { useState, useEffect, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { apiRequest } from "@/app/admin/lib/apiRequest";
-import { AdminDataProvider } from "@/app/admin/AdminDataContext";
+import {
+  AdminDataProvider,
+  type AdminProduct,
+  type AdminOrder,
+  type AdminReview,
+  type AdminCoupon,
+  type AdminCategory,
+  type AdminNamedOption,
+  type AdminLabel,
+  type AdminWhatsappNumber,
+  type AdminChatLabel,
+  type AdminLead,
+  type AdminAnalytics,
+  type AdminEnquiryAnalytics,
+  type AdminLoginAttempt,
+} from "@/app/admin/AdminDataContext";
 
 // Per-tab components, lazy-loaded so only the active tab's code is parsed.
 // The page keeps ownership of loadAll()'s state; each tab reads its slice
@@ -44,20 +59,20 @@ function AdminDashboard() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [products, setProducts] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [coupons, setCoupons] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [colors, setColors] = useState<any[]>([]);
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [labels, setLabels] = useState<any[]>([]);
-  const [whatsappNumbers, setWhatsappNumbers] = useState<any[]>([]);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [reviews, setReviews] = useState<AdminReview[]>([]);
+  const [coupons, setCoupons] = useState<AdminCoupon[]>([]);
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const [colors, setColors] = useState<AdminNamedOption[]>([]);
+  const [materials, setMaterials] = useState<AdminNamedOption[]>([]);
+  const [labels, setLabels] = useState<AdminLabel[]>([]);
+  const [whatsappNumbers, setWhatsappNumbers] = useState<AdminWhatsappNumber[]>([]);
   // Preset "Chat for ..." button labels (chat_button_labels table) --
   // separate saved lists for in-stock/out-of-stock, switched via the
   // chat_label_in_stock/chat_label_out_of_stock settings. See ProductCard.tsx.
   // Loaded here in loadAll(); read + written by SettingsTab via the context.
-  const [chatLabelPresets, setChatLabelPresets] = useState<any[]>([]);
+  const [chatLabelPresets, setChatLabelPresets] = useState<AdminChatLabel[]>([]);
 
   const [settings, setSettings] = useState<Record<string, string>>({});
   // Derived in loadAll() from settings.last_keepalive_at rather than in
@@ -67,9 +82,9 @@ function AdminDashboard() {
   // also not on Vercel cron -- see #14). Stale = the timestamp it stamps
   // hasn't advanced in > 3h.
   const [abandonedCheckoutStale, setAbandonedCheckoutStale] = useState(false);
-  const [leads, setLeads] = useState<any[]>([]);
-  const [analytics, setAnalytics] = useState<any>(null);
-  const [enquiryAnalytics, setEnquiryAnalytics] = useState<any>(null);
+  const [leads, setLeads] = useState<AdminLead[]>([]);
+  const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
+  const [enquiryAnalytics, setEnquiryAnalytics] = useState<AdminEnquiryAnalytics | null>(null);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   const tabParam = searchParams.get("tab");
@@ -95,7 +110,7 @@ function AdminDashboard() {
   // loginAttempts + backupCodesRemaining are loaded by loadAll() and read
   // by SecurityTab via AdminDataContext; the rest of that tab's state now
   // lives in the tab component itself (#16).
-  const [loginAttempts, setLoginAttempts] = useState<any[]>([]);
+  const [loginAttempts, setLoginAttempts] = useState<AdminLoginAttempt[]>([]);
   const [backupCodesRemaining, setBackupCodesRemaining] = useState<number | null>(null);
 
   // Load inventory data, orders, reviews, coupons, and categories from the
