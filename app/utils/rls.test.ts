@@ -14,6 +14,7 @@
 //   set -a; . ./.env.local; set +a; npx vitest run app/utils/rls.test.ts
 import { describe, it, expect } from "vitest";
 import { createClient } from "@supabase/supabase-js";
+import { checkRlsPerimeter } from "@/app/utils/rlsProbes";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -22,45 +23,10 @@ const configured = Boolean(url && anonKey);
 const anon = configured ? createClient(url as string, anonKey as string) : null;
 
 describe.skipIf(!configured)("RLS perimeter (anon key)", () => {
-  it("cannot read the orders table at all", async () => {
-    const { data, error } = await anon!.from("orders").select("id").limit(1);
-    // RLS enabled + zero policies => PostgREST returns an empty set (not an
-    // error). Either an explicit error or an empty result is acceptable;
-    // a non-empty result is a leak.
-    expect(error ? [] : data ?? []).toEqual([]);
-  }, 15000);
-
-  it("cannot read the coupons table at all", async () => {
-    const { data, error } = await anon!.from("coupons").select("id").limit(1);
-    expect(error ? [] : data ?? []).toEqual([]);
-  }, 15000);
-
-  it("cannot read hidden products", async () => {
-    const { data, error } = await anon!.from("products").select("id,hidden").eq("hidden", true).limit(1);
-    expect(error ? [] : data ?? []).toEqual([]);
-  }, 15000);
-
-  it("can read non-hidden products (policy is a filter, not a block)", async () => {
-    const { data, error } = await anon!.from("products").select("id,hidden").limit(5);
-    expect(error).toBeNull();
-    expect(Array.isArray(data)).toBe(true);
-    for (const row of data ?? []) expect(row.hidden).not.toBe(true);
-  }, 15000);
-
-  it("cannot read unapproved reviews", async () => {
-    const { data, error } = await anon!.from("reviews").select("id,approved").eq("approved", false).limit(1);
-    expect(error ? [] : data ?? []).toEqual([]);
-  }, 15000);
-
-  it("cannot write to orders", async () => {
-    const { error } = await anon!
-      .from("orders")
-      .insert({ order_id: `rls_probe_${Date.now()}`, payment_id: `rls_probe_${Date.now()}`, amount: 1 });
-    expect(error).not.toBeNull();
-  }, 15000);
-
-  it("cannot write to products", async () => {
-    const { error } = await anon!.from("products").insert({ name: "rls_probe", price: 1, inventory: 0 });
-    expect(error).not.toBeNull();
-  }, 15000);
+  // The probe set lives in app/utils/rlsProbes.ts so the scheduled
+  // production check (/api/cron/rls-check) and this CI guard can't drift.
+  it("is intact: anon can't read orders/coupons/leads/hidden products/unapproved reviews, can read visible products, can't write", async () => {
+    const violations = await checkRlsPerimeter(anon!);
+    expect(violations).toEqual([]);
+  }, 30000);
 });

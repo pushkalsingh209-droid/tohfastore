@@ -95,6 +95,19 @@ export async function GET(req: Request) {
     console.error("Abandoned-checkout cron: stock_reservations trim failed:", trimErr);
   }
 
+  // Heartbeat: stamp the last run so the admin Overview can flag a dead
+  // external scheduler (this route isn't on Vercel cron -- Hobby 2-cap --
+  // so nothing else proves it's being hit). Same pattern as
+  // last_keepalive_at / last_greenapi_state (#13, #14). Best-effort; no
+  // cache revalidation -- this key isn't part of any cached query.
+  try {
+    await supabase
+      .from("site_settings")
+      .upsert({ key: "last_abandoned_checkout_run_at", value: new Date().toISOString() }, { onConflict: "key" });
+  } catch (stampErr) {
+    console.error("Abandoned-checkout cron: heartbeat write failed:", stampErr);
+  }
+
   return NextResponse.json({
     status: "ok",
     candidates: candidates?.length || 0,

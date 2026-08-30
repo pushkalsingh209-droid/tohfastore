@@ -181,6 +181,10 @@ function AdminDashboard() {
   // Derived in loadAll() from settings.last_keepalive_at rather than in
   // render, so there's no impure Date.now() on the render path.
   const [keepaliveStale, setKeepaliveStale] = useState(false);
+  // Same idea for the abandoned-checkout cron (also an external schedule,
+  // also not on Vercel cron -- see #14). Stale = the timestamp it stamps
+  // hasn't advanced in > 3h.
+  const [abandonedCheckoutStale, setAbandonedCheckoutStale] = useState(false);
   const [leads, setLeads] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
   const [enquiryAnalytics, setEnquiryAnalytics] = useState<any>(null);
@@ -329,6 +333,10 @@ function AdminDashboard() {
       const lastKeepalive = settingsRes.value.settings?.last_keepalive_at;
       setKeepaliveStale(
         Boolean(lastKeepalive) && Date.now() - new Date(lastKeepalive).getTime() > 90 * 60 * 1000
+      );
+      const lastAbandoned = settingsRes.value.settings?.last_abandoned_checkout_run_at;
+      setAbandonedCheckoutStale(
+        Boolean(lastAbandoned) && Date.now() - new Date(lastAbandoned).getTime() > 3 * 60 * 60 * 1000
       );
     }
     if (leadsRes.status === "fulfilled") setLeads(leadsRes.value.leads);
@@ -1229,7 +1237,7 @@ function AdminDashboard() {
   };
 
   return (
-    <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, coupons, setCoupons, orders, setOrders, loadingOrders, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, settings, products }}>
+    <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, coupons, setCoupons, orders, setOrders, loadingOrders, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, abandonedCheckoutStale, settings, products }}>
     <div className="bg-[var(--background)] min-h-screen py-12">
       <div className="max-w-5xl mx-auto px-6 space-y-12">
 

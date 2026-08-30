@@ -206,6 +206,39 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>14:00</code></td>
+  <td><strong>#3 RLS scheduled check + #14 abandoned-checkout heartbeat</strong><br>(<code>IMPROVEMENTS.md</code> #3, #14)</td>
+  <td>
+    <strong>#3</strong> &mdash; the RLS perimeter now has a <em>scheduled</em> guard, not just a CI one. New
+    <code>app/utils/rlsProbes.ts</code> <code>checkRlsPerimeter(anon)</code> holds the boundary as runnable
+    anon-key probes (orders/coupons/leads/admin_sessions unreadable, hidden products &amp; unapproved
+    reviews unreadable, visible products still readable, no anon writes) and returns a list of violation
+    strings. <code>rls.test.ts</code> is refactored to one <code>it()</code> that calls it; new
+    <code>/api/cron/rls-check</code> (GET, <code>CRON_SECRET</code>) calls it against the LIVE project and
+    WhatsApps the business on any violation &mdash; so a policy edited in the Supabase dashboard <em>after</em>
+    deploy surfaces in hours (like the 0039/0040 stray-policy episode did not). Daily external schedule; not
+    in <code>vercel.json</code> (Hobby 2-cron cap).<br>
+    <strong>#14</strong> &mdash; <code>/api/cron/abandoned-checkout</code> now stamps
+    <code>site_settings.last_abandoned_checkout_run_at</code> each run. Admin <strong>Overview</strong> gets a
+    third heartbeat card (next to keepalive + Green API) that goes amber if that timestamp is &gt; 3h old
+    &mdash; a dead external scheduler now shows on the dashboard instead of nudges silently stopping.
+    <code>abandonedCheckoutStale</code> derived in <code>loadAll()</code> like <code>keepaliveStale</code>.
+  </td>
+  <td>
+    <em>new:</em> <code>app/utils/rlsProbes.ts</code>, <code>app/api/cron/rls-check/route.ts</code> &middot;
+    <code>app/utils/rls.test.ts</code>, <code>app/api/cron/abandoned-checkout/route.ts</code>,
+    <code>app/admin/page.tsx</code>, <code>app/admin/AdminDataContext.tsx</code>,
+    <code>app/admin/tabs/OverviewTab.tsx</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>next build</code> exit 0 &middot; <code>tsc --noEmit</code> clean &middot; <code>npm test</code>
+    102 pass (the RLS test is now 1 env-gated case, not 7). Not exercised against a live RLS violation.
+    <strong>Owner:</strong> add a daily cron-job.org schedule for <code>/api/cron/rls-check</code> (same
+    bearer as keepalive) alongside the existing <code>product-sales-reconcile</code> one.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>13:00</code></td>
   <td><strong>&#128293; Product pages &rarr; <code>force-dynamic</code> (stop ISR writes)</strong><br>(prod fire; no <code>IMPROVEMENTS.md</code> item)</td>
   <td>
@@ -1569,7 +1602,7 @@ paths produce an identical row because both re-read from Razorpay&rsquo;s own AP
 <tr><td><code>ADMIN_PASSWORD</code></td><td>server</td><td>Admin password (constant-time compare). Missing &rarr; login 500 (fails closed, no default).</td></tr>
 <tr><td><code>ADMIN_TOTP_SECRET</code></td><td>server</td><td>Base32 TOTP secret (RFC 6238, SHA1, 6 digits, 30s, &plusmn;1 step drift). Static &mdash; the QR tool just re-renders it.</td></tr>
 <tr><td><code>GREEN_API_URL</code>, <code>GREEN_API_ID_INSTANCE</code>, <code>GREEN_API_TOKEN_INSTANCE</code></td><td>server</td><td>Green API instance. All three required or every WhatsApp feature silently no-ops (OTP send surfaces an explicit error instead).</td></tr>
-<tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code>, <code>/api/cron/abandoned-checkout</code>, <code>/api/cron/product-sales-reconcile</code>.</td></tr>
+<tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code>, <code>/api/cron/abandoned-checkout</code>, <code>/api/cron/product-sales-reconcile</code>, <code>/api/cron/rls-check</code>.</td></tr>
 <tr><td><code>RESEND_API_KEY</code></td><td>server</td><td>Missing &rarr; order emails skipped silently; contact form returns 500.</td></tr>
 <tr><td><code>NEXT_PUBLIC_META_PIXEL_ID</code></td><td>public</td><td>Optional. Unset &rarr; <code>MetaPixel</code> and <code>trackMetaPurchase()</code> no-op.</td></tr>
 <tr><td><code>BUSINESS_WHATSAPP_NUMBER</code></td><td>server</td><td>Optional override for order/business alerts. Default <code>916302672351</code>.</td></tr>
@@ -1634,7 +1667,7 @@ RLS: anon <code>SELECT USING (hidden = false)</code>; service role bypasses.</p>
 <tr><td><code>categories</code></td><td><code>name</code> UNIQUE, <code>show_on_home</code> bool=true, <code>gst_rate</code> numeric(5,2)=5.00, <code>default_page_size</code> int, <code>discount_percent</code> numeric=25</td><td>Managed category list. <code>show_on_home=false</code> drops products from the unfiltered homepage but keeps the category reachable. <code>discount_percent</code> is display-only (fake struck-through MRP). <em>(0004&ndash;07, 0011, 0013)</em></td></tr>
 <tr><td><code>reviews</code></td><td><code>product_id</code> FK&rarr;products ON DELETE CASCADE, <code>rating</code> smallint 1&ndash;5, <code>approved</code> bool=false</td><td>Admin-moderated. RLS anon <code>SELECT USING (approved = true)</code>. <em>(0001)</em></td></tr>
 <tr><td><code>coupons</code></td><td><code>code</code> UNIQUE, <code>discount_type</code> flat|percent, <code>discount_value</code> &gt; 0, <code>active</code> bool=true, <code>max_uses</code> int, <code>used_count</code> int=0, <code>expires_at</code>, <code>is_public</code> bool=false</td><td><code>is_public</code> coupons are advertised in the promo banner; private ones still redeem. <code>used_count</code> incremented only on a captured, paid order. RLS: no policies. <em>(0001&ndash;02)</em></td></tr>
-<tr><td><code>site_settings</code></td><td><code>key</code> text PK, <code>value</code> text</td><td>KV store. Keys: <code>default_page_size</code>, <code>brass_price_per_kg</code>, <code>catalog_reveal_batch_size</code>, <code>weight_unit</code>, <code>dimension_unit</code>, <code>default_whatsapp_number</code>, <code>default_photo_filter</code>, <code>ganesha_cooldown_minutes</code>, <code>ganesha_max_auto_shows</code>, <code>ganesha_collapse_delay_seconds</code>, <code>chat_label_in_stock</code>, <code>chat_label_out_of_stock</code>, <code>last_keepalive_at</code> / <code>last_greenapi_state</code> / <code>last_greenapi_error</code> (all stamped by <code>/api/keepalive</code>, read by the admin Overview), <code>stock_reservations_enabled</code> (<code>'0'</code>/<code>'1'</code> kill switch for the 0043 reservation feature). Public subset via <code>/api/settings</code>. <em>(0011, 0022, 0025, 0043)</em></td></tr>
+<tr><td><code>site_settings</code></td><td><code>key</code> text PK, <code>value</code> text</td><td>KV store. Keys: <code>default_page_size</code>, <code>brass_price_per_kg</code>, <code>catalog_reveal_batch_size</code>, <code>weight_unit</code>, <code>dimension_unit</code>, <code>default_whatsapp_number</code>, <code>default_photo_filter</code>, <code>ganesha_cooldown_minutes</code>, <code>ganesha_max_auto_shows</code>, <code>ganesha_collapse_delay_seconds</code>, <code>chat_label_in_stock</code>, <code>chat_label_out_of_stock</code>, <code>last_keepalive_at</code> / <code>last_greenapi_state</code> / <code>last_greenapi_error</code> (all stamped by <code>/api/keepalive</code>, read by the admin Overview), <code>last_abandoned_checkout_run_at</code> (stamped by that cron, #14), <code>stock_reservations_enabled</code> (<code>'0'</code>/<code>'1'</code> kill switch for the 0043 reservation feature). Public subset via <code>/api/settings</code>. <em>(0011, 0022, 0025, 0043)</em></td></tr>
 <tr><td><code>product_colors</code>, <code>product_materials</code>, <code>labels</code></td><td><code>name</code> UNIQUE (+ <code>labels.photo_filter</code>)</td><td>Managed dropdown lists for the admin product form. Storefront reads distinct in-use labels off <code>products</code> via <code>/api/labels</code> instead. <em>(0017, 0018, 0021, 0023)</em></td></tr>
 <tr><td><code>whatsapp_numbers</code></td><td><code>phone_number</code> UNIQUE (<code>91&hellip;</code>), <code>label</code></td><td>Additional per-product enquiry numbers. The active site-wide default lives in <code>site_settings.default_whatsapp_number</code>. <em>(0019)</em></td></tr>
 <tr><td><code>chat_button_labels</code></td><td><code>kind</code> in_stock|out_of_stock, <code>label</code> 1&ndash;30, UNIQUE(kind,label)</td><td>Preset pool for the &ldquo;Chat for &hellip;&rdquo; product-card button. Active choice is a plain-text <code>site_settings</code> value. <em>(0033)</em></td></tr>
@@ -1668,7 +1701,7 @@ direct-to-Supabase reads. Final effective state (migrations 0003 &rarr; 0039 &ra
 <tr><td>every other table</td><td class="no">no policy &rarr; denied</td><td class="no">no</td><td class="yes">full</td></tr>
 </tbody></table></div>
 <div class="note">
-<p><strong>Regression guard:</strong> <code>app/utils/rls.test.ts</code> connects with the anon key and asserts
+<p><strong>Regression guard (two layers, one probe set in <code>app/utils/rlsProbes.ts</code>):</strong> <code>rls.test.ts</code> fails CI on a regression; <code>/api/cron/rls-check</code> runs the same anon-key probes against the LIVE project on a daily external schedule and WhatsApps the business on any violation &mdash; so a policy edited in the Supabase dashboard <em>after</em> deploy surfaces in hours. Both connect with the anon key and assert
 this table &mdash; run it (with <code>.env.local</code> exported) after any schema or policy change, and keep it
 in CI. It skips cleanly when Supabase creds are absent.</p>
 </div>
@@ -1859,8 +1892,9 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/settings</code></td><td><span class="tag t-get">get</span></td><td>Public-safe subset of <code>site_settings</code> (photo filter, units, WA number, Ganesha popup, chat labels).</td></tr>
 <tr><td><code>/api/pincode/[code]</code></td><td><span class="tag t-get">get</span></td><td>Proxies India Post PIN lookup (no CORS upstream). <code>{city, state}</code>. Cached 1h.</td></tr>
 <tr><td><code>/api/keepalive</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Pings Supabase (7-day auto-pause) + Green API <code>getStateInstance</code>. External scheduler every 15&ndash;30 min. Stamps <code>last_keepalive_at</code> + <code>last_greenapi_state</code> / <code>last_greenapi_error</code> into <code>site_settings</code> (best-effort) &rarr; admin Overview health cards.</td></tr>
-<tr><td><code>/api/cron/abandoned-checkout</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Nudges <code>checkout_started</code> leads 2h&ndash;7d old, not yet <code>contacted</code>, with no matching order since. Every 30&ndash;60 min. Also trims <code>stock_reservations</code> rows &gt; 1 day past <code>expires_at</code> (hygiene only &mdash; <code>reserve_stock</code> already ignores expired rows).</td></tr>
+<tr><td><code>/api/cron/abandoned-checkout</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Nudges <code>checkout_started</code> leads 2h&ndash;7d old, not yet <code>contacted</code>, with no matching order since. Every 30&ndash;60 min. Also trims <code>stock_reservations</code> rows &gt; 1 day past <code>expires_at</code> (hygiene), and stamps <code>site_settings.last_abandoned_checkout_run_at</code> so the admin Overview can flag a dead scheduler (#14).</td></tr>
 <tr><td><code>/api/cron/product-sales-reconcile</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Recomputes the units-sold tally from every non-cancelled order and diffs it against <code>product_sales</code> (0042). Drift &rarr; best-effort business WhatsApp; <code>?heal=1</code> also writes the recomputed values back. Alert-only by default. Daily external schedule.</td></tr>
+<tr><td><code>/api/cron/rls-check</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Runs <code>checkRlsPerimeter</code> (<code>app/utils/rlsProbes.ts</code>, shared with <code>rls.test.ts</code>) against LIVE Supabase with the <em>anon</em> key: orders/coupons/leads/admin_sessions unreadable, hidden products &amp; unapproved reviews unreadable, visible products still readable, no anon writes. Any violation &rarr; best-effort business WhatsApp + 500. Alert-only; nothing changed. Daily external schedule (not in <code>vercel.json</code> &mdash; Hobby 2-cron cap).</td></tr>
 </tbody></table></div>
 
 <h3>Admin (behind <code>admin_session</code>)</h3>
@@ -2315,7 +2349,8 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>stock.ts</code></td><td><code>LOW_STOCK_THRESHOLD</code> &mdash; one cutoff shared by <code>LiveStock</code>, <code>ProductCard</code>, the stock API, the webhook and the admin stats panels. <code>RESERVATION_TTL_SECONDS = 900</code> + <code>STOCK_RESERVATIONS_ENABLED_KEY</code> for the 0043 reservation feature.</td></tr>
 <tr><td><code>reservation.ts</code></td><td><code>computeAvailability(inventory, heldQty, requestedQty)</code> &mdash; pure spec of the per-line rule migration 0043&rsquo;s <code>reserve_stock</code> applies (<code>available = inv &minus; held</code>, floored at 0; fits iff <code>&ge; requested</code>). The RPC is authoritative at runtime; this is the unit-tested definition. <strong>6 tests.</strong></td></tr>
 <tr><td><code>apiError.ts</code></td><td><code>serverErrorResponse(context, err, publicMessage)</code> &mdash; logs the real error, returns a generic 5xx body. Wired into <strong>every route under <code>app/api</code></strong> (§22).</td></tr>
-<tr><td><code>rls.test.ts</code></td><td>Anon-key RLS perimeter regression test (§6). Env-gated (skips without Supabase creds).</td></tr>
+<tr><td><code>rlsProbes.ts</code></td><td><code>checkRlsPerimeter(anon)</code> &mdash; the RLS boundary as runnable anon-key probes; returns a list of violation strings (empty = intact). One source for <code>rls.test.ts</code> (CI) and <code>/api/cron/rls-check</code> (scheduled, prod). <em>(#3)</em></td></tr>
+<tr><td><code>rls.test.ts</code></td><td>Anon-key RLS perimeter regression test (&sect;6) &mdash; one <code>it()</code> calling <code>checkRlsPerimeter</code>. Env-gated (skips without Supabase creds).</td></tr>
 <tr><td><code>orderTally.ts</code></td><td><code>tallyUnitsSold(orders, {excludeId?})</code> &mdash; pure line-item quantity tally, shared by <code>getBestsellers</code> / <code>getRelatedProducts</code> via <code>getRecentOrderItems</code> (the last 300 <strong>non-cancelled</strong> orders). Unit-tested.</td></tr>
 <tr><td><code>orderTypes.ts</code></td><td><code>OrderCustomerDetails</code> / <code>OrderItem</code> shapes + <code>asCustomerDetails(json)</code> / <code>asOrderItems(json)</code> narrowers for the <code>orders</code> table's <code>customer_details</code> / <code>items</code> jsonb columns (the generated types can only say <code>Json</code>). <em>(#15)</em></td></tr>
 <tr><td><code>repricing.ts</code></td><td><code>repriceCart(clientItems, dbProducts, categoryGstRates, defaultGstPercent)</code> &mdash; the &ldquo;never trust the client at checkout&rdquo; guard extracted from <code>/api/razorpay</code>: rebuilds every line from the DB price/name/GST rate, rejects unknown/hidden ids and over-stock lines, returns the authoritative subtotal. Byte-for-byte match of the old inline block. <strong>12 unit tests.</strong></td></tr>
