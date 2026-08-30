@@ -1400,7 +1400,7 @@ function AdminDashboard() {
 
             <div>
               <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
-                Weight & Dimensions <span className="text-stone-400 font-normal normal-case">(all optional — shown on the storefront only for products where they're filled in)</span>
+                Weight & Dimensions <span className="text-stone-400 font-normal normal-case">(all optional — shown on the storefront only for products where they’re filled in)</span>
               </label>
 
               {/* Changes what unit you type into the fields below (and how
@@ -1526,7 +1526,7 @@ function AdminDashboard() {
 
             <div>
               <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
-                Material & Colour <span className="text-stone-400 font-normal normal-case">(both optional — shown on the product detail page and the card's flip-back, only when filled in)</span>
+                Material & Colour <span className="text-stone-400 font-normal normal-case">(both optional — shown on the product detail page and the card’s flip-back, only when filled in)</span>
               </label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                 <div>
@@ -1613,7 +1613,7 @@ function AdminDashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-serif text-stone-900">Live Storefront Catalog & Stock Tracker</h2>
-                <p className="text-stone-500 text-xs mt-1">Manage physical stock variations or open a product's text fields to overwrite details cleanly.</p>
+                <p className="text-stone-500 text-xs mt-1">Manage physical stock variations or open a product’s text fields to overwrite details cleanly.</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="text-xs font-mono font-bold text-stone-500 bg-stone-100 border border-stone-200 rounded px-3 py-1.5 whitespace-nowrap">
@@ -2057,7 +2057,7 @@ function AdminDashboard() {
               className="w-24 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
             />
             <span className="text-stone-400 text-xs w-full">
-              How many product cards mount at once as a shopper scrolls the catalog grid -- more load automatically as they get near the bottom of what's already shown. Lower keeps scrolling smoother on long pages; minimum 8.
+              How many product cards mount at once as a shopper scrolls the catalog grid -- more load automatically as they get near the bottom of what’s already shown. Lower keeps scrolling smoother on long pages; minimum 8.
             </span>
           </div>
           <div className="flex items-center gap-3 flex-wrap mt-4">
@@ -2073,7 +2073,7 @@ function AdminDashboard() {
                 </option>
               ))}
             </select>
-            <span className="text-stone-400 text-xs">A visitor's own tap on a photo's filter icon always overrides this for their view.</span>
+            <span className="text-stone-400 text-xs">A visitor’s own tap on a photo’s filter icon always overrides this for their view.</span>
           </div>
           <div className="flex items-center gap-3 flex-wrap mt-4">
             <label className="text-sm text-stone-700 font-medium">Weight display unit</label>
@@ -2170,7 +2170,7 @@ function AdminDashboard() {
           <div className="border-b border-stone-200 pb-4 mb-6">
             <h2 className="text-xl font-serif text-stone-900">WhatsApp Numbers</h2>
             <p className="text-stone-500 text-xs mt-1">
-              For customer product enquiries only ("Chat to Check Availability" / "Chat for More Info") -- order and business
+              For customer product enquiries only (“Chat to Check Availability” / “Chat for More Info”) -- order and business
               notifications always go to +91 6302672351, unaffected by anything here.
             </p>
           </div>
@@ -2478,7 +2478,7 @@ function AdminDashboard() {
         <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
           <div className="border-b border-stone-200 pb-4 mb-6">
             <h2 className="text-xl font-serif text-stone-900">Categories</h2>
-            <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form's dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category's products appear in the homepage's default view (they're still reachable by selecting the category directly). GST % is set per category and used to break down the final bill. &ldquo;% Off&rdquo; shows a struck-through original price everywhere on the site (product price you set stays the real price charged -- this is display only). &ldquo;Products/page&rdquo; overrides the site-wide default just for that category&rsquo;s own page -- leave blank to use the default above.</p>
+            <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form’s dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category’s products appear in the homepage&rsquo;s default view (they’re still reachable by selecting the category directly). GST % is set per category and used to break down the final bill. &ldquo;% Off&rdquo; shows a struck-through original price everywhere on the site (product price you set stays the real price charged -- this is display only). &ldquo;Products/page&rdquo; overrides the site-wide default just for that category&rsquo;s own page -- leave blank to use the default above.</p>
           </div>
 
           {/* Mobile-first: the name input takes its own full-width row, and

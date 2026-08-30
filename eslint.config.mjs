@@ -12,7 +12,27 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated from the live schema by `npm run gen:types` -- not hand-written.
+    "types/db.ts",
   ]),
+  {
+    rules: {
+      // Standard conventions, not a loosening:
+      //  - `_`-prefixed args/vars are intentionally-unused by convention.
+      //  - `ignoreRestSiblings` allows the `const { drop, ...rest } = obj`
+      //    idiom used to omit a key (admin drafts map, coupon/product
+      //    column-drop fallbacks).
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
