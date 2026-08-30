@@ -1,6 +1,7 @@
 // app/components/PageNavLinks.tsx
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 
 // Small hamburger-style toggle for the Home/About links shown in each page's
 // secondary brand bar, matching the same collapse pattern used for the
@@ -32,13 +33,13 @@ export default function PageNavLinks() {
           id="page-nav-links-panel"
           className="absolute right-0 top-full mt-2 z-50 min-w-[140px] flex flex-col bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded shadow-md py-1.5 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600 dark:text-stone-400"
         >
-          <a
+          <Link
             href="/"
             onClick={() => setOpen(false)}
             className="px-4 py-2 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
           >
             Home
-          </a>
+          </Link>
           <a
             href="/about"
             onClick={() => setOpen(false)}

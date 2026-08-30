@@ -64,7 +64,7 @@ export default function HeaderNavbar() {
               channels instead of looking like a different business emailed
               the customer. Inlined as SVG (not an <img>) so it stays crisp
               at any size with no extra network request. */}
-          <a href="/" className="flex items-center gap-2 group outline-none">
+          <Link href="/" className="flex items-center gap-2 group outline-none">
             <svg viewBox="0 0 200 200" className="w-8 h-8 md:w-10 md:h-10 flex-shrink-0" aria-hidden="true">
               <defs>
                 <linearGradient id="brassGradHeader" x1="0" y1="0" x2="1" y2="1">
@@ -89,7 +89,7 @@ export default function HeaderNavbar() {
               <span className="text-xl md:text-2xl font-serif tracking-widest text-amber-700 dark:text-amber-500 font-bold group-hover:text-amber-800 dark:group-hover:text-amber-400 transition">TOHFA</span>
               <span className="text-[9px] md:text-[10px] italic tracking-wide leading-tight text-stone-500 dark:text-stone-400 -mt-1 max-w-[130px] sm:max-w-none">Crafted Traditions. Timeless Gifts.</span>
             </div>
-          </a>
+          </Link>
 
           <div className="flex items-center gap-1 md:hidden">
             <ThemeToggle />
@@ -129,7 +129,7 @@ export default function HeaderNavbar() {
 
         {/* Desktop-only right side controls */}
         <nav className="hidden md:flex items-center gap-6 sm:gap-8 font-medium text-sm tracking-wide text-stone-600 dark:text-stone-300 md:ml-auto">
-          <a href="/" className="hover:text-amber-700 dark:hover:text-amber-500 transition">Collections</a>
+          <Link href="/" className="hover:text-amber-700 dark:hover:text-amber-500 transition">Collections</Link>
 
           <ThemeToggle />
 

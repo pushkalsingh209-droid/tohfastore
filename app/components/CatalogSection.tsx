@@ -2,6 +2,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import ProductCard from "@/app/components/ProductCard";
 import TempleCardFrame from "@/app/components/TempleCardFrame";
 import CatalogPagination from "@/app/components/CatalogPagination";
@@ -308,7 +309,7 @@ export default function CatalogSection({
         ) : count === 0 && category ? (
           <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
             <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">No artifacts found in &ldquo;{category}&rdquo;.</p>
-            <a href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">Clear filter</a>
+            <Link href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">Clear filter</Link>
           </div>
         ) : count === 0 ? (
           <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
@@ -318,7 +319,7 @@ export default function CatalogSection({
         ) : products.length === 0 ? (
           <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
             <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">No artifacts on this page.</p>
-            <a href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">Back to page 1</a>
+            <Link href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">Back to page 1</Link>
           </div>
         ) : (
           <>
