@@ -117,7 +117,6 @@ export default function ProductGallery({
     }
 
     let cancelled = false;
-    let startTimer: ReturnType<typeof setTimeout> | undefined;
     let settleTimer: ReturnType<typeof setTimeout> | undefined;
     let loopTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -145,7 +144,7 @@ export default function ProductGallery({
       }, FLIP_DURATION_MS);
     };
 
-    startTimer = setTimeout(triggerFlip, FLIP_START_DELAY_MS);
+    const startTimer = setTimeout(triggerFlip, FLIP_START_DELAY_MS);
 
     return () => {
       cancelled = true;
