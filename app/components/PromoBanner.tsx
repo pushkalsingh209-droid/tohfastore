@@ -4,7 +4,7 @@ import { useState } from "react";
 
 interface PublicCoupon {
   code: string;
-  discount_type: "flat" | "percent";
+  discount_type: string; // DB text column, no check constraint
   discount_value: number;
   max_uses?: number | null;
   used_count?: number;

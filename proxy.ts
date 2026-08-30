@@ -70,7 +70,7 @@ const PROXY_NOT_FOUND_PATH = '/__proxy_not_found__';
 async function getAllCategoryNames(): Promise<string[]> {
   const { data, error } = await supabase.from('categories').select('name');
   if (error) return [];
-  return (data || []).map((row: any) => row.name).filter(Boolean);
+  return (data || []).map((row) => row.name).filter((n): n is string => Boolean(n));
 }
 
 // Old "/?category=X" links (bookmarks, shared links, search-engine index)

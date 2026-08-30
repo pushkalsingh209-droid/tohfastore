@@ -33,8 +33,8 @@ export default function ReviewForm({ productId }: { productId: number }) {
         return;
       }
       setSubmitted(true);
-    } catch (err: any) {
-      setError(err.message || "Could not submit your review.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not submit your review.");
     } finally {
       setSubmitting(false);
     }

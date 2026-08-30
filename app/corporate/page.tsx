@@ -36,8 +36,8 @@ export default function CorporateGiftingPage() {
         return;
       }
       setSent(true);
-    } catch (err: any) {
-      setError(err.message || "Could not send your inquiry.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not send your inquiry.");
     } finally {
       setLoading(false);
     }

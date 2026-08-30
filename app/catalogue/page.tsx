@@ -28,8 +28,8 @@ export default function CataloguePage() {
       setSent(true);
       // Trigger the actual download once the lead is captured.
       window.open("/api/catalogue", "_blank");
-    } catch (err: any) {
-      setError(err.message || "Could not send the catalogue.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not send the catalogue.");
     } finally {
       setLoading(false);
     }

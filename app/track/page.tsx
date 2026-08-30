@@ -49,8 +49,8 @@ export default function TrackOrderPage() {
         return;
       }
       setOrder(data);
-    } catch (err: any) {
-      setError(err.message || "Could not look up order.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not look up order.");
     } finally {
       setLoading(false);
     }
