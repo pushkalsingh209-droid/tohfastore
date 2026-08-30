@@ -206,6 +206,40 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-31<br>00:00</code></td>
+  <td><strong>PWA icon / splash routes &rarr; static</strong><br>(Active-CPU pass; <code>IMPROVEMENTS.md</code> Tier 3 #13)</td>
+  <td>
+    <code>app/icon-192</code>, <code>app/icon-512</code>, <code>app/icon-512-maskable</code>,
+    <code>app/apple-splash/[size]</code> were all <code>&fnof;</code> (dynamic) &mdash; Next 15
+    defaults a GET route handler to dynamic, so each one re-ran satori + resvg to raster a
+    <em>byte-identical</em> PWA PNG on every request. Observability &rarr; Functions (12 h)
+    put them at ~7.5 s of Active CPU over ~64 invocations. Added
+    <code>export const dynamic = "force-static"</code> to all four, plus
+    <code>generateStaticParams()</code> on the splash route (from
+    <code>ALLOWED_SPLASH_SIZES</code>, ~38 entries). They now build as
+    <code>&cir;</code>/<code>&bull;</code> static assets &mdash; rendered once at build, zero
+    runtime CPU, zero ISR writes (Hobby-safe). Static page count 86 &rarr; 124.
+    <br><br>
+    <strong>Also from that Observability pass (recorded, not a change):</strong> the app is
+    thoroughly I/O-bound &mdash; 774 invocations / 12 h, 0 % errors, ~80 s total Active CPU,
+    0.30 GB-Hours. <code>/product/[id]</code> renders in <strong>~28 ms of CPU</strong> per
+    hit (data served from <code>unstable_cache</code>), so the mooted "move product +
+    catalog pages back to on-demand ISR" is <strong>not worth doing</strong> at this
+    traffic &mdash; and would re-expose the ISR-write meter that hit 95 % earlier.
+    <code>force-dynamic</code> on <code>/product/[id]</code> stays.
+  </td>
+  <td>
+    <code>app/icon-192/route.tsx</code>, <code>app/icon-512/route.tsx</code>,
+    <code>app/icon-512-maskable/route.tsx</code>, <code>app/apple-splash/[size]/route.tsx</code> &middot;
+    <code>docs/ARCHITECTURE.html</code> &middot; <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>tsc --noEmit</code> clean &middot; <code>next build</code> exit 0 (124/124 static)
+    &middot; <code>npm test</code> 110 pass / 1 skip &middot; no new eslint. Build output
+    confirms all four now render as static (<code>&cir;</code> / <code>&bull;</code>).
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>23:00</code></td>
   <td><strong>Narrow <code>getCatalogPage</code>'s product <code>SELECT</code></strong><br>(Vercel Fluid Compute / Active-CPU pass; <code>IMPROVEMENTS.md</code> Tier 3 #13)</td>
   <td>
@@ -2135,7 +2169,7 @@ resets and verify steady-state usage stays under cap.</p>
   <li><code>app/sitemap.ts</code> &rarr; static pages + one URL per category + one per non-hidden product.</li>
   <li><code>app/robots.ts</code> &rarr; allow <code>/</code>, disallow <code>/admin</code> and <code>/api/</code>; points at <code>/sitemap.xml</code>.</li>
   <li><code>app/manifest.ts</code> &rarr; PWA manifest (standalone, <code>theme_color #3d1113</code>, gift-box icon set).</li>
-  <li><code>app/icon.tsx</code>, <code>app/apple-icon.tsx</code>, <code>app/icon-192|512|512-maskable/route.tsx</code>, <code>app/apple-splash/[size]/route.tsx</code> &rarr; generated icon/splash images.</li>
+  <li><code>app/icon.tsx</code>, <code>app/apple-icon.tsx</code>, <code>app/icon-192|512|512-maskable/route.tsx</code>, <code>app/apple-splash/[size]/route.tsx</code> &rarr; brand icon/splash PNGs via <code>next/og</code> (satori + resvg). All <code>force-static</code> &mdash; the output never varies by request, so they're rastered once at build, not per hit (the splash route uses <code>generateStaticParams</code> over <code>ALLOWED_SPLASH_SIZES</code>).</li>
 </ul>
 
 <h3>URL conventions (<code>app/utils/slug.ts</code>)</h3>
