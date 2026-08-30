@@ -2,7 +2,9 @@
 "use client";
 import { useWishlist } from "@/app/context/WishlistContext";
 
-export default function WishlistButton({ product }: { product: any }) {
+import type { StoreProduct } from "@/app/types/product";
+
+export default function WishlistButton({ product }: { product: StoreProduct }) {
   const { isWishlisted, toggleWishlist } = useWishlist();
   const wishlisted = isWishlisted(product.id);
 

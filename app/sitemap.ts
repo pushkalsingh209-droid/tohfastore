@@ -32,7 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const { data, error } = await supabase.from("products").select("id, name, created_at").eq("hidden", false);
     if (!error && data) {
-      productEntries = data.map((product: any) => ({
+      productEntries = data.map((product) => ({
         url: `${SITE_URL}${productHref(product)}`,
         lastModified: product.created_at ? new Date(product.created_at) : new Date(),
         changeFrequency: "weekly",

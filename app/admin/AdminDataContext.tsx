@@ -39,8 +39,12 @@ export interface AdminCoupon {
 }
 
 export interface AdminOrderItem {
+  id?: number | string;
   name?: string;
   quantity?: number;
+  price?: number | string;
+  gstRate?: number;
+  category?: string | null;
 }
 
 export interface AdminOrder {

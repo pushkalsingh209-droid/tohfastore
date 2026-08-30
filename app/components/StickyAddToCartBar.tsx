@@ -15,7 +15,9 @@ import { LiveStockProvider } from "@/app/components/LiveStock";
 // stock check, hence its own LiveStockProvider here (this bar sits outside
 // the main buy box's provider in the page tree; both hit the same
 // never-cached /api/stock/[id], so they resolve to the same number).
-export default function StickyAddToCartBar({ product }: { product: any }) {
+import type { StoreProduct } from "@/app/types/product";
+
+export default function StickyAddToCartBar({ product }: { product: StoreProduct }) {
   return (
     <LiveStockProvider productId={product.id} initialInventory={Number(product.inventory) || 0}>
       <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] print:hidden">

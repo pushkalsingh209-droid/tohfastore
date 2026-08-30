@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { calculateOrderGstBreakdown } from "@/app/utils/gst";
 import { rowsToCsv, triggerCsvDownload } from "@/app/utils/downloadCsv";
 import DownloadCsvButton from "@/app/components/admin/DownloadCsvButton";
+import type { AdminOrder, AdminProduct } from "@/app/admin/AdminDataContext";
 
 // Real finance figures reconstructed from order history -- no order row
 // stores GST or discount directly (see calculateOrderGstBreakdown's own
@@ -12,7 +13,7 @@ import DownloadCsvButton from "@/app/components/admin/DownloadCsvButton";
 // excluded throughout, same as the sold-count/Product Statistics figures
 // elsewhere in this panel, so "collected"/"given" only reflects money that
 // actually changed hands.
-export default function FinanceInsightsPanel({ orders, products }: { orders: any[]; products: any[] }) {
+export default function FinanceInsightsPanel({ orders, products }: { orders: AdminOrder[]; products: AdminProduct[] }) {
   const productLabelById = useMemo(() => {
     const map = new Map<string, string>();
     for (const p of products) map.set(String(p.id), (p.label && String(p.label).trim()) || "No Label");
@@ -20,7 +21,7 @@ export default function FinanceInsightsPanel({ orders, products }: { orders: any
   }, [products]);
 
   const stats = useMemo(() => {
-    const activeOrders = orders.filter((o: any) => o.status !== "cancelled");
+    const activeOrders = orders.filter((o) => o.status !== "cancelled");
 
     let totalGstCollected = 0;
     let totalDiscountGiven = 0;
@@ -38,13 +39,13 @@ export default function FinanceInsightsPanel({ orders, products }: { orders: any
       const items = Array.isArray(order.items) ? order.items : [];
       if (items.length === 0) continue;
 
-      const itemsSubtotal = items.reduce((sum: number, it: any) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0);
+      const itemsSubtotal = items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0);
       const amount = Number(order.amount) || 0;
       const discount = Math.max(0, itemsSubtotal - amount);
       const discountRatio = itemsSubtotal > 0 ? Math.min(1, discount / itemsSubtotal) : 0;
 
       const breakdown = calculateOrderGstBreakdown(
-        items.map((it: any) => ({ price: Number(it.price) || 0, quantity: Number(it.quantity) || 0, gstRate: it.gstRate })),
+        items.map((it) => ({ price: Number(it.price) || 0, quantity: Number(it.quantity) || 0, gstRate: it.gstRate })),
         discount
       );
       totalGstCollected += breakdown.gstAmount;
