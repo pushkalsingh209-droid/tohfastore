@@ -377,14 +377,19 @@ care, land behind tests, never "blind".
       cost data out of the client) + `created_at` / `display_order` / `hidden` (the
       `.eq`/`.order` clauses don't need them in the select). Cache-wrapped, so this is
       per-miss, not per-request.
-    - **Biggest lever, deferred pending Observability data:** `/product/[id]` and the
-      catalog pages are `force-dynamic` (product pages switched this session to stop ISR
-      writes). Their *data* is `unstable_cache`d but the *render* runs every visit. Moving
-      back to **on-demand ISR** (`revalidate = 3600`, **no** `generateStaticParams`) +
-      keeping trivial admin saves from calling `revalidateTag("products")` bounds the ISR
-      writes (≈ one per visited product per hour) while cutting render CPU on the hottest
-      routes to ~0. A deliberate trade — needs owner sign-off after checking Dashboard →
-      Observability → Functions (sort by Active CPU P75/P99 × invocations).
+    - ~~Make the PWA image routes static~~ — **done (2026-08-30)**: `icon-192` / `icon-512` /
+      `icon-512-maskable` / `apple-splash/[size]` were `ƒ` (Next 15 defaults GET route
+      handlers to dynamic), re-rastering a byte-identical PNG (satori + resvg) on every
+      hit — ~7.5 s Active CPU / ~64 invocations per 12 h in Observability. Added
+      `dynamic = "force-static"` (+ `generateStaticParams` from `ALLOWED_SPLASH_SIZES` for
+      the splash route); all now `○`/`●`, rendered once at build, 0 runtime CPU, 0 ISR
+      writes.
+    - **Measured 2026-08-30 (Observability → Functions, 12 h):** 774 invocations, 0 %
+      errors/timeouts, ~80 s total Active CPU across all routes, 0.30 GB-Hours.
+      **`/product/[id]` is 28 ms render CPU per hit** (217 hits, P75 84 ms) — the
+      `force-dynamic` + `unstable_cache` combo is already lean. **The on-demand-ISR change
+      is NOT warranted at this traffic** and it'd re-expose the ISR-write meter that hit
+      95 % earlier. Revisit only at ~10× traffic. `force-dynamic` on product pages stays.
 
 ## Active — Tier 4 (maintainability / observability)
 
