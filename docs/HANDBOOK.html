@@ -2655,6 +2655,20 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-31<br>04:10</code></td>
+  <td><strong>Viewport meta added to <code>HANDBOOK.html</code></strong><br>(mobile-first follow-up, PR&nbsp;4)</td>
+  <td>
+    The file is authored headless for Claude-artifact publishing, so the on-disk copy (the one
+    <code>CLAUDE.md</code> tells you to open) had no <code>&lt;meta name="viewport"&gt;</code> &mdash;
+    a phone then laid it out at ~980px and scaled down, which read as &ldquo;not mobile friendly&rdquo;
+    even though the CSS is mobile-first. Added bare <code>&lt;meta charset&gt;</code> +
+    <code>&lt;meta name="viewport"&gt;</code> at the top; when published the artifact wrapper injects
+    its own, so these are harmless duplicates there.
+  </td>
+  <td><code>docs/HANDBOOK.html</code></td>
+  <td>Static HTML/CSS. Re-checked in device mode at 294&nbsp;/&nbsp;390&nbsp;px &mdash; fills width, 16px text, tab strip scrolls. Re-published as the handbook artifact.</td>
+</tr>
+<tr>
   <td><code>2026-08-31<br>03:30</code></td>
   <td><strong>Handbook nav + spacing made mobile-first</strong><br>(docs consolidation, PR&nbsp;3)</td>
   <td>
