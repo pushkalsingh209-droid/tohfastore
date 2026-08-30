@@ -1,0 +1,978 @@
+<title>TOHFA Handbook</title>
+<!-- Self-contained: no CDN, no external fonts, zero scripts. System fonts,
+     inline SVG. Tab navigation is a pure-CSS radio-button group; the mobile
+     nav is a checkbox hamburger. Companion to docs/ARCHITECTURE.html (the
+     deep schema/route reference + dated Change log) -- this handbook is the
+     orientation layer: what the system is, how the code flows, how to work
+     on it, and how to run the store. -->
+<style>
+  :root{
+    --ground:#fbf7ec; --surface:#ffffff; --raise:#fdfaf1; --ink:#2b1a17; --muted:#6f5f54;
+    --line:#e6dcc6; --code-bg:#f4ecd9; --accent:#b45309; --accent-ink:#ffffff; --spine:#5b1a1d;
+    --ok:#3f7d34; --warn:#b45309; --bad:#a23a2a; --tag:#1d5fb0;
+    --shadow:0 1px 2px rgba(43,26,23,.05),0 8px 24px -12px rgba(43,26,23,.13);
+    --font-display:"Iowan Old Style","Palatino Linotype","URW Palladio L",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","Cascadia Mono","Segoe UI Mono","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0c0a09; --surface:#1a1613; --raise:#141019; --ink:#ece3d5; --muted:#a89a8b;
+      --line:#3a322b; --code-bg:#15110e; --accent:#e0a45c; --accent-ink:#1a1210; --spine:#cf9498;
+      --ok:#7fc06f; --warn:#e0a45c; --bad:#e08a75; --tag:#7aa9e0;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0c0a09; --surface:#1a1613; --raise:#141019; --ink:#ece3d5; --muted:#a89a8b;
+    --line:#3a322b; --code-bg:#15110e; --accent:#e0a45c; --accent-ink:#1a1210; --spine:#cf9498;
+    --ok:#7fc06f; --warn:#e0a45c; --bad:#e08a75; --tag:#7aa9e0;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{
+    margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--font-body);font-size:15px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:940px;margin:0 auto;padding:0 20px 96px}
+
+  /* --- header --- */
+  header.top{
+    border-bottom:3px solid var(--spine);background:var(--surface);
+    position:sticky;top:0;z-index:20;
+  }
+  header.top .inner{max-width:940px;margin:0 auto;padding:16px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header.top h1{
+    font-family:var(--font-display);font-size:21px;margin:0;font-weight:700;letter-spacing:.3px;
+    display:flex;align-items:center;gap:9px;
+  }
+  header.top .brass{width:22px;height:22px;flex:0 0 auto}
+  header.top .sub{color:var(--muted);font-size:12.5px;margin-left:auto}
+  header.top .sub a{color:var(--accent);text-decoration:none;font-weight:600}
+
+  /* --- pure-CSS tab machinery: :target selects the shown section; :has()
+         picks the default when the URL has no matching hash. Nav is real
+         anchors, so cross-tab links and browser back/forward work. --- */
+  input.navtoggle{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+
+  nav.tabs{
+    max-width:940px;margin:0 auto;padding:10px 20px 0;
+    display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);
+    background:var(--ground);position:sticky;top:57px;z-index:19;
+  }
+  nav.tabs a{
+    font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+    padding:9px 13px;border-radius:6px 6px 0 0;color:var(--muted);text-decoration:none;
+    border:1px solid transparent;border-bottom:none;white-space:nowrap;
+  }
+  nav.tabs a:hover{color:var(--ink);background:var(--raise)}
+  .burger{display:none}
+
+  main>section.tab{display:none;padding-top:26px}
+  main>section.tab, h2[id], h3[id], .wrap [id]{scroll-margin-top:112px}
+  /* a tab shows when it (or anything inside it, e.g. a TOC anchor) is the :target */
+  main>section.tab:target,
+  main>section.tab:has(:target){display:block}
+  /* default = Overview, when nothing anywhere in a tab is targeted */
+  body:not(:has(main>section.tab:target)):not(:has(main>section.tab :target)) #s-overview{display:block}
+
+  body:has(#s-overview:target) nav.tabs a[href="#s-overview"],
+  body:has(#s-overview :target) nav.tabs a[href="#s-overview"],
+  body:has(#s-flows:target)    nav.tabs a[href="#s-flows"],
+  body:has(#s-flows :target)   nav.tabs a[href="#s-flows"],
+  body:has(#s-dev:target)      nav.tabs a[href="#s-dev"],
+  body:has(#s-dev :target)     nav.tabs a[href="#s-dev"],
+  body:has(#s-owner:target)    nav.tabs a[href="#s-owner"],
+  body:has(#s-owner :target)   nav.tabs a[href="#s-owner"],
+  body:not(:has(main>section.tab:target)):not(:has(main>section.tab :target)) nav.tabs a[href="#s-overview"]{
+    color:var(--accent);background:var(--surface);border-color:var(--line);
+    box-shadow:inset 0 3px 0 var(--accent);
+  }
+
+  @media (max-width:640px){
+    nav.tabs{flex-direction:column;gap:0;padding:0;position:static;border-bottom:1px solid var(--line);display:none}
+    nav.tabs a{border-radius:0;letter-spacing:.4px;padding:12px 20px;border:none;border-bottom:1px solid var(--line)}
+    .navtoggle:checked ~ nav.tabs{display:flex}
+    .burger{
+      display:inline-flex;align-items:center;gap:7px;cursor:pointer;color:var(--accent);
+      font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+      border:1px solid var(--line);border-radius:6px;padding:7px 11px;margin-left:auto;
+    }
+    header.top .sub{width:100%;margin-left:0;order:3}
+  }
+
+  /* --- typography --- */
+  h2{
+    font-family:var(--font-display);font-size:25px;margin:0 0 6px;font-weight:700;
+    padding-bottom:8px;border-bottom:2px solid var(--line);
+  }
+  h2 .eyebrow{display:block;font-family:var(--font-body);font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+  h3{font-family:var(--font-display);font-size:18.5px;margin:30px 0 8px;font-weight:700;color:var(--ink)}
+  h4{font-size:13px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:20px 0 6px}
+  p{margin:9px 0}
+  ul,ol{margin:9px 0;padding-left:22px}
+  li{margin:5px 0}
+  a{color:var(--accent)}
+  strong{color:var(--ink)}
+  code{font-family:var(--font-mono);font-size:12.5px;background:var(--code-bg);border-radius:4px;padding:1.5px 5px}
+  pre{
+    background:var(--code-bg);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;overflow-x:auto;font-family:var(--font-mono);font-size:12.5px;line-height:1.55;margin:12px 0;
+  }
+  pre code{background:none;padding:0;font-size:inherit}
+  hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+
+  .lead{font-size:16.5px;color:var(--muted);margin:4px 0 20px}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:16px 0;box-shadow:var(--shadow)}
+  .card h3,.card h4{margin-top:0}
+
+  .note{border-left:3px solid var(--accent);background:var(--raise);border-radius:0 8px 8px 0;padding:12px 16px;margin:14px 0;font-size:14px}
+  .note.warn{border-left-color:var(--bad)}
+  .note.ok{border-left-color:var(--ok)}
+  .note b{display:block;font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);margin-bottom:3px}
+  .note.warn b{color:var(--bad)} .note.ok b{color:var(--ok)}
+
+  .x{overflow-x:auto;margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+  th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);background:var(--raise)}
+  td code{font-size:11.5px}
+
+  .steps{counter-reset:step;list-style:none;padding-left:0}
+  .steps>li{position:relative;padding-left:40px;margin:14px 0}
+  .steps>li::before{
+    counter-increment:step;content:counter(step);
+    position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;
+    background:var(--spine);color:#fff;font-family:var(--font-mono);font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .steps>li b{color:var(--ink)}
+
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:4px;vertical-align:middle}
+  .pill.get{background:rgba(29,95,176,.14);color:var(--tag)}
+  .pill.post{background:rgba(63,125,52,.16);color:var(--ok)}
+  .pill.warnp{background:rgba(162,58,42,.14);color:var(--bad)}
+
+  figure{margin:18px 0;text-align:center}
+  figure svg{max-width:100%;height:auto;background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:14px}
+  figcaption{font-size:12px;color:var(--muted);margin-top:6px}
+
+  .toc{font-size:13px;color:var(--muted);margin:6px 0 22px}
+  .toc a{text-decoration:none;font-weight:600}
+
+  svg text{font-family:var(--font-body)}
+</style>
+
+<input class="navtoggle" type="checkbox" id="navtoggle">
+
+<header class="top">
+  <div class="inner">
+    <h1>
+      <svg class="brass" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" aria-hidden="true">
+        <path d="M12 2c2 3 2 5 0 7-2-2-2-4 0-7Z"/><path d="M5 12h14l-2 8H7l-2-8Z"/><path d="M9 12v-2a3 3 0 0 1 6 0v2"/>
+      </svg>
+      TOHFA Handbook
+    </h1>
+    <label class="burger" for="navtoggle" aria-label="Toggle navigation">
+      <svg width="15" height="12" viewBox="0 0 15 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M0 1h15M0 6h15M0 11h15"/></svg>
+      Menu
+    </label>
+    <span class="sub">Companion to the deep reference: <a href="./ARCHITECTURE.html">ARCHITECTURE.html</a></span>
+  </div>
+</header>
+
+<nav class="tabs">
+  <a href="#s-overview">Overview</a>
+  <a href="#s-flows">Code Flows</a>
+  <a href="#s-dev">Developer Guide</a>
+  <a href="#s-owner">Admin &amp; Owner Guide</a>
+</nav>
+
+<main>
+
+<!-- ==================================================================== -->
+<!-- OVERVIEW / SYSTEM APPRECIATION                                        -->
+<!-- ==================================================================== -->
+<section class="tab" id="s-overview">
+<div class="wrap">
+
+  <h2><span class="eyebrow">System Appreciation</span>What TOHFA is, and why it's built this way</h2>
+  <p class="lead">TOHFA is a <strong>single-store</strong> Indian e-commerce site &mdash; premium brass
+  handicrafts and adjacent gifting categories, run by one owner from one admin panel. This page is the
+  orientation layer; <a href="./ARCHITECTURE.html">ARCHITECTURE.html</a> holds the exhaustive schema, every
+  migration and route, and the dated Change log.</p>
+
+  <div class="toc">On this tab:
+    <a href="#ov-stack">The stack</a> &middot;
+    <a href="#ov-shape">Shape of the system</a> &middot;
+    <a href="#ov-decisions">Design decisions &amp; the why</a> &middot;
+    <a href="#ov-model">How work gets done</a> &middot;
+    <a href="#ov-milestones">Recent milestones</a>
+  </div>
+
+  <h3 id="ov-stack">The stack</h3>
+  <div class="x"><table>
+    <thead><tr><th>Layer</th><th>Choice</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Framework</td><td>Next.js 16 (App Router, Turbopack)</td><td>React 19, TypeScript <strong>strict</strong>. Breaking changes vs older Next &mdash; check <code>node_modules/next/dist/docs/</code> before writing route/convention code.</td></tr>
+      <tr><td>Styling</td><td>Tailwind v4</td><td>Dark mode is class-based via a blocking script in <code>layout.tsx</code>.</td></tr>
+      <tr><td>Data</td><td>Supabase (Postgres + Storage)</td><td>Migrations are hand-run SQL in <code>supabase/migrations/</code> (no CLI wired). The two base tables (<code>products</code>, <code>orders</code>) have no migration file.</td></tr>
+      <tr><td>Payments</td><td>Razorpay &mdash; <strong>LIVE keys only</strong></td><td>No test keys on this project. Payment-path changes are proposals until watched against real orders.</td></tr>
+      <tr><td>Messaging</td><td>WhatsApp via Green API</td><td>Order confirmations, business alerts, back-in-stock, status updates, checkout OTP. Free tier has a monthly distinct-chat cap.</td></tr>
+      <tr><td>Email</td><td>Resend</td><td>Branded HTML order confirmations (business + customer copies).</td></tr>
+      <tr><td>Hosting</td><td>Vercel (Hobby, Fluid Compute)</td><td>The codebase is engineered to stay within Hobby meters (ISR writes, image optimization). Pro during festive/wedding season buys meter headroom only &mdash; no code change needed.</td></tr>
+      <tr><td>Observability</td><td>Vercel Observability + Axiom drain + Supabase Logs</td><td>Plus the app's own health signals &mdash; heartbeats, scheduled probes, WhatsApp alerts.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="ov-shape">Shape of the system</h3>
+  <figure>
+    <svg viewBox="0 0 720 300" role="img" aria-label="System context diagram">
+      <defs><marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--muted)"/></marker></defs>
+      <rect x="16" y="120" width="120" height="60" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="76" y="146" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">Browser</text>
+      <text x="76" y="164" text-anchor="middle" font-size="10.5" fill="var(--muted)">RSC HTML + client JS</text>
+
+      <rect x="250" y="70" width="200" height="160" rx="12" fill="var(--raise)" stroke="var(--accent)"/>
+      <text x="350" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)">Vercel &mdash; Next.js 16</text>
+      <rect x="266" y="104" width="168" height="30" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="350" y="123" text-anchor="middle" font-size="10.5" fill="var(--ink)">Server Components (cached reads)</text>
+      <rect x="266" y="140" width="168" height="30" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="350" y="159" text-anchor="middle" font-size="10.5" fill="var(--ink)">Route Handlers /api/* (writes)</text>
+      <rect x="266" y="176" width="168" height="30" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="350" y="195" text-anchor="middle" font-size="10.5" fill="var(--ink)">middleware.ts (admin gate)</text>
+
+      <rect x="566" y="24" width="138" height="44" rx="9" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="635" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">Supabase</text>
+      <text x="635" y="57" text-anchor="middle" font-size="9.5" fill="var(--muted)">Postgres + Storage + RLS</text>
+
+      <rect x="566" y="86" width="138" height="40" rx="9" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="635" y="110" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">Razorpay (LIVE)</text>
+      <rect x="566" y="140" width="138" height="40" rx="9" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="635" y="164" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">Green API / Resend</text>
+      <rect x="566" y="196" width="138" height="44" rx="9" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="635" y="214" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">cron-job.org</text>
+      <text x="635" y="229" text-anchor="middle" font-size="9.5" fill="var(--muted)">daily / 15-min pings</text>
+
+      <line x1="136" y1="150" x2="248" y2="150" stroke="var(--muted)" stroke-width="1.4" marker-end="url(#ah)"/>
+      <line x1="248" y1="140" x2="138" y2="140" stroke="var(--muted)" stroke-width="1.4" marker-end="url(#ah)"/>
+      <line x1="452" y1="110" x2="564" y2="52" stroke="var(--muted)" stroke-width="1.4" marker-end="url(#ah)"/>
+      <line x1="452" y1="150" x2="564" y2="106" stroke="var(--muted)" stroke-width="1.4" marker-end="url(#ah)"/>
+      <line x1="452" y1="165" x2="564" y2="160" stroke="var(--muted)" stroke-width="1.4" marker-end="url(#ah)"/>
+      <line x1="564" y1="218" x2="452" y2="192" stroke="var(--muted)" stroke-width="1.4" marker-end="url(#ah)"/>
+    </svg>
+    <figcaption>Every storefront read is a cached Server Component call. Every write, third-party call, or
+    live read is a Route Handler. The admin panel never touches Supabase from the browser &mdash; it goes
+    through <code>/api/admin/*</code> (password-gated) using the service role.</figcaption>
+  </figure>
+
+  <h3 id="ov-decisions">Design decisions &amp; the <em>why</em></h3>
+
+  <div class="card">
+    <h4>Server reads are cached; writes and live reads are not</h4>
+    <p>Storefront reads run in Server Components against <code>supabaseAdmin</code> (service role), wrapped in
+    <code>unstable_cache</code> (<code>app/utils/storeQueries.ts</code>) with tags and a 24&nbsp;h revalidate.
+    Writes, third-party calls, and genuinely-live reads (stock) are Route Handlers. <code>"server-only"</code>
+    guards the service-role client so it can never reach the browser bundle.</p>
+  </div>
+
+  <div class="card">
+    <h4>RLS is the security perimeter</h4>
+    <p>The Supabase anon/publishable key ships in every visitor's JS. So Row Level Security &mdash; not
+    application code &mdash; is what actually protects data. Because the admin panel goes through
+    password-gated <code>/api/admin/*</code> routes on the service role, the anon key can be (and is) locked
+    right down: orders, coupons, leads, admin sessions unreadable; hidden products and unapproved reviews
+    unreadable; no anon writes. A <strong>scheduled probe</strong> (<code>/api/cron/rls-check</code>) re-asserts
+    this against the live project daily and WhatsApps the business on any drift &mdash; this exact perimeter
+    was silently broken for months once by four stray policies.</p>
+  </div>
+
+  <div class="card">
+    <h4>Never trust the client at checkout</h4>
+    <p>Server-side, every time: re-price from the DB, re-validate the coupon, re-check stock and the
+    <code>hidden</code> flag, re-verify the WhatsApp OTP token. The item list, coupon, verified phone,
+    customer name and shipping address are read back from the <strong>Razorpay order notes</strong> the server
+    wrote at creation time &mdash; a tampered request can't claim a different, larger basket after paying.</p>
+  </div>
+
+  <div class="card">
+    <h4>Best-effort side effects never block the action</h4>
+    <p>WhatsApp / email / analytics sends are <code>try/catch</code> + <code>console.error</code>. A missing key
+    or a failed send is logged and swallowed &mdash; the order is still recorded, the status still changes.
+    Follow this pattern for anything non-critical.</p>
+  </div>
+
+  <div class="card">
+    <h4>Fail closed on security config</h4>
+    <p>Missing <code>ADMIN_PASSWORD</code> or <code>ADMIN_TOTP_SECRET</code> &rarr; the route 500s. No silent
+    fallback to a default. 5xx bodies are generic (<code>serverErrorResponse</code>); the real error is logged,
+    never echoed. 4xx validation messages are user-facing and fine.</p>
+  </div>
+
+  <div class="card">
+    <h4>Payments are idempotent by construction</h4>
+    <p><code>/api/razorpay-webhook</code> has two callers &mdash; the client fast-path (fires right after the
+    Razorpay modal succeeds, for a quicker confirmation) and Razorpay's own Dashboard webhook (independent
+    retries). Both are verified with the scheme appropriate to what that caller holds. A <code>SELECT payment_id</code>
+    check plus a <code>UNIQUE(payment_id)</code> constraint (migration&nbsp;0037) means a duplicate call
+    &mdash; from either path, in any order &mdash; can't insert a second order or deduct stock twice.</p>
+  </div>
+
+  <div class="card">
+    <h4>Two deliberate Hobby-plan choices &mdash; do not "fix" them</h4>
+    <ul>
+      <li><code>/product/[id]</code> and <code>/api/stock/[id]</code> are <code>force-dynamic</code>. Product
+      pages were SSG with <code>generateStaticParams</code> for ~156 products; every deploy and every
+      <code>revalidateTag("products")</code> regenerated all of them and hit 95% of the Hobby ISR-write quota.
+      Profiling since shows a product page renders in <strong>~28&nbsp;ms of CPU</strong> because its data is
+      still <code>unstable_cache</code>d &mdash; so dynamic rendering costs almost nothing and writes nothing.</li>
+      <li><code>images.unoptimized: true</code> in <code>next.config.ts</code> &mdash; protects the Hobby
+      image-optimization meter. Small-thumbnail contexts (cart, wishlist, admin list) use a build-time
+      <code>-thumb.webp</code> variant via <code>attachThumbUrls</code> instead.</li>
+    </ul>
+    <p>Both are reversible one-liners <em>if</em> the plan changes for good &mdash; but the default is
+    Hobby-ready.</p>
+  </div>
+
+  <div class="card">
+    <h4>The system watches itself</h4>
+    <p>A keepalive heartbeat (keeps the Green API instance warm, stamps a timestamp), the RLS probe, and a
+    <code>product_sales</code> reconcile job all run on an external scheduler and <strong>WhatsApp the
+    business on failure</strong>. Staleness of each is surfaced as an amber card on the admin
+    <strong>Overview</strong> tab, so a dead scheduler shows on the dashboard instead of failing silent.</p>
+  </div>
+
+  <h3 id="ov-model">How work gets done</h3>
+  <p>Every multi-change piece of work follows one loop: <strong>batch &rarr; verify &rarr; document &rarr;
+  deploy &rarr; recommend</strong>. One PR open at a time &mdash; finish it, merge, <code>git checkout main
+  &amp;&amp; git pull</code>, delete the branch, then start the next. <code>main</code> is branch-protected;
+  a direct push is rejected and CI's <code>verify</code> check (<code>tsc</code> + <code>npm test</code> +
+  <code>next build</code>) must pass. Documentation (this file's companion <code>ARCHITECTURE.html</code>
+  &mdash; affected sections + a dated Change-log row) is updated <em>before</em> the merge, never after.
+  Full detail on the <strong>Developer Guide</strong> tab.</p>
+
+  <div class="note"><b>Cost / liability guardrail</b>
+  Nothing that incurs a paid service or plan, and nothing that changes the payment / order / webhook path in
+  a way that could lose orders, double-charge, or mis-refund, ships without an explicit owner go-ahead. These
+  are flagged <code>&#128176;</code> / <code>&#9888;</code> in <code>IMPROVEMENTS.md</code>.</div>
+
+  <h3 id="ov-milestones">Recent milestones</h3>
+  <ul>
+    <li><strong>3-step checkout</strong> (#17) &mdash; the cart drawer's inline single form became a
+    contact&nbsp;&rarr;&nbsp;delivery&nbsp;&rarr;&nbsp;review sheet driven by a pure <code>useReducer</code>
+    state machine (<code>useCheckoutMachine</code>). Legacy path deleted.</li>
+    <li><strong>Short-TTL stock reservation</strong> (#1, migration 0043) &mdash; a checkout holds its items
+    for 15&nbsp;min so two shoppers can't buy the last handmade piece at once. Ships behind a
+    <code>site_settings</code> kill switch.</li>
+    <li><strong>Typed Supabase clients</strong> (#15) &mdash; <code>createClient&lt;Database&gt;</code>
+    everywhere, generated <code>types/db.ts</code>.</li>
+    <li><strong>Admin page split</strong> (#16) &mdash; <code>app/admin/page.tsx</code> went 3,689 &rarr;
+    231 lines; all seven tabs are lazy per-tab components sharing <code>AdminDataContext</code>.</li>
+    <li><strong>Lint debt cleared</strong> (#19) &mdash; <code>eslint .</code> 246 &rarr; 28 problems,
+    <strong>0 errors</strong>; <code>no-explicit-any</code> 174 &rarr; 0.</li>
+    <li><strong>Scheduled RLS probe</strong> (#3) + <strong>phone normalisation</strong> (#18) +
+    <strong>Fluid-CPU pass</strong> (narrowed the catalog <code>SELECT</code>, made the PWA icon/splash routes
+    static).</li>
+  </ul>
+  <p>The canonical, dated record of every change is the <strong>Change log</strong> table in
+  <a href="./ARCHITECTURE.html#changelog">ARCHITECTURE.html</a>.</p>
+
+</div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- CODE FLOWS                                                            -->
+<!-- ==================================================================== -->
+<section class="tab" id="s-flows">
+<div class="wrap">
+
+  <h2><span class="eyebrow">Code Flows</span>How a request actually moves through the code</h2>
+  <p class="lead">Eight walkthroughs, source-of-truth files named at each step. Read alongside the route table
+  and checkout section in <a href="./ARCHITECTURE.html">ARCHITECTURE.html</a>.</p>
+
+  <div class="toc">Flows:
+    <a href="#fl-storefront">1 Storefront render</a> &middot;
+    <a href="#fl-pdp">2 Product detail</a> &middot;
+    <a href="#fl-checkout">3 Cart &rarr; 3-step checkout</a> &middot;
+    <a href="#fl-pay">4 Create payment</a> &middot;
+    <a href="#fl-webhook">5 Payment webhook</a> &middot;
+    <a href="#fl-admin">6 Admin save &rarr; cache bust</a> &middot;
+    <a href="#fl-resv">7 Reservation lifecycle</a> &middot;
+    <a href="#fl-cron">8 Scheduled jobs</a>
+  </div>
+
+  <h3 id="fl-storefront">1 &nbsp;Storefront render &nbsp;<span class="pill get">RSC</span></h3>
+  <p><code>/</code> and <code>/collections/[category]</code> both render through
+  <code>app/components/StorefrontPage.tsx</code> (an async Server Component).</p>
+  <ol class="steps">
+    <li><b>Bootstrap + catalog in parallel.</b> <code>Promise.all</code> over
+    <code>getHiddenCategoryNames</code>, <code>getPublicCoupons</code>, <code>getCategorySliderItems</code>,
+    <code>getTotalProductCount</code>, <code>getBestsellers</code>, <code>getSiteSettings</code>,
+    <code>getActiveLabelNames</code> &mdash; all <code>unstable_cache</code>d (<code>app/utils/storeQueries.ts</code>),
+    tag <code>products</code> / <code>categories</code> / <code>site-settings</code>, 24&nbsp;h revalidate.</li>
+    <li><b>Page + page size.</b> An explicit visitor <code>?pageSize=</code> wins; else the category's own
+    override; else the site-wide default.</li>
+    <li><b>The listing.</b> <code>getCatalogPage(page, pageSize, category, sort, hiddenCategories, inStockOnly,
+    label)</code> &mdash; one indexed count, one ranged <code>SELECT</code> of only the ~17 columns a card
+    renders, then <code>attachThumbUrls</code> + <code>getSoldCounts</code> (also cached).</li>
+    <li><b>Client hand-off.</b> Products go to <code>CatalogSection</code> (client) which reveals cards in
+    batches as the shopper scrolls and unmounts far-off-screen cards to bound decoded-image count.</li>
+    <li><b>Per-card live stock.</b> Each <code>ProductCard</code>'s <code>LiveStock</code> child fetches
+    <code>/api/stock/[id]</code> on mount &mdash; the one figure that must never be stale.</li>
+  </ol>
+
+  <h3 id="fl-pdp">2 &nbsp;Product detail &nbsp;<span class="pill get">force-dynamic</span></h3>
+  <ol class="steps">
+    <li><b>Param.</b> The route param is <code>&lt;id&gt;-&lt;slug&gt;</code>; <code>productIdFromParam</code>
+    extracts the id. A bare or stale slug &rarr; <code>permanentRedirect</code> to the canonical URL.</li>
+    <li><b>Fetch.</b> <code>getProduct(id)</code> (<code>unstable_cache</code>, tag <code>products</code>).
+    Returns <code>null</code> if name or price is null; hidden or missing &rarr; a "not found" body.</li>
+    <li><b>Render.</b> Gallery, breadcrumbs, JSON-LD, related products (<code>getRelatedProducts</code>).
+    Live stock &amp; recent-viewer count are fetched client-side.</li>
+  </ol>
+
+  <h3 id="fl-checkout">3 &nbsp;Cart &rarr; 3-step checkout</h3>
+  <figure>
+    <svg viewBox="0 0 700 120" role="img" aria-label="Checkout state machine">
+      <defs><marker id="ah2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--accent)"/></marker></defs>
+      <g font-size="11" font-weight="700" text-anchor="middle">
+        <rect x="10" y="42" width="94" height="34" rx="8" fill="var(--surface)" stroke="var(--line)"/><text x="57" y="64" fill="var(--ink)">contact</text>
+        <rect x="140" y="42" width="94" height="34" rx="8" fill="var(--surface)" stroke="var(--line)"/><text x="187" y="64" fill="var(--ink)">delivery</text>
+        <rect x="270" y="42" width="94" height="34" rx="8" fill="var(--surface)" stroke="var(--line)"/><text x="317" y="64" fill="var(--ink)">review</text>
+        <rect x="400" y="42" width="94" height="34" rx="8" fill="var(--raise)" stroke="var(--accent)"/><text x="447" y="64" fill="var(--accent)">paying</text>
+        <rect x="530" y="42" width="120" height="34" rx="8" fill="var(--raise)" stroke="var(--accent)"/><text x="590" y="64" fill="var(--accent)">razorpayOpen</text>
+      </g>
+      <g stroke="var(--accent)" stroke-width="1.5" marker-end="url(#ah2)">
+        <line x1="104" y1="59" x2="138" y2="59"/><line x1="234" y1="59" x2="268" y2="59"/>
+        <line x1="364" y1="59" x2="398" y2="59"/><line x1="494" y1="59" x2="528" y2="59"/>
+      </g>
+      <path d="M590 78 C590 105 447 105 447 78" fill="none" stroke="var(--muted)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah2)"/>
+      <text x="518" y="112" text-anchor="middle" font-size="10" fill="var(--muted)">modal dismissed / failed &rarr; release hold, back to review</text>
+    </svg>
+    <figcaption><code>app/components/checkout/useCheckoutMachine.ts</code> &mdash; a pure <code>useReducer</code>.
+    The <code>phase</code> <em>is</em> the step. It holds only phase, OTP sub-state, cooldown, and
+    <code>{token, phone}</code> &mdash; never typed field values (those live in <code>CheckoutSheet</code>).</figcaption>
+  </figure>
+  <ol class="steps">
+    <li><b>Cart.</b> <code>CartContext</code> (localStorage-backed) &rarr; <code>CartDrawer</code> shows the bag;
+    "Proceed to Checkout" mounts <code>CheckoutSheet</code>, which takes over the drawer.</li>
+    <li><b>Contact step.</b> Name / email / phone, then WhatsApp OTP: <code>POST /api/whatsapp-otp/send</code>
+    &rarr; <code>POST /api/whatsapp-otp/verify</code> returns a short-lived token. A one-time
+    <code>checkout_started</code> lead beacon fires per phone.</li>
+    <li><b>Delivery step.</b> Pincode-first address form.</li>
+    <li><b>Review step.</b> Collapsible order summary, coupon field with a tap-to-apply list of live public
+    coupons (<code>GET /api/coupons/public</code>), bilingual cancellation/refund consent (required).</li>
+    <li><b>Pay.</b> The sheet footer button calls <code>handleRazorpayPayment</code> &rarr; Flow 4.</li>
+  </ol>
+
+  <h3 id="fl-pay">4 &nbsp;Create payment &nbsp;<span class="pill post">POST /api/razorpay</span></h3>
+  <ol class="steps">
+    <li><b>Re-price.</b> <code>repriceCart(clientItems, dbProducts, categoryGstRates)</code> &mdash; price,
+    GST rate, category and image come from the DB row, not the request. Any item no longer available &rarr; 400.</li>
+    <li><b>Re-validate.</b> Coupon re-checked (exists, active, not expired, under max uses). Stock and
+    <code>hidden</code> re-checked. OTP token re-verified.</li>
+    <li><b>Reserve (if enabled).</b> If <code>site_settings.stock_reservations_enabled === '1'</code>:
+    <code>checkoutToken = randomUUID()</code>, then <code>reserve_stock(token, pricedItems, 900)</code>.
+    Not enough stock &rarr; 400 <code>stock_unavailable</code>; RPC error &rarr; 500 (fail closed).</li>
+    <li><b>Create the Razorpay order</b> with server-authored <code>notes</code>: <code>items</code>
+    (JSON), <code>couponCode</code>, <code>verifiedPhone</code>, <code>checkoutToken</code>,
+    <code>customerName</code>, <code>shippingAddress</code>. Return <code>{ orderId, checkoutToken }</code>.</li>
+    <li><b>Client</b> opens the Razorpay modal with that <code>orderId</code>. On success it fires the
+    webhook fast-path and redirects to <code>/success</code>. On dismiss/failure it calls
+    <code>POST /api/checkout/release</code> with the token and returns to the review step.</li>
+  </ol>
+
+  <h3 id="fl-webhook">5 &nbsp;Payment webhook &nbsp;<span class="pill post">POST /api/razorpay-webhook</span> <span class="pill warnp">payment path</span></h3>
+  <ol class="steps">
+    <li><b>Tell the callers apart.</b> An <code>x-razorpay-signature</code> header &rarr; Dashboard webhook,
+    verify the webhook HMAC. No header &rarr; client fast-path, verify the payment signature. Missing/invalid
+    &rarr; 401.</li>
+    <li><b>Idempotency.</b> <code>SELECT id FROM orders WHERE payment_id = ?</code> &rarr; already recorded,
+    return early.</li>
+    <li><b>Trust nothing from the body.</b> <code>razorpay.payments.fetch</code> + <code>orders.fetch</code>.
+    Confirm <code>status === "captured"</code> and the order id matches. Read <code>items</code> / coupon /
+    verified phone / name / address from the <strong>order notes</strong>.</li>
+    <li><b>Normalise the items.</b> <code>normalizeOrderItems(notes.items)</code> &mdash; every entry coerced
+    to finite <code>price</code>/<code>quantity</code> and a real per-item <code>gstRate</code> before any
+    total is computed. A well-formed note is returned unchanged (8 unit tests pin this).</li>
+    <li><b>Insert the order.</b> Unique <code>payment_id</code> violation (23505) &rarr; lost the race,
+    already recorded, done.</li>
+    <li><b>Coupon.</b> If one was used, <code>used_count + 1</code> and <code>revalidateTag("coupons")</code>.</li>
+    <li><b>Deduct stock.</b> With a <code>checkoutToken</code>: <code>consume_reservation(token)</code>
+    (row-locks each product, decrements clamped at 0, marks the hold consumed, returns per-line
+    <code>new_inventory</code> / <code>oversold_by</code>). No live hold &rarr; fall through to the legacy
+    per-item <code>decrement_inventory</code> loop (migration 0041). Oversell / low-stock alerts fire from
+    the returned rows.</li>
+    <li><b>Units-sold tally.</b> <code>apply_product_sales(items, +1)</code> (migration 0042).</li>
+    <li><b>Notify.</b> Build the summary once; send business + customer WhatsApp (with a hero image) and both
+    Resend emails. All best-effort &mdash; a failure logs and is swallowed.</li>
+  </ol>
+  <div class="note"><b>Deliberately absent</b>
+  No <code>revalidateTag("products")</code> or <code>"orders")</code> here. Those tags are read on every
+  product and catalog page, so firing them per sale scheduled a full-storefront regeneration &mdash; the
+  single biggest source of metered ISR writes. "N sold" and the bestsellers strip are fine slightly stale
+  and refresh on their own 24&nbsp;h window; live stock is read client-side per request.</div>
+
+  <h3 id="fl-admin">6 &nbsp;Admin save &rarr; cache bust</h3>
+  <ol class="steps">
+    <li><b>The panel never talks to Supabase directly.</b> A tab calls <code>apiRequest("/api/admin/&hellip;",
+    { method })</code> (<code>app/admin/lib/apiRequest.ts</code>); the route is password-gated by
+    <code>middleware.ts</code> and uses the service role.</li>
+    <li><b>Write</b> to Postgres.</li>
+    <li><b>Invalidate</b> &mdash; <code>revalidateTag("products" | "categories" | "coupons" | "reviews" |
+    "site-settings" | "labels", "max")</code>. The storefront's Data Cache entry for that tag is rebuilt on
+    the next read (a cheap refetch &mdash; <em>not</em> an ISR page regeneration on the dynamic routes).</li>
+    <li><b>Local state.</b> The tab updates its slice of <code>AdminDataContext</code> (or calls
+    <code>refetch</code>) so the panel reflects the change without a reload.</li>
+  </ol>
+  <div class="note warn"><b>Do not do this</b>
+  "Do a trivial admin save to bust the cache" is <em>not</em> a valid fix for a stale storefront &mdash; each
+  such save fires <code>revalidateTag("products")</code>. When product pages were SSG that regenerated ~156
+  pages per save and helped push the ISR-write meter to 95%.</div>
+
+  <h3 id="fl-resv">7 &nbsp;Reservation lifecycle</h3>
+  <figure>
+    <svg viewBox="0 0 640 130" role="img" aria-label="Reservation state lifecycle">
+      <defs><marker id="ah3" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--muted)"/></marker></defs>
+      <g font-size="11" font-weight="700" text-anchor="middle">
+        <rect x="20" y="48" width="96" height="34" rx="8" fill="var(--raise)" stroke="var(--accent)"/><text x="68" y="70" fill="var(--accent)">held</text>
+        <rect x="270" y="10" width="120" height="34" rx="8" fill="var(--surface)" stroke="var(--ok)"/><text x="330" y="32" fill="var(--ok)">consumed</text>
+        <rect x="270" y="86" width="120" height="34" rx="8" fill="var(--surface)" stroke="var(--line)"/><text x="330" y="108" fill="var(--muted)">released</text>
+        <rect x="470" y="48" width="150" height="34" rx="8" fill="var(--surface)" stroke="var(--line)"/><text x="545" y="70" fill="var(--muted)">expired &rarr; trimmed</text>
+      </g>
+      <g stroke="var(--muted)" stroke-width="1.4" fill="none" marker-end="url(#ah3)">
+        <path d="M116 58 C200 40 220 30 268 27"/>
+        <path d="M116 72 C200 92 220 100 268 103"/>
+        <path d="M116 65 C280 130 380 120 468 70"/>
+      </g>
+      <g font-size="9.5" fill="var(--muted)">
+        <text x="185" y="30">webhook: consume_reservation(token)</text>
+        <text x="185" y="122">/api/checkout/release (modal dismissed / failed)</text>
+        <text x="330" y="66">cron abandoned-checkout: DELETE where expires_at &lt; now()-1d</text>
+      </g>
+    </svg>
+    <figcaption>Created at <code>/api/razorpay</code> when reservations are enabled (migration 0043). Only
+    <strong>consumed</strong> actually decrements inventory; <strong>held</strong> just makes the units
+    unavailable to a concurrent checkout for 15&nbsp;min.</figcaption>
+  </figure>
+
+  <h3 id="fl-cron">8 &nbsp;Scheduled jobs</h3>
+  <div class="x"><table>
+    <thead><tr><th>Route</th><th>Cadence</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><code>/api/keepalive</code></td><td>every 15 min (cron-job.org) + 03:00 Vercel cron</td><td>Pings Green API to keep the WhatsApp instance warm; upserts <code>last_keepalive_at</code> + Green API state/error.</td></tr>
+      <tr><td><code>/api/cron/rls-check</code></td><td>daily</td><td>Builds an anon client, runs <code>checkRlsPerimeter</code>; any violation &rarr; business WhatsApp + 500. <code>{status:"skipped"}</code> if no anon key.</td></tr>
+      <tr><td><code>/api/cron/product-sales-reconcile</code></td><td>daily</td><td>Recomputes the units-sold tally from every non-cancelled order, diffs against the <code>product_sales</code> aggregate; drift &rarr; alert. <code>?heal=1</code> also writes the corrected values (run by hand after sanity-checking).</td></tr>
+      <tr><td><code>/api/cron/abandoned-checkout</code></td><td>daily + 06:00 Vercel cron</td><td>Nudges abandoned carts; trims reservation rows older than 1 day; stamps <code>last_abandoned_checkout_run_at</code>.</td></tr>
+    </tbody>
+  </table></div>
+  <p>All four take <code>Authorization: Bearer &lt;CRON_SECRET&gt;</code> when that env var is set (it is).
+  Vercel Hobby caps its own cron at 2 entries &mdash; hence the external scheduler for the rest. Each job
+  stamps a <code>site_settings</code> heartbeat and its staleness shows as an amber card on admin
+  <strong>Overview</strong>.</p>
+
+</div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- DEVELOPER GUIDE                                                       -->
+<!-- ==================================================================== -->
+<section class="tab" id="s-dev">
+<div class="wrap">
+
+  <h2><span class="eyebrow">Developer Guide</span>Setting up, the conventions, and the how-to playbooks</h2>
+
+  <div class="toc">
+    <a href="#dev-setup">Setup</a> &middot;
+    <a href="#dev-commands">Commands</a> &middot;
+    <a href="#dev-layout">Repo layout</a> &middot;
+    <a href="#dev-style">Code style</a> &middot;
+    <a href="#dev-agreement">The working agreement</a> &middot;
+    <a href="#dev-playbooks">Playbooks</a> &middot;
+    <a href="#dev-testing">Testing</a> &middot;
+    <a href="#dev-gotchas">Gotchas</a> &middot;
+    <a href="#dev-obs">Observability</a>
+  </div>
+
+  <h3 id="dev-setup">Setup</h3>
+  <ol>
+    <li><code>git clone</code>, <code>npm install</code>.</li>
+    <li>Create <code>.env.local</code>. <strong>There is no <code>.env.local.example</code>.</strong> Populate
+    it from &sect;4 of <code>docs/ARCHITECTURE.html</code> (Supabase URL + keys, Razorpay LIVE keys +
+    webhook secret, Green API, Resend, <code>ADMIN_PASSWORD</code>, <code>ADMIN_TOTP_SECRET</code>,
+    <code>CRON_SECRET</code>, &hellip;).</li>
+    <li><code>npm run dev</code> &rarr; <code>http://localhost:3000</code>. CSP is disabled in dev.</li>
+    <li>Migrations are hand-run SQL &mdash; open <code>supabase/migrations/*.sql</code> in order in the
+    Supabase SQL editor. There is no <code>supabase db push</code> wired up.</li>
+  </ol>
+
+  <h3 id="dev-commands">Commands</h3>
+  <div class="x"><table>
+    <thead><tr><th>Task</th><th>Command</th></tr></thead>
+    <tbody>
+      <tr><td>Dev server</td><td><code>npm run dev</code></td></tr>
+      <tr><td>Production build (route analysis + typecheck; ~2&ndash;4&nbsp;min)</td><td><code>npx next build</code></td></tr>
+      <tr><td>Typecheck only</td><td><code>npx tsc --noEmit</code></td></tr>
+      <tr><td>Unit tests (Vitest)</td><td><code>npm test</code></td></tr>
+      <tr><td>One test file</td><td><code>npx vitest run app/utils/&lt;name&gt;.test.ts</code></td></tr>
+      <tr><td>Lint</td><td><code>npm run lint</code> &mdash; <strong>0 errors</strong>, 28 intentional warnings (the SSR "hydrate on mount" <code>set-state-in-effect</code> pattern, downgraded to <code>warn</code> on purpose). Next 16 does not run ESLint during <code>next build</code>.</td></tr>
+      <tr><td>Regenerate DB types</td><td><code>npm run gen:types</code> (Management API, no Docker)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="dev-layout">Repo layout</h3>
+  <pre><code>app/
+  layout.tsx                 async RSC: getBootstrapData() -&gt; one BootstrapProvider
+  page.tsx / collections/[category]/page.tsx  -&gt; &lt;StorefrontPage&gt;
+  product/[id]/page.tsx      force-dynamic PDP
+  success/page.tsx           post-payment receipt (sessionStorage fast path)
+  wishlist/  cart via context  about/ contact/ corporate/ privacy/ terms/ refunds/
+  components/                ProductCard, CatalogSection, CartDrawer,
+                             checkout/ (CheckoutSheet + steps/ + useCheckoutMachine)
+  context/                   Cart, Wishlist, Bootstrap (settings/units/labels/discounts)
+  utils/                     storeQueries, repricing, gst, pricing, whatsapp,
+                             greenApi, razorpaySignature, slug, stock, phone, ...
+  api/
+    razorpay/  razorpay-webhook/  whatsapp-otp/{send,verify}/
+    coupons/{public,validate}/  stock/[id]/  checkout/release/
+    admin/*    (password-gated; service role)
+    cron/{rls-check,product-sales-reconcile,abandoned-checkout}/  keepalive/
+  admin/
+    page.tsx                 ~231-line shell: auth gate + loadAll() + ?tab= + &lt;AdminDataProvider&gt;
+    AdminDataContext.tsx     the shared slice each tab reads
+    lib/apiRequest.ts        the only fetch wrapper the tabs use
+    tabs/                    Overview, Products, Orders, Coupons, Settings, Reviews, Security
+supabase/migrations/         0001..0043 hand-run SQL
+docs/                        ARCHITECTURE.html (deep reference), HANDBOOK.html (this),
+                             DESIGN-*.md, IMPROVEMENTS.md
+.claude/skills/              audit-perf.md, audit-security.md, refactor.md</code></pre>
+
+  <h3 id="dev-style">Code style &mdash; match the surrounding file</h3>
+  <ul>
+    <li><strong>Comments carry the <em>why</em>.</strong> This codebase is densely commented with the
+    reasoning behind non-obvious choices (cost trade-offs, race windows, "deliberately not X"). A new
+    non-obvious decision gets a comment naming the alternative you rejected.</li>
+    <li><strong>Server vs client.</strong> Storefront reads &rarr; Server Components + <code>supabaseAdmin</code>
+    + <code>unstable_cache</code>. Writes / third-party / live reads &rarr; Route Handlers.
+    <code>"server-only"</code> guards the service-role client.</li>
+    <li><strong>Best-effort side effects</strong> &rarr; <code>try/catch</code> + log, never block.</li>
+    <li><strong>Fail closed on security config</strong> &mdash; missing secret &rarr; 500, no default.</li>
+    <li><strong>Never trust the client at checkout</strong> &mdash; re-price, re-validate, re-check, server-side.</li>
+    <li><strong>Shared constants over "keep in sync" comments</strong> (e.g. <code>app/utils/stock.ts</code>).</li>
+    <li><strong>5xx bodies are generic</strong> &mdash; <code>serverErrorResponse</code> from
+    <code>app/utils/apiError.ts</code>; log the real error, don't echo it. 4xx validation messages are
+    user-facing and fine.</li>
+    <li>TypeScript strict; path alias <code>@/*</code> &rarr; repo root (mirrored in <code>vitest.config.ts</code>).
+    Tailwind v4; class-based dark mode.</li>
+    <li><strong>Docs are self-contained</strong> &mdash; <code>ARCHITECTURE.html</code> and this file stay
+    CDN-free: system fonts, inline SVG, no <code>&lt;script&gt;</code>, no external assets.</li>
+  </ul>
+
+  <h3 id="dev-agreement">The working agreement &mdash; batch &rarr; verify &rarr; document &rarr; deploy &rarr; recommend</h3>
+  <ol class="steps">
+    <li><b>Batch.</b> Group related changes, keep the diff surgical. <strong>One PR at a time.</strong> Finish
+    a batch, push its branch, wait for merge, then <code>git checkout main &amp;&amp; git pull</code> and
+    delete the branch <em>before</em> the next. Never two PRs open (they collide at the top of
+    <code>IMPROVEMENTS.md</code> and the Change-log table).</li>
+    <li><b>Verify.</b> <code>npx next build</code> (exit 0), <code>npx tsc --noEmit</code>, <code>npm test</code>,
+    <code>npx eslint &lt;changed&gt;</code> (no new errors vs. the 0-error / 28-warning baseline). Report the
+    real results. A payment-path change with no live Razorpay is a <em>proposal</em>, not done.</li>
+    <li><b>Document &mdash; this GATES the deploy.</b> Before merging: update <code>docs/ARCHITECTURE.html</code>
+    (affected sections + a new dated Change-log row: date/time IST, files touched, how verified), and this
+    handbook if a flow or guide changed. Re-strip the skeleton and re-publish the artifact. Move shipped
+    items to Done in <code>IMPROVEMENTS.md</code>.</li>
+    <li><b>Deploy</b> (only on the owner's word, only after step 3). <code>main</code> is branch-protected
+    &mdash; push the branch, open a PR, wait for the <code>verify</code> check (CI: <code>tsc</code> +
+    <code>npm test</code> + <code>next build</code>), re-verify the merged HEAD, merge. Then sync main and
+    delete the branch.</li>
+    <li><b>Recommend.</b> End with a short prioritised "what next" &mdash; new issues, deferrals, follow-ups.
+    Durable ones go into <code>IMPROVEMENTS.md</code>.</li>
+  </ol>
+  <div class="note warn"><b>Guardrail</b>
+  No paid service / plan, and no payment&nbsp;/&nbsp;order&nbsp;/&nbsp;webhook change that could lose orders,
+  double-charge, or mis-refund &mdash; without an explicit owner go-ahead. Flagged
+  <code>&#128176;</code>&nbsp;/&nbsp;<code>&#9888;</code> in <code>IMPROVEMENTS.md</code>.</div>
+
+  <h3 id="dev-playbooks">Playbooks</h3>
+
+  <div class="card">
+    <h4>Add a storefront read</h4>
+    <p>New function in <code>app/utils/storeQueries.ts</code>, wrapped in <code>unstable_cache</code> with the
+    right tag and a <code>revalidate</code>. <strong>Narrow the <code>select(...)</code></strong> to the
+    columns actually rendered &mdash; not <code>select("*")</code>. Consuming Server Component just
+    <code>await</code>s it.</p>
+  </div>
+
+  <div class="card">
+    <h4>Add an admin write</h4>
+    <p><code>app/api/admin/&lt;thing&gt;/route.ts</code>, service role, do the write, then
+    <code>revalidateTag(&lt;tag&gt;, "max")</code>. The tab calls it through
+    <code>apiRequest</code> and updates its context slice (or calls <code>refetch</code>).</p>
+  </div>
+
+  <div class="card">
+    <h4>Add a migration</h4>
+    <p><code>supabase/migrations/NNNN_name.sql</code>, hand-run in order.
+    <strong>Grant gotcha:</strong> <code>revoke &hellip; from public</code> on a <code>SECURITY DEFINER</code>
+    function also strips <code>service_role</code>'s inherited grant &mdash; you must
+    <code>grant execute &hellip; to service_role</code> explicitly (see 0041/0042/0043). Then update
+    ARCHITECTURE's schema/migrations section + a Change-log row, and run
+    <code>npm run gen:types</code>.</p>
+  </div>
+
+  <div class="card">
+    <h4>Add a site setting</h4>
+    <p>A key in <code>site_settings</code>; a parser in <code>app/utils/bootstrapSettings.ts</code> (with a
+    test); a field in the admin <strong>Settings</strong> tab; the write route calls
+    <code>revalidateTag("site-settings")</code>. Read it from <code>getSiteSettings()</code> /
+    <code>BootstrapProvider</code>, never <code>process.env</code>.</p>
+  </div>
+
+  <div class="card">
+    <h4>Add an admin tab</h4>
+    <p>Add the key to <code>ADMIN_TABS</code> in <code>app/admin/page.tsx</code> + a
+    <code>{ key, label }</code> nav entry. The tab is <code>app/admin/tabs/&lt;Key&gt;Tab.tsx</code>
+    (default export), <code>const XTab = dynamic(() =&gt; import(&hellip;), { ssr:false })</code> at the page's
+    module top, rendered as <code>{activeTab === "&lt;key&gt;" &amp;&amp; &lt;XTab /&gt;}</code>. Shared data
+    still loads in <code>loadAll()</code>; the tab reads its slice via <code>useAdminData()</code> (add the
+    field to <code>AdminData</code> and the provider value). Tab-local state (form drafts, filters) lives
+    <em>in</em> the tab.</p>
+  </div>
+
+  <div class="card">
+    <h4>Add a cron route</h4>
+    <p><code>app/api/cron/&lt;name&gt;/route.ts</code>, <code>GET</code>, gate on
+    <code>Authorization: Bearer CRON_SECRET</code> when set, <code>export const dynamic = "force-dynamic"</code>.
+    Vercel Hobby cron caps at 2 &mdash; document that an external scheduler (cron-job.org) must hit it.
+    Stamp a <code>site_settings</code> heartbeat and surface staleness on admin Overview (pattern:
+    the keepalive card).</p>
+  </div>
+
+  <div class="card">
+    <h4>Add a request-independent image/OG route</h4>
+    <p>Next 15+ defaults a <code>GET</code> route handler to <em>dynamic</em>. If the output never varies by
+    request (icons, splash screens, static OG), add <code>export const dynamic = "force-static"</code>
+    (+ <code>generateStaticParams</code> for a dynamic segment) so it rasters once at build, not per hit.</p>
+  </div>
+
+  <h3 id="dev-testing">Testing</h3>
+  <p>Vitest, ~110 tests. Covered: money math &amp; GST breakdown, Razorpay signatures, TOTP, backup codes,
+  client-IP extraction, Indian phone normalisation, cart repricing, reservation availability
+  (<code>computeAvailability</code>), the RLS perimeter (one env-gated case calling
+  <code>checkRlsPerimeter</code>), and <code>normalizeOrderItems</code> (incl. a round-trip proving a
+  well-formed order note is returned unchanged).</p>
+  <div class="note warn"><b>Payment-path changes</b>
+  Razorpay is LIVE-only here &mdash; no test keys. A change to <code>/api/razorpay</code>,
+  <code>/api/razorpay-webhook</code>, or the GST / coupon / signature utils lands <em>behind tests</em>, is
+  written up with its rationale, is <strong>never merged blind</strong>, and is treated as a proposal until
+  the owner has watched it against 2&ndash;3 real orders.</div>
+
+  <h3 id="dev-gotchas">Gotchas</h3>
+  <ul>
+    <li><strong>Data Cache &ne; ISR writes.</strong> <code>unstable_cache</code> uses the Vercel Data Cache
+    &mdash; a large, cheap meter. ISR <em>writes</em> (page regeneration) are the tight Hobby meter, and why
+    <code>/product/[id]</code> is <code>force-dynamic</code>.</li>
+    <li><strong>Postgres grant gotcha</strong> (see the migration playbook above).</li>
+    <li><strong>CRLF + node <code>fs</code>.</strong> Files on disk have CRLF; a multi-line
+    <code>"\n"</code>-joined search string in <code>.replace()</code> via <code>readFileSync</code> silently
+    won't match. Use editor edits or single-line replacements.</li>
+    <li><strong><code>react-hooks/set-state-in-effect</code></strong> is downgraded to <code>warn</code> &mdash;
+    it flags the standard Next-SSR "hydrate from localStorage / cookie / matchMedia on mount" pattern, which
+    is not the cascading-render bug. Kept visible, not silenced.</li>
+    <li><strong>Two intentional <code>eslint-disable</code>s</strong> with rationale: <code>CatalogSection</code>
+    reads a measured-height ref during render (a placeholder cache that must not trigger re-renders);
+    <code>StorefrontPage</code>'s <code>Math.random()</code> hero pick (a per-request rotation in an RSC
+    that never hydrates).</li>
+    <li><strong>Next.js is not the one you know</strong> &mdash; APIs and conventions differ from older
+    versions. Read the guide in <code>node_modules/next/dist/docs/</code> before writing route/convention code.</li>
+  </ul>
+
+  <h3 id="dev-obs">Observability</h3>
+  <ul>
+    <li><strong>Vercel &rarr; Observability &rarr; Functions</strong> &mdash; per-route Active CPU,
+    invocations, P75 duration, cold-start %. <strong>Logs</strong> tab for runtime logs (Pro; short retention
+    on Hobby).</li>
+    <li><strong>Axiom</strong> &mdash; a Vercel log drain into the <code>vercel</code> dataset (~30-day
+    retention, survives a Hobby downgrade). Query with APL, e.g.
+    <code>['vercel'] | where level == "error"</code>; <strong>Stream</strong> for live tail.</li>
+    <li><strong>Supabase &rarr; Logs &rarr; Explorer</strong> &mdash; SQL over Postgres / auth / PostgREST /
+    edge logs. Free, zero setup.</li>
+    <li>The app's own signals: the three Overview heartbeat cards, and the RLS / reconcile / oversell /
+    low-stock / Green-API-down WhatsApp alerts.</li>
+  </ul>
+
+</div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- ADMIN & OWNER GUIDE                                                   -->
+<!-- ==================================================================== -->
+<section class="tab" id="s-owner">
+<div class="wrap">
+
+  <h2><span class="eyebrow">Admin &amp; Owner Guide</span>Running the store</h2>
+
+  <div class="toc">
+    <a href="#ow-login">Signing in</a> &middot;
+    <a href="#ow-tabs">The tabs</a> &middot;
+    <a href="#ow-settings">What each setting does</a> &middot;
+    <a href="#ow-runbook">Operational runbook</a> &middot;
+    <a href="#ow-alerts">What the alerts mean</a> &middot;
+    <a href="#ow-plan">Plan notes</a>
+  </div>
+
+  <h3 id="ow-login">Signing in</h3>
+  <p>Go to <code>/admin/login</code> &mdash; password <strong>and</strong> a TOTP code (authenticator app).
+  Keep the <strong>backup codes</strong> somewhere safe; each works once if you lose the authenticator. The
+  <strong>Security</strong> tab shows how many remain and can regenerate the set, and has a
+  "log out everywhere" that invalidates every existing admin session.</p>
+
+  <h3 id="ow-tabs">The tabs</h3>
+
+  <div class="card">
+    <h4>Overview</h4>
+    <p>Revenue, average order value, repeat-purchase rate, monthly trend. Enquiry analytics (WhatsApp
+    "check availability" clicks by category / product / source). Recent leads. And <strong>three heartbeat
+    cards</strong> &mdash; keepalive, Green API session, abandoned-checkout cron. Green is healthy; amber
+    means that signal has gone stale (a dead scheduler, or the Green API instance dropped its session).</p>
+  </div>
+
+  <div class="card">
+    <h4>Products</h4>
+    <ul>
+      <li><b>Add / edit form</b> &mdash; title, price, cost price (optional; powers margin stats, never shown
+      to customers), category, label, cover + gallery images, description, initial stock, weight &amp;
+      dimensions (typed in whichever unit you pick; always stored as g/cm), material, colour, WhatsApp
+      enquiry number.</li>
+      <li><b>Product Statistics</b> &mdash; stock &amp; value broken down by label and by category.</li>
+      <li><b>Inventory Insights</b> &mdash; top value products, dead stock, stock aging, cost &amp; margin.</li>
+      <li><b>Live Storefront Catalog &amp; Stock Tracker</b> &mdash; search / filter / paginate; inline
+      &plusmn; stock, inline label / photo-look / cost price, hide/unhide, storefront position number; the
+      "Lightweight Brass" weight&nbsp;&times;&nbsp;rate&nbsp;&times;&nbsp;1.20 price calculator; a plain
+      weight/dimensions/price editor for every other product. "Edit Details" pulls a row up into the form.</li>
+      <li><b>Catalogue PDF</b> &mdash; a branded, category-wise PDF of every product.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>Orders</h4>
+    <p>List, search, filter by status. Change a status (Processing &rarr; Shipped &rarr; Delivered, or
+    Cancelled) &mdash; this fires a WhatsApp to the customer. Set an AWB / tracking number any time.</p>
+    <div class="note"><b>After refunding a test order</b>
+    Set its status to <strong>Cancelled</strong>. A cancelled order is excluded from analytics, bestsellers,
+    and the units-sold tally &mdash; so your real numbers stay clean.</div>
+  </div>
+
+  <div class="card">
+    <h4>Coupons</h4>
+    <p>Create flat or percent coupons with a max-uses cap and an expiry; toggle active; toggle "show on
+    site" (a public coupon appears in the checkout's tap-to-apply list). <code>used_count</code> only
+    increments on a <strong>verified, paid</strong> order &mdash; an abandoned checkout never burns a
+    redemption.</p>
+  </div>
+
+  <div class="card">
+    <h4>Settings</h4>
+    <p>Storefront defaults; the WhatsApp-numbers pool + bulk reassignment; the "Chat for&hellip;" button
+    labels; product labels + bulk-assign; and categories (each with its own GST %, discount %, per-page
+    size, and homepage visibility). See the table below for what each control actually changes.</p>
+  </div>
+
+  <div class="card">
+    <h4>Reviews</h4>
+    <p>Approve or delete. An unapproved review never appears on the storefront.</p>
+  </div>
+
+  <div class="card">
+    <h4>Security</h4>
+    <p>Login-attempt log (IP, success/failure, reason), backup codes remaining + regenerate, the TOTP QR for
+    re-enrolling a device, and log-out-everywhere.</p>
+  </div>
+
+  <h3 id="ow-settings">What each setting does</h3>
+  <div class="x"><table>
+    <thead><tr><th>Setting</th><th>Effect</th><th>Where it shows</th></tr></thead>
+    <tbody>
+      <tr><td>Default products per page</td><td>Catalog page size when a visitor hasn't chosen one</td><td>Every catalog grid</td></tr>
+      <tr><td>Cards loaded per scroll batch</td><td>How many product cards mount at once as the shopper scrolls (lower = smoother on long pages; min 8)</td><td>Catalog grid</td></tr>
+      <tr><td>Default product photo look</td><td>Site-wide photo filter; a visitor's own tap overrides it for their view</td><td>Every card / gallery</td></tr>
+      <tr><td>Weight / dimension display unit</td><td>Unit shown to customers (values are always stored g/cm)</td><td>Card + product page</td></tr>
+      <tr><td>Default Brass Rate (&#8377;/kg)</td><td>Prefills the "Lightweight Brass" calculator for a product with no rate of its own; never rewrites a saved price</td><td>Products &rarr; Stock Tracker</td></tr>
+      <tr><td>Ganesha popup: auto-shows / cooldown / collapse delay</td><td>How often the mascot popup appears and how long its floating trigger stays expanded</td><td>Storefront popup</td></tr>
+      <tr><td>WhatsApp Numbers &rarr; Set as Default</td><td>The number used for enquiries on products with none of their own (falls back to +91&nbsp;6302672351)</td><td>Product "chat" buttons</td></tr>
+      <tr><td>WhatsApp Numbers &rarr; Bulk switch</td><td>Moves a whole group of products (by current number, or by category) to another number in one write</td><td>&mdash;</td></tr>
+      <tr><td>Chat Button Labels</td><td>The text on the product WhatsApp button, one active label per stock state (in-stock / out-of-stock)</td><td>Every card / product page</td></tr>
+      <tr><td>Product Labels &rarr; Photo look</td><td>A per-label photo filter override (beats the site default; a product's own override beats this)</td><td>That label's products</td></tr>
+      <tr><td>Product Labels &rarr; Bulk-assign</td><td>Tags every homepage product, or every product in a category, with a label in one write</td><td>&mdash;</td></tr>
+      <tr><td>Category &rarr; GST %</td><td>Rate used to back-calculate the GST breakdown on the invoice for that category's items</td><td>WhatsApp + email invoice</td></tr>
+      <tr><td>Category &rarr; % Off</td><td>Shows a struck-through "MRP" everywhere for that category (display only &mdash; the price you set is what's charged)</td><td>Cards, product page, invoice</td></tr>
+      <tr><td>Category &rarr; Products/page</td><td>Per-category override of the site-wide page size</td><td>That category's page</td></tr>
+      <tr><td>Category &rarr; On Homepage</td><td>Whether that category's products appear in the homepage's default (unfiltered) view; still reachable by picking the category</td><td>Homepage grid</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="ow-runbook">Operational runbook</h3>
+
+  <h4>External schedules you must keep alive</h4>
+  <p>On <strong>cron-job.org</strong>, each with a header <code>Authorization: Bearer &lt;CRON_SECRET&gt;</code>
+  (the value is in Vercel &rarr; Settings &rarr; Environment Variables):</p>
+  <div class="x"><table>
+    <thead><tr><th>Job</th><th>URL</th><th>Cadence</th></tr></thead>
+    <tbody>
+      <tr><td>Keepalive</td><td><code>https://tohfaonline.com/api/keepalive</code></td><td>every 15 min</td></tr>
+      <tr><td>RLS perimeter check</td><td><code>https://tohfaonline.com/api/cron/rls-check</code></td><td>daily</td></tr>
+      <tr><td>product_sales reconcile</td><td><code>https://tohfaonline.com/api/cron/product-sales-reconcile</code></td><td>daily</td></tr>
+    </tbody>
+  </table></div>
+  <p>Opening any of these in a browser returns <code>{"error":"Unauthorized"}</code> &mdash; that's correct
+  (no bearer header). Use each job's "Run now" + History to see the real JSON body: <code>rls-check</code>
+  should read <code>{"ok":true, &hellip;}</code>.</p>
+
+  <h4>Stock reservation</h4>
+  <p><code>site_settings.stock_reservations_enabled</code> = <code>'1'</code> turns on the 15-minute hold at
+  checkout (migration 0043). A checkout <strong>holds</strong> its items; the webhook <strong>consumes</strong>
+  the hold (that's when inventory actually drops); a dismissed/failed payment <strong>releases</strong> it;
+  an abandoned one <strong>expires</strong> and is trimmed by the daily cron. This is what stops two shoppers
+  buying the same one-off piece during a rush. To check it's on:</p>
+  <pre><code>select value from site_settings where key = 'stock_reservations_enabled';  -- want '1'</code></pre>
+
+  <h4>Refunds &amp; test orders</h4>
+  <p>Refund through the Razorpay dashboard, then set the order's status to <strong>Cancelled</strong> in the
+  Orders tab so it drops out of every statistic.</p>
+
+  <h3 id="ow-alerts">What the WhatsApp alerts mean</h3>
+  <div class="x"><table>
+    <thead><tr><th>Alert</th><th>Meaning</th><th>Do</th></tr></thead>
+    <tbody>
+      <tr><td><b>RLS violation</b></td><td>A security policy drifted &mdash; data that should be private may be readable with the public key</td><td>Investigate immediately. Compare live Supabase policies against the migrations; the CI <code>rls.test.ts</code> lists the expected perimeter.</td></tr>
+      <tr><td><b>product_sales drift</b></td><td>The units-sold aggregate no longer matches a full recount &mdash; usually an order cancelled outside the normal admin path</td><td>Open the reconcile job's response, sanity-check the diff, then hit the URL once with <code>?heal=1</code> to write the corrected values.</td></tr>
+      <tr><td><b>Oversell</b></td><td>An order was for more units than were in stock at capture time. The payment is real &mdash; the order stands</td><td>Fulfil what you can, contact the customer about the rest, restock.</td></tr>
+      <tr><td><b>Low stock</b></td><td>A product dropped to or below the low-stock threshold</td><td>Restock, or hide it from the storefront.</td></tr>
+      <tr><td><b>Green API session lost</b></td><td>The WhatsApp instance dropped its authorised session &mdash; customer confirmations may not be sending</td><td>Re-scan the QR / re-authorise the Green API instance. The Overview card goes amber too.</td></tr>
+      <tr><td><b>Stale heartbeat</b> (Overview card, not a WhatsApp)</td><td>A scheduled job hasn't stamped its timestamp in the expected window</td><td>Check the cron-job.org job's history for failures; check <code>CRON_SECRET</code> matches.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="ow-plan">Plan notes</h3>
+  <p>The codebase is <strong>Hobby-ready by design</strong>: <code>/product/[id]</code> renders dynamically
+  (zero ISR writes) and images aren't run through Vercel's optimizer (protects that meter). Keeping
+  <strong>Pro</strong> for the festive + wedding season buys headroom on the <em>meters</em> &mdash;
+  bandwidth, function GB-hours, ISR-write and image-optimization quotas &mdash; so a traffic spike doesn't
+  get throttled or billed on Hobby's limits. <strong>No code change is needed to benefit</strong>, and
+  nothing needs undoing when the plan drops back to Hobby.</p>
+
+  <hr>
+  <p style="font-size:12.5px;color:var(--muted)">The exhaustive reference &mdash; every table, column,
+  migration, RLS policy, route, env var, and the dated Change log &mdash; is
+  <a href="./ARCHITECTURE.html">docs/ARCHITECTURE.html</a>. This handbook is kept in step with it under the
+  same batch&nbsp;&rarr;&nbsp;document&nbsp;&rarr;&nbsp;deploy agreement.</p>
+
+</div>
+</section>
+
+</main>
