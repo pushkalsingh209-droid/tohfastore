@@ -416,8 +416,8 @@ care, land behind tests, never "blind".
 18. ~~**Consolidate phone normalisation.**~~ — **done (2026-08-30).** See Done. One
     `app/utils/phone.ts` `normalizeIndianPhone`, 4 local copies + 1 inline retired, 7 tests.
 
-19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 134 problems
-    (106 errors + 28 warnings); `no-explicit-any` 174 → 103.*
+19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 74 problems
+    (46 errors + 28 warnings); `no-explicit-any` 174 → ~46.*
     **Done** — PR #27 (`lint-debt`): 24 `no-unescaped-entities`; 8 `no-html-link-for-pages`;
     8 `catch (err: any)`; `storeQueries`/`proxy` row types; `types/globals.d.ts`;
     `no-unused-vars` config. — PR #28 (`lint-debt-2`): admin `Inventory`/`Finance` insight
@@ -426,15 +426,20 @@ care, land behind tests, never "blind".
     Next-SSR "hydrate from localStorage/cookie/matchMedia on mount" pattern, not the
     cascading-render bug; kept visible as warnings); ~15 isolated `any` singles across
     `admin/{coupons,settings,analytics,whatsapp-enquiries}`, `catalogueGenerator`,
-    `GoogleTranslateWidget`, `InstallPrompt`, `headerNavbar`, product-page reviews, etc.
-    **Left (~103 `no-explicit-any`):** `app/admin/tabs/{ProductsTab,SettingsTab}.tsx`
-    (~75 + ~15 — moved here from `page.tsx` by #16, still the untyped `product: any` /
-    `(c: any)` map casts / `catch (err: any)` debt; a focused typing pass on both, now
-    that `AdminProduct`/`AdminCategory` are partly typed in the context);
+    `GoogleTranslateWidget`, `InstallPrompt`, `headerNavbar`, product-page reviews, etc. —
+    branch `lint-admin-tabs` (2026-08-30): `app/admin/tabs/{ProductsTab,SettingsTab}.tsx`
+    61 `no-explicit-any` → 0. `catch (err: any)` → `catch (err: unknown)` +
+    `err instanceof Error ? err.message : String(err)` (37 sites, matches `OrdersTab`/
+    `CouponsTab`); the `.map((c: any) =>` casts dropped now that `AdminCategory` etc. are
+    typed in the context; `computeGroupStats` + the brass/spec draft helpers +
+    `handleEditClick` take `AdminProduct`; the inline-update handlers' `productId` widened
+    `string` → `string | number` (they always received the numeric row id at runtime).
+    **Left (~46 `no-explicit-any`):**
     `razorpay-webhook` (12 — needs a stricter `OrderItem` w/ required price/qty + coercion
     at the parse boundary, its own ⚠️ pass); `ProductCard` + `CartContext` +
     `WishlistContext` + consumers (~15 — cascades: nullable name/price hits helper
-    signatures wanting non-null). Each remaining cluster is a focused pass, not mechanical.
+    signatures wanting non-null); scattered singles. Each remaining cluster is a focused
+    pass, not mechanical.
 
 20. ~~**Delete vestigial `ADMIN_SESSION_SECRET`.**~~ — **done (2026-08-29, Batch A).** No
     code ever read it; removed from the docs / env table / gotcha list / AGENT.md, and

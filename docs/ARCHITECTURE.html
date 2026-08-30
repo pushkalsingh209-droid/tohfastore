@@ -206,6 +206,35 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>18:00</code></td>
+  <td><strong>#19 &mdash; lint-debt: admin tabs</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-admin-tabs</code>)</td>
+  <td>
+    <code>app/admin/tabs/ProductsTab.tsx</code> + <code>SettingsTab.tsx</code> &mdash; the
+    <code>no-explicit-any</code> that moved with the JSX when those tabs were extracted
+    (#16). 61 &rarr; 0: every <code>catch (err: any)</code> &rarr; <code>catch (err: unknown)</code>
+    with <code>err instanceof Error ? err.message : String(err)</code> (37 sites, same shape
+    as <code>OrdersTab</code>/<code>CouponsTab</code>); the <code>.map((c: any) =&gt;)</code>
+    casts in the settings JSX dropped now that <code>AdminCategory</code>/<code>AdminLabel</code>/
+    <code>AdminWhatsappNumber</code>/<code>AdminChatLabel</code> cover the fields it reads;
+    <code>computeGroupStats</code>, the brass/spec inline-draft helpers, and
+    <code>handleEditClick</code> now take <code>AdminProduct</code>; the six inline-update
+    handlers' <code>productId</code> param widened <code>string</code> &rarr;
+    <code>string | number</code> (they always got the numeric bigint row id at runtime, and
+    <code>editingProductId</code> state with it). No behaviour change. <code>eslint .</code>
+    135 &rarr; <strong>74 problems</strong> (46 errors + 28 warnings).
+  </td>
+  <td>
+    <code>app/admin/tabs/ProductsTab.tsx</code>, <code>app/admin/tabs/SettingsTab.tsx</code> &middot;
+    <code>docs/ARCHITECTURE.html</code> &middot; <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>tsc --noEmit</code> clean &middot; <code>next build</code> exit 0 (86/86) &middot;
+    <code>npm test</code> 102 pass / 1 skip &middot; <code>eslint .</code> 135 &rarr; 74
+    (&minus;61, all <code>no-explicit-any</code>; no new). Pure type-annotation change; the
+    admin panel is behind the password gate and was click-tested for #16 the same day.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>17:00</code></td>
   <td><strong>#16 &mdash; split <code>admin/page.tsx</code>: <code>SettingsTab</code> (last tab &mdash; #16 done)</strong><br>(<code>IMPROVEMENTS.md</code> #16)</td>
   <td>
