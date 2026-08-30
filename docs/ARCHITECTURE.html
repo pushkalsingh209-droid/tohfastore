@@ -206,6 +206,31 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>12:15</code></td>
+  <td><strong>Exclude cancelled orders from analytics + bestsellers</strong><br>(fix; no <code>IMPROVEMENTS.md</code> item)</td>
+  <td>
+    Two order scans counted cancelled orders. <code>/api/admin/analytics</code> now queries
+    <code>orders</code> with <code>.neq("status", "cancelled")</code> &mdash; a cancelled order isn&rsquo;t
+    revenue and shouldn&rsquo;t move totalOrders / AOV / customer / repeat-rate / monthly-trend.
+    <code>getRecentOrderItems</code> (the shared last-300 scan behind <code>getBestsellers</code> /
+    <code>getRelatedProducts</code>) gains the same filter, so a returned/refunded purchase no longer
+    counts toward &ldquo;top sellers&rdquo; / &ldquo;customers also bought&rdquo;. The admin <em>Orders
+    list</em> still shows cancelled orders; <code>product_sales</code> (the customer-facing &ldquo;N
+    sold&rdquo;) was already correct (it&rsquo;s <code>-1</code>&rsquo;d on cancel). <strong>Admin
+    Analytics figures will drop</strong> once this deploys + the <code>orders</code>-tagged cache
+    refreshes. Prompted by a &ldquo;can I just delete the cancelled rows?&rdquo; question &mdash; this keeps
+    the order history (accounting / audit) and fixes the stats instead.
+  </td>
+  <td>
+    <code>app/api/admin/analytics/route.ts</code> &middot; <code>app/utils/storeQueries.ts</code> &middot;
+    <code>docs/ARCHITECTURE.html</code>
+  </td>
+  <td>
+    <code>tsc --noEmit</code> clean &middot; <code>npm test</code> 102 pass / 7 skip &middot; <code>next build</code>
+    exit 0. Behaviour <em>does</em> change (that&rsquo;s the point): stats now exclude cancelled orders.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>11:45</code></td>
   <td><strong>#19 &mdash; lint-debt sweep (part 2)</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-debt-2</code>, in progress)</td>
   <td>
@@ -1797,7 +1822,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/admin/chat-labels</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-del">delete</span></td><td>Preset pool for the chat button (per <code>kind</code>).</td></tr>
 <tr><td><code>/api/admin/whatsapp-numbers</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span></td><td>Managed enquiry-number list. POST normalises via <code>phone.ts</code> and now validates <code>/^91[6-9]\d{9}$/</code> (was a loose <code>length &lt; 10</code> guard).</td></tr>
 <tr><td><code>/api/admin/whatsapp-numbers/reassign</code></td><td><span class="tag t-post">post</span></td><td>Bulk-move products to a number, filtered by current number or category. <code>revalidateTag("products","max")</code>.</td></tr>
-<tr><td><code>/api/admin/analytics</code></td><td><span class="tag t-get">get</span></td><td>Order metrics computed in JS from <code>orders</code>: totals, AOV, unique/repeat customers (placeholder contacts excluded from identity), 6-month revenue trend.</td></tr>
+<tr><td><code>/api/admin/analytics</code></td><td><span class="tag t-get">get</span></td><td>Order metrics computed in JS from <code>orders</code> <strong>where <code>status != 'cancelled'</code></strong>: totals, AOV, unique/repeat customers (placeholder contacts excluded from identity), 6-month revenue trend.</td></tr>
 <tr><td><code>/api/admin/whatsapp-enquiries</code></td><td><span class="tag t-get">get</span></td><td>Aggregates the <code>whatsapp_enquiries</code> log: totals, by category/product/number/source, 14-day daily trend.</td></tr>
 <tr><td><code>/api/admin/catalogue</code></td><td><span class="tag t-get">get</span></td><td>Live (uncached) catalogue PDF download. <code>maxDuration = 60</code>.</td></tr>
 <tr><td><code>/api/admin/upload</code></td><td><span class="tag t-post">post</span></td><td>multipart image upload &rarr; <code>brass-images</code> + thumbnail. &le; 4MB, webp/jpeg/png. Returns a 10-year signed URL.</td></tr>
@@ -2222,7 +2247,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>reservation.ts</code></td><td><code>computeAvailability(inventory, heldQty, requestedQty)</code> &mdash; pure spec of the per-line rule migration 0043&rsquo;s <code>reserve_stock</code> applies (<code>available = inv &minus; held</code>, floored at 0; fits iff <code>&ge; requested</code>). The RPC is authoritative at runtime; this is the unit-tested definition. <strong>6 tests.</strong></td></tr>
 <tr><td><code>apiError.ts</code></td><td><code>serverErrorResponse(context, err, publicMessage)</code> &mdash; logs the real error, returns a generic 5xx body. Wired into <strong>every route under <code>app/api</code></strong> (§22).</td></tr>
 <tr><td><code>rls.test.ts</code></td><td>Anon-key RLS perimeter regression test (§6). Env-gated (skips without Supabase creds).</td></tr>
-<tr><td><code>orderTally.ts</code></td><td><code>tallyUnitsSold(orders, {excludeId?})</code> &mdash; pure line-item quantity tally, shared by <code>getBestsellers</code> / <code>getRelatedProducts</code> via <code>getRecentOrderItems</code>. Unit-tested.</td></tr>
+<tr><td><code>orderTally.ts</code></td><td><code>tallyUnitsSold(orders, {excludeId?})</code> &mdash; pure line-item quantity tally, shared by <code>getBestsellers</code> / <code>getRelatedProducts</code> via <code>getRecentOrderItems</code> (the last 300 <strong>non-cancelled</strong> orders). Unit-tested.</td></tr>
 <tr><td><code>orderTypes.ts</code></td><td><code>OrderCustomerDetails</code> / <code>OrderItem</code> shapes + <code>asCustomerDetails(json)</code> / <code>asOrderItems(json)</code> narrowers for the <code>orders</code> table's <code>customer_details</code> / <code>items</code> jsonb columns (the generated types can only say <code>Json</code>). <em>(#15)</em></td></tr>
 <tr><td><code>repricing.ts</code></td><td><code>repriceCart(clientItems, dbProducts, categoryGstRates, defaultGstPercent)</code> &mdash; the &ldquo;never trust the client at checkout&rdquo; guard extracted from <code>/api/razorpay</code>: rebuilds every line from the DB price/name/GST rate, rejects unknown/hidden ids and over-stock lines, returns the authoritative subtotal. Byte-for-byte match of the old inline block. <strong>12 unit tests.</strong></td></tr>
 <tr><td><code>bootstrapSettings.ts</code></td><td><code>parseChatLabels</code> / <code>parseGaneshaSettings</code> / <code>parsePhotoFilterIndex</code> / <code>parseDefaultWhatsappNumber</code> &mdash; pure parsers for the storefront <code>site_settings</code> values, run server-side in <code>getBootstrapData()</code> (#11). Reproduce the old per-context parse + clamp + fallback rules exactly. <strong>8 unit tests.</strong></td></tr>
