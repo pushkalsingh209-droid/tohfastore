@@ -15,8 +15,8 @@
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { apiRequest } from "@/app/admin/lib/apiRequest";
-import { useAdminData } from "@/app/admin/AdminDataContext";
-import { getAutocompleteMatches, getSuggestions } from "@/app/utils/searchProducts";
+import { useAdminData, type AdminProduct } from "@/app/admin/AdminDataContext";
+import { getAutocompleteMatches, getSuggestions, type SearchableProduct } from "@/app/utils/searchProducts";
 import Pagination from "@/app/components/Pagination";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import ImageUploadField from "@/app/components/admin/ImageUploadField";
@@ -41,7 +41,7 @@ import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
 // and tallies count/units/value/stock-status per group plus overall
 // totals, so the two panels can never compute this differently from each
 // other. Module-level (not a hook) since it's a pure function of its args.
-function computeGroupStats(products: any[], keyFn: (p: any) => string) {
+function computeGroupStats(products: AdminProduct[], keyFn: (p: AdminProduct) => string) {
   const byKey = new Map<string, { key: string; count: number; units: number; value: number; outOfStock: number; lowStock: number }>();
   const totals = { productCount: products.length, totalUnits: 0, totalValue: 0, outOfStockCount: 0, lowStockCount: 0 };
 
@@ -115,12 +115,10 @@ export default function ProductsTab() {
     settings,
     refetch,
   } = useAdminData();
-  // page.tsx held products as useState<any[]>; keep that untyped shape here
-  // so the moved inline handlers (string product ids, brassDrafts/specDrafts
-  // keyed by id) type-check without a retyping pass -- that's this tab's own
-  // follow-up (#16).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const products = productsCtx as any[];
+  // AdminProduct carries an index signature (the row has ~20 columns the
+  // storefront query returns), so `product.name` / `product.price` etc. are
+  // still `any` at the point of use -- but the annotations below are real.
+  const products = productsCtx;
 
   const [newColorName, setNewColorName] = useState("");
   const [colorStatus, setColorStatus] = useState("");
@@ -225,7 +223,7 @@ export default function ProductsTab() {
 
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | number | null>(null);
   const [productSearch, setProductSearch] = useState("");
   const [productCategoryFilter, setProductCategoryFilter] = useState("");
   const [productPage, setProductPage] = useState(1);
@@ -233,19 +231,23 @@ export default function ProductsTab() {
 
   // Live search over already-loaded products, reusing the same
   // substring-match + "did you mean" fallback used on the storefront search.
-  const visibleProducts = useMemo(() => {
+  const visibleProducts = useMemo<AdminProduct[]>(() => {
     const byCategory = productCategoryFilter
-      ? products.filter((p: any) => p.category === productCategoryFilter)
+      ? products.filter((p) => p.category === productCategoryFilter)
       : products;
 
     const query = productSearch.trim();
     if (!query) return byCategory;
 
-    const matches = getAutocompleteMatches(byCategory, query, byCategory.length);
-    if (matches.length > 0) return matches.map((m) => byCategory.find((p) => p.id === m.id)).filter(Boolean);
+    // The search helpers want {id:string; name:string}; product rows carry
+    // numeric ids and an untyped name but match structurally, and the
+    // returned objects are the same references we then look back up by id.
+    const searchable = byCategory as unknown as SearchableProduct[];
+    const matches = getAutocompleteMatches(searchable, query, byCategory.length);
+    if (matches.length > 0) return matches.map((m) => byCategory.find((p) => p.id === m.id)).filter((p): p is AdminProduct => Boolean(p));
 
-    const suggestions = getSuggestions(byCategory, query, byCategory.length);
-    return suggestions.map((s) => byCategory.find((p) => p.id === s.id)).filter(Boolean);
+    const suggestions = getSuggestions(searchable, query, byCategory.length);
+    return suggestions.map((s) => byCategory.find((p) => p.id === s.id)).filter((p): p is AdminProduct => Boolean(p));
   }, [products, productSearch, productCategoryFilter]);
 
   // Label-wise and category-wise stock/value breakdowns for the Product
@@ -260,10 +262,10 @@ export default function ProductsTab() {
   // a blank one just falls into "No Label"/"Uncategorized" here rather
   // than being dropped.
   const labelStats = useMemo(
-    () => computeGroupStats(products, (p: any) => (p.label && String(p.label).trim()) || "No Label"),
+    () => computeGroupStats(products, (p) => (p.label && String(p.label).trim()) || "No Label"),
     [products]
   );
-  const categoryStats = useMemo(() => computeGroupStats(products, (p: any) => p.category || "Uncategorized"), [products]);
+  const categoryStats = useMemo(() => computeGroupStats(products, (p) => p.category || "Uncategorized"), [products]);
 
   // Real per-product units-sold tally from the admin's own full order
   // history (not just the storefront's last-300-orders cache) -- backs
@@ -271,7 +273,7 @@ export default function ProductsTab() {
   // cancelled orders, same reasoning as storeQueries.ts's getSoldCounts.
   const soldCountByProductId = useMemo(() => {
     const map = new Map<string, number>();
-    for (const order of orders as any[]) {
+    for (const order of orders) {
       if (order.status === "cancelled") continue;
       const items = Array.isArray(order.items) ? order.items : [];
       for (const item of items) {
@@ -345,15 +347,15 @@ export default function ProductsTab() {
 
       setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "", cost_price: "" });
       refetch(); // Sync live view structures
-    } catch (err: any) {
-      setStatus(`Database Exception: ${err.message || "Pipeline connection failed."}`);
+    } catch (err: unknown) {
+      setStatus(`Database Exception: ${err instanceof Error ? err.message : "Pipeline connection failed."}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   // Pull product parameters back up into inputs to edit fields
-  const handleEditClick = (product: any) => {
+  const handleEditClick = (product: AdminProduct) => {
     setEditingProductId(product.id);
     setFormData({
       name: product.name,
@@ -397,7 +399,7 @@ export default function ProductsTab() {
   };
 
   // Fast inline adjust function for stock adjustments (+ / - keys)
-  const handleStockUpdate = async (productId: string, currentStock: number, adjustment: number) => {
+  const handleStockUpdate = async (productId: string | number, currentStock: number, adjustment: number) => {
     const newStock = Math.max(0, currentStock + adjustment);
     try {
       await apiRequest("/api/admin/products", {
@@ -408,53 +410,53 @@ export default function ProductsTab() {
       if (editingProductId === productId) {
         setFormData(prev => ({ ...prev, inventory: newStock.toString() }));
       }
-    } catch (err: any) {
-      alert(`Could not change stock: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not change stock: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
   // Quick per-product label change straight from the stock tracker row --
   // same PATCH the full Edit Details form uses, just without leaving the
   // list or repopulating the whole form for a one-field change.
-  const handleInlineLabelUpdate = async (productId: string, label: string) => {
+  const handleInlineLabelUpdate = async (productId: string | number, label: string) => {
     try {
       const result = await apiRequest("/api/admin/products", {
         method: "PATCH",
         body: JSON.stringify({ id: productId, label }),
       });
       setProducts(products.map((p) => (p.id === productId ? result.product : p)));
-    } catch (err: any) {
-      alert(`Could not update label: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update label: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
   // Per-product photo filter override -- beats that product's label's own
   // override, which beats the site-wide default. Blank ("Auto") clears it
   // back to that fallback chain.
-  const handleInlinePhotoFilterUpdate = async (productId: string, photoFilter: string) => {
+  const handleInlinePhotoFilterUpdate = async (productId: string | number, photoFilter: string) => {
     try {
       const result = await apiRequest("/api/admin/products", {
         method: "PATCH",
         body: JSON.stringify({ id: productId, photo_filter: photoFilter }),
       });
       setProducts(products.map((p) => (p.id === productId ? result.product : p)));
-    } catch (err: any) {
-      alert(`Could not update photo filter: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update photo filter: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
   // Quick per-product cost price entry straight from the stock tracker --
   // optional, powers the Cost & Margin stats, works the same regardless of
   // label/category so it's available on every row, not just brass items.
-  const handleInlineCostPriceUpdate = async (productId: string, costPrice: string) => {
+  const handleInlineCostPriceUpdate = async (productId: string | number, costPrice: string) => {
     try {
       const result = await apiRequest("/api/admin/products", {
         method: "PATCH",
         body: JSON.stringify({ id: productId, cost_price: costPrice }),
       });
       setProducts(products.map((p) => (p.id === productId ? result.product : p)));
-    } catch (err: any) {
-      alert(`Could not update cost price: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update cost price: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -464,30 +466,30 @@ export default function ProductsTab() {
   // this same `hidden` flag, so toggling it here is the single switch that
   // both removes it from every public listing and blocks it from being
   // ordered even via a direct link or API call.
-  const handleInlineHiddenToggle = async (productId: string, hidden: boolean) => {
+  const handleInlineHiddenToggle = async (productId: string | number, hidden: boolean) => {
     try {
       const result = await apiRequest("/api/admin/products", {
         method: "PATCH",
         body: JSON.stringify({ id: productId, hidden }),
       });
       setProducts(products.map((p) => (p.id === productId ? result.product : p)));
-    } catch (err: any) {
-      alert(`Could not update visibility: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update visibility: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
   // Manual storefront position -- lower numbers show first. Left blank
   // (null), a product falls back to sorting last (newest-first among
   // other unassigned products) until an admin gives it a number.
-  const handleDisplayOrderUpdate = async (productId: string, displayOrder: number | null) => {
+  const handleDisplayOrderUpdate = async (productId: string | number, displayOrder: number | null) => {
     try {
       const result = await apiRequest("/api/admin/products", {
         method: "PATCH",
         body: JSON.stringify({ id: productId, display_order: displayOrder }),
       });
       setProducts(products.map((p) => (p.id === productId ? { ...p, display_order: result.product.display_order } : p)));
-    } catch (err: any) {
-      alert(`Could not update display order: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update display order: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -506,8 +508,8 @@ export default function ProductsTab() {
       setFormData((prev) => ({ ...prev, color: result.color.name }));
       setNewColorName("");
       setColorStatus("");
-    } catch (err: any) {
-      setColorStatus(err.message || "Could not add colour.");
+    } catch (err: unknown) {
+      setColorStatus(err instanceof Error ? err.message : "Could not add colour.");
     }
   };
 
@@ -524,8 +526,8 @@ export default function ProductsTab() {
       setFormData((prev) => ({ ...prev, material: result.material.name }));
       setNewMaterialName("");
       setMaterialStatus("");
-    } catch (err: any) {
-      setMaterialStatus(err.message || "Could not add material.");
+    } catch (err: unknown) {
+      setMaterialStatus(err instanceof Error ? err.message : "Could not add material.");
     }
   };
 
@@ -543,8 +545,8 @@ export default function ProductsTab() {
       setFormData((prev) => ({ ...prev, label: result.label.name }));
       setNewLabelName("");
       setLabelStatus("");
-    } catch (err: any) {
-      setLabelStatus(err.message || "Could not add label.");
+    } catch (err: unknown) {
+      setLabelStatus(err instanceof Error ? err.message : "Could not add label.");
     }
   };
 
@@ -572,15 +574,15 @@ export default function ProductsTab() {
       });
       setTrackerBulkLabelStatus(`Done -- ${result.updated} product${result.updated === 1 ? "" : "s"} tagged.`);
       refetch();
-    } catch (err: any) {
-      setTrackerBulkLabelStatus(err.message || "Could not assign label.");
+    } catch (err: unknown) {
+      setTrackerBulkLabelStatus(err instanceof Error ? err.message : "Could not assign label.");
     }
   };
 
   // Falls back to the product's stored weight_g/height_cm/depth_cm/
   // breadth_cm/price_per_kg (converted to kg/in) -- or the site-wide
   // default ₹/kg -- until the admin actually edits a field for that row.
-  const defaultBrassDraft = (product: any) => ({
+  const defaultBrassDraft = (product: AdminProduct) => ({
     weight_kg: product.weight_g != null ? String(product.weight_g / 1000) : "",
     height_in: product.height_cm != null ? String(convertCmTo(product.height_cm, "in")) : "",
     depth_in: product.depth_cm != null ? String(convertCmTo(product.depth_cm, "in")) : "",
@@ -591,8 +593,8 @@ export default function ProductsTab() {
     // until the admin actually enters one.
     cost_price_per_kg: product.cost_price_per_kg != null ? String(product.cost_price_per_kg) : "",
   });
-  const brassDraft = (product: any) => brassDrafts[product.id] ?? defaultBrassDraft(product);
-  const updateBrassDraftField = (product: any, field: keyof ReturnType<typeof defaultBrassDraft>, value: string) => {
+  const brassDraft = (product: AdminProduct) => brassDrafts[product.id] ?? defaultBrassDraft(product);
+  const updateBrassDraftField = (product: AdminProduct, field: keyof ReturnType<typeof defaultBrassDraft>, value: string) => {
     setBrassDrafts((prev) => ({ ...prev, [product.id]: { ...(prev[product.id] ?? defaultBrassDraft(product)), [field]: value } }));
   };
 
@@ -607,7 +609,7 @@ export default function ProductsTab() {
   // whatever was entered manually (see the standalone Cost ₹ field, or
   // Edit Details), never silently cleared.
   const handleBrassSpecUpdate = async (
-    productId: string,
+    productId: string | number,
     fields: { weight_kg?: string; height_in?: string; depth_in?: string; breadth_in?: string; price_per_kg?: string; cost_price_per_kg?: string }
   ) => {
     const toGrams = (kg: string | undefined) => {
@@ -624,7 +626,7 @@ export default function ProductsTab() {
     const costPricePerKg = Number(fields.cost_price_per_kg);
     const validCostPricePerKg = Number.isFinite(costPricePerKg) && costPricePerKg > 0 ? costPricePerKg : null;
 
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       id: productId,
       weight_g: weightG,
       height_cm: toCm(fields.height_in),
@@ -655,8 +657,8 @@ export default function ProductsTab() {
         const { [productId]: _, ...rest } = prev;
         return rest;
       });
-    } catch (err: any) {
-      alert(`Could not update brass spec: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update brass spec: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -669,20 +671,20 @@ export default function ProductsTab() {
   // admin-selected weightInputUnit/dimensionInputUnit as the main product
   // form above (not the brass block's fixed kg/in), converting the
   // product's stored canonical grams/cm into that unit for display.
-  const defaultSpecDraft = (product: any) => ({
+  const defaultSpecDraft = (product: AdminProduct) => ({
     weight_g: product.weight_g != null ? String(convertWeightValue(product.weight_g, "g", weightInputUnit)) : "",
     height_cm: product.height_cm != null ? String(convertDimensionValue(product.height_cm, "cm", dimensionInputUnit)) : "",
     depth_cm: product.depth_cm != null ? String(convertDimensionValue(product.depth_cm, "cm", dimensionInputUnit)) : "",
     breadth_cm: product.breadth_cm != null ? String(convertDimensionValue(product.breadth_cm, "cm", dimensionInputUnit)) : "",
     price: product.price != null ? String(product.price) : "",
   });
-  const specDraft = (product: any) => specDrafts[product.id] ?? defaultSpecDraft(product);
-  const updateSpecDraftField = (product: any, field: keyof ReturnType<typeof defaultSpecDraft>, value: string) => {
+  const specDraft = (product: AdminProduct) => specDrafts[product.id] ?? defaultSpecDraft(product);
+  const updateSpecDraftField = (product: AdminProduct, field: keyof ReturnType<typeof defaultSpecDraft>, value: string) => {
     setSpecDrafts((prev) => ({ ...prev, [product.id]: { ...(prev[product.id] ?? defaultSpecDraft(product)), [field]: value } }));
   };
 
   const handleSpecUpdate = async (
-    productId: string,
+    productId: string | number,
     fields: { weight_g?: string; height_cm?: string; depth_cm?: string; breadth_cm?: string; price?: string }
   ) => {
     const toOptionalPositive = (value: string | undefined) => {
@@ -694,7 +696,7 @@ export default function ProductsTab() {
     // defaultSpecDraft above) -- convert back to canonical grams/cm before
     // sending, same as the main product form's toCanonicalWeight/
     // toCanonicalDimension.
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       id: productId,
       weight_g: toOptionalPositive(toCanonicalWeight(fields.weight_g)),
       height_cm: toOptionalPositive(toCanonicalDimension(fields.height_cm)),
@@ -715,8 +717,8 @@ export default function ProductsTab() {
         const { [productId]: _, ...rest } = prev;
         return rest;
       });
-    } catch (err: any) {
-      alert(`Could not update product details: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update product details: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -737,8 +739,8 @@ export default function ProductsTab() {
       setNewWhatsappNumber("");
       setNewWhatsappLabel("");
       setWhatsappNumberStatus("");
-    } catch (err: any) {
-      setWhatsappNumberStatus(err.message || "Could not add number.");
+    } catch (err: unknown) {
+      setWhatsappNumberStatus(err instanceof Error ? err.message : "Could not add number.");
     }
   };
 

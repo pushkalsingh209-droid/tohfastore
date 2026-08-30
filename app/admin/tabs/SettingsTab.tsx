@@ -65,8 +65,8 @@ export default function SettingsTab() {
       setNewCategoryGstRate("5");
       setNewCategoryDiscountPercent("25");
       setCategoryStatus("");
-    } catch (err: any) {
-      setCategoryStatus(err.message || "Could not add category.");
+    } catch (err: unknown) {
+      setCategoryStatus(err instanceof Error ? err.message : "Could not add category.");
     }
   };
 
@@ -74,8 +74,8 @@ export default function SettingsTab() {
     try {
       await apiRequest("/api/admin/categories", { method: "DELETE", body: JSON.stringify({ id: categoryId }) });
       setCategories(categories.filter((c) => c.id !== categoryId));
-    } catch (err: any) {
-      alert(`Could not delete category: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not delete category: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -91,8 +91,8 @@ export default function SettingsTab() {
       setLabels([...labels, result.label].sort((a, b) => a.name.localeCompare(b.name)));
       setNewLabelName("");
       setLabelStatus("");
-    } catch (err: any) {
-      setLabelStatus(err.message || "Could not add label.");
+    } catch (err: unknown) {
+      setLabelStatus(err instanceof Error ? err.message : "Could not add label.");
     }
   };
 
@@ -106,8 +106,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ id: labelId, photo_filter: photoFilter }),
       });
       setLabels(labels.map((l) => (l.id === labelId ? result.label : l)));
-    } catch (err: any) {
-      alert(`Could not update label's photo filter: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update label's photo filter: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -139,8 +139,8 @@ export default function SettingsTab() {
       });
       setBulkLabelStatus(`Done -- ${result.updated} product${result.updated === 1 ? "" : "s"} tagged.`);
       refetch();
-    } catch (err: any) {
-      setBulkLabelStatus(err.message || "Could not assign label.");
+    } catch (err: unknown) {
+      setBulkLabelStatus(err instanceof Error ? err.message : "Could not assign label.");
     }
   };
 
@@ -153,8 +153,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ brass_price_per_kg: value }),
       });
       setSettings((prev) => ({ ...prev, ...result.settings }));
-    } catch (err: any) {
-      alert(`Could not update default brass rate: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update default brass rate: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -168,8 +168,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ default_whatsapp_number: number }),
       });
       setSettings((prev) => ({ ...prev, ...result.settings }));
-    } catch (err: any) {
-      alert(`Could not set default WhatsApp number: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not set default WhatsApp number: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -206,8 +206,8 @@ export default function SettingsTab() {
       });
       setReassignStatus(`Done -- ${result.updated} product${result.updated === 1 ? "" : "s"} switched.`);
       refetch();
-    } catch (err: any) {
-      setReassignStatus(err.message || "Could not switch products.");
+    } catch (err: unknown) {
+      setReassignStatus(err instanceof Error ? err.message : "Could not switch products.");
     }
   };
 
@@ -218,8 +218,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ id: categoryId, show_on_home: showOnHome }),
       });
       setCategories(categories.map((c) => (c.id === categoryId ? { ...c, show_on_home: showOnHome } : c)));
-    } catch (err: any) {
-      alert(`Could not update category: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update category: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -230,8 +230,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ id: categoryId, gst_rate: gstRate }),
       });
       setCategories(categories.map((c) => (c.id === categoryId ? { ...c, gst_rate: result.category.gst_rate } : c)));
-    } catch (err: any) {
-      alert(`Could not update GST rate: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update GST rate: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -242,8 +242,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ id: categoryId, discount_percent: discountPercent }),
       });
       setCategories(categories.map((c) => (c.id === categoryId ? { ...c, discount_percent: result.category.discount_percent } : c)));
-    } catch (err: any) {
-      alert(`Could not update discount %: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update discount %: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -256,8 +256,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ default_page_size: value }),
       });
       setSettings((prev) => ({ ...prev, ...result.settings }));
-    } catch (err: any) {
-      alert(`Could not update default page size: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update default page size: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -271,8 +271,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ catalog_reveal_batch_size: value }),
       });
       setSettings((prev) => ({ ...prev, ...result.settings }));
-    } catch (err: any) {
-      alert(`Could not update cards-per-scroll-batch: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update cards-per-scroll-batch: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -286,8 +286,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ default_photo_filter: value }),
       });
       setSettings((prev) => ({ ...prev, ...result.settings }));
-    } catch (err: any) {
-      alert(`Could not update default photo filter: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update default photo filter: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -301,8 +301,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ weight_unit: value }),
       });
       setSettings((prev) => ({ ...prev, ...result.settings }));
-    } catch (err: any) {
-      alert(`Could not update weight unit: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update weight unit: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -313,8 +313,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ dimension_unit: value }),
       });
       setSettings((prev) => ({ ...prev, ...result.settings }));
-    } catch (err: any) {
-      alert(`Could not update dimension unit: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update dimension unit: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -327,8 +327,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ ganesha_cooldown_minutes: Number(value) }),
       });
       setSettings((prev) => ({ ...prev, ...result.settings }));
-    } catch (err: any) {
-      alert(`Could not update Ganesha popup cooldown: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update Ganesha popup cooldown: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -341,8 +341,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ ganesha_max_auto_shows: Number(value) }),
       });
       setSettings((prev) => ({ ...prev, ...result.settings }));
-    } catch (err: any) {
-      alert(`Could not update Ganesha popup auto-show count: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update Ganesha popup auto-show count: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -355,8 +355,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ ganesha_collapse_delay_seconds: Number(value) }),
       });
       setSettings((prev) => ({ ...prev, ...result.settings }));
-    } catch (err: any) {
-      alert(`Could not update Ganesha popup trigger collapse delay: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update Ganesha popup trigger collapse delay: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -380,8 +380,8 @@ export default function SettingsTab() {
       setChatLabelPresets((prev) => [...prev, result.label]);
       setNewChatLabelText((prev) => ({ ...prev, [kind]: "" }));
       setChatLabelStatus("");
-    } catch (err: any) {
-      setChatLabelStatus(err.message || "Could not add label.");
+    } catch (err: unknown) {
+      setChatLabelStatus(err instanceof Error ? err.message : "Could not add label.");
     }
   };
 
@@ -389,8 +389,8 @@ export default function SettingsTab() {
     try {
       await apiRequest("/api/admin/chat-labels", { method: "DELETE", body: JSON.stringify({ id }) });
       setChatLabelPresets((prev) => prev.filter((l) => l.id !== id));
-    } catch (err: any) {
-      alert(`Could not delete label: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not delete label: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -405,8 +405,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ [settingKey]: text }),
       });
       setSettings((prev) => ({ ...prev, ...result.settings }));
-    } catch (err: any) {
-      alert(`Could not switch chat label: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not switch chat label: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -420,8 +420,8 @@ export default function SettingsTab() {
         body: JSON.stringify({ id: categoryId, default_page_size: parsed }),
       });
       setCategories(categories.map((c) => (c.id === categoryId ? { ...c, default_page_size: result.category.default_page_size } : c)));
-    } catch (err: any) {
-      alert(`Could not update category page size: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Could not update category page size: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -597,7 +597,7 @@ export default function SettingsTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {whatsappNumbers.map((n: any) => {
+              {whatsappNumbers.map((n) => {
                 const isDefault = (settings.default_whatsapp_number || "") === n.phone_number;
                 return (
                   <tr key={n.id}>
@@ -668,14 +668,14 @@ export default function SettingsTab() {
           {reassignMode === "number" ? (
             <select value={reassignFrom} onChange={(e) => setReassignFrom(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
               <option value="">Products with no number set (default)</option>
-              {whatsappNumbers.map((n: any) => (
+              {whatsappNumbers.map((n) => (
                 <option key={n.id} value={n.phone_number}>{n.label ? `${n.label} — ` : ""}+{n.phone_number}</option>
               ))}
             </select>
           ) : (
             <select value={reassignCategory} onChange={(e) => setReassignCategory(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
               <option value="">Choose a category...</option>
-              {categories.map((c: any) => (
+              {categories.map((c) => (
                 <option key={c.id} value={c.name}>{c.name}</option>
               ))}
             </select>
@@ -683,7 +683,7 @@ export default function SettingsTab() {
           <span className="text-stone-400 text-xs">&rarr;</span>
           <select value={reassignTo} onChange={(e) => setReassignTo(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
             <option value="">Choose a number...</option>
-            {whatsappNumbers.map((n: any) => (
+            {whatsappNumbers.map((n) => (
               <option key={n.id} value={n.phone_number}>{n.label ? `${n.label} — ` : ""}+{n.phone_number}</option>
             ))}
           </select>
@@ -713,7 +713,7 @@ export default function SettingsTab() {
       {CHAT_LABEL_KINDS.map((kind) => {
         const activeSettingKey = kind === "in_stock" ? "chat_label_in_stock" : "chat_label_out_of_stock";
         const activeLabel = settings[activeSettingKey] || DEFAULT_CHAT_LABELS[kind];
-        const presets = chatLabelPresets.filter((l: any) => l.kind === kind);
+        const presets = chatLabelPresets.filter((l) => l.kind === kind);
         const draft = newChatLabelText[kind];
         return (
           <div key={kind} className={kind === "out_of_stock" ? "mt-8 pt-8 border-t border-stone-100" : ""}>
@@ -726,7 +726,7 @@ export default function SettingsTab() {
 
             {presets.length > 0 && (
               <div className="space-y-2 mb-4">
-                {presets.map((l: any) => {
+                {presets.map((l) => {
                   const isActive = activeLabel === l.label;
                   return (
                     <div key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded bg-stone-50 border border-stone-100">
@@ -854,7 +854,7 @@ export default function SettingsTab() {
             <>
               <select value={bulkLabelCategory} onChange={(e) => setBulkLabelCategory(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
                 <option value="">Choose a category...</option>
-                {categories.map((c: any) => (
+                {categories.map((c) => (
                   <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>
@@ -863,7 +863,7 @@ export default function SettingsTab() {
           )}
           <select value={bulkLabel} onChange={(e) => setBulkLabel(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
             <option value="">Choose a label...</option>
-            {labels.map((l: any) => (
+            {labels.map((l) => (
               <option key={l.id} value={l.name}>{l.name}</option>
             ))}
           </select>
@@ -938,7 +938,7 @@ export default function SettingsTab() {
         <p className="text-stone-400 text-sm text-center py-6">No categories yet.</p>
       ) : (
         <div className="divide-y divide-stone-100">
-          {categories.map((cat: any) => (
+          {categories.map((cat) => (
             // Mobile-first: name stacks above its controls instead of
             // sharing a row with them (nowhere near enough width for
             // both on a phone screen), and the controls themselves wrap
