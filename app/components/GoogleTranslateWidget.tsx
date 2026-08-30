@@ -5,7 +5,7 @@ import { TRANSLATABLE_LANGUAGES, setPageLanguage } from "@/app/utils/googleTrans
 
 declare global {
   interface Window {
-    google?: any;
+    google?: { translate?: { TranslateElement?: new (opts: unknown, el: string) => void } };
     googleTranslateElementInit?: () => void;
   }
 }

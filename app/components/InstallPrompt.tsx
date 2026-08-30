@@ -8,17 +8,23 @@ const DISMISS_KEY = "tohfa_install_dismissed";
 // installability criteria (manifest + https); Safari/iOS never fire it, so
 // this simply never appears there -- no harm, just no banner. Free, no
 // service worker or extra infra required.
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 export default function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     function handler(e: Event) {
+      const evt = e as BeforeInstallPromptEvent;
       e.preventDefault();
       try {
         if (localStorage.getItem(DISMISS_KEY)) return;
       } catch {}
-      setDeferredPrompt(e);
+      setDeferredPrompt(evt);
       setVisible(true);
     }
     window.addEventListener("beforeinstallprompt", handler);

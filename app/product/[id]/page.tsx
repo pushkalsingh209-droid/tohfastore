@@ -203,7 +203,7 @@ export default async function ProductDetailPage({
     : null;
   const attributesLine = product ? formatProductAttributesLine(product) : null;
   const averageRating =
-    reviews.length > 0 ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length : 0;
+    reviews.length > 0 ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length : 0;
 
   const productJsonLd = product
     ? {
@@ -420,7 +420,7 @@ export default async function ProductDetailPage({
               <p className="text-stone-400 text-sm mb-6">No reviews yet — be the first to share your experience.</p>
             ) : (
               <div className="space-y-4 mb-8">
-                {reviews.map((review: any) => (
+                {reviews.map((review) => (
                   <div key={review.id} className="border-b border-stone-100 dark:border-stone-800 pb-4">
                     <div className="flex items-center gap-2">
                       <span className="text-amber-500 text-xs leading-none">

@@ -134,7 +134,7 @@ export default async function StorefrontPage({
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: categoryContent ? categoryContent.heading : "TOHFA Signature Collection",
-    itemListElement: products.map((product: any, index: number) => ({
+    itemListElement: products.map((product, index) => ({
       "@type": "ListItem",
       position: index + 1,
       url: `https://tohfaonline.com${productHref(product)}`,

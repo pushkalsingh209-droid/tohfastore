@@ -21,7 +21,7 @@ export async function GET() {
     const outOfStockEnquiries = all.filter((e) => e.out_of_stock).length;
 
     const byCategoryMap = new Map<string, number>();
-    const byProductMap = new Map<string, { productId: any; productName: string; count: number }>();
+    const byProductMap = new Map<string, { productId: string | number | null; productName: string; count: number }>();
     const byNumberMap = new Map<string, number>();
     const bySourceMap = new Map<string, number>();
 

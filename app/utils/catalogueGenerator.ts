@@ -109,7 +109,7 @@ function Footer({ pageLabel }: { pageLabel: string }) {
     View,
     { style: styles.footer, fixed: true },
     React.createElement(Text, null, "tohfaonline.com  ·  WhatsApp +91 6302672351  ·  contact@tohfaonline.com"),
-    React.createElement(Text, { render: ({ pageNumber, totalPages }: any) => `${pageLabel} · ${pageNumber} / ${totalPages}` })
+    React.createElement(Text, { render: ({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) => `${pageLabel} · ${pageNumber} / ${totalPages}` })
   );
 }
 
@@ -141,7 +141,7 @@ export async function generateCatalogueBuffer(): Promise<Buffer> {
     console.error("Category discount lookup failed:", discountErr);
   }
 
-  const grouped = new Map<string, any[]>();
+  const grouped = new Map<string, NonNullable<typeof products>[number][]>();
   for (const product of products || []) {
     const category = product.category || "Uncategorized";
     if (!grouped.has(category)) grouped.set(category, []);
@@ -193,7 +193,7 @@ export async function generateCatalogueBuffer(): Promise<Buffer> {
           { style: styles.grid },
           ...grouped.get(category)!.map((product) => {
             const thumb = thumbnails.get(product.id);
-            const slashed = calculateSlashedPrice(Number(product.price), categoryDiscounts[product.category]);
+            const slashed = calculateSlashedPrice(Number(product.price), categoryDiscounts[product.category ?? ""]);
             const dimensionsLine = formatProductDimensionsLine(product, unitSettings.weightUnit, unitSettings.dimensionUnit);
             return React.createElement(
               View,
@@ -221,6 +221,9 @@ export async function generateCatalogueBuffer(): Promise<Buffer> {
     )
   );
 
+  // @react-pdf/renderer's renderToBuffer wants ReactElement<DocumentProps>,
+  // but React.createElement(Document, …) infers ReactElement<unknown> here.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(doc as any);
 }
 

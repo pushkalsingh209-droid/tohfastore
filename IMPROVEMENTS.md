@@ -409,23 +409,22 @@ care, land behind tests, never "blind".
 18. ~~**Consolidate phone normalisation.**~~ — **done (2026-08-30).** See Done. One
     `app/utils/phone.ts` `normalizeIndianPhone`, 4 local copies + 1 inline retired, 7 tests.
 
-19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 151 problems;
-    `no-explicit-any` 174 → 120.*
-    **Done** — PR #27 (`lint-debt`, 6 commits): all 24 `react/no-unescaped-entities`; all 8
-    `@next/next/no-html-link-for-pages` (`<a href="/">` → `<Link>`); 8 `catch (err: any)` →
-    `unknown`; `storeQueries`/`proxy` row types (`isRenderableProduct` guard + generic
-    `filterLivePublicCoupons`); `types/globals.d.ts` for `window.{fbq,gtag,Razorpay}` +
-    SpeechRecognition; `no-unused-vars` config; 2 stale directives.
-    **Done** — branch `lint-debt-2`: the admin `Inventory`/`Finance` insight panels (new
-    `InventoryProduct` type; `AdminOrderItem` gained `id`/`price`/`gstRate`/`category`);
-    new shared `app/types/product.ts` (`StoreProduct`/`CartItem`) wired into the leaf prop
-    components (`AddToCartButton`, `StickyAddToCartBar`, `WishlistButton`, `sitemap`).
-    **Left (~120 `no-explicit-any` + 24 `set-state-in-effect` + ~4 misc):**
-    `app/admin/page.tsx` (74 — fold into #16); `razorpay-webhook` (12 — needs a real
-    `OrderItem` w/ required price/qty, its own ⚠️ pass); `ProductCard` + `CartContext` +
-    `WishlistContext` and their consumers (~20 — each cascades: nullable name/price hits
-    helper signatures that want non-null); all 24 `set-state-in-effect` (per-case). Each
-    remaining cluster is a focused pass, not mechanical.
+19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 134 problems
+    (106 errors + 28 warnings); `no-explicit-any` 174 → 103.*
+    **Done** — PR #27 (`lint-debt`): 24 `no-unescaped-entities`; 8 `no-html-link-for-pages`;
+    8 `catch (err: any)`; `storeQueries`/`proxy` row types; `types/globals.d.ts`;
+    `no-unused-vars` config. — PR #28 (`lint-debt-2`): admin `Inventory`/`Finance` insight
+    panels typed; new `app/types/product.ts` wired into the leaf prop components. — branch
+    `lint-debt-3`: `react-hooks/set-state-in-effect` → `warn` (24 hits: ~18 are the standard
+    Next-SSR "hydrate from localStorage/cookie/matchMedia on mount" pattern, not the
+    cascading-render bug; kept visible as warnings); ~15 isolated `any` singles across
+    `admin/{coupons,settings,analytics,whatsapp-enquiries}`, `catalogueGenerator`,
+    `GoogleTranslateWidget`, `InstallPrompt`, `headerNavbar`, product-page reviews, etc.
+    **Left (~103 `no-explicit-any`):** `app/admin/page.tsx` (74 — fold into #16);
+    `razorpay-webhook` (12 — needs a stricter `OrderItem` w/ required price/qty + coercion
+    at the parse boundary, its own ⚠️ pass); `ProductCard` + `CartContext` +
+    `WishlistContext` + consumers (~15 — cascades: nullable name/price hits helper
+    signatures wanting non-null). Each remaining cluster is a focused pass, not mechanical.
 
 20. ~~**Delete vestigial `ADMIN_SESSION_SECRET`.**~~ — **done (2026-08-29, Batch A).** No
     code ever read it; removed from the docs / env table / gotcha list / AGENT.md, and

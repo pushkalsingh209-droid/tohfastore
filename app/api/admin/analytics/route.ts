@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { asCustomerDetails } from "@/app/utils/orderTypes";
 
 // customer_details.email/contact fall back to these literal placeholders
 // upstream (see the razorpay webhook) when Razorpay doesn't supply real
@@ -14,9 +15,10 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 const PLACEHOLDER_EMAIL = "customer@example.com";
 const PLACEHOLDER_PHONE = "9999999999";
 
-function customerKey(order: any): string {
-  const email = order.customer_details?.email;
-  const phone = order.customer_details?.contact;
+function customerKey(order: { id: number; customer_details: unknown }): string {
+  const cd = asCustomerDetails(order.customer_details);
+  const email = cd.email;
+  const phone = cd.contact;
   if (email && email !== PLACEHOLDER_EMAIL) return `email:${String(email).toLowerCase()}`;
   if (phone && phone !== PLACEHOLDER_PHONE) return `phone:${phone}`;
   return `order:${order.id}`; // no reliable identity -- treat as a unique, non-repeat customer
