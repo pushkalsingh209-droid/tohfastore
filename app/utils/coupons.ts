@@ -2,7 +2,9 @@
 
 export interface Coupon {
   code: string;
-  discount_type: "flat" | "percent";
+  // The DB column is a plain text field (no enum/check), so this is `string`,
+  // not a literal union. Anything other than "percent" is treated as flat.
+  discount_type: string;
   discount_value: number;
   active: boolean;
   max_uses: number | null;

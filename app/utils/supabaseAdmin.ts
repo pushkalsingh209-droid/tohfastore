@@ -1,6 +1,7 @@
 // app/utils/supabaseAdmin.ts
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/db";
 
 // Uses the Supabase SERVICE ROLE key, which bypasses Row Level Security
 // entirely. The `server-only` import above makes any accidental import of
@@ -23,4 +24,4 @@ if (!serviceRoleKey) {
   );
 }
 
-export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey || "build_time_placeholder_key");
+export const supabaseAdmin = createClient<Database>(supabaseUrl, serviceRoleKey || "build_time_placeholder_key");

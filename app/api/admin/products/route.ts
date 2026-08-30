@@ -7,6 +7,7 @@ import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { attachThumbUrls } from "@/app/utils/imageThumb";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
 import { productHref } from "@/app/utils/slug";
+import type { Insert, Update } from "@/types/tables";
 
 // Some Supabase projects may not have every column yet (added by a later
 // migration the admin hasn't run) -- these routes degrade gracefully by
@@ -27,7 +28,10 @@ async function insertWithFallback(payload: Record<string, any>) {
   let currentPayload = { ...payload };
   const droppedColumns: string[] = [];
   while (true) {
-    const { data, error } = await supabase.from("products").insert([currentPayload]).select();
+    // This helper is deliberately dynamic (it drops columns Postgres
+    // complains about and retries), so the payload can't be statically the
+    // products Insert type -- cast at the boundary.
+    const { data, error } = await supabase.from("products").insert([currentPayload as Insert<"products">]).select();
     if (!error) return { data, error: null, droppedColumns };
     const missingCol = OPTIONAL_COLUMNS.find((col) => col in currentPayload && isMissingColumn(error, col));
     if (!missingCol) return { data, error, droppedColumns };
@@ -41,7 +45,11 @@ async function updateWithFallback(id: string, payload: Record<string, any>) {
   let currentPayload = { ...payload };
   const droppedColumns: string[] = [];
   while (true) {
-    const { data, error } = await supabase.from("products").update(currentPayload).eq("id", id).select();
+    const { data, error } = await supabase
+      .from("products")
+      .update(currentPayload as Update<"products">)
+      .eq("id", Number(id))
+      .select();
     if (!error) return { data, error: null, droppedColumns };
     const missingCol = OPTIONAL_COLUMNS.find((col) => col in currentPayload && isMissingColumn(error, col));
     if (!missingCol) return { data, error, droppedColumns };

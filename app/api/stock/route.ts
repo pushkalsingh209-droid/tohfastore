@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     const { data, error } = await supabase
       .from("products")
       .select("id, inventory, hidden")
-      .in("id", ids);
+      .in("id", ids.map(Number)); // `ids` are already /^\d+$/-filtered above
 
     if (error) {
       return NextResponse.json({ error: "Stock lookup failed." }, { status: 502, headers: NO_STORE });

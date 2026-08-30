@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const productId = String(body.productId || "").trim();
     const visitorToken = String(body.visitorToken || "").trim();
-    if (!productId || !visitorToken || visitorToken.length > 100) {
+    if (!/^\d+$/.test(productId) || !visitorToken || visitorToken.length > 100) {
       return NextResponse.json({ error: "Missing or invalid fields." }, { status: 400 });
     }
 
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     // pageview tally.
     const { error } = await supabase
       .from("product_views")
-      .upsert({ product_id: productId, visitor_token: visitorToken, viewed_at: new Date().toISOString() }, { onConflict: "product_id,visitor_token" });
+      .upsert({ product_id: Number(productId), visitor_token: visitorToken, viewed_at: new Date().toISOString() }, { onConflict: "product_id,visitor_token" });
     if (error) {
       return serverErrorResponse("Failed to record product view", error);
     }

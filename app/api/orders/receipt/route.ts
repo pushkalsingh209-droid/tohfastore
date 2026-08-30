@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { calculateOrderGstBreakdown } from "@/app/utils/gst";
+import { asCustomerDetails } from "@/app/utils/orderTypes";
 
 export async function POST(req: Request) {
   try {
@@ -33,7 +34,8 @@ export async function POST(req: Request) {
       .eq("order_id", cleanOrderId)
       .maybeSingle();
 
-    const storedPhone = String(data?.customer_details?.contact || "").replace(/\D/g, "").slice(-10);
+    const cd = asCustomerDetails(data?.customer_details);
+    const storedPhone = String(cd.contact || "").replace(/\D/g, "").slice(-10);
     if (!data || storedPhone !== cleanPhone) {
       return NextResponse.json({ error: "No order found with those details." }, { status: 404 });
     }
@@ -51,8 +53,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       orderId: data.order_id,
       date: data.created_at,
-      customerName: data.customer_details?.name || "",
-      customerPhone: data.customer_details?.contact || "",
+      customerName: cd.name || "",
+      customerPhone: cd.contact || "",
       items: items.map((i) => ({
         name: i.name,
         price: Number(i.price),

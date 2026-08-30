@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/db";
 import { getAutocompleteMatches, getSuggestions, SearchableProduct } from "@/app/utils/searchProducts";
 import { detectLanguageSwitchCommand, setPageLanguage } from "@/app/utils/googleTranslate";
 import { productHref } from "@/app/utils/slug";
@@ -29,7 +30,7 @@ const VOICE_SEARCH_LANGUAGES: { code: string; label: string }[] = [
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gxlervcazzddqcoagewy.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_yfpUfp0RTaHs6nL3VEcnZQ_H_u-KA7C";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
 export default function SearchBar() {
   const router = useRouter();
@@ -100,7 +101,15 @@ export default function SearchBar() {
   useEffect(() => {
     async function loadProducts() {
       const { data, error } = await supabase.from("products").select("id, name").eq("hidden", false).order("name");
-      if (!error && data) setProducts(data);
+      if (!error && data) {
+        // Coerce the bigint id to string and drop any nameless row --
+        // SearchableProduct is { id: string; name: string }.
+        setProducts(
+          data
+            .filter((p): p is { id: number; name: string } => p.name != null)
+            .map((p) => ({ id: String(p.id), name: p.name }))
+        );
+      }
     }
     loadProducts();
   }, []);

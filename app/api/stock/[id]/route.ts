@@ -30,7 +30,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const { data, error } = await supabase
       .from("products")
       .select("inventory, hidden")
-      .eq("id", productId)
+      .eq("id", Number(productId)) // `productId` is a \d+ regex match above
       .maybeSingle();
 
     // A hidden or since-deleted product reads as unavailable rather than a

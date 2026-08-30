@@ -206,6 +206,43 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>10:30</code></td>
+  <td><strong>#15 &mdash; typed Supabase clients</strong><br>(<code>IMPROVEMENTS.md</code> #15)</td>
+  <td>
+    <code>types/db.ts</code> regenerated (<code>npm run gen:types</code> &mdash; now covers the <code>0043</code>
+    reservation table + RPCs). <code>supabaseAdmin</code> and <code>SearchBar</code>&rsquo;s anon client are now
+    <code>createClient&lt;Database&gt;(&hellip;)</code>. New <code>types/tables.ts</code>
+    (<code>Row&lt;T&gt;</code>/<code>Insert&lt;T&gt;</code>/<code>Update&lt;T&gt;</code> aliases) + new
+    <code>app/utils/orderTypes.ts</code> (<code>OrderCustomerDetails</code>/<code>OrderItem</code> shapes +
+    <code>asCustomerDetails</code>/<code>asOrderItems</code> narrowers for the <code>orders</code> jsonb columns).<br>
+    <strong>39 surfaced type errors fixed:</strong> product-id <code>string&rarr;number</code>
+    <code>Number()</code> coercions at ~10 <code>.eq/.in("id",&hellip;)</code> sites (<code>razorpay</code>,
+    <code>stock</code>(/<code>[id]</code>), <code>recent-views/[id]</code>, <code>track-view</code>,
+    <code>proxy.ts</code>, <code>product/[id]/page</code>, <code>storeQueries</code>, admin products) &mdash;
+    behaviour preserved, PostgREST was already coercing; jsonb <code>customer_details</code>/<code>items</code>
+    reads via the new narrowers; nullable <code>products.name</code>/<code>price</code> asserted in
+    <code>getProduct</code> (a row missing either &rarr; 404); <code>coupons.discount_type</code> interface widened
+    to <code>string</code> (no DB check constraint) + <code>if (!coupon &hellip;)</code> null guards; admin
+    dynamic <code>.update()</code> payloads typed via <code>types/tables.ts</code>; <code>reserve_stock</code>
+    <code>p_items</code> cast to <code>Json</code>. Removed 4 dead <code>@supabase/ssr</code> scaffold files
+    (<code>app/lib/supabase.ts</code>, <code>app/utils/supabase/*</code>) &mdash; nothing imported them.
+  </td>
+  <td>
+    <em>new:</em> <code>types/tables.ts</code>, <code>app/utils/orderTypes.ts</code> &middot;
+    <em>deleted:</em> <code>app/lib/supabase.ts</code>, <code>app/utils/supabase/{client,middleware,server}.ts</code>
+    &middot; <code>types/db.ts</code>, <code>supabaseAdmin.ts</code>, <code>SearchBar.tsx</code>,
+    <code>coupons.ts</code>, <code>storeQueries.ts</code>, <code>proxy.ts</code>,
+    <code>product/[id]/page.tsx</code>, <code>api/{razorpay,stock,stock/[id],recent-views/[id],track-view,coupons/validate,orders/track,orders/receipt,admin/categories,admin/orders/update-status,admin/products}/route.ts</code>
+    &middot; <code>docs/ARCHITECTURE.html</code> &middot; <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>next build</code> exit 0 &middot; <code>tsc --noEmit</code> <strong>clean (0, was 39)</strong> &middot;
+    <code>npm test</code> 102 pass / 7 skip &middot; <code>eslint</code> no new errors (touched files stay at
+    their pre-existing <code>no-explicit-any</code> baseline &mdash; #19). No schema change; no runtime behaviour
+    change (id coercions are what PostgREST already did).
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>07:30</code></td>
   <td><strong>#1 &mdash; short-TTL stock reservation at checkout</strong><br>(<code>IMPROVEMENTS.md</code> T1 #1; &#9888;&#9888; payment path; <strong>ships disabled</strong>)</td>
   <td>
@@ -2122,6 +2159,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>apiError.ts</code></td><td><code>serverErrorResponse(context, err, publicMessage)</code> &mdash; logs the real error, returns a generic 5xx body. Wired into <strong>every route under <code>app/api</code></strong> (§22).</td></tr>
 <tr><td><code>rls.test.ts</code></td><td>Anon-key RLS perimeter regression test (§6). Env-gated (skips without Supabase creds).</td></tr>
 <tr><td><code>orderTally.ts</code></td><td><code>tallyUnitsSold(orders, {excludeId?})</code> &mdash; pure line-item quantity tally, shared by <code>getBestsellers</code> / <code>getRelatedProducts</code> via <code>getRecentOrderItems</code>. Unit-tested.</td></tr>
+<tr><td><code>orderTypes.ts</code></td><td><code>OrderCustomerDetails</code> / <code>OrderItem</code> shapes + <code>asCustomerDetails(json)</code> / <code>asOrderItems(json)</code> narrowers for the <code>orders</code> table's <code>customer_details</code> / <code>items</code> jsonb columns (the generated types can only say <code>Json</code>). <em>(#15)</em></td></tr>
 <tr><td><code>repricing.ts</code></td><td><code>repriceCart(clientItems, dbProducts, categoryGstRates, defaultGstPercent)</code> &mdash; the &ldquo;never trust the client at checkout&rdquo; guard extracted from <code>/api/razorpay</code>: rebuilds every line from the DB price/name/GST rate, rejects unknown/hidden ids and over-stock lines, returns the authoritative subtotal. Byte-for-byte match of the old inline block. <strong>12 unit tests.</strong></td></tr>
 <tr><td><code>bootstrapSettings.ts</code></td><td><code>parseChatLabels</code> / <code>parseGaneshaSettings</code> / <code>parsePhotoFilterIndex</code> / <code>parseDefaultWhatsappNumber</code> &mdash; pure parsers for the storefront <code>site_settings</code> values, run server-side in <code>getBootstrapData()</code> (#11). Reproduce the old per-context parse + clamp + fallback rules exactly. <strong>8 unit tests.</strong></td></tr>
 <tr><td><code>phone.ts</code></td><td><code>normalizeIndianPhone(raw)</code> &mdash; the <em>one</em> canonical Indian-phone normaliser (&rarr; bare digits <code>91XXXXXXXXXX</code>). Replaced 4 near-identical local copies (<code>whatsappOtp.ts</code>, <code>greenApi.ts</code> &times;2, <code>stock-alerts</code>, admin <code>whatsapp-numbers</code>) + an inline one in admin <code>orders/update-status</code>. Does not validate &mdash; callers keep their own <code>/^91[6-9]\d{9}$/</code> check. Unit-tested (7). <em>(#18)</em></td></tr>
@@ -2211,7 +2249,7 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
 <h2 id="build">Build, deploy &amp; config</h2>
 <dl class="kv">
   <dt>Scripts</dt><dd><code>dev</code> = <code>next dev</code>, <code>build</code> = <code>next build</code>, <code>start</code> = <code>next start</code>, <code>lint</code> = <code>eslint</code>, <code>test</code> = <code>vitest run</code>, <code>gen:types</code> = <code>npx supabase gen types typescript --linked &gt; types/db.ts</code></dd>
-  <dt>DB types</dt><dd><code>types/db.ts</code> &mdash; generated from the live schema by <code>npm run gen:types</code> (Management API, no Docker; needs the CLI linked &mdash; <code>npx supabase link</code>). Exports <code>Database</code>. <strong>Not yet wired into the Supabase clients</strong> &mdash; typing <code>supabaseAdmin</code> as <code>createClient&lt;Database&gt;</code> surfaces ~37 pre-existing loose-typing errors (mostly <code>string</code> vs <code>number</code> product ids); that clean-up is its own batch (<code>IMPROVEMENTS.md</code> #15). Regenerate after every schema migration.</dd>
+  <dt>DB types</dt><dd><code>types/db.ts</code> &mdash; generated from the live schema by <code>npm run gen:types</code> (Management API, no Docker; needs the CLI linked &mdash; <code>npx supabase link</code>). Exports <code>Database</code>. <strong>Regenerate after every schema migration</strong> &mdash; it's <code>tsc</code>-enforced now: <code>supabaseAdmin</code> + <code>SearchBar</code>'s anon client are <code>createClient&lt;Database&gt;</code> (#15), so a stale <code>types/db.ts</code> breaks the build. <code>types/tables.ts</code> gives <code>Row&lt;T&gt;</code>/<code>Insert&lt;T&gt;</code>/<code>Update&lt;T&gt;</code> shorthands; <code>app/utils/orderTypes.ts</code> narrows the <code>orders</code> jsonb columns.</dd>
   <dt>Host</dt><dd>Vercel (Hobby). <code>maxDuration = 60</code> on the two catalogue PDF routes.</dd>
   <dt>CI</dt><dd><code>.github/workflows/ci.yml</code> (added 2026-08-29) &mdash; <code>tsc --noEmit</code> + <code>npm test</code> + <code>next build</code> on push to <code>main</code> and every PR. RLS test runs if Supabase vars are set as Actions secrets, else self-skips. No ESLint job (pre-existing debt). Vercel&rsquo;s own Git integration is the deploy check.
     <br><strong>Enforcement (Active, confirmed 2026-08-29):</strong> a branch-protection ruleset on the default

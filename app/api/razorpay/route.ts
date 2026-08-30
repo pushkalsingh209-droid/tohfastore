@@ -9,6 +9,7 @@ import { isVerificationTokenValid, normalizePhoneForRecord } from "@/app/utils/w
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { repriceCart, type RepriceProduct } from "@/app/utils/repricing";
 import { RESERVATION_TTL_SECONDS, STOCK_RESERVATIONS_ENABLED_KEY } from "@/app/utils/stock";
+import type { Json } from "@/types/tables";
 
 // Interface definition to explicitly type incoming shopping bag artifacts
 interface CartItem {
@@ -73,7 +74,10 @@ export async function POST(req: Request) {
     // client-supplied price/total. Without this, a tampered request could
     // create a real, payable Razorpay order for far less than the cart is
     // actually worth while still claiming the full item list at checkout.
-    const itemIds = (items as CartItem[]).map((i) => i.id).filter(Boolean);
+    // Product ids are a bigint column -- coerce to number for the typed
+    // client. A non-numeric id just drops out here and then trips the "no
+    // longer available" rejection in repriceCart, same as a deleted product.
+    const itemIds = (items as CartItem[]).map((i) => Number(i.id)).filter(Number.isFinite);
     // hidden=false so a product an admin has hidden can't be paid for even
     // via a direct API call with a known id -- it simply won't be found
     // below, which the existing "no longer available" rejection already
@@ -92,7 +96,7 @@ export async function POST(req: Request) {
     // categories panel); products with no category, or a category that's
     // since been deleted, fall back to the site default rate.
     const categoryNames = Array.from(
-      new Set(((dbProducts ?? []) as RepriceProduct[]).map((p) => p.category).filter(Boolean))
+      new Set(((dbProducts ?? []) as RepriceProduct[]).map((p) => p.category).filter((c): c is string => Boolean(c)))
     );
     const categoryGstRates = new Map<string, number>();
     if (categoryNames.length > 0) {
@@ -127,7 +131,7 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       const result = validateAndCalculateDiscount(coupon, subtotal);
-      if (!result.valid) {
+      if (!coupon || !result.valid) {
         return NextResponse.json({ error: result.error }, { status: 400 });
       }
       discount = result.discount;
@@ -159,7 +163,7 @@ export async function POST(req: Request) {
       checkoutToken = randomUUID();
       const { data: reserveRows, error: reserveErr } = await supabase.rpc("reserve_stock", {
         p_token: checkoutToken,
-        p_items: pricedItems,
+        p_items: pricedItems as unknown as Json, // {id, quantity, ...} array -> jsonb arg
         p_ttl_seconds: RESERVATION_TTL_SECONDS,
       });
       if (reserveErr) {
