@@ -104,7 +104,7 @@ export const getHiddenCategoryNames = unstable_cache(
     try {
       const { data, error } = await supabase.from("categories").select("name").eq("show_on_home", false);
       if (error) return [];
-      return (data || []).map((row: any) => row.name).filter(Boolean);
+      return (data || []).map((row) => row.name).filter(Boolean);
     } catch {
       return [];
     }

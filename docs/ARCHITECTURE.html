@@ -206,6 +206,36 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>19:30</code></td>
+  <td><strong>#19 &mdash; lint-debt: cart/wishlist contexts + singles</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-storefront</code>)</td>
+  <td>
+    <code>CartContext</code>/<code>WishlistContext</code> &mdash; internal <code>useState</code>
+    and the <code>addToCart</code>/<code>toggleWishlist</code>/<code>persist</code> params typed
+    from <code>app/types/product.ts</code> (<code>CartItem</code> = <code>StoreProduct &amp;
+    { quantity }</code>); <code>cartTotal</code> now coerces <code>Number(item.price)</code>
+    (a cart line's price can round-trip through <code>localStorage</code> as a string).
+    <code>storeQueries</code> hidden-category map, <code>wishlist/page</code> (a local
+    <code>WishlistItem</code> type for the trimmed row the wishlist stores),
+    <code>ProductGallery</code> <code>let startTimer</code> &rarr; <code>const</code>. The two
+    <code>createContext&lt;any&gt;</code> stay behind a scoped <code>eslint-disable</code> +
+    rationale &mdash; typing the context value cascades into
+    <code>CartDrawer</code>/<code>CheckoutSheet</code>'s own local line types (a later pass).
+    <code>eslint .</code> 55 &rarr; <strong>45 problems</strong> (17 errors + 28 warnings).
+  </td>
+  <td>
+    <code>app/context/CartContext.tsx</code>, <code>app/context/WishlistContext.tsx</code>,
+    <code>app/utils/storeQueries.ts</code>, <code>app/wishlist/page.tsx</code>,
+    <code>app/components/ProductGallery.tsx</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>tsc --noEmit</code> clean &middot; <code>next build</code> exit 0 (86/86) &middot;
+    <code>npm test</code> 102 pass / 1 skip &middot; <code>eslint .</code> 55 &rarr; 45
+    (&minus;10; no new). Storefront cart/wishlist code &mdash; not click-tested here; the
+    changes are type annotations + one <code>Number()</code> coercion on a sum.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>18:45</code></td>
   <td><strong>#19 &mdash; lint-debt: admin page + products route</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-admin-page</code>)</td>
   <td>

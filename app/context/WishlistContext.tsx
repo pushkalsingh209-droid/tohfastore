@@ -1,12 +1,16 @@
 // app/context/WishlistContext.tsx
 "use client";
 import { createContext, useContext, useState, useEffect } from "react";
+import type { StoreProduct } from "@/app/types/product";
 
+// The context value shape isn't declared yet; consumers read it untyped.
+// A follow-up (IMPROVEMENTS.md #19).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WishlistContext = createContext<any>(null);
 const STORAGE_KEY = "tohfa_wishlist";
 
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
-  const [wishlist, setWishlist] = useState<any[]>([]);
+  const [wishlist, setWishlist] = useState<StoreProduct[]>([]);
 
   useEffect(() => {
     try {
@@ -17,7 +21,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  function persist(updated: any[]) {
+  function persist(updated: StoreProduct[]) {
     setWishlist(updated);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
@@ -28,7 +32,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     return wishlist.some((item) => String(item.id) === String(id));
   }
 
-  function toggleWishlist(product: any) {
+  function toggleWishlist(product: StoreProduct) {
     if (isWishlisted(product.id)) {
       persist(wishlist.filter((item) => String(item.id) !== String(product.id)));
     } else {

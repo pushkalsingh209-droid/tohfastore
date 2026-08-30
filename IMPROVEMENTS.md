@@ -416,8 +416,8 @@ care, land behind tests, never "blind".
 18. ~~**Consolidate phone normalisation.**~~ — **done (2026-08-30).** See Done. One
     `app/utils/phone.ts` `normalizeIndianPhone`, 4 local copies + 1 inline retired, 7 tests.
 
-19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 55 problems
-    (27 errors + 28 warnings); `no-explicit-any` 174 → ~27.*
+19. **Clear the pre-existing lint debt** — *in progress (2026-08-30): 246 → 45 problems
+    (17 errors + 28 warnings); `no-explicit-any` 174 → ~15.*
     **Done** — PR #27 (`lint-debt`): 24 `no-unescaped-entities`; 8 `no-html-link-for-pages`;
     8 `catch (err: any)`; `storeQueries`/`proxy` row types; `types/globals.d.ts`;
     `no-unused-vars` config. — PR #28 (`lint-debt-2`): admin `Inventory`/`Finance` insight
@@ -437,13 +437,23 @@ care, land behind tests, never "blind".
     branch `lint-admin-page` (2026-08-30): `app/admin/page.tsx` 14 → 0 (the 14
     `useState<any[]>` for `loadAll()`'s state now use the `AdminX` interfaces the context
     already exports) + `app/api/admin/products/route.ts` 5 → 0 (`Record<string, any>`
-    payloads → `Record<string, unknown>`, `isMissingColumn(error: unknown)` narrowed).
-    **Left (~27 `no-explicit-any`):**
-    `razorpay-webhook` (12 — needs a stricter `OrderItem` w/ required price/qty + coercion
-    at the parse boundary, its own ⚠️ pass); `ProductCard` + `CartContext` +
-    `WishlistContext` + consumers (~11 — cascades: nullable name/price hits helper
-    signatures wanting non-null); scattered singles. Each remaining cluster is a focused
-    pass, not mechanical.
+    payloads → `Record<string, unknown>`, `isMissingColumn(error: unknown)` narrowed). —
+    branch `lint-storefront` (2026-08-30): `CartContext`/`WishlistContext` internal state +
+    `addToCart`/`toggleWishlist`/`persist` params typed via `app/types/product.ts`
+    (`CartItem`/`StoreProduct`); `cartTotal` coerces `Number(item.price)`; `storeQueries`
+    hidden-category map, `wishlist/page` (local `WishlistItem` for the trimmed stored row),
+    `ProductGallery` `let startTimer` → `const`. The two `createContext<any>` kept behind a
+    scoped `eslint-disable` + rationale (typing the value cascades into
+    `CartDrawer`/`CheckoutSheet` local line types).
+    **Left (17 errors):**
+    `razorpay-webhook` (12 `no-explicit-any` — needs a stricter `OrderItem` w/ required
+    price/qty + coercion at the parse boundary, its own ⚠️ pass); `ProductCard`
+    `product: any` (2 — reads ~20 fields incl. `material`/`color` not on `StoreProduct`,
+    passes to gallery/whatsapp helpers wanting concrete types — cascades); the two
+    `createContext<any>` above; and 2 genuine `react-hooks` render smells not in this
+    sweep's scope — `CatalogSection` reads a ref during render (`react-hooks/refs`),
+    `StorefrontPage` calls `Math.random()` in render to pick a hero category
+    (`react-hooks/purity`) — each a real fix, own pass.
 
 20. ~~**Delete vestigial `ADMIN_SESSION_SECRET`.**~~ — **done (2026-08-29, Batch A).** No
     code ever read it; removed from the docs / env table / gotcha list / AGENT.md, and

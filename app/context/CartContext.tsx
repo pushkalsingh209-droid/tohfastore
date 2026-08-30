@@ -1,11 +1,17 @@
 // app/context/CartContext.tsx
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import type { StoreProduct, CartItem } from "@/app/types/product";
 
+// The context value's full shape (see `value` below) isn't declared yet;
+// consumers still read it untyped. Tightening this cascades into
+// CartDrawer/CheckoutSheet's own local line types -- a follow-up
+// (IMPROVEMENTS.md #19).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CartContext = createContext<any>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<any[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
   // Safely pull item queue from browser storage configuration on boot
@@ -27,7 +33,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // loop). The others below use the functional `setCart(prev => ...)` form
   // only, so they're stable for the life of the provider.
   const addToCart = useCallback(
-    (product: any) => {
+    (product: StoreProduct) => {
       const existing = cart.find((item) => item.id === product.id);
       const currentQty = existing ? existing.quantity : 0;
       const maxStock = Number(product.inventory) || 0;
@@ -91,7 +97,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("tohfa_cart");
   }, []);
 
-  const cartTotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
+  // item.price can round-trip through localStorage as a string -- coerce.
+  const cartTotal = cart.reduce((total, item) => total + (Number(item.price) || 0) * item.quantity, 0);
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   // Memoised so consumers that put the whole value in a dep array don't
