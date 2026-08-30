@@ -78,13 +78,34 @@ component. This matches the codebase's existing context pattern and avoids
 **PR strategy:** one PR per tab, each with a manual click-through before merge.
 Not one 3,600-line PR.
 
-### Progress (2026-08-29)
+### Progress (2026-08-30)
 
 **Done, merged:** scaffold (`AdminDataContext`, `admin/lib/apiRequest.ts`) +
 `SecurityTab` · `ReviewsTab` · `CouponsTab` · `OrdersTab` · `OverviewTab`.
 Page `app/admin/page.tsx` 3,689 → **2,636 lines**, `no-explicit-any` −28,
 `set-state-in-effect` −1 (OrdersTab's page-reset effect became two change
 handlers).
+
+**Pushed, awaiting click-through + merge:** `ProductsTab`. The 3-sub-PR split
+(6a tracker / 6b form / 6c dropdowns) was **abandoned** — the form and the
+tracker share `weightInputUnit`/`dimensionInputUnit` + `toCanonical*`, and
+the tracker's `handleStockUpdate`/`handleEditClick` write the form's
+`editingProductId`/`formData`; cutting between them needs prop bridges for
+exactly the state the "parked" note below flagged. Moved the whole tab —
+form + Product Statistics panels + Live Storefront Catalog & Stock Tracker +
+~28 handlers + `computeGroupStats` + the unit-input helpers — into
+`app/admin/tabs/ProductsTab.tsx` in one go. Context gained `setProducts`,
+`categories`/`labels`/`colors`/`materials`/`whatsappNumbers` (+ setters via
+minimal interfaces) and `refetch`. `newLabelName`/`labelStatus`/`handleAddLabel`
+stay in `page.tsx` too (Settings' Product Labels panel still uses them; the
+`setFormData` line was dropped from that copy). Verified: `tsc` clean,
+`next build` exit 0 (86/86), `npm test` 102 pass, `eslint .` 164 → 135
+problems (the tab's `any`s moved with it, none new). `app/admin/page.tsx`
+2,636 → **~530 lines**.
+
+Only **`settings`** remains inline (~600 lines). By now it needs only read
+access to shared `labels`/`categories`/`whatsappNumbers` + `setSettings` +
+`refetch` — a clean final extraction, no products entanglement left.
 
 **Parked: `products` + `settings`.** Investigating `settings` surfaced that the
 two are **mutually entangled** and can't be split one-at-a-time cleanly:
