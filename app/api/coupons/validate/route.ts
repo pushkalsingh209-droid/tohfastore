@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     const result = validateAndCalculateDiscount(coupon, parsedSubtotal);
-    if (!result.valid) {
+    if (!coupon || !result.valid) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 

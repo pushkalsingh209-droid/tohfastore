@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { serverErrorResponse } from "@/app/utils/apiError";
+import { asCustomerDetails } from "@/app/utils/orderTypes";
 
 export async function POST(req: Request) {
   try {
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No order found with those details." }, { status: 404 });
     }
 
-    const storedPhone = String(data.customer_details?.contact || "").replace(/\D/g, "").slice(-10);
+    const storedPhone = String(asCustomerDetails(data.customer_details).contact || "").replace(/\D/g, "").slice(-10);
     if (storedPhone !== cleanPhone) {
       return NextResponse.json({ error: "No order found with those details." }, { status: 404 });
     }

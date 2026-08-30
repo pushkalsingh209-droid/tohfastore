@@ -98,7 +98,7 @@ async function handleProductPath(request: NextRequest, idParam: string): Promise
   const numericId = productIdFromParam(idParam);
   if (!/^\d+$/.test(numericId)) return NextResponse.next();
 
-  const { data, error } = await supabase.from('products').select('id, name').eq('id', numericId).maybeSingle();
+  const { data, error } = await supabase.from('products').select('id, name').eq('id', Number(numericId)).maybeSingle();
   if (error || !data) return NextResponse.next();
 
   const canonical = productHref(data);

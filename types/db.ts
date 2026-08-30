@@ -531,6 +531,36 @@ export type Database = {
           },
         ]
       }
+      stock_reservations: {
+        Row: {
+          checkout_token: string
+          created_at: string
+          expires_at: string
+          id: number
+          product_id: number
+          qty: number
+          status: string
+        }
+        Insert: {
+          checkout_token: string
+          created_at?: string
+          expires_at: string
+          id?: number
+          product_id: number
+          qty: number
+          status?: string
+        }
+        Update: {
+          checkout_token?: string
+          created_at?: string
+          expires_at?: string
+          id?: number
+          product_id?: number
+          qty?: number
+          status?: string
+        }
+        Relationships: []
+      }
       whatsapp_enquiries: {
         Row: {
           category: string | null
@@ -636,11 +666,28 @@ export type Database = {
         Args: { p_items: Json; p_sign: number }
         Returns: undefined
       }
+      consume_reservation: {
+        Args: { p_token: string }
+        Returns: {
+          new_inventory: number
+          oversold_by: number
+          product_id: number
+        }[]
+      }
       decrement_inventory: {
         Args: { p_product_id: number; p_qty: number }
         Returns: {
           new_inventory: number
           oversold_by: number
+        }[]
+      }
+      reserve_stock: {
+        Args: { p_items: Json; p_token: string; p_ttl_seconds: number }
+        Returns: {
+          available: number
+          ok: boolean
+          product_id: number
+          product_name: string
         }[]
       }
     }

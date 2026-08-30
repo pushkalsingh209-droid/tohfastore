@@ -582,7 +582,7 @@ export const getBestsellers = unstable_cache(
       const { data: products, error: productsError } = await supabase
         .from("products")
         .select("id, name, price, image_url, inventory, category")
-        .in("id", topIds)
+        .in("id", topIds.map(Number))
         .eq("hidden", false);
       if (productsError || !products) return [];
 
@@ -616,7 +616,7 @@ export const getRelatedProducts = unstable_cache(
         const { data: ranked } = await supabase
           .from("products")
           .select("id, name, price, image_url, inventory, category")
-          .in("id", rankedIds)
+          .in("id", rankedIds.map(Number))
           .eq("hidden", false);
         for (const p of (ranked as any[]) || []) {
           if (p.category === category) productMap.set(String(p.id), p);

@@ -64,11 +64,19 @@ const getProduct = cache(
         const { data, error } = await supabase
           .from("products")
           .select("*")
-          .eq("id", id)
+          .eq("id", Number(id))
           .eq("hidden", false)
           .single();
 
         if (error || !data) return null;
+        // A product row with no name or no price can't be rendered or sold --
+        // treat it as not-found rather than shipping a broken page. (The DB
+        // doesn't enforce NOT NULL on these, so the generated types flag
+        // them as nullable; this is the one place that gets asserted.)
+        if (data.name == null || data.price == null) {
+          console.error(`Product ${id} is missing a name or price -- treating as not found.`);
+          return null;
+        }
         // Attaches a small-thumbnail URL (see app/utils/imageThumb.ts) --
         // flows automatically into AddToCartButton/WishlistButton via their
         // existing product-object spread, and is passed explicitly to
@@ -81,7 +89,7 @@ const getProduct = cache(
           data.image_url ? getThumbUrl(data.image_url) : Promise.resolve(undefined),
           getSoldCounts(),
         ]);
-        return { ...data, thumb_url, sold_count: soldCounts[String(data.id)] || 0 };
+        return { ...data, name: data.name, price: data.price, thumb_url, sold_count: soldCounts[String(data.id)] || 0 };
       } catch (err) {
         console.error("Failed to load product:", err);
         return null;
@@ -175,7 +183,7 @@ export default async function ProductDetailPage({
   const [reviews, categorySliderItems, relatedProducts, unitSettings, defaultWhatsappNumber] = await Promise.all([
     product ? getApprovedReviews(product.id) : Promise.resolve([]),
     getCategorySliderItems(),
-    product ? getRelatedProducts(product.category, product.id) : Promise.resolve([]),
+    product ? getRelatedProducts(product.category ?? "", product.id) : Promise.resolve([]),
     getProductUnitSettings(),
     getDefaultWhatsappNumber(),
   ]);
@@ -294,7 +302,7 @@ export default async function ProductDetailPage({
               { label: product.name },
             ]}
           />
-          <RecordProductView id={product.id} name={product.name} price={product.price} image_url={product.image_url} thumb_url={product.thumb_url} category={product.category} />
+          <RecordProductView id={product.id} name={product.name} price={product.price} image_url={product.image_url ?? ""} thumb_url={product.thumb_url} category={product.category} />
           <div className="flex flex-col md:flex-row md:items-start gap-8 md:gap-12">
             {/* Gallery */}
             <div className="md:w-1/2 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 shadow-sm bg-white">

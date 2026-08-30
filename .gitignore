@@ -49,3 +49,7 @@ next-env.d.ts
 /supabase/.temp/
 /supabase/.branches/
 /schema-snapshot.sql
+
+# Locally-generated print/PDF exports of the v1 feature manifest (not source)
+docs/TOHFA-Version-1-Feature-Manifest.pdf
+docs/tohfa-v1-manifest-print.html

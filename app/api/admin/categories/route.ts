@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import type { Update } from "@/types/tables";
 
 export async function GET() {
   const { data, error } = await supabase.from("categories").select("*").order("name", { ascending: true });
@@ -80,7 +81,7 @@ export async function PATCH(req: Request) {
     const { id, show_on_home, gst_rate, default_page_size, discount_percent } = await req.json();
     if (!id) return NextResponse.json({ error: "Missing category id." }, { status: 400 });
 
-    const updates: Record<string, unknown> = {};
+    const updates: Update<"categories"> = {};
     if (typeof show_on_home === "boolean") updates.show_on_home = show_on_home;
     if (gst_rate !== undefined) {
       const gstRate = parseGstRate(gst_rate);

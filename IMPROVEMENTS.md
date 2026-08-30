@@ -12,6 +12,38 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Typed Supabase clients (#15) — 2026-08-30 10:30 IST
+- `types/db.ts` regenerated (`npm run gen:types` — now includes the `0043` reservation
+  table + RPCs). `app/utils/supabaseAdmin.ts` and `app/components/SearchBar.tsx`'s anon
+  client are now `createClient<Database>(...)`.
+- New `types/tables.ts` — `Row<T>` / `Insert<T>` / `Update<T>` aliases over the generated
+  `Database` type. New `app/utils/orderTypes.ts` — `OrderCustomerDetails` / `OrderItem`
+  shapes + `asCustomerDetails` / `asOrderItems` narrowers for the `orders` jsonb columns.
+- **39 surfaced type errors fixed**, by category:
+  - **product-id string→number** (`.eq/.in("id", …)` on the bigint column): `Number()` at
+    ~10 call sites — `razorpay`, `stock`, `stock/[id]`, `recent-views/[id]`, `track-view`,
+    `proxy.ts`, `product/[id]/page`, `storeQueries` bestsellers/related, admin products
+    `updateWithFallback`. `track-view` also tightened its guard to `/^\d+$/`. Runtime
+    behaviour preserved (PostgREST was string→bigint coercing already); a non-numeric id
+    now cleanly drops out instead of silently not matching.
+  - **jsonb `orders.customer_details` / `.items`** read as `Json` → `asCustomerDetails()` /
+    `asOrderItems()` at `orders/track`, `orders/receipt`, `admin/orders/update-status`.
+  - **nullable `products.name` / `price`** → `getProduct()` now returns `null` (→ 404) for a
+    row missing either, and asserts them non-null in its return. `image_url` / `category`
+    nullability handled with `?? ""` at the two component boundaries that needed it.
+  - **`coupons.discount_type`** interface widened `"flat"|"percent"` → `string` (the column
+    has no check constraint); `validateAndCalculateDiscount` already treats non-`"percent"`
+    as flat. `+ if (!coupon || …)` null guards in `coupons/validate` + `razorpay`.
+  - **admin dynamic `.update()` payloads** (`Record<string, unknown>`) typed as
+    `Update<"categories">` / `Update<"orders">`; the products insert/update-with-fallback
+    helpers cast at the `.insert`/`.update` boundary (they're deliberately column-dropping).
+  - **`reserve_stock` `p_items`** cast `PricedItem[] as unknown as Json`.
+- Removed 4 dead `@supabase/ssr` scaffold files (`app/lib/supabase.ts`,
+  `app/utils/supabase/{client,middleware,server}.ts`) — nothing imported them.
+- Verified: `next build` exit 0, `tsc` **clean (0 errors, was 39)**, `npm test` 102 pass /
+  7 skip, `eslint` no new errors (the touched files stay at their pre-existing
+  `no-explicit-any` baseline — those `any`s are a separate cleanup, #19).
+
 ### Batch: Short-TTL stock reservation at checkout (#1) — 2026-08-30 07:30 IST — ⚠️⚠️ payment path, SHIPS DISABLED
 - Closes the checkout-vs-checkout race: stock is decremented only *after* payment today, so
   two shoppers can both pass `/api/razorpay`'s `qty <= inventory` read and both pay for the
@@ -351,13 +383,12 @@ care, land behind tests, never "blind".
 14. ~~Keepalive staleness alert~~ — **done** (2026-08-29). Follow-up: the
     `abandoned-checkout` cron still has no health signal; same pattern could cover it.
 
-15. **Generate DB types** — *partly done (2026-08-29, Batch A).* `types/db.ts` is
-    generated + committed; `npm run gen:types` (`npx supabase gen types typescript
-    --linked`, Management API, no Docker) regenerates it. **Still open:** wire it into the
-    Supabase clients (`createClient<Database>`) — that surfaces ~37 pre-existing
-    loose-typing errors (mostly `string` vs `number` product ids in `storeQueries.ts`,
-    `razorpay`, `orders/*`, `admin/products`, `proxy.ts`), several of which look like real
-    latent bugs. Own batch: fix those, then delete the hand-written `any`s.
+15. ~~**Generate DB types + wire into the clients.**~~ — **done (2026-08-30).** See Done.
+    `supabaseAdmin` + `SearchBar`'s anon client are `createClient<Database>`; the 39
+    surfaced errors fixed (product-id `Number()` coercions, jsonb `customer_details`/`items`
+    shapes via `app/utils/orderTypes.ts`, nullable `products.name`/`price` asserted in
+    `getProduct`, `coupons.discount_type` widened to `string`, admin `.update()` payloads
+    typed via `types/tables.ts`). 4 dead `@supabase/ssr` scaffold files removed.
 
 16. **Split `app/admin/page.tsx`** — *5 of 7 tabs done (2026-08-29); rest parked.* Plan:
     `docs/DESIGN-split-admin-page.md`. **Done:** scaffold (`apiRequest` → `admin/lib/`,

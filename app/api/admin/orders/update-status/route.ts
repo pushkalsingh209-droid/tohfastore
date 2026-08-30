@@ -5,6 +5,8 @@ import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { productHref } from "@/app/utils/slug";
 import { normalizeIndianPhone } from "@/app/utils/phone";
+import { asCustomerDetails, asOrderItems } from "@/app/utils/orderTypes";
+import type { Update } from "@/types/tables";
 
 const VALID_STATUSES = ["processing", "shipped", "delivered", "cancelled"];
 
@@ -19,7 +21,7 @@ export async function POST(req: Request) {
     // AWB / logistics tracking number is optional -- an admin may set it
     // any time (before or after marking an order shipped), or leave it out
     // entirely for orders handled without a traceable courier.
-    const updates: Record<string, unknown> = { status };
+    const updates: Update<"orders"> = { status };
     if (awb_number !== undefined) updates.awb_number = String(awb_number).trim() || null;
 
     // Read the current status first so we can tell a real transition into
@@ -76,7 +78,7 @@ export async function POST(req: Request) {
         const greenApiUrl = process.env.GREEN_API_URL;
         const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
         const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
-        const customerPhone = order.customer_details?.contact;
+        const customerPhone = asCustomerDetails(order.customer_details).contact;
 
         if (greenApiUrl && greenApiIdInstance && greenApiTokenInstance && customerPhone) {
           // Delivered also carries a review request -- linking to the
@@ -84,11 +86,12 @@ export async function POST(req: Request) {
           // lives (see app/product/[id]/page.tsx). Kept to one item even
           // for a multi-item order rather than listing every link, so the
           // message stays short enough to actually read on WhatsApp.
-          const firstItem = Array.isArray(order.items) ? order.items[0] : null;
-          const reviewLine = firstItem?.id
-            ? `\n\nWe'd love your feedback! Leave a review here: https://tohfaonline.com${productHref(firstItem)}`
-            : "";
-          const invoiceLine = `\n\n📄 Invoice: https://tohfaonline.com/success?order_id=${encodeURIComponent(order.order_id)}`;
+          const firstItem = asOrderItems(order.items)[0] ?? null;
+          const reviewLine =
+            firstItem?.id != null
+              ? `\n\nWe'd love your feedback! Leave a review here: https://tohfaonline.com${productHref({ id: firstItem.id, name: firstItem.name })}`
+              : "";
+          const invoiceLine = `\n\n📄 Invoice: https://tohfaonline.com/success?order_id=${encodeURIComponent(order.order_id ?? "")}`;
 
           const message =
             status === "shipped"

@@ -30,7 +30,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const { count, error } = await supabase
       .from("product_views")
       .select("*", { count: "exact", head: true })
-      .eq("product_id", productId)
+      .eq("product_id", Number(productId)) // `productId` is a \d+ regex match above
       .gte("viewed_at", cutoff);
     return NextResponse.json({ count: error ? 0 : count || 0 }, { headers: NO_STORE });
   } catch {
