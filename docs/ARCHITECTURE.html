@@ -135,6 +135,7 @@
 <nav class="toc" aria-label="Contents">
   <p class="brand">TOHFA</p>
   <p class="kicker">Architecture Reference</p>
+  <p style="margin:0 0 6px;font-size:12px">Orientation-level companion (system appreciation, code&nbsp;flows, dev &amp; owner guides): <a href="./HANDBOOK.html" style="font-weight:700;text-decoration:none">HANDBOOK.html</a></p>
   <p style="margin:0 0 14px"><a href="#changelog" style="font-size:12.5px;font-weight:700;text-decoration:none">&#9633;&nbsp; Change log</a></p>
   <ol>
     <li><a href="#overview">Overview &amp; purpose</a></li>
@@ -205,6 +206,36 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-08-31<br>01:30</code></td>
+  <td><strong>New: <code>docs/HANDBOOK.html</code></strong><br>(orientation-level docs)</td>
+  <td>
+    A standalone, tabbed handbook &mdash; the orientation layer this reference didn't have.
+    Four tabs (pure-CSS <code>:target</code>&nbsp;+&nbsp;<code>:has()</code> nav, checkbox hamburger on
+    mobile, no <code>&lt;script&gt;</code>, CDN-free): <strong>Overview / System Appreciation</strong> (stack,
+    a system-context SVG, the design decisions and their <em>why</em>, the working model),
+    <strong>Code Flows</strong> (eight source-named walkthroughs with inline-SVG sketches &mdash; storefront
+    render, PDP, 3-step checkout, create-payment, webhook, admin-save&nbsp;&rarr;&nbsp;cache-bust, reservation
+    lifecycle, scheduled jobs), <strong>Developer Guide</strong> (setup, commands, repo layout, code style,
+    the batch&nbsp;&rarr;&nbsp;verify&nbsp;&rarr;&nbsp;document&nbsp;&rarr;&nbsp;deploy agreement, seven
+    how-to playbooks, testing, gotchas, observability), and <strong>Admin &amp; Owner Guide</strong> (each
+    tab, a "what every setting does" table, the operational runbook, an "what the alerts mean" table, plan
+    notes). This reference stays the exhaustive source of record; the two are kept in step under the same
+    document&nbsp;&rarr;&nbsp;deploy gate.
+    <br><br>
+    <em>Next (PR 2):</em> fold this reference in as <strong>Architecture</strong> + <strong>Change Log</strong>
+    tabs of the handbook (styles <code>@scope</code>d), and reduce <code>ARCHITECTURE.html</code> to a
+    pointer, updating the doc references in <code>CLAUDE.md</code> / <code>AGENT.md</code> / skills.
+  </td>
+  <td>
+    <em>new:</em> <code>docs/HANDBOOK.html</code><br>
+    <code>docs/ARCHITECTURE.html</code> (companion pointer + this row)
+  </td>
+  <td>
+    Static HTML/CSS only &mdash; nothing to build or test. Rendered &amp; tab-switching verified in a
+    browser; published as its own artifact.
+  </td>
+</tr>
 <tr>
   <td><code>2026-08-31<br>00:00</code></td>
   <td><strong>PWA icon / splash routes &rarr; static</strong><br>(Active-CPU pass; <code>IMPROVEMENTS.md</code> Tier 3 #13)</td>
