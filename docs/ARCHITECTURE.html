@@ -206,6 +206,47 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>20:30</code></td>
+  <td><strong>&#9888; #19 &mdash; lint-debt: razorpay-webhook item types + parse-boundary coercion</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-webhook-types</code>)</td>
+  <td>
+    Payment path &mdash; type-only + one hardening. <code>razorpay-webhook</code> 12
+    <code>no-explicit-any</code> &rarr; 0. The order line items (pulled from the Razorpay
+    order <code>notes</code> we set server-side at creation) are now typed
+    <code>PricedItem[]</code> &mdash; the exact shape <code>/api/razorpay</code> writes
+    (<code>app/utils/repricing.ts</code>). New
+    <code>app/api/razorpay-webhook/normalizeOrderItems.ts</code> re-coerces every entry as
+    it comes out of <code>JSON.parse</code>: <code>Number()</code> on price/quantity (a
+    corrupt value collapses to <code>0</code> instead of the <code>NaN</code> that used to
+    poison every total it touched), a real per-item <code>gstRate</code> (missing &rarr;
+    site fallback rate, same value <code>calculateOrderGstBreakdown</code> defaulted to
+    anyway; an explicit <code>0%</code> is kept), and nullable id/name/image/category
+    normalised. 8 unit tests, including a round-trip that proves a well-formed note is
+    returned <strong>byte-for-byte unchanged</strong> &mdash; every real order is
+    unaffected. Also: <code>body</code> typed <code>WebhookBody</code>; <code>notes</code>
+    read as <code>Record&lt;string, unknown&gt;</code> with <code>typeof</code> narrowing
+    (they're always strings from us); <code>orderId</code>/<code>paymentId</code> typed
+    <code>string | undefined</code> with <code>?? ""</code> into the signature check (a
+    missing id still &rarr; 401); <code>decrement_inventory</code> gets
+    <code>Number(item.id)</code>; <code>apply_product_sales</code> <code>p_items</code>
+    cast to <code>Json</code>. No behaviour change for a well-formed order; malformed /
+    legacy note data now fails safer.
+  </td>
+  <td>
+    <em>new:</em> <code>app/api/razorpay-webhook/normalizeOrderItems.ts</code>,
+    <code>app/api/razorpay-webhook/normalizeOrderItems.test.ts</code><br>
+    <code>app/api/razorpay-webhook/route.ts</code> &middot; <code>docs/ARCHITECTURE.html</code> &middot;
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td>
+    <code>tsc --noEmit</code> clean &middot; <code>next build</code> exit 0 (86/86) &middot;
+    <code>npm test</code> 110 pass / 1 skip (8 new) &middot; <code>eslint .</code> 45 &rarr;
+    33 (&minus;12, all <code>no-explicit-any</code>; no new). <strong>Not live-verified</strong>
+    &mdash; Razorpay is LIVE-only here, no test keys. Treat as a proposal:
+    <strong>owner</strong> watches the next 2&ndash;3 real orders after deploy &mdash;
+    order record in Supabase, the WhatsApp + email invoice, and stock deduction all normal.
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>19:30</code></td>
   <td><strong>#19 &mdash; lint-debt: cart/wishlist contexts + singles</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-storefront</code>)</td>
   <td>
