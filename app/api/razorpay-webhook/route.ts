@@ -11,6 +11,19 @@ import { calculateSlashedPrice } from "@/app/utils/pricing";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
 import { productHref } from "@/app/utils/slug";
 import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
+import { normalizeOrderItems } from "./normalizeOrderItems";
+import type { PricedItem } from "@/app/utils/repricing";
+import type { Json } from "@/types/db";
+
+// The minimal slice of a payment.captured payload this route reads, from
+// either caller (Razorpay Dashboard webhook, or the client fast-path).
+interface WebhookBody {
+  event?: string;
+  payload?: { payment?: { entity?: { order_id?: string; id?: string } } };
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  razorpay_signature?: string;
+}
 
 const CONTACT_INBOX = "contact@tohfaonline.com";
 
@@ -26,7 +39,7 @@ export async function POST(req: Request) {
     // Razorpay sent, and JSON.stringify(JSON.parse(raw)) isn't guaranteed to
     // reproduce that byte-for-byte.
     const rawBody = await req.text();
-    let body: any;
+    let body: WebhookBody;
     try {
       body = JSON.parse(rawBody);
     } catch {
@@ -43,8 +56,8 @@ export async function POST(req: Request) {
       // waiting on Razorpay's webhook delivery). Each is verified with the
       // scheme appropriate to what that caller actually has access to.
       const webhookSignatureHeader = req.headers.get("x-razorpay-signature");
-      let orderId: string;
-      let paymentId: string;
+      let orderId: string | undefined;
+      let paymentId: string | undefined;
 
       if (webhookSignatureHeader) {
         if (!isValidWebhookSignature(rawBody, webhookSignatureHeader, process.env.RAZORPAY_WEBHOOK_SECRET)) {
@@ -57,7 +70,9 @@ export async function POST(req: Request) {
       } else {
         orderId = body.razorpay_order_id;
         paymentId = body.razorpay_payment_id;
-        if (!isValidPaymentSignature(orderId, paymentId, body.razorpay_signature, process.env.RAZORPAY_KEY_SECRET)) {
+        // Empty strings fail the check below (return false) exactly as a
+        // missing value did when this was untyped -> 401.
+        if (!isValidPaymentSignature(orderId ?? "", paymentId ?? "", body.razorpay_signature ?? "", process.env.RAZORPAY_KEY_SECRET)) {
           console.error("Rejected order webhook: invalid or missing Razorpay payment signature.");
           return NextResponse.json({ error: "Invalid payment signature." }, { status: 401 });
         }
@@ -93,7 +108,7 @@ export async function POST(req: Request) {
       // real-money-verified payment while claiming a different (larger) set
       // of items, over-deducting stock for things never actually paid for.
       let totalAmount: number;
-      let orderItems: any[] = [];
+      let orderItems: PricedItem[] = [];
       let couponCode: string | null = null;
       let verifiedPhone: string | null = null;
       let checkoutToken: string | null = null;
@@ -113,18 +128,24 @@ export async function POST(req: Request) {
         totalAmount = Number(capturedPayment.amount) / 100;
         customerEmail = capturedPayment.email || customerEmail;
 
-        const notes: any = capturedOrder.notes || {};
-        orderItems = notes.items ? (typeof notes.items === "string" ? JSON.parse(notes.items) : notes.items) : [];
-        couponCode = notes.couponCode || null;
-        verifiedPhone = notes.verifiedPhone || null;
+        // notes values are the strings we set in /api/razorpay; typed as
+        // unknown here so a malformed one narrows away instead of being trusted.
+        const notes = (capturedOrder.notes ?? {}) as Record<string, unknown>;
+        const rawItems = typeof notes.items === "string" ? JSON.parse(notes.items) : notes.items;
+        orderItems = normalizeOrderItems(rawItems);
+        couponCode = typeof notes.couponCode === "string" ? notes.couponCode : null;
+        verifiedPhone = typeof notes.verifiedPhone === "string" ? notes.verifiedPhone : null;
         // Present only for orders created with the reservation feature on
         // (migration 0043). Its held rows are consumed below instead of the
         // legacy per-item decrement.
-        checkoutToken = notes.checkoutToken || null;
-        if (notes.customerName) customerName = notes.customerName;
+        checkoutToken = typeof notes.checkoutToken === "string" ? notes.checkoutToken : null;
+        if (typeof notes.customerName === "string" && notes.customerName) customerName = notes.customerName;
         if (notes.shippingAddress) {
           try {
-            shippingAddress = typeof notes.shippingAddress === "string" ? JSON.parse(notes.shippingAddress) : notes.shippingAddress;
+            shippingAddress =
+              typeof notes.shippingAddress === "string"
+                ? JSON.parse(notes.shippingAddress)
+                : (notes.shippingAddress as { line: string; landmark: string; city: string; state: string; pincode: string });
           } catch (addrParseErr) {
             console.error("Shipping address parse failed:", addrParseErr);
           }
@@ -258,7 +279,7 @@ export async function POST(req: Request) {
             consumedViaReservation = true;
             for (const row of consumeRows) {
               const pid = row.product_id;
-              const matched = orderItems.find((it) => String(it?.id) === String(pid));
+              const matched = orderItems.find((it) => String(it.id) === String(pid));
               await runStockAlerts(
                 matched?.name ?? pid,
                 Number(matched?.quantity || 0),
@@ -272,12 +293,12 @@ export async function POST(req: Request) {
 
         if (!consumedViaReservation) {
           for (const item of orderItems) {
-            if (!item?.id) continue;
+            const productId = Number(item.id);
             const qty = Number(item.quantity || 0);
-            if (qty <= 0) continue;
+            if (!Number.isFinite(productId) || productId <= 0 || qty <= 0) continue;
 
             const { data: rows, error: rpcError } = await supabase.rpc("decrement_inventory", {
-              p_product_id: item.id,
+              p_product_id: productId,
               p_qty: qty,
             });
             if (rpcError) {
@@ -290,7 +311,7 @@ export async function POST(req: Request) {
             if (!result) continue; // product row gone -- nothing to decrement
 
             await runStockAlerts(
-              item.name ?? item.id,
+              item.name || item.id,
               qty,
               Number(result.new_inventory),
               Number(result.oversold_by) || 0
@@ -314,7 +335,7 @@ export async function POST(req: Request) {
       // which the next backfill or the 300-order path would still surface.
       try {
         const { error: salesError } = await supabase.rpc("apply_product_sales", {
-          p_items: orderItems,
+          p_items: orderItems as unknown as Json,
           p_sign: 1,
         });
         if (salesError) {
@@ -355,7 +376,7 @@ export async function POST(req: Request) {
 
       try {
         const itemsSummary = orderItems
-          .map((item: any) => `${item.name} x${item.quantity}`)
+          .map((item) => `${item.name} x${item.quantity}`)
           .join(", ");
 
         // The admin-set price is the final price paid -- GST is
@@ -364,7 +385,7 @@ export async function POST(req: Request) {
         // categories panel); the discount actually applied (subtotal minus
         // what Razorpay verified was captured) is spread across rate groups
         // proportionally.
-        const itemsSubtotal = orderItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
+        const itemsSubtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
         const discount = Math.max(0, itemsSubtotal - totalAmount);
         gst = calculateOrderGstBreakdown(orderItems, discount);
         const gstLines =
@@ -403,9 +424,9 @@ export async function POST(req: Request) {
         let mrpSubtotal = 0;
         const itemLines = orderItems.length
           ? orderItems
-              .map((item: any) => {
+              .map((item) => {
                 const lineTotal = item.price * item.quantity;
-                const slashed = calculateSlashedPrice(lineTotal, categoryDiscounts[item.category]);
+                const slashed = calculateSlashedPrice(lineTotal, categoryDiscounts[item.category ?? ""]);
                 mrpSubtotal += slashed ? slashed.originalPrice : lineTotal;
                 return slashed
                   ? `  ${item.name} x${item.quantity} (MRP ₹${slashed.originalPrice.toLocaleString("en-IN")}, ${slashed.discountPercent}% off)`
@@ -413,7 +434,7 @@ export async function POST(req: Request) {
               })
               .join("\n")
           : "  N/A";
-        const itemsSubtotalReal = orderItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
+        const itemsSubtotalReal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
         const hasMrpSavings = mrpSubtotal > itemsSubtotalReal;
         const savingsLine = hasMrpSavings
           ? `You Saved: ₹${(mrpSubtotal - itemsSubtotalReal).toLocaleString("en-IN")} (${Math.round(((mrpSubtotal - itemsSubtotalReal) / mrpSubtotal) * 100)}% off MRP)\n`
@@ -460,7 +481,7 @@ export async function POST(req: Request) {
         // Lead with a photo of the first item that has one -- WhatsApp
         // renders it as an image message with the order summary as the
         // caption underneath, instead of a bare wall of text.
-        const heroImage = orderItems.find((item: any) => item.image_url)?.image_url;
+        const heroImage = orderItems.find((item) => item.image_url)?.image_url ?? undefined;
         try {
           await Promise.all([
             sendWhatsappMessage(businessWhatsappNumber, businessMessage, heroImage),
@@ -512,13 +533,13 @@ function escapeHtml(value: unknown): string {
 // given (customer copy only -- see buildOrderEmailHtml), each row also
 // shows a struck-through MRP worked back from that category's discount %;
 // the real price paid (item.price) is unaffected either way.
-function buildItemRowsHtml(items: any[], categoryDiscounts?: Record<string, number>): string {
+function buildItemRowsHtml(items: PricedItem[], categoryDiscounts?: Record<string, number>): string {
   return items
     .map((item) => {
       const productUrl = `${SITE_URL}${productHref(item)}`;
       const lineTotalNum = Number(item.price) * Number(item.quantity);
       const lineTotal = lineTotalNum.toLocaleString("en-IN");
-      const slashed = categoryDiscounts ? calculateSlashedPrice(lineTotalNum, categoryDiscounts[item.category]) : null;
+      const slashed = categoryDiscounts ? calculateSlashedPrice(lineTotalNum, categoryDiscounts[item.category ?? ""]) : null;
       const image = item.image_url
         ? `<a href="${productUrl}"><img src="${escapeHtml(item.image_url)}" width="56" height="56" alt="${escapeHtml(item.name)}" style="display:block;border-radius:6px;object-fit:cover;border:1px solid #e7e5e4;" /></a>`
         : "";
@@ -540,14 +561,14 @@ function buildItemRowsHtml(items: any[], categoryDiscounts?: Record<string, numb
 // Aggregate "MRP Subtotal" / "You Saved" rows above the Base Amount line --
 // only rendered when categoryDiscounts is given (the customer copy) and
 // actually produces a saving.
-function mrpSavingsRowsHtml(items: any[], categoryDiscounts?: Record<string, number>): string {
+function mrpSavingsRowsHtml(items: PricedItem[], categoryDiscounts?: Record<string, number>): string {
   if (!categoryDiscounts) return "";
   let mrpSubtotal = 0;
   let realSubtotal = 0;
   for (const item of items) {
     const lineTotal = Number(item.price) * Number(item.quantity);
     realSubtotal += lineTotal;
-    const slashed = calculateSlashedPrice(lineTotal, categoryDiscounts[item.category]);
+    const slashed = calculateSlashedPrice(lineTotal, categoryDiscounts[item.category ?? ""]);
     mrpSubtotal += slashed ? slashed.originalPrice : lineTotal;
   }
   if (mrpSubtotal <= realSubtotal) return "";
@@ -595,7 +616,7 @@ function buildOrderEmailHtml(params: {
   customerPhone: string;
   customerEmail: string;
   formattedAddress: string;
-  orderItems: any[];
+  orderItems: PricedItem[];
   gst: ReturnType<typeof calculateOrderGstBreakdown>;
   showCustomerContact: boolean;
   includeRefundPolicy: boolean;
@@ -676,7 +697,7 @@ async function sendOrderEmails(params: {
   customerPhone: string;
   customerEmail: string;
   formattedAddress: string;
-  orderItems: any[];
+  orderItems: PricedItem[];
   gst: ReturnType<typeof calculateOrderGstBreakdown>;
   categoryDiscounts?: Record<string, number>;
 }) {
