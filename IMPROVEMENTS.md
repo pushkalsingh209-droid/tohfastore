@@ -367,6 +367,25 @@ care, land behind tests, never "blind".
     `getRelatedProducts` via `getRecentOrderItems`. `getSoldCounts` now reads the
     `product_sales` aggregate instead (`0042`, 2026-08-29).
 
+13. **Vercel Fluid Compute — Active CPU duration.** Billed for actual JS-on-CPU time;
+    I/O wait (Supabase/Razorpay/Green API/Resend) is ~free. This app is heavily I/O-bound
+    with `try/catch` best-effort side effects, so the real CPU is **React SSR rendering +
+    JSON (de)serialization**.
+    - ~~Narrow `getCatalogPage`'s `select("*")`~~ — **done (2026-08-30)**: 24 cols → the 17
+      a storefront card / product page actually render. Drops `cost_price` /
+      `cost_price_per_kg` / `price_per_kg` / `last_restocked_at` (admin-only; also keeps
+      cost data out of the client) + `created_at` / `display_order` / `hidden` (the
+      `.eq`/`.order` clauses don't need them in the select). Cache-wrapped, so this is
+      per-miss, not per-request.
+    - **Biggest lever, deferred pending Observability data:** `/product/[id]` and the
+      catalog pages are `force-dynamic` (product pages switched this session to stop ISR
+      writes). Their *data* is `unstable_cache`d but the *render* runs every visit. Moving
+      back to **on-demand ISR** (`revalidate = 3600`, **no** `generateStaticParams`) +
+      keeping trivial admin saves from calling `revalidateTag("products")` bounds the ISR
+      writes (≈ one per visited product per hour) while cutting render CPU on the hottest
+      routes to ~0. A deliberate trade — needs owner sign-off after checking Dashboard →
+      Observability → Functions (sort by Active CPU P75/P99 × invocations).
+
 ## Active — Tier 4 (maintainability / observability)
 
 16. ~~**`product_sales` reconcile check.**~~ — **done (2026-08-29, Batch A).**

@@ -432,7 +432,18 @@ export const getCatalogPage = unstable_cache(
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
 
-      let query = supabase.from("products").select("*").eq("hidden", false);
+      // Only the columns a storefront card / the product page actually
+      // render -- not `select("*")`. Deliberately omitted: cost_price,
+      // cost_price_per_kg, price_per_kg, last_restocked_at (admin margin/
+      // restock stats only, and no reason to ship cost data to the browser),
+      // plus created_at / display_order / hidden (used by the .eq/.order
+      // clauses below, which don't need the column in the select list).
+      let query = supabase
+        .from("products")
+        .select(
+          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm"
+        )
+        .eq("hidden", false);
       if (category) query = query.eq("category", category);
       else if (hiddenCategories.length > 0) query = query.not("category", "in", notInListLiteral(hiddenCategories));
       if (label) query = query.eq("label", label);
