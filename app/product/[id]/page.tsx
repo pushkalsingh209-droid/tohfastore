@@ -33,26 +33,25 @@ import { productHref, productIdFromParam, categoryHref } from "@/app/utils/slug"
 import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 import { permanentRedirect } from "next/navigation";
 
-// Pre-renders every product page at build time so visits serve a cached
-// page instead of paying a fresh server render each time. Admin edits show
-// up on-demand via revalidateTag("products"/"reviews") called from the
-// relevant admin routes (see storeQueries.ts), not by waiting out the
-// revalidate window below -- that window is only a safety net (deliberately
-// wide, since Vercel bills every background regeneration, tag-triggered or
-// not, as one "ISR write" against a metered monthly quota, and this route
-// alone has one cache entry per product). Live stock is deliberately NOT
-// baked into this cached HTML: the buy-box controls fetch the real count
-// client-side from /api/stock/[id] on mount (see app/components/LiveStock.tsx),
-// so a sale never has to regenerate this page and the window below can stay
-// a full day. A product id not in this list (e.g. one added after the last
-// build) still renders on-demand and gets cached from then on, since
-// dynamicParams defaults to true.
-export async function generateStaticParams() {
-  const { data } = await supabase.from("products").select("id, name").eq("hidden", false);
-  return (data || []).map((product) => ({ id: productHref(product).replace("/product/", "") }));
-}
-
-export const revalidate = 86400;
+// Rendered dynamically (SSR) per request, NOT statically generated.
+//
+// This route used to be SSG (generateStaticParams for every product +
+// `revalidate = 86400`). That turned out to be the whole app's ISR-write
+// budget: Vercel Hobby meters every static-page (re)generation, and here
+// there's one cache entry PER PRODUCT (~156). Every deploy regenerated all
+// of them; `revalidate` added ~156/day; and every admin edit that fires
+// `revalidateTag("products"/"reviews")` invalidated all 156 at once ->
+// ~156 writes per product save. It hit 95% of the monthly quota.
+//
+// `force-dynamic` removes ISR entirely. The Supabase reads below stay
+// wrapped in `unstable_cache` (the Data Cache -- a SEPARATE, far larger
+// meter), so a popular product still doesn't pay a DB round trip on every
+// view and TTFB stays low. `revalidateTag(...)` from the admin routes now
+// just busts that Data Cache (one refetch on next request), so edits still
+// show instantly -- it no longer triggers page regeneration because there
+// are no static pages to regenerate. Live stock is still fetched
+// client-side from /api/stock/[id] (LiveStock.tsx).
+export const dynamic = "force-dynamic";
 
 // The Supabase reads below are cached via unstable_cache so repeat views of
 // a popular product don't each cost a fresh round trip -- wrapped again in

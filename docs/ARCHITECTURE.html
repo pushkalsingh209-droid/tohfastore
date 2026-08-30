@@ -206,6 +206,38 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-08-30<br>13:00</code></td>
+  <td><strong>&#128293; Product pages &rarr; <code>force-dynamic</code> (stop ISR writes)</strong><br>(prod fire; no <code>IMPROVEMENTS.md</code> item)</td>
+  <td>
+    Vercel Hobby ISR-write quota hit <strong>95%</strong>. Source: <code>/product/[id]</code> was SSG &mdash;
+    <code>generateStaticParams</code> for every non-hidden product + <code>revalidate = 86400</code>. One ISR
+    cache entry <em>per product</em> (~156), so <strong>every deploy</strong> regenerated all of them
+    (~156 writes/deploy &times; ~15 deploys today), <code>revalidate</code> added ~156/day, and
+    <strong>every <code>revalidateTag("products"/"reviews")</code></strong> from an admin edit (product save,
+    review approve, label bulk-assign, whatsapp-number reassign) invalidated all 156 at once &rarr; a visit
+    to each = a write. (The &ldquo;do a trivial admin save to bust the cache&rdquo; workaround used a few
+    times this session was firing exactly that.)<br>
+    <strong>Fix:</strong> <code>app/product/[id]/page.tsx</code> &mdash; removed
+    <code>generateStaticParams</code> + <code>export const revalidate</code>, added
+    <code>export const dynamic = "force-dynamic"</code>. The page now renders SSR per request over the same
+    <code>unstable_cache</code>d Supabase reads (the <strong>Data Cache</strong> &mdash; a separate, far
+    larger meter), so DB load + TTFB stay low. <code>revalidateTag(...)</code> calls in the admin routes are
+    <strong>kept</strong> &mdash; with no static pages to regenerate they just bust the Data Cache (one
+    refetch), so edits still show instantly at zero ISR cost. Storefront <code>/</code> and
+    <code>/collections/[category]</code> were already <code>&fnof;</code> dynamic (they read
+    <code>searchParams</code>). <code>next build</code>: ~243 &rarr; ~86 prerendered pages.
+  </td>
+  <td>
+    <code>app/product/[id]/page.tsx</code> &middot; <code>docs/ARCHITECTURE.html</code>
+  </td>
+  <td>
+    <code>next build</code> exit 0 (<code>/product/[id]</code> now shows <code>&fnof;</code> Dynamic) &middot;
+    <code>tsc --noEmit</code> clean &middot; <code>npm test</code> 102 pass / 7 skip. ISR writes from product
+    pages &rarr; ~0 once deployed. <strong>Owner:</strong> the monthly quota still resets on the Vercel
+    billing date regardless; until it does, hitting 100% only serves stale pages (no outage).
+  </td>
+</tr>
+<tr>
   <td><code>2026-08-30<br>12:45</code></td>
   <td><strong>#19 &mdash; lint-debt sweep (part 3)</strong><br>(<code>IMPROVEMENTS.md</code> #19; branch <code>lint-debt-3</code>, in progress)</td>
   <td>
@@ -1748,7 +1780,7 @@ resets and verify steady-state usage stays under cap.</p>
 <tbody>
 <tr><td><code>/</code></td><td>app/page.tsx</td><td>dynamic (reads searchParams) over cached queries</td><td>Renders <code>StorefrontPage(category="")</code>. <code>?category=X</code> &rarr; <code>permanentRedirect</code> to <code>/collections/&lt;slug&gt;</code>.</td></tr>
 <tr><td><code>/collections/[category]</code></td><td>app/collections/[category]/page.tsx</td><td>dynamic over cached queries; <code>generateStaticParams</code> from category names</td><td>Slug &rarr; real name via <code>findCategoryBySlug</code>. Unknown &rarr; <code>notFound()</code>. Non-canonical slug &rarr; <code>permanentRedirect</code>.</td></tr>
-<tr><td><code>/product/[id]</code></td><td>app/product/[id]/page.tsx</td><td><strong>SSG + ISR</strong>, <code>revalidate = 86400</code>, <code>generateStaticParams</code> for all non-hidden products (156 pages at last build)</td><td>Param is <code>&lt;id&gt;-&lt;slug&gt;</code>; <code>productIdFromParam</code> extracts the id. Bare/stale slug &rarr; <code>permanentRedirect</code> to canonical. Hidden/missing &rarr; &ldquo;not found&rdquo; body. Live stock &amp; recent-viewer count fetched client-side so a sale never regenerates the page.</td></tr>
+<tr><td><code>/product/[id]</code></td><td>app/product/[id]/page.tsx</td><td><strong><code>force-dynamic</code></strong> (SSR per request) over <code>unstable_cache</code>d Supabase reads. <em>Was SSG + <code>revalidate = 86400</code> + <code>generateStaticParams</code> &mdash; that was one ISR cache entry per product (~156), so every deploy + every <code>revalidateTag("products")</code> regenerated all of them and it hit 95% of the Hobby ISR quota. See Change log 2026-08-30.</em></td><td>Param is <code>&lt;id&gt;-&lt;slug&gt;</code>; <code>productIdFromParam</code> extracts the id. Bare/stale slug &rarr; <code>permanentRedirect</code> to canonical. Hidden/missing &rarr; &ldquo;not found&rdquo; body. Live stock &amp; recent-viewer count still fetched client-side.</td></tr>
 <tr><td><code>/catalogue</code></td><td>app/catalogue/page.tsx</td><td>client</td><td>Lead-capture form &rarr; <code>POST /api/leads {source:"catalogue_download"}</code> &rarr; opens <code>/api/catalogue</code> PDF.</td></tr>
 <tr><td><code>/success</code></td><td>app/success/page.tsx</td><td>client</td><td>Reads <code>sessionStorage.tohfa_last_order</code>; clears cart; fires deduped GA4/Meta purchase events; printable invoice. If sessionStorage is gone but <code>?order_id=</code> is present, offers a phone-gated re-fetch via <code>/api/orders/receipt</code> (no analytics on that path).</td></tr>
 <tr><td><code>/track</code></td><td>app/track/page.tsx</td><td>client</td><td>Reference (order id or AWB) + phone &rarr; <code>POST /api/orders/track</code>.</td></tr>
@@ -2177,7 +2209,11 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
 
 <h3>Other levers</h3>
 <ul class="tight">
-  <li>Product detail pages are SSG with <code>generateStaticParams</code> + <code>revalidate = 86400</code>.</li>
+  <li>Product detail pages are <code>force-dynamic</code> SSR over <code>unstable_cache</code>d reads (the
+      Data Cache, not ISR). They were SSG until 2026-08-30 &mdash; one ISR cache entry per product made
+      deploys + <code>revalidateTag("products")</code> the dominant ISR-write source and it hit 95% of the
+      Hobby quota. Under <code>force-dynamic</code> a <code>revalidateTag</code> just busts the Data Cache
+      (one refetch), not 156 page regenerations, so admin edits still show instantly with zero ISR cost.</li>
   <li>Thumbnails (<code>imageThumb.ts</code>) so cart/wishlist/admin/strips don&rsquo;t download the full 1600px photo.</li>
   <li><code>images.unoptimized = true</code> + trimmed <code>deviceSizes</code>/<code>imageSizes</code> (temporary).</li>
   <li><code>CatalogSection</code> progressively mounts cards in batches of <code>catalog_reveal_batch_size</code>
@@ -2385,7 +2421,7 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
     <code>next build</code> + RLS test mirror Vercel exactly. <code>verify</code> is still designed to pass without
     them (placeholder keys, RLS test self-skips) so a future secret rotation can&rsquo;t wedge the pipeline. See
     the revised deploy step in &sect;27 / the working agreement.</dd>
-  <dt>Last verified build</dt><dd><code>next build</code> exit 0 &mdash; 239 SSG pages (156 products), all routes + middleware compiled, <code>tsc --noEmit</code> clean, unit tests pass.</dd>
+  <dt>Last verified build</dt><dd><code>next build</code> exit 0 &mdash; ~86 SSG pages (product pages are now <code>force-dynamic</code>, not prerendered &mdash; 2026-08-30), all routes + middleware compiled, <code>tsc --noEmit</code> clean, unit tests pass.</dd>
   <dt>CSP</dt><dd>Enforced only when <code>NODE_ENV === "production"</code> (dev tooling needs looser rules). Directive list compiled by grepping every <code>https://</code> the code loads + each integration&rsquo;s documented requirements; deliberately generous on <code>script/connect/frame</code>.</dd>
   <dt>Images</dt><dd><code>remotePatterns</code>: <code>gxlervcazzddqcoagewy.supabase.co/storage/v1/object/**</code>, <code>images.unsplash.com/**</code>. <code>unoptimized: true</code> &mdash; on hold by owner decision (2026-08-29): stays until the Vercel quota cycle resets and the flag can be dropped for free. Supabase image transforms (Pro-only) are ruled out.</dd>
   <dt>Lint debt</dt><dd>The repo carries pre-existing <code>@typescript-eslint/no-explicit-any</code> and <code>react-hooks/set-state-in-effect</code> errors (<code>npm run lint</code> is not clean). Next 16 does not run ESLint during <code>next build</code>, so deploys are unaffected.</dd>
