@@ -16,6 +16,7 @@ import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
 import { CHAT_LABEL_KINDS, DEFAULT_CHAT_LABELS, MAX_CHAT_LABEL_LENGTH, type ChatLabelKind } from "@/app/utils/chatLabels";
 import { parseSpendTierOffer, SAMPLE_SPEND_TIER_OFFER, MAX_SPEND_TIERS } from "@/app/utils/spendTierOffer";
+import { MAX_ORDER_NOTIFICATION_NUMBERS } from "@/app/utils/orderNotificationNumbers";
 
 // --- "Spend & Save" offer editor (Storefront Settings) -------------------
 // The offer lives as one JSON row in site_settings; the strict validation
@@ -61,6 +62,8 @@ export default function SettingsTab() {
     labels,
     setLabels,
     whatsappNumbers,
+    orderNotificationNumbers,
+    setOrderNotificationNumbers,
     settings,
     setSettings,
     chatLabelPresets,
@@ -83,6 +86,10 @@ export default function SettingsTab() {
 
   const [newChatLabelText, setNewChatLabelText] = useState<Record<ChatLabelKind, string>>({ in_stock: "", out_of_stock: "" });
   const [chatLabelStatus, setChatLabelStatus] = useState("");
+
+  const [newOrderNotifLabel, setNewOrderNotifLabel] = useState("");
+  const [newOrderNotifNumber, setNewOrderNotifNumber] = useState("");
+  const [orderNotifStatus, setOrderNotifStatus] = useState("");
 
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryGstRate, setNewCategoryGstRate] = useState("5");
@@ -494,6 +501,37 @@ export default function SettingsTab() {
     }
   };
 
+  // --- Order notification numbers (supplier list, migration 0046) ---
+  const handleAddOrderNotifNumber = async () => {
+    const phone = newOrderNotifNumber.trim();
+    if (!phone) return;
+    setOrderNotifStatus("Adding...");
+    try {
+      const result = await apiRequest("/api/admin/order-notification-numbers", {
+        method: "POST",
+        body: JSON.stringify({ phone_number: phone, label: newOrderNotifLabel.trim() }),
+      });
+      setOrderNotificationNumbers(
+        [...orderNotificationNumbers, result.number].sort((a, b) => (a.label || "").localeCompare(b.label || ""))
+      );
+      setNewOrderNotifLabel("");
+      setNewOrderNotifNumber("");
+      setOrderNotifStatus("");
+    } catch (err: unknown) {
+      setOrderNotifStatus(err instanceof Error ? err.message : "Could not add the number.");
+    }
+  };
+
+  const handleDeleteOrderNotifNumber = async (id: number) => {
+    if (!window.confirm("Remove this order-notification number? It'll also be detached from any products.")) return;
+    try {
+      await apiRequest("/api/admin/order-notification-numbers", { method: "DELETE", body: JSON.stringify({ id }) });
+      setOrderNotificationNumbers(orderNotificationNumbers.filter((n) => n.id !== id));
+    } catch (err: unknown) {
+      alert(`Could not remove the number: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   // A category's own default-page-size override -- blank clears it back
   // to the site-wide default above.
   const handleUpdateCategoryPageSize = async (categoryId: number, value: string) => {
@@ -891,6 +929,74 @@ export default function SettingsTab() {
         </div>
         {reassignStatus && <p className="text-[11px] text-stone-500 mt-2">{reassignStatus}</p>}
       </div>
+    </div>
+
+    {/* SECTION D.0.5b: ORDER NOTIFICATION NUMBERS (suppliers) */}
+    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+      <div className="border-b border-stone-200 pb-4 mb-6">
+        <h2 className="text-xl font-serif text-stone-900">Order Notification Numbers</h2>
+        <p className="text-stone-500 text-xs mt-1">
+          Extra WhatsApp numbers (suppliers) that also receive order notifications. The main business number
+          (+91&nbsp;6302672351) always gets everything &mdash; these are additional. Attach a number to specific
+          products in the product form; then every notification for that product &mdash; new paid order,
+          low-stock, oversell, shipped/delivered &mdash; also goes here. Up to {MAX_ORDER_NOTIFICATION_NUMBERS}.
+        </p>
+      </div>
+
+      {orderNotificationNumbers.length === 0 ? (
+        <p className="text-stone-400 text-sm py-2">No supplier numbers yet.</p>
+      ) : (
+        <ul className="divide-y divide-stone-100 mb-5">
+          {orderNotificationNumbers.map((n) => (
+            <li key={n.id} className="flex items-center justify-between gap-3 py-2.5">
+              <div className="min-w-0">
+                <span className="text-sm text-stone-800">{n.label || <span className="text-stone-300">—</span>}</span>
+                <span className="block font-mono text-xs text-stone-500">+{n.phone_number}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDeleteOrderNotifNumber(n.id)}
+                className="text-[11px] uppercase font-semibold text-rose-600 hover:text-rose-700 flex-shrink-0"
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {orderNotificationNumbers.length < MAX_ORDER_NOTIFICATION_NUMBERS && (
+        <div className="border-t border-stone-100 pt-5 flex flex-col sm:flex-row sm:items-end gap-2">
+          <div className="flex-1">
+            <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">Label</label>
+            <input
+              type="text"
+              value={newOrderNotifLabel}
+              onChange={(e) => setNewOrderNotifLabel(e.target.value)}
+              placeholder="e.g. Ramesh Brass Works"
+              className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">WhatsApp number</label>
+            <input
+              type="tel"
+              value={newOrderNotifNumber}
+              onChange={(e) => setNewOrderNotifNumber(e.target.value)}
+              placeholder="10-digit number"
+              className="w-full px-3 py-2 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleAddOrderNotifNumber}
+            className="px-4 py-2 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
+          >
+            Add number
+          </button>
+        </div>
+      )}
+      {orderNotifStatus && <p className="text-[11px] text-stone-500 mt-2">{orderNotifStatus}</p>}
     </div>
 
     {/* SECTION D.0.6: CHAT BUTTON LABELS */}

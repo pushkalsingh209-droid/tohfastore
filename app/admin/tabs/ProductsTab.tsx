@@ -108,6 +108,7 @@ export default function ProductsTab() {
     colors,
     materials,
     whatsappNumbers,
+    orderNotificationNumbers,
     setColors,
     setMaterials,
     setLabels,
@@ -166,6 +167,7 @@ export default function ProductsTab() {
     whatsapp_number: "",
     label: "",
     cost_price: "",
+    supplier_numbers: [] as string[],
   });
 
   // Which unit formData.weight_g/height_cm/depth_cm/breadth_cm are
@@ -322,6 +324,7 @@ export default function ProductsTab() {
       whatsapp_number: formData.whatsapp_number,
       label: formData.label,
       cost_price: formData.cost_price,
+      supplier_numbers: formData.supplier_numbers,
     };
 
     try {
@@ -345,7 +348,7 @@ export default function ProductsTab() {
       );
       if (editingProductId) setEditingProductId(null);
 
-      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "", cost_price: "" });
+      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "", cost_price: "", supplier_numbers: [] as string[] });
       refetch(); // Sync live view structures
     } catch (err: unknown) {
       setStatus(`Database Exception: ${err instanceof Error ? err.message : "Pipeline connection failed."}`);
@@ -377,6 +380,7 @@ export default function ProductsTab() {
       whatsapp_number: product.whatsapp_number || "",
       label: product.label || "",
       cost_price: product.cost_price != null ? String(product.cost_price) : "",
+      supplier_numbers: Array.isArray(product.supplier_numbers) ? product.supplier_numbers : [],
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -746,7 +750,7 @@ export default function ProductsTab() {
 
   const handleCancelEdit = () => {
     setEditingProductId(null);
-    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "", cost_price: "" });
+    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "", cost_price: "", supplier_numbers: [] as string[] });
     setStatus("");
   };
 
@@ -1050,6 +1054,53 @@ export default function ProductsTab() {
             <button type="button" disabled={isSubmitting || !newWhatsappNumber.trim()} onClick={handleAddWhatsappNumber} className="px-3 py-2 rounded bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
           </div>
           {whatsappNumberStatus && <p className="text-[11px] text-rose-600 mt-1">{whatsappNumberStatus}</p>}
+        </div>
+
+        <div>
+          <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+            Also notify suppliers on orders for this product{" "}
+            <span className="text-stone-400 font-normal normal-case">
+              (optional — every notification for this product also goes to the ticked numbers, on top of +91 6302672351. Manage the list in Settings → Order Notification Numbers.)
+            </span>
+          </label>
+          {orderNotificationNumbers.length === 0 ? (
+            <p className="text-[11px] text-stone-400">
+              No order-notification numbers yet — add some in Settings → Order Notification Numbers.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {orderNotificationNumbers.map((n) => {
+                const checked = formData.supplier_numbers.includes(n.phone_number);
+                return (
+                  <label
+                    key={n.id}
+                    className={`flex items-center gap-2 px-3 py-2 rounded border text-xs cursor-pointer transition ${
+                      checked ? "border-amber-400 bg-amber-50" : "border-stone-200 bg-stone-50 hover:bg-stone-100"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      disabled={isSubmitting}
+                      checked={checked}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          supplier_numbers: e.target.checked
+                            ? [...formData.supplier_numbers, n.phone_number]
+                            : formData.supplier_numbers.filter((p) => p !== n.phone_number),
+                        })
+                      }
+                      className="accent-amber-600 flex-shrink-0"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-stone-800 truncate">{n.label || "—"}</span>
+                      <span className="block font-mono text-[10px] text-stone-500">+{n.phone_number}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end pt-4 border-t border-stone-100">

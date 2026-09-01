@@ -230,6 +230,27 @@ export type Database = {
         }
         Relationships: []
       }
+      order_notification_numbers: {
+        Row: {
+          created_at: string
+          id: number
+          label: string | null
+          phone_number: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          label?: string | null
+          phone_number: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          label?: string | null
+          phone_number?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount: number | null
@@ -371,6 +392,7 @@ export type Database = {
           photo_filter: string | null
           price: number | null
           price_per_kg: number | null
+          supplier_numbers: string[] | null
           weight_g: number | null
           whatsapp_number: string | null
         }
@@ -397,6 +419,7 @@ export type Database = {
           photo_filter?: string | null
           price?: number | null
           price_per_kg?: number | null
+          supplier_numbers?: string[] | null
           weight_g?: number | null
           whatsapp_number?: string | null
         }
@@ -423,6 +446,7 @@ export type Database = {
           photo_filter?: string | null
           price?: number | null
           price_per_kg?: number | null
+          supplier_numbers?: string[] | null
           weight_g?: number | null
           whatsapp_number?: string | null
         }
