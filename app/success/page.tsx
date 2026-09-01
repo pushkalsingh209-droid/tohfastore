@@ -20,6 +20,11 @@ interface StashedOrder {
   subtotal: number;
   discount: number;
   couponCode: string | null;
+  // Set instead of couponCode when the discount came from the storewide
+  // "Spend & Save" tier offer. Only present on the fresh-checkout stash --
+  // the phone-gated receipt re-fetch can't recover it, so that path shows
+  // the discount without a label.
+  offerLabel?: string | null;
   total: number;
   gst: OrderGstBreakdown;
 }
@@ -290,7 +295,7 @@ export default function CheckoutSuccessPage() {
                 </div>
                 {order.discount > 0 && (
                   <div className="flex justify-between text-emerald-700 dark:text-emerald-500">
-                    <span>Discount {order.couponCode ? `(${order.couponCode})` : ""}</span>
+                    <span>Discount {order.couponCode ? `(${order.couponCode})` : order.offerLabel ? `(${order.offerLabel})` : ""}</span>
                     <span className="font-mono">&minus;₹{order.discount.toLocaleString("en-IN")}</span>
                   </div>
                 )}

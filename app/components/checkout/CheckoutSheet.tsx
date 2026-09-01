@@ -20,6 +20,8 @@ import ContactStep, { type OtpUi } from "@/app/components/checkout/steps/Contact
 import DeliveryStep, { type PincodeLookupStatus } from "@/app/components/checkout/steps/DeliveryStep";
 import ReviewStep from "@/app/components/checkout/steps/ReviewStep";
 import { useCheckoutMachine } from "@/app/components/checkout/useCheckoutMachine";
+import { useSpendTierOffer } from "@/app/components/checkout/useSpendTierOffer";
+import { tierDiscountFor, nextSpendTier } from "@/app/utils/spendTierOffer";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[6-9]\d{9}$/;
@@ -81,6 +83,19 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // --- storewide "Spend & Save" tier offer (preview only) ---
+  // When it's running, coupons are paused everywhere: the coupon UI is
+  // hidden on the Review step, `payTotal` / the request body / the stash
+  // all ignore `appliedCoupon`, and /api/razorpay ignores any couponCode
+  // authoritatively -- so a coupon left in state from before the offer
+  // started is simply inert, no reset needed. `offerDiscount` here is a
+  // display estimate off the current cartTotal; the amount actually charged
+  // comes back in the /api/razorpay response.
+  const spendOffer = useSpendTierOffer(true);
+  const offerRunning = spendOffer !== null;
+  const offerDiscount = spendOffer ? tierDiscountFor(spendOffer.tiers, cartTotal) : 0;
+  const offerNextTier = spendOffer ? nextSpendTier(spendOffer.tiers, cartTotal) : null;
 
   // Warm Razorpay's SDK as soon as the sheet opens -- by the time they've
   // filled 3 steps it's long since loaded (same intent as CartDrawer's
@@ -395,7 +410,9 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: cart,
-          couponCode: appliedCoupon?.code || undefined,
+          // Never sent while the Spend & Save offer is running -- the server
+          // would ignore it anyway, but keep the request honest.
+          couponCode: offerRunning ? undefined : appliedCoupon?.code || undefined,
           phone: cleanPhone,
           whatsappVerificationToken: token,
           customerName,
@@ -471,9 +488,13 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
                   quantity: item.quantity,
                   category: item.category ?? null,
                 })),
-                subtotal: cartTotal,
-                discount: appliedCoupon?.discount || 0,
-                couponCode: appliedCoupon?.code || null,
+                // From the server-verified /api/razorpay response, not the
+                // client's own guess -- so the invoice is exact whether the
+                // discount came from a coupon or the Spend & Save offer.
+                subtotal: data.subtotal ?? cartTotal,
+                discount: data.discount ?? (appliedCoupon?.discount || 0),
+                couponCode: data.couponCode ?? null,
+                offerLabel: data.offerLabel ?? null,
                 total: data.amount / 100,
                 gst: data.gst,
               })
@@ -564,7 +585,10 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
     handleRazorpayPayment();
   };
 
-  const payTotal = appliedCoupon ? Math.max(0, cartTotal - appliedCoupon.discount) : cartTotal;
+  const payTotal = Math.max(
+    0,
+    cartTotal - (offerRunning ? offerDiscount : appliedCoupon?.discount ?? 0)
+  );
   const footerLabel =
     m.step === 1
       ? "Continue"
@@ -652,6 +676,10 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
                 cart,
                 cartTotal,
                 categoryDiscounts,
+                offerActive: offerRunning,
+                offerLabel: spendOffer?.label ?? null,
+                offerDiscount,
+                nextTier: offerNextTier,
                 couponInput,
                 setCouponInput,
                 appliedCoupon,

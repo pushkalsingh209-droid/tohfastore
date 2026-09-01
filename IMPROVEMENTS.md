@@ -12,6 +12,46 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Spend & Save tier offer — 2026-09-02 00:45 IST — ⚠️ payment path, SHIPS DISABLED
+- Owner wants a periodic storewide sale: cart subtotal past a threshold takes a flat
+  amount off the whole bill (₹6,000→₹800, ₹12,000→₹1,500, ₹22,000→₹3,000,
+  ₹35,000→₹5,000, plus a ₹2,000→₹250 test rung). Coupons are paused while it runs.
+  Numbers must be editable in admin without a code change, and "coded so they pass on
+  the benefit, not extra cost".
+- Config is one JSON row `site_settings.spend_tier_offer`, owned by new pure module
+  `app/utils/spendTierOffer.ts`: `parseSpendTierOffer` (lenient, **fail closed** — bad
+  JSON → inert → no discount, coupons unaffected) for reads; `sanitizeSpendTierOffer`
+  (strict, returns `errors[]`) for the admin write. "Not extra cost" is enforced there:
+  each tier `discount` must be `> 0` **and `< its own minSubtotal`** (bill can't hit
+  ≤ 0 / refund more than spent), discounts must **strictly increase** with thresholds
+  (spend more can't save less; a fat-fingered huge low-tier discount is rejected);
+  ≤ 8 tiers; optional start/end window.
+- `/api/razorpay` reads the setting after re-pricing; when the offer is active it
+  applies `calculateSpendTierDiscount(offer, subtotal)` and **ignores any couponCode**
+  (no 400 — a stale tab must not fail at pay). `notes.offerLabel` added (display only);
+  the **webhook is unchanged** — it already derives `discount = subtotal − captured
+  total` and splits GST proportionally, so invoice / `/success` / receipt need no edit.
+- New public `GET /api/offer` (preview only, CDN 60s/300s) → `useSpendTierOffer` feeds
+  the checkout Review step: replaces the coupon block with an offer card + "add ₹X more
+  to save ₹Y" nudge, drives `payTotal`. `/api/coupons/validate` 400s while the offer
+  runs. `/success` stash now takes subtotal/discount/couponCode/offerLabel from the
+  server response, not client guesses.
+- New admin **Settings → Spend & Save Offer** card: enable toggle, label, date window,
+  add/edit/remove tier rows; save surfaces the sanitiser's 400 text.
+- Migration `0044_seed_spend_tier_offer.sql` seeds the disabled ladder (`on conflict do
+  nothing`, no schema change) — **applied to the live DB by the owner** ahead of the
+  merge (same pattern as 0041).
+- Verified: `tsc --noEmit` clean; `npm test` 137 passed (1 pre-existing skip), incl. 27
+  new `spendTierOffer` tests (fail-closed parse, discount≥threshold & non-monotonic
+  rejection, tier select at/between/above rungs, window edges, clamp, fuzz invariant
+  that a sanitised ladder never drives the bill ≤ 0); `eslint` on changed files 0
+  errors / no new warnings; `next build` exit 0. Live: `/api/offer` and
+  `/api/coupons/validate` pause/resume behaviour confirmed against Supabase.
+  ⚠️ The `/api/razorpay` discount application + a full paid checkout are the owner's
+  pre-merge check on live Razorpay (no test keys here) — discount math is pure +
+  unit-tested and the webhook/GST/invoice path is untouched, so it's a proposal there.
+- See `docs/HANDBOOK.html` Change log 2026-09-02 for the full writeup.
+
 ### Batch: Cut Supabase Storage egress — 2026-09-01 22:20 IST
 - Owner asked why free-tier Storage egress (2.05/5GB) was climbing. Root cause: with
   `images.unoptimized: true` still on (unchanged — Vercel Image Optimization quota

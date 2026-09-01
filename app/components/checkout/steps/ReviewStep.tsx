@@ -18,6 +18,16 @@ export interface ReviewBag {
   cartTotal: number;
   categoryDiscounts: Record<string, number>;
 
+  // Storewide "Spend & Save" tier offer. When `offerActive`, the coupon
+  // field is hidden entirely (coupons are paused) and the discount comes
+  // from the tier the cart currently clears -- `offerDiscount` (0 if the
+  // cart hasn't reached the lowest rung yet). `nextTier`, when set, drives
+  // the "add ₹X more to save ₹Y" nudge.
+  offerActive: boolean;
+  offerLabel: string | null;
+  offerDiscount: number;
+  nextTier: { minSubtotal: number; discount: number } | null;
+
   couponInput: string;
   setCouponInput: (v: string) => void;
   appliedCoupon: { code: string; discount: number } | null;
@@ -35,10 +45,23 @@ export interface ReviewBag {
 
 export default function ReviewStep({ bag }: { bag: ReviewBag }) {
   const b = bag;
-  const available = useAvailableCoupons(true);
+  // No coupon fetch while the Spend & Save offer is running -- coupons are paused.
+  const available = useAvailableCoupons(!b.offerActive);
 
-  const finalTotal = b.appliedCoupon ? Math.max(0, b.cartTotal - b.appliedCoupon.discount) : b.cartTotal;
+  // One discount, from whichever channel is in play. The offer supersedes
+  // coupons (b.offerActive is mutually exclusive with an applied coupon).
+  const discountAmount = b.offerActive ? b.offerDiscount : b.appliedCoupon?.discount ?? 0;
+  const discountLabel = b.offerActive
+    ? b.offerLabel ?? "Offer"
+    : b.appliedCoupon
+    ? `Coupon (${b.appliedCoupon.code})`
+    : null;
+  const showDiscountRow = discountAmount > 0;
+  const finalTotal = Math.max(0, b.cartTotal - discountAmount);
   const gst = calculateGstBreakdown(finalTotal);
+
+  const nextTierGap =
+    b.offerActive && b.nextTier ? Math.max(0, b.nextTier.minSubtotal - b.cartTotal) : 0;
 
   const mrpSubtotal = b.cart.reduce((sum, item) => {
     const lineTotal = (Number(item.price) || 0) * item.quantity;
@@ -96,7 +119,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           )}
           <div className="flex items-center justify-between text-sm">
             <span className="text-stone-600 dark:text-stone-400 font-medium">Subtotal:</span>
-            <span className={`font-mono font-bold text-stone-900 dark:text-stone-100 ${b.appliedCoupon ? "text-sm" : "text-base"}`}>₹{b.cartTotal.toLocaleString("en-IN")}</span>
+            <span className={`font-mono font-bold text-stone-900 dark:text-stone-100 ${showDiscountRow ? "text-sm" : "text-base"}`}>₹{b.cartTotal.toLocaleString("en-IN")}</span>
           </div>
           {hasMrpSavings && (
             <div className="flex items-center justify-between text-[11px]">
@@ -106,11 +129,11 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
               </span>
             </div>
           )}
-          {b.appliedCoupon && (
+          {showDiscountRow && (
             <>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-emerald-700 dark:text-emerald-400 font-medium">Coupon ({b.appliedCoupon.code}):</span>
-                <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">&minus;₹{b.appliedCoupon.discount.toLocaleString("en-IN")}</span>
+                <span className="text-emerald-700 dark:text-emerald-400 font-medium">{discountLabel}:</span>
+                <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">&minus;₹{discountAmount.toLocaleString("en-IN")}</span>
               </div>
               <div className="flex items-center justify-between text-sm border-t border-stone-200 dark:border-stone-700 pt-1.5">
                 <span className="text-stone-600 dark:text-stone-400 font-medium">Total:</span>
@@ -125,7 +148,28 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
         </div>
       </details>
 
-      {/* --- Coupon --- */}
+      {/* --- Offer (Spend & Save) OR coupon --- while the storewide offer
+          runs, coupons are paused and the offer state shows here instead. */}
+      {b.offerActive ? (
+        <div className="rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-3 space-y-1">
+          {b.offerDiscount > 0 ? (
+            <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+              🎉 {b.offerLabel}: &minus;₹{b.offerDiscount.toLocaleString("en-IN")} off your order
+            </p>
+          ) : (
+            <p className="text-xs font-medium text-stone-700 dark:text-stone-300">
+              <span className="font-bold text-emerald-800 dark:text-emerald-300">{b.offerLabel}</span> is live
+              {b.nextTier ? "." : " — add more to your bag to unlock a discount."}
+            </p>
+          )}
+          {b.nextTier && (
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
+              Add ₹{nextTierGap.toLocaleString("en-IN")} more to save ₹{b.nextTier.discount.toLocaleString("en-IN")}.
+            </p>
+          )}
+          <p className="text-[10px] text-stone-400">Coupon codes are paused while this offer runs.</p>
+        </div>
+      ) : (
       <div>
         {b.appliedCoupon ? (
           <div className="flex items-center justify-between p-2.5 text-xs bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 rounded">
@@ -185,6 +229,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
         )}
         {b.couponError && <p className="text-[11px] text-rose-600 mt-1.5">{b.couponError}</p>}
       </div>
+      )}
 
       {/* --- Cancellation & Refund Policy (bilingual, required consent) ---
           Lifted verbatim from the old CartDrawer so acceptance of the
