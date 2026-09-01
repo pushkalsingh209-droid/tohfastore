@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { items, couponCode, phone, whatsappVerificationToken, customerName, shippingAddress } = await req.json();
+    const { items, couponCode, discountChoice, phone, whatsappVerificationToken, customerName, shippingAddress } = await req.json();
 
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Your bag is empty." }, { status: 400 });
@@ -128,13 +128,22 @@ export async function POST(req: Request) {
     // 4. Resolve the order-level discount, server-side and authoritative.
     //
     // The storewide "Spend & Save" tier offer (site_settings, admin-managed
-    // -- app/utils/spendTierOffer.ts) takes precedence: while it's live it
-    // REPLACES coupons entirely (owner's rule -- "when this applies a coupon
-    // cannot be applied"). So resolve it first and, if it's active, apply
-    // the matching tier's flat discount and IGNORE any couponCode in the
-    // body rather than 400ing a shopper whose stale tab still showed the
-    // coupon field. The tier math is pure + unit-tested and clamps so the
-    // bill can never reach <= 0.
+    // -- app/utils/spendTierOffer.ts) and a coupon code are mutually
+    // exclusive -- never stacked -- but which one applies is now the
+    // shopper's choice, made in the Review step and sent as `discountChoice`
+    // ("offer" | "coupon" | undefined). This route re-validates whichever
+    // was chosen; it never trusts the client's own discount math either way.
+    //
+    //   - discountChoice === "coupon": always the coupon path, even while
+    //     the offer is live -- a shopper who picked "use a coupon instead"
+    //     must get exactly that, not have the offer silently substituted.
+    //   - discountChoice === "offer": always the offer path (0 if the offer
+    //     turned out not to be active server-side -- e.g. its window just
+    //     closed -- rather than an error; never trust a client-side "it was
+    //     active a second ago").
+    //   - Not sent (older/stale client): the pre-choice default -- offer
+    //     wins over a coupon while it's active, coupon otherwise. Keeps a
+    //     stale tab's request from failing outright.
     let discount = 0;
     let appliedCouponCode: string | null = null;
     let appliedOfferLabel: string | null = null;
@@ -145,12 +154,17 @@ export async function POST(req: Request) {
       .eq("key", SPEND_TIER_OFFER_KEY)
       .maybeSingle();
     const spendOffer = parseSpendTierOffer(offerRow?.value ?? null);
+    const offerActive = isSpendTierOfferActive(spendOffer);
 
-    if (isSpendTierOfferActive(spendOffer)) {
+    const useCoupon =
+      discountChoice === "coupon" || (discountChoice === undefined && !offerActive && Boolean(couponCode));
+    const useOffer = !useCoupon && (discountChoice === "offer" || discountChoice === undefined) && offerActive;
+
+    if (useOffer) {
       discount = calculateSpendTierDiscount(spendOffer, subtotal);
       if (discount > 0) appliedOfferLabel = spendOffer.label;
-      // couponCode deliberately ignored while the offer runs.
-    } else if (couponCode) {
+      // couponCode deliberately ignored -- the offer was the shopper's pick.
+    } else if (useCoupon && couponCode) {
       const { data: coupon } = await supabase
         .from("coupons")
         .select("*")

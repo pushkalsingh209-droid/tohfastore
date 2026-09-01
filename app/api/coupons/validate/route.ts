@@ -2,7 +2,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { validateAndCalculateDiscount } from "@/app/utils/coupons";
-import { SPEND_TIER_OFFER_KEY, parseSpendTierOffer, isSpendTierOfferActive } from "@/app/utils/spendTierOffer";
 import { isRateLimited, recordRateLimitEvent } from "@/app/utils/rateLimit";
 import { getClientIp } from "@/app/utils/clientIp";
 import { serverErrorResponse } from "@/app/utils/apiError";
@@ -30,21 +29,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid coupon request." }, { status: 400 });
     }
 
-    // While the storewide "Spend & Save" offer is running, coupons are
-    // paused (same rule /api/razorpay enforces authoritatively). Refuse the
-    // preview too so the cart can't show a discount that won't be honoured.
-    const { data: offerRow } = await supabase
-      .from("site_settings")
-      .select("value")
-      .eq("key", SPEND_TIER_OFFER_KEY)
-      .maybeSingle();
-    if (isSpendTierOfferActive(parseSpendTierOffer(offerRow?.value ?? null))) {
-      return NextResponse.json(
-        { error: "A store-wide offer is running right now, so coupon codes are paused." },
-        { status: 400 }
-      );
-    }
-
+    // Preview only -- always runs, even while the storewide "Spend & Save"
+    // offer is live. A shopper can choose a coupon over the offer at
+    // checkout (ReviewStep), so they need to be able to preview one either
+    // way; /api/razorpay is what actually decides which discount applies,
+    // from the `discountChoice` the shopper picked.
     const { data: coupon } = await supabase
       .from("coupons")
       .select("*")

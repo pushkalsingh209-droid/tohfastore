@@ -12,6 +12,31 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Spend & Save — shopper picks offer or coupon — 2026-09-02 21:40 IST — ⚠️ payment path
+- Owner: "there should be an option to apply either the discount or the offer." Reverses
+  the original "coupons paused while the offer runs" rule — offer and coupon stay
+  mutually exclusive (never stacked), but the shopper now chooses which one.
+- Checkout Review step: while the offer is live, a two-option selector (`Use offer` /
+  `Use a coupon`) sits above the coupon UI; `discountChoice` local state, default
+  `"offer"`; removing an applied coupon flips it back. `CouponPanel` extracted so both
+  render paths (offer-running-coupon-chosen / offer-not-running) stay byte-identical.
+- `/api/razorpay` takes `discountChoice: "offer" | "coupon" | undefined` and
+  re-validates **only** the chosen path — `"coupon"` runs the coupon path even while the
+  offer is live; `"offer"` applies the tier discount (0, not an error, if the offer is
+  inactive server-side); `undefined` keeps the prior default (offer wins while active).
+- `/api/coupons/validate` no longer 400s while the offer is live — the shopper needs to
+  preview a coupon to compare it against the offer.
+- Webhook / GST split / invoice / `/success` unchanged (still a generic order-level
+  discount).
+- Also this session (data only): the live `spend_tier_offer` row had a future `startsAt`
+  (2026-09-02 11:37 IST) so the offer wasn't showing — cleared it to null (ladder +
+  `endsAt` 2026-12-01 kept).
+- Verified: `tsc --noEmit` clean; `npm test` 137 passed (1 pre-existing skip); `eslint`
+  on changed files 0 errors / no new warnings; `next build` exit 0. Owner tested the
+  selector locally. ⚠️ A full paid checkout on live Razorpay for each choice is the
+  owner's pre-merge check.
+- See `docs/HANDBOOK.html` Change log 2026-09-02 21:40.
+
 ### Batch: Spend & Save tier offer — 2026-09-02 00:45 IST — ⚠️ payment path, SHIPS DISABLED
 - Owner wants a periodic storewide sale: cart subtotal past a threshold takes a flat
   amount off the whole bill (₹6,000→₹800, ₹12,000→₹1,500, ₹22,000→₹3,000,

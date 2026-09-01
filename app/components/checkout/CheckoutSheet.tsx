@@ -85,17 +85,22 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
   const [loading, setLoading] = useState(false);
 
   // --- storewide "Spend & Save" tier offer (preview only) ---
-  // When it's running, coupons are paused everywhere: the coupon UI is
-  // hidden on the Review step, `payTotal` / the request body / the stash
-  // all ignore `appliedCoupon`, and /api/razorpay ignores any couponCode
-  // authoritatively -- so a coupon left in state from before the offer
-  // started is simply inert, no reset needed. `offerDiscount` here is a
-  // display estimate off the current cartTotal; the amount actually charged
-  // comes back in the /api/razorpay response.
+  // When it's running, the offer and a coupon are mutually exclusive but
+  // it's the shopper's choice which one applies -- `discountChoice` drives
+  // ReviewStep's two-option selector. Default "offer" (no action needed for
+  // the common case); switching to "coupon" doesn't clear any already-typed
+  // coupon, it just changes which one is actually used. `offerDiscount` here
+  // is a display estimate off the current cartTotal; the amount actually
+  // charged comes back in the /api/razorpay response, which re-validates
+  // whichever was chosen server-side.
   const spendOffer = useSpendTierOffer(true);
   const offerRunning = spendOffer !== null;
   const offerDiscount = spendOffer ? tierDiscountFor(spendOffer.tiers, cartTotal) : 0;
   const offerNextTier = spendOffer ? nextSpendTier(spendOffer.tiers, cartTotal) : null;
+  const [discountChoice, setDiscountChoice] = useState<"offer" | "coupon">("offer");
+  // Only meaningful while the offer is actually running -- once it isn't,
+  // behave exactly as before the offer existed (coupon-only).
+  const usingCoupon = offerRunning ? discountChoice === "coupon" : true;
 
   // Warm Razorpay's SDK as soon as the sheet opens -- by the time they've
   // filled 3 steps it's long since loaded (same intent as CartDrawer's
@@ -356,6 +361,10 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
     setAppliedCoupon(null);
     setCouponInput("");
     setCouponError("");
+    // Nothing left to "use a coupon" with -- fall back to the offer
+    // selection if one's running, rather than leaving the shopper on a
+    // coupon option with nothing applied.
+    if (offerRunning) setDiscountChoice("offer");
   };
 
   // Free this checkout's stock holds immediately when the shopper backs out
@@ -410,9 +419,15 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: cart,
-          // Never sent while the Spend & Save offer is running -- the server
-          // would ignore it anyway, but keep the request honest.
-          couponCode: offerRunning ? undefined : appliedCoupon?.code || undefined,
+          // Only sent when the shopper actually picked "use a coupon" (or
+          // the offer isn't running at all) -- otherwise the server would
+          // ignore it anyway, but keep the request honest about the choice.
+          couponCode: usingCoupon ? appliedCoupon?.code || undefined : undefined,
+          // Only meaningful while the offer is live -- tells /api/razorpay
+          // which of the two mutually-exclusive discounts the shopper
+          // picked in ReviewStep. Omitted otherwise so an older/cached
+          // client still gets the pre-choice default server-side.
+          discountChoice: offerRunning ? discountChoice : undefined,
           phone: cleanPhone,
           whatsappVerificationToken: token,
           customerName,
@@ -506,6 +521,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
           setAppliedCoupon(null);
           setCouponInput("");
           setCouponError("");
+          setDiscountChoice("offer");
           m.reset();
           setIsOpen(false);
           router.push(`/success?order_id=${encodeURIComponent(data.orderId)}`);
@@ -585,10 +601,8 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
     handleRazorpayPayment();
   };
 
-  const payTotal = Math.max(
-    0,
-    cartTotal - (offerRunning ? offerDiscount : appliedCoupon?.discount ?? 0)
-  );
+  const activeDiscount = usingCoupon ? appliedCoupon?.discount ?? 0 : offerDiscount;
+  const payTotal = Math.max(0, cartTotal - activeDiscount);
   const footerLabel =
     m.step === 1
       ? "Continue"
@@ -680,6 +694,9 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
                 offerLabel: spendOffer?.label ?? null,
                 offerDiscount,
                 nextTier: offerNextTier,
+                discountChoice,
+                onChooseOffer: () => setDiscountChoice("offer"),
+                onChooseCoupon: () => setDiscountChoice("coupon"),
                 couponInput,
                 setCouponInput,
                 appliedCoupon,
