@@ -4,6 +4,12 @@ import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { validateAndCalculateDiscount } from "@/app/utils/coupons";
+import {
+  SPEND_TIER_OFFER_KEY,
+  parseSpendTierOffer,
+  isSpendTierOfferActive,
+  calculateSpendTierDiscount,
+} from "@/app/utils/spendTierOffer";
 import { calculateOrderGstBreakdown, GST_RATE } from "@/app/utils/gst";
 import { isVerificationTokenValid, normalizePhoneForRecord } from "@/app/utils/whatsappOtp";
 import { serverErrorResponse } from "@/app/utils/apiError";
@@ -119,11 +125,32 @@ export async function POST(req: Request) {
     }
     const { pricedItems, subtotal } = repriced;
 
-    // 4. Validate and apply a coupon code server-side, so the discount is
-    // authoritative rather than something the client could fabricate.
+    // 4. Resolve the order-level discount, server-side and authoritative.
+    //
+    // The storewide "Spend & Save" tier offer (site_settings, admin-managed
+    // -- app/utils/spendTierOffer.ts) takes precedence: while it's live it
+    // REPLACES coupons entirely (owner's rule -- "when this applies a coupon
+    // cannot be applied"). So resolve it first and, if it's active, apply
+    // the matching tier's flat discount and IGNORE any couponCode in the
+    // body rather than 400ing a shopper whose stale tab still showed the
+    // coupon field. The tier math is pure + unit-tested and clamps so the
+    // bill can never reach <= 0.
     let discount = 0;
     let appliedCouponCode: string | null = null;
-    if (couponCode) {
+    let appliedOfferLabel: string | null = null;
+
+    const { data: offerRow } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", SPEND_TIER_OFFER_KEY)
+      .maybeSingle();
+    const spendOffer = parseSpendTierOffer(offerRow?.value ?? null);
+
+    if (isSpendTierOfferActive(spendOffer)) {
+      discount = calculateSpendTierDiscount(spendOffer, subtotal);
+      if (discount > 0) appliedOfferLabel = spendOffer.label;
+      // couponCode deliberately ignored while the offer runs.
+    } else if (couponCode) {
       const { data: coupon } = await supabase
         .from("coupons")
         .select("*")
@@ -199,6 +226,12 @@ export async function POST(req: Request) {
       notes: {
         items: JSON.stringify(pricedItems),
         couponCode: appliedCouponCode || "",
+        // Display only, like couponCode -- the label of the "Spend & Save"
+        // tier offer if one was applied. Empty when a coupon (or nothing)
+        // was used. The webhook derives the discount amount itself from
+        // subtotal - captured total, so this is purely for the invoice
+        // wording; never read for pricing.
+        offerLabel: appliedOfferLabel || "",
         // The OTP-verified number, pinned here at creation time (Razorpay
         // order notes can't be altered by the client afterward) -- the
         // webhook trusts this, not Razorpay's own payment.contact, which
@@ -245,6 +278,7 @@ export async function POST(req: Request) {
       subtotal,
       discount,
       couponCode: appliedCouponCode,
+      offerLabel: appliedOfferLabel,
       gst,
       checkoutToken,
     });

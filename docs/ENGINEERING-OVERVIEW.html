@@ -344,6 +344,18 @@
       <p>Never trusted from the client, on every single order: the price, the discount, the stock level,
       and whether the product is even still listed. All four are re-read from the database at the moment
       of payment, regardless of what the checkout page displayed a minute earlier.</p>
+      <h3>A promo that can't cost more than intended</h3>
+      <p>
+        The store can run a &ldquo;spend past a threshold, get a flat amount off the whole bill&rdquo;
+        offer, configured entirely from the admin panel — the thresholds and amounts are data, not code.
+        The rules that keep it safe live in one small, well-tested module: a discount can never equal or
+        exceed the spend that unlocks it (so a qualifying bill can't be driven to zero or below), and the
+        amounts have to grow as the thresholds do (so &ldquo;spend more&rdquo; can never mean &ldquo;save
+        less,&rdquo; and a mistyped figure is rejected at save time with the reason). The checkout preview
+        reads one relaxed, fail-closed parser; the admin save runs a stricter one that reports every
+        problem. While the offer is live it fully replaces coupon codes rather than stacking with them, on
+        both the preview and the authoritative payment path. It ships switched off.
+      </p>
     </section>
 
     <section class="doc" id="security">
@@ -383,8 +395,9 @@
       </p>
       <h3>Tests where it actually matters</h3>
       <p>
-        Around 110 unit tests cover the parts that are expensive to get wrong — tax and discount math,
-        signature verification, one-time codes, cart re-pricing, stock-reservation availability. The
+        Around 140 unit tests cover the parts that are expensive to get wrong — tax and discount math,
+        the spend-tier offer's safety invariants, signature verification, one-time codes, cart re-pricing,
+        stock-reservation availability. The
         order-normalization tests include a deliberate round-trip check: feed it a well-formed order and
         assert the output comes back byte-for-byte identical, so a &ldquo;safety&rdquo; refactor can't
         quietly start mutating orders that were already fine. Anything touching the payment path is

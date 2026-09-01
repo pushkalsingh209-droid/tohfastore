@@ -6,6 +6,7 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
 import { MAX_CHAT_LABEL_LENGTH } from "@/app/utils/chatLabels";
+import { sanitizeSpendTierOffer } from "@/app/utils/spendTierOffer";
 
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 500;
@@ -200,6 +201,20 @@ export async function PATCH(req: Request) {
         );
       }
       updates.push({ key: "ganesha_collapse_delay_seconds", value: String(seconds) });
+    }
+
+    // The storewide "Spend & Save" tier offer -- one JSON blob (the tier
+    // list is structured, unlike the scalar keys above). Run it through the
+    // STRICT sanitiser so a bad edit (discount >= its threshold, a
+    // non-monotonic ladder, an inverted date window...) is rejected with a
+    // message instead of silently dropping rungs. The read paths use the
+    // lenient parseSpendTierOffer() instead. See app/utils/spendTierOffer.ts.
+    if (body.spend_tier_offer !== undefined) {
+      const { offer, errors } = sanitizeSpendTierOffer(body.spend_tier_offer);
+      if (errors.length > 0) {
+        return NextResponse.json({ error: errors.join(" ") }, { status: 400 });
+      }
+      updates.push({ key: "spend_tier_offer", value: JSON.stringify(offer) });
     }
 
     if (updates.length === 0) {

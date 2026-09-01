@@ -9,12 +9,50 @@
 // Mechanical move -- the JSX is the exact {activeTab === "settings"} block
 // that was inline, only `fetchData` is renamed to the context's `refetch`.
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiRequest } from "@/app/admin/lib/apiRequest";
 import { useAdminData } from "@/app/admin/AdminDataContext";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
 import { CHAT_LABEL_KINDS, DEFAULT_CHAT_LABELS, MAX_CHAT_LABEL_LENGTH, type ChatLabelKind } from "@/app/utils/chatLabels";
+import { parseSpendTierOffer, SAMPLE_SPEND_TIER_OFFER, MAX_SPEND_TIERS } from "@/app/utils/spendTierOffer";
+
+// --- "Spend & Save" offer editor (Storefront Settings) -------------------
+// The offer lives as one JSON row in site_settings; the strict validation
+// is server-side in /api/admin/settings (sanitizeSpendTierOffer). These
+// helpers only shuttle it between that JSON and the form's string fields.
+interface OfferTierDraft {
+  minSubtotal: string;
+  discount: string;
+}
+interface SpendOfferDraft {
+  enabled: boolean;
+  label: string;
+  startsAt: string; // datetime-local value; "" = no bound
+  endsAt: string;
+  tiers: OfferTierDraft[];
+}
+
+// ISO (UTC, as stored) -> the local "YYYY-MM-DDTHH:mm" a datetime-local wants.
+function isoToLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function offerToDraft(stored: string | undefined): SpendOfferDraft {
+  const src = stored ? parseSpendTierOffer(stored) : SAMPLE_SPEND_TIER_OFFER;
+  const tiers = src.tiers.length > 0 ? src.tiers : SAMPLE_SPEND_TIER_OFFER.tiers;
+  return {
+    enabled: src.enabled,
+    label: src.label,
+    startsAt: isoToLocalInput(src.startsAt),
+    endsAt: isoToLocalInput(src.endsAt),
+    tiers: tiers.map((t) => ({ minSubtotal: String(t.minSubtotal), discount: String(t.discount) })),
+  };
+}
 
 export default function SettingsTab() {
   const {
@@ -50,6 +88,52 @@ export default function SettingsTab() {
   const [newCategoryGstRate, setNewCategoryGstRate] = useState("5");
   const [newCategoryDiscountPercent, setNewCategoryDiscountPercent] = useState("25");
   const [categoryStatus, setCategoryStatus] = useState("");
+
+  // --- "Spend & Save" offer draft ---
+  // Seeded from the stored JSON and re-seeded whenever it changes: the
+  // async initial load from AdminDataContext, or a save echoing back the
+  // server-sanitised value. Same effect+suppress pattern the rest of this
+  // codebase uses for "sync local form state from a prop" (see CheckoutSheet).
+  const [offerDraft, setOfferDraft] = useState<SpendOfferDraft>(() => offerToDraft(settings.spend_tier_offer));
+  const [offerStatus, setOfferStatus] = useState("");
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOfferDraft(offerToDraft(settings.spend_tier_offer));
+  }, [settings.spend_tier_offer]);
+
+  const setOfferTier = (i: number, field: keyof OfferTierDraft, value: string) =>
+    setOfferDraft((d) => ({ ...d, tiers: d.tiers.map((t, j) => (j === i ? { ...t, [field]: value } : t)) }));
+  const addOfferTier = () =>
+    setOfferDraft((d) =>
+      d.tiers.length < MAX_SPEND_TIERS ? { ...d, tiers: [...d.tiers, { minSubtotal: "", discount: "" }] } : d
+    );
+  const removeOfferTier = (i: number) =>
+    setOfferDraft((d) => ({ ...d, tiers: d.tiers.filter((_, j) => j !== i) }));
+
+  // Server-side sanitizeSpendTierOffer does the real validation and returns
+  // a 400 with the specific problem(s) -- surface that text as-is.
+  const handleSaveSpendOffer = async () => {
+    setOfferStatus("Saving...");
+    try {
+      const payload = {
+        enabled: offerDraft.enabled,
+        label: offerDraft.label,
+        startsAt: offerDraft.startsAt || null,
+        endsAt: offerDraft.endsAt || null,
+        tiers: offerDraft.tiers
+          .filter((t) => t.minSubtotal.trim() !== "" || t.discount.trim() !== "")
+          .map((t) => ({ minSubtotal: t.minSubtotal.trim(), discount: t.discount.trim() })),
+      };
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ spend_tier_offer: payload }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+      setOfferStatus("Saved.");
+    } catch (err: unknown) {
+      setOfferStatus(err instanceof Error ? err.message : "Could not save the offer.");
+    }
+  };
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -568,6 +652,115 @@ export default function SettingsTab() {
         <span className="text-stone-400 text-xs w-full">
           The mascot popup auto-shows on a visitor&rsquo;s 1st, 2nd, ... page load/reload up to the count above (1-10, default 2), then stays quiet for the cooldown length before the cycle repeats. A floating &ldquo;Show Ganesha&rdquo; button lets a visitor bring it back manually during the quiet window -- it collapses to a small arrow after the trigger delay above (2-60 seconds, default 5) and expands again on tap. Cooldown range: 5 minutes to 720 minutes (12 hours).
         </span>
+      </div>
+    </div>
+
+    {/* SECTION D.0.2: SPEND & SAVE OFFER */}
+    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+      <div className="border-b border-stone-200 pb-4 mb-6">
+        <h2 className="text-xl font-serif text-stone-900">Spend &amp; Save Offer</h2>
+        <p className="text-stone-500 text-xs mt-1">
+          A store-wide &ldquo;spend past a threshold, get a flat amount off the whole bill&rdquo; ladder.
+          While it is switched on, coupon codes are paused for every shopper and the discount for
+          the tier their cart clears is applied automatically at checkout &mdash; the shopper is
+          charged subtotal minus that amount, with GST re-worked out of the reduced total.
+          Add, edit, or remove tiers freely (e.g. &#8377;1,100 &rarr; &#8377;125 off). Rules:
+          each tier&rsquo;s discount must be a positive amount <em>less than</em> its own minimum
+          subtotal, and the discounts must increase as the thresholds rise. Up to {MAX_SPEND_TIERS} tiers.
+        </p>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm text-stone-700 font-medium">
+        <input
+          type="checkbox"
+          checked={offerDraft.enabled}
+          onChange={(e) => setOfferDraft((d) => ({ ...d, enabled: e.target.checked }))}
+          className="accent-amber-700"
+        />
+        Offer is running
+      </label>
+
+      <div className="flex items-center gap-3 flex-wrap mt-4">
+        <label className="text-sm text-stone-700 font-medium">Label shown to shoppers</label>
+        <input
+          type="text"
+          maxLength={60}
+          value={offerDraft.label}
+          onChange={(e) => setOfferDraft((d) => ({ ...d, label: e.target.value }))}
+          className="w-64 px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+        />
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap mt-4">
+        <label className="text-sm text-stone-700 font-medium">Starts</label>
+        <input
+          type="datetime-local"
+          value={offerDraft.startsAt}
+          onChange={(e) => setOfferDraft((d) => ({ ...d, startsAt: e.target.value }))}
+          className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+        />
+        <label className="text-sm text-stone-700 font-medium ml-2">Ends</label>
+        <input
+          type="datetime-local"
+          value={offerDraft.endsAt}
+          onChange={(e) => setOfferDraft((d) => ({ ...d, endsAt: e.target.value }))}
+          className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+        />
+        <span className="text-stone-400 text-xs w-full">
+          Both optional. Leave blank for &ldquo;on until I switch it off&rdquo;. With a window set, the
+          offer only applies between those times even while the switch is on.
+        </span>
+      </div>
+
+      <div className="mt-5">
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-[11px] uppercase tracking-wider font-semibold text-stone-400 mb-1">
+          <span>Min cart subtotal (&#8377;)</span>
+          <span>Discount off bill (&#8377;)</span>
+          <span />
+        </div>
+        {offerDraft.tiers.map((t, i) => (
+          <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 mb-2">
+            <input
+              type="number"
+              min={1}
+              step="any"
+              value={t.minSubtotal}
+              onChange={(e) => setOfferTier(i, "minSubtotal", e.target.value)}
+              className="px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+            <input
+              type="number"
+              min={1}
+              step="any"
+              value={t.discount}
+              onChange={(e) => setOfferTier(i, "discount", e.target.value)}
+              className="px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+            <button
+              type="button"
+              onClick={() => removeOfferTier(i)}
+              className="px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded transition"
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+        {offerDraft.tiers.length < MAX_SPEND_TIERS && (
+          <button type="button" onClick={addOfferTier} className="text-xs font-semibold text-amber-700 hover:underline mt-1">
+            + Add tier
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3 mt-6">
+        <button
+          type="button"
+          onClick={handleSaveSpendOffer}
+          className="px-5 py-2 rounded bg-stone-900 text-white text-xs font-semibold uppercase tracking-wider hover:bg-amber-700 transition"
+        >
+          Save offer
+        </button>
+        {offerStatus && <span className="text-xs text-stone-500">{offerStatus}</span>}
       </div>
     </div>
 

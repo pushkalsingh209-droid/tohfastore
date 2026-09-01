@@ -621,7 +621,10 @@
     <code>checkout_started</code> lead beacon fires per phone.</li>
     <li><b>Delivery step.</b> Pincode-first address form.</li>
     <li><b>Review step.</b> Collapsible order summary, coupon field with a tap-to-apply list of live public
-    coupons (<code>GET /api/coupons/public</code>), bilingual cancellation/refund consent (required).</li>
+    coupons (<code>GET /api/coupons/public</code>), bilingual cancellation/refund consent (required).
+    While the storewide <b>Spend &amp; Save</b> tier offer is running (<code>GET /api/offer</code>), the coupon
+    field is replaced by an "offer applied &mdash; &#8377;X off / add &#8377;Y more to save &#8377;Z" card and
+    coupons are paused.</li>
     <li><b>Pay.</b> The sheet footer button calls <code>handleRazorpayPayment</code> &rarr; Flow 4.</li>
   </ol>
 
@@ -629,14 +632,21 @@
   <ol class="steps">
     <li><b>Re-price.</b> <code>repriceCart(clientItems, dbProducts, categoryGstRates)</code> &mdash; price,
     GST rate, category and image come from the DB row, not the request. Any item no longer available &rarr; 400.</li>
-    <li><b>Re-validate.</b> Coupon re-checked (exists, active, not expired, under max uses). Stock and
+    <li><b>Discount (authoritative).</b> Read <code>site_settings.spend_tier_offer</code>
+    (<code>parseSpendTierOffer</code>, fail-closed). If the <b>Spend &amp; Save</b> offer is active, apply the
+    flat discount for the highest tier the re-priced subtotal clears (<code>calculateSpendTierDiscount</code>)
+    and <em>ignore any <code>couponCode</code></em> in the body &mdash; the offer replaces coupons. Otherwise
+    the coupon is re-checked as before (exists, active, not expired, under max uses). Stock and
     <code>hidden</code> re-checked. OTP token re-verified.</li>
     <li><b>Reserve (if enabled).</b> If <code>site_settings.stock_reservations_enabled === '1'</code>:
     <code>checkoutToken = randomUUID()</code>, then <code>reserve_stock(token, pricedItems, 900)</code>.
     Not enough stock &rarr; 400 <code>stock_unavailable</code>; RPC error &rarr; 500 (fail closed).</li>
     <li><b>Create the Razorpay order</b> with server-authored <code>notes</code>: <code>items</code>
-    (JSON), <code>couponCode</code>, <code>verifiedPhone</code>, <code>checkoutToken</code>,
-    <code>customerName</code>, <code>shippingAddress</code>. Return <code>{ orderId, checkoutToken }</code>.</li>
+    (JSON), <code>couponCode</code>, <code>offerLabel</code> (Spend &amp; Save label if applied; display only),
+    <code>verifiedPhone</code>, <code>checkoutToken</code>, <code>customerName</code>, <code>shippingAddress</code>.
+    Return <code>{ orderId, subtotal, discount, couponCode, offerLabel, gst, checkoutToken }</code>. The webhook
+    still derives the discount itself as <code>subtotal &minus; captured total</code>, so its GST split and the
+    invoice already handle the tier discount with no change.</li>
     <li><b>Client</b> opens the Razorpay modal with that <code>orderId</code>. On success it fires the
     webhook fast-path and redirects to <code>/success</code>. On dismiss/failure it calls
     <code>POST /api/checkout/release</code> with the token and returns to the review step.</li>
@@ -891,6 +901,12 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
     test); a field in the admin <strong>Settings</strong> tab; the write route calls
     <code>revalidateTag("site-settings")</code>. Read it from <code>getSiteSettings()</code> /
     <code>BootstrapProvider</code>, never <code>process.env</code>.</p>
+    <p><em>Structured</em> setting (a list, not a scalar): store one JSON string under one key and give it a
+    dedicated pure module &mdash; e.g. <code>spend_tier_offer</code> &rarr; <code>app/utils/spendTierOffer.ts</code>
+    with a <strong>lenient, fail-closed</strong> <code>parse&hellip;()</code> for the read paths and a
+    <strong>strict</strong> <code>sanitize&hellip;()</code> (returns errors) for the admin PATCH branch. Unit-test
+    the module the way <code>coupons.ts</code>/<code>gst.ts</code> are. A tiny <code>NNNN_seed_&hellip;.sql</code>
+    (<code>on conflict do nothing</code>) records it in the migrations trail.</p>
   </div>
 
   <div class="card">
@@ -921,11 +937,12 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
   </div>
 
   <h3 id="dev-testing">Testing</h3>
-  <p>Vitest, ~110 tests. Covered: money math &amp; GST breakdown, Razorpay signatures, TOTP, backup codes,
-  client-IP extraction, Indian phone normalisation, cart repricing, reservation availability
-  (<code>computeAvailability</code>), the RLS perimeter (one env-gated case calling
-  <code>checkRlsPerimeter</code>), and <code>normalizeOrderItems</code> (incl. a round-trip proving a
-  well-formed order note is returned unchanged).</p>
+  <p>Vitest, ~140 tests. Covered: money math &amp; GST breakdown, the Spend &amp; Save tier offer
+  (<code>spendTierOffer</code> &mdash; fail-closed parse, the &ldquo;not extra cost&rdquo; invariants, tier
+  selection, window edges), Razorpay signatures, TOTP, backup codes, client-IP extraction, Indian phone
+  normalisation, cart repricing, reservation availability (<code>computeAvailability</code>), the RLS
+  perimeter (one env-gated case calling <code>checkRlsPerimeter</code>), and <code>normalizeOrderItems</code>
+  (incl. a round-trip proving a well-formed order note is returned unchanged).</p>
   <div class="note warn"><b>Payment-path changes</b>
   Razorpay is LIVE-only here &mdash; no test keys. A change to <code>/api/razorpay</code>,
   <code>/api/razorpay-webhook</code>, or the GST / coupon / signature utils lands <em>behind tests</em>, is
@@ -1039,14 +1056,17 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
     <p>Create flat or percent coupons with a max-uses cap and an expiry; toggle active; toggle "show on
     site" (a public coupon appears in the checkout's tap-to-apply list). <code>used_count</code> only
     increments on a <strong>verified, paid</strong> order &mdash; an abandoned checkout never burns a
-    redemption.</p>
+    redemption. <b>While the Spend &amp; Save offer (Settings tab) is switched on, coupon codes are paused
+    for everyone</b> &mdash; both the checkout preview and the payment API reject them until you switch the
+    offer off.</p>
   </div>
 
   <div class="card">
     <h4>Settings</h4>
-    <p>Storefront defaults; the WhatsApp-numbers pool + bulk reassignment; the "Chat for&hellip;" button
-    labels; product labels + bulk-assign; and categories (each with its own GST %, discount %, per-page
-    size, and homepage visibility). See the table below for what each control actually changes.</p>
+    <p>Storefront defaults; the <b>Spend &amp; Save Offer</b> (see below); the WhatsApp-numbers pool + bulk
+    reassignment; the "Chat for&hellip;" button labels; product labels + bulk-assign; and categories (each
+    with its own GST %, discount %, per-page size, and homepage visibility). See the table below for what
+    each control actually changes.</p>
   </div>
 
   <div class="card">
@@ -1064,6 +1084,7 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
   <div class="x"><table>
     <thead><tr><th>Setting</th><th>Effect</th><th>Where it shows</th></tr></thead>
     <tbody>
+      <tr><td>Spend &amp; Save Offer</td><td>Storewide "spend &#8805; &#8377;X, get a flat &#8377;Y off the whole bill" ladder. Switch on/off; optional start/end window; add/edit/remove tiers (e.g. &#8377;6,000&rarr;&#8377;800, &#8377;12,000&rarr;&#8377;1,500&hellip;). Each tier's discount must be less than its own threshold, and discounts must grow with the thresholds &mdash; a bad edit is rejected with the reason. <b>While it's on, coupons are paused</b> and the matching tier discount is applied automatically at checkout (GST re-worked out of the reduced total). Config is one JSON row, <code>site_settings.spend_tier_offer</code>.</td><td>Checkout Review step; the amount charged</td></tr>
       <tr><td>Default products per page</td><td>Catalog page size when a visitor hasn't chosen one</td><td>Every catalog grid</td></tr>
       <tr><td>Cards loaded per scroll batch</td><td>How many product cards mount at once as the shopper scrolls (lower = smoother on long pages; min 8)</td><td>Catalog grid</td></tr>
       <tr><td>Default product photo look</td><td>Site-wide photo filter; a visitor's own tap overrides it for their view</td><td>Every card / gallery</td></tr>
@@ -1256,7 +1277,7 @@ takes a second arg.</p>
 <tr><td>PDF</td><td><code>@react-pdf/renderer</code> 4.5</td><td>Catalogue PDF (pure JS). <code>sharp</code> re-encodes photos to thumbnails first.</td></tr>
 <tr><td>QR</td><td><code>qrcode</code> 1.5</td><td>Admin TOTP re-provisioning QR (SVG).</td></tr>
 <tr><td>Analytics / RUM</td><td><code>@vercel/analytics</code>, <code>@vercel/speed-insights</code>, <code>@next/third-parties</code> (GA4)</td><td>All free-tier. Purchase conversions fired client-side on <code>/success</code> with the real server-verified total.</td></tr>
-<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (88 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>bootstrapSettings</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>repricing</code>, <code>totp</code>, <code>useCheckoutMachine</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
+<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (137 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>bootstrapSettings</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>repricing</code>, <code>spendTierOffer</code>, <code>totp</code>, <code>useCheckoutMachine</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
 <tr><td>Lint</td><td>ESLint 9 + <code>eslint-config-next</code></td><td><code>npm run lint</code>. (Next 16 no longer runs ESLint during <code>next build</code>.)</td></tr>
 </tbody></table></div>
 
@@ -1570,7 +1591,7 @@ RLS: anon <code>SELECT USING (hidden = false)</code>; service role bypasses.</p>
 <tr><td><code>categories</code></td><td><code>name</code> UNIQUE, <code>show_on_home</code> bool=true, <code>gst_rate</code> numeric(5,2)=5.00, <code>default_page_size</code> int, <code>discount_percent</code> numeric=25</td><td>Managed category list. <code>show_on_home=false</code> drops products from the unfiltered homepage but keeps the category reachable. <code>discount_percent</code> is display-only (fake struck-through MRP). <em>(0004&ndash;07, 0011, 0013)</em></td></tr>
 <tr><td><code>reviews</code></td><td><code>product_id</code> FK&rarr;products ON DELETE CASCADE, <code>rating</code> smallint 1&ndash;5, <code>approved</code> bool=false</td><td>Admin-moderated. RLS anon <code>SELECT USING (approved = true)</code>. <em>(0001)</em></td></tr>
 <tr><td><code>coupons</code></td><td><code>code</code> UNIQUE, <code>discount_type</code> flat|percent, <code>discount_value</code> &gt; 0, <code>active</code> bool=true, <code>max_uses</code> int, <code>used_count</code> int=0, <code>expires_at</code>, <code>is_public</code> bool=false</td><td><code>is_public</code> coupons are advertised in the promo banner; private ones still redeem. <code>used_count</code> incremented only on a captured, paid order. RLS: no policies. <em>(0001&ndash;02)</em></td></tr>
-<tr><td><code>site_settings</code></td><td><code>key</code> text PK, <code>value</code> text</td><td>KV store. Keys: <code>default_page_size</code>, <code>brass_price_per_kg</code>, <code>catalog_reveal_batch_size</code>, <code>weight_unit</code>, <code>dimension_unit</code>, <code>default_whatsapp_number</code>, <code>default_photo_filter</code>, <code>ganesha_cooldown_minutes</code>, <code>ganesha_max_auto_shows</code>, <code>ganesha_collapse_delay_seconds</code>, <code>chat_label_in_stock</code>, <code>chat_label_out_of_stock</code>, <code>last_keepalive_at</code> / <code>last_greenapi_state</code> / <code>last_greenapi_error</code> (all stamped by <code>/api/keepalive</code>, read by the admin Overview), <code>last_abandoned_checkout_run_at</code> (stamped by that cron, #14), <code>stock_reservations_enabled</code> (<code>'0'</code>/<code>'1'</code> kill switch for the 0043 reservation feature). Public subset via <code>/api/settings</code>. <em>(0011, 0022, 0025, 0043)</em></td></tr>
+<tr><td><code>site_settings</code></td><td><code>key</code> text PK, <code>value</code> text</td><td>KV store. Keys: <code>default_page_size</code>, <code>brass_price_per_kg</code>, <code>catalog_reveal_batch_size</code>, <code>weight_unit</code>, <code>dimension_unit</code>, <code>default_whatsapp_number</code>, <code>default_photo_filter</code>, <code>ganesha_cooldown_minutes</code>, <code>ganesha_max_auto_shows</code>, <code>ganesha_collapse_delay_seconds</code>, <code>chat_label_in_stock</code>, <code>chat_label_out_of_stock</code>, <code>last_keepalive_at</code> / <code>last_greenapi_state</code> / <code>last_greenapi_error</code> (all stamped by <code>/api/keepalive</code>, read by the admin Overview), <code>last_abandoned_checkout_run_at</code> (stamped by that cron, #14), <code>stock_reservations_enabled</code> (<code>'0'</code>/<code>'1'</code> kill switch for the 0043 reservation feature), <code>spend_tier_offer</code> (JSON blob &mdash; the Spend &amp; Save tier offer; <code>app/utils/spendTierOffer.ts</code>; ships disabled, 0044). Public subset via <code>/api/settings</code>; the Spend &amp; Save offer is exposed (only while live) via <code>/api/offer</code>. <em>(0011, 0022, 0025, 0043, 0044)</em></td></tr>
 <tr><td><code>product_colors</code>, <code>product_materials</code>, <code>labels</code></td><td><code>name</code> UNIQUE (+ <code>labels.photo_filter</code>)</td><td>Managed dropdown lists for the admin product form. Storefront reads distinct in-use labels off <code>products</code> via <code>/api/labels</code> instead. <em>(0017, 0018, 0021, 0023)</em></td></tr>
 <tr><td><code>whatsapp_numbers</code></td><td><code>phone_number</code> UNIQUE (<code>91&hellip;</code>), <code>label</code></td><td>Additional per-product enquiry numbers. The active site-wide default lives in <code>site_settings.default_whatsapp_number</code>. <em>(0019)</em></td></tr>
 <tr><td><code>chat_button_labels</code></td><td><code>kind</code> in_stock|out_of_stock, <code>label</code> 1&ndash;30, UNIQUE(kind,label)</td><td>Preset pool for the &ldquo;Chat for &hellip;&rdquo; product-card button. Active choice is a plain-text <code>site_settings</code> value. <em>(0033)</em></td></tr>
@@ -1651,6 +1672,7 @@ policy exists.</p>
 <tr><td>0041</td><td>atomic_stock_decrement</td><td><code>decrement_inventory()</code> &mdash; row-locked (<code>SELECT &hellip; FOR UPDATE</code>) atomic stock deduction for the order webhook, returns <code>(new_inventory, oversold_by)</code>; <code>EXECUTE</code> revoked from anon/authenticated. Applied 2026-08-29 before the matching webhook change merged.</td></tr>
 <tr><td>0042</td><td>add_product_sales</td><td><code>product_sales</code> aggregate + <code>apply_product_sales(items jsonb, sign int)</code> RPC (signed per-item delta, clamped at 0, service-role only). Backfilled from non-cancelled orders. Feeds <code>getSoldCounts</code>; maintained +1 by the webhook, &minus;1 by the admin cancel path. Applied 2026-08-29; app wiring verified end-to-end &mdash; see Change log.</td></tr>
 <tr><td>0043</td><td>add_stock_reservations</td><td><code>stock_reservations</code> table (<code>held</code>/<code>consumed</code>/<code>released</code>, <code>expires_at</code>) + <code>reserve_stock(token, items jsonb, ttl_seconds)</code> (two-pass, all-or-nothing, row-locks each product, returns <code>ok</code> / offending product + <code>available</code>) + <code>consume_reservation(token)</code> (decrement + mark consumed, same <code>(new_inventory, oversold_by)</code> shape as 0041; returns nothing if no held rows &rarr; caller falls back to the 0041 loop). <code>EXECUTE</code> service-role only (0041/0042 grant gotcha). Seeds kill switch <code>site_settings.stock_reservations_enabled='0'</code>. <strong>Ships disabled</strong> &mdash; flip to <code>'1'</code> in the SQL editor after the checks in the migration file pass. See &sect;checkout + <code>docs/DESIGN-stock-reservation.md</code>.</td></tr>
+<tr><td>0044</td><td>seed_spend_tier_offer</td><td>Seeds <code>site_settings.spend_tier_offer</code> &mdash; one JSON row for the storewide <strong>Spend &amp; Save</strong> tier offer (<code>app/utils/spendTierOffer.ts</code>). Full ladder (&#8377;2,000&rarr;&#8377;250 &hellip; &#8377;35,000&rarr;&#8377;5,000, the &#8377;2,000 rung a low test step), <code>enabled:false</code>. No schema change &mdash; <code>site_settings</code> is KV text; <code>on conflict (key) do nothing</code> so it never overwrites an owner-edited row. Owner turns it on from Settings &rarr; Spend &amp; Save Offer. While on, coupons are paused and the tier discount is authoritative in <code>/api/razorpay</code>.</td></tr>
 </tbody></table></div>
 
 <p><strong><code>product_sales</code> drift check</strong> &mdash; the tally is only self-correcting for cancellations
@@ -1772,11 +1794,12 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <div class="x"><table>
 <thead><tr><th>Route</th><th>Methods</th><th>Purpose</th></tr></thead>
 <tbody>
-<tr><td><code>/api/razorpay</code></td><td><span class="tag t-post">post</span></td><td>Create a Razorpay order. Re-prices items from DB, re-validates coupon, re-checks stock &amp; <code>hidden</code>, enforces <code>isVerificationTokenValid(phone, token)</code>. <strong>If <code>stock_reservations_enabled='1'</code> (0043):</strong> after all other checks, <code>reserve_stock(uuid, pricedItems, 900s)</code> &mdash; on shortfall returns 400 <code>code:"stock_unavailable"</code> before any order exists; on RPC error 500 (fail closed); on success the <code>checkoutToken</code> goes into <code>order.notes</code> and the JSON response. Pins <code>items</code>/<code>couponCode</code>/<code>verifiedPhone</code>/<code>customerName</code>/<code>shippingAddress</code>(/<code>checkoutToken</code>) into <code>order.notes</code>. Returns <code>{orderId, amount, subtotal, discount, couponCode, gst, checkoutToken}</code>. Error code <code>verification_required</code> when OTP is stale. 5xx bodies are generic (<code>apiError.ts</code>).</td></tr>
+<tr><td><code>/api/razorpay</code></td><td><span class="tag t-post">post</span></td><td>Create a Razorpay order. Re-prices items from DB, re-validates coupon, re-checks stock &amp; <code>hidden</code>, enforces <code>isVerificationTokenValid(phone, token)</code>. <strong>If <code>stock_reservations_enabled='1'</code> (0043):</strong> after all other checks, <code>reserve_stock(uuid, pricedItems, 900s)</code> &mdash; on shortfall returns 400 <code>code:"stock_unavailable"</code> before any order exists; on RPC error 500 (fail closed); on success the <code>checkoutToken</code> goes into <code>order.notes</code> and the JSON response. Pins <code>items</code>/<code>couponCode</code>/<code>offerLabel</code>/<code>verifiedPhone</code>/<code>customerName</code>/<code>shippingAddress</code>(/<code>checkoutToken</code>) into <code>order.notes</code>. <strong>Discount:</strong> reads <code>site_settings.spend_tier_offer</code> &mdash; if the Spend &amp; Save offer is active, applies the matching tier's flat amount and ignores any <code>couponCode</code>; otherwise the coupon path. Returns <code>{orderId, amount, subtotal, discount, couponCode, offerLabel, gst, checkoutToken}</code>. Error code <code>verification_required</code> when OTP is stale. 5xx bodies are generic (<code>apiError.ts</code>).</td></tr>
 <tr><td><code>/api/razorpay-webhook</code></td><td><span class="tag t-post">post</span></td><td>Handles <code>payment.captured</code> from both the Dashboard webhook (<code>x-razorpay-signature</code> &rarr; <code>isValidWebhookSignature</code>) and the client fast-path (<code>razorpay_signature</code> &rarr; <code>isValidPaymentSignature</code>). Idempotent. Inserts order, increments coupon, deducts stock + low-stock alert, sends WhatsApp + Resend confirmations. <strong>Stock deduction (block 1b):</strong> if <code>notes.checkoutToken</code> is present, <code>consume_reservation(token)</code> does every line; if it finds no held rows (expired/trimmed, or a duplicate already consumed) it falls back to the legacy per-item <code>decrement_inventory</code> loop &mdash; same alerts either way.</td></tr>
 <tr><td><code>/api/checkout/release</code></td><td><span class="tag t-post">post</span></td><td>Public, best-effort. <code>{checkoutToken}</code> (v4 UUID) &rarr; marks that token&rsquo;s <code>held</code> rows <code>released</code>. Always 200 (incl. 0 rows / bad token). Fired by <code>CheckoutSheet</code> on Razorpay <code>ondismiss</code> / <code>payment.failed</code> so an abandoned checkout frees stock in seconds instead of at TTL. Correctness never depends on it &mdash; the 15-min TTL is the backstop.</td></tr>
-<tr><td><code>/api/coupons/validate</code></td><td><span class="tag t-post">post</span></td><td>UI-preview discount only (not authoritative). Rate-limited <code>coupon-validate</code> 20/10min.</td></tr>
+<tr><td><code>/api/coupons/validate</code></td><td><span class="tag t-post">post</span></td><td>UI-preview discount only (not authoritative). Rate-limited <code>coupon-validate</code> 20/10min. Returns 400 (&ldquo;coupon codes are paused&rdquo;) while the Spend &amp; Save offer is active.</td></tr>
 <tr><td><code>/api/coupons/public</code></td><td><span class="tag t-get">get</span></td><td>Live public coupons (<code>getPublicCoupons</code> + <code>filterLivePublicCoupons</code>, display-safe fields only) for the checkout Review step&rsquo;s tap-to-apply list. <code>Cache-Control</code> 60s / s-maxage 300. Same set the on-site <code>PromoBanner</code> shows.</td></tr>
+<tr><td><code>/api/offer</code></td><td><span class="tag t-get">get</span></td><td>Preview of the live <strong>Spend &amp; Save</strong> tier offer for the checkout Review step (<code>useSpendTierOffer</code>). <code>{active:false}</code> unless running; otherwise <code>{active:true, offer:{label, tiers, startsAt, endsAt}}</code>. <strong>Not authoritative</strong> &mdash; <code>/api/razorpay</code> re-reads the setting and recomputes at order creation. <code>Cache-Control</code> 60s / s-maxage 300.</td></tr>
 <tr><td><code>/api/whatsapp-otp/send</code></td><td><span class="tag t-post">post</span></td><td><code>sendOtp(phone, ip)</code>. All abuse limits live in the util; also prunes aged verification rows.</td></tr>
 <tr><td><code>/api/whatsapp-otp/verify</code></td><td><span class="tag t-post">post</span></td><td><code>verifyOtp(phone, code)</code> &rarr; <code>{ok, token}</code>.</td></tr>
 <tr><td><code>/api/check-whatsapp-number</code></td><td><span class="tag t-post">post</span></td><td>Green API <code>checkWhatsapp</code> &mdash; is the number registered? <code>{exists: true|false|null}</code> (null = check unavailable &rarr; client fails open).</td></tr>
@@ -1820,7 +1843,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/admin/reviews</code></td><td><span class="tag t-get">get</span> <span class="tag t-patch">patch</span> <span class="tag t-del">delete</span></td><td>List (joined with product name), approve, reject. <code>revalidateTag("reviews","max")</code>.</td></tr>
 <tr><td><code>/api/admin/leads</code></td><td><span class="tag t-get">get</span> <span class="tag t-del">delete</span></td><td>List / delete leads.</td></tr>
 <tr><td><code>/api/admin/leads/follow-up</code></td><td><span class="tag t-post">post</span></td><td>Manual WhatsApp follow-up (source-specific copy) or <code>markOnly</code> = &ldquo;contacted via other channel&rdquo;.</td></tr>
-<tr><td><code>/api/admin/settings</code></td><td><span class="tag t-get">get</span> <span class="tag t-patch">patch</span></td><td>Read/write <code>site_settings</code> with per-key validation (page size 1&ndash;500, reveal batch &ge; 8, photo filter must be a known preset, units from allow-lists, WA number digits, brass rate &gt; 0, chat labels 1&ndash;30, Ganesha cooldown 5&ndash;720 min / auto-shows 1&ndash;10 / collapse 2&ndash;60s). <code>revalidateTag("site-settings","max")</code>.</td></tr>
+<tr><td><code>/api/admin/settings</code></td><td><span class="tag t-get">get</span> <span class="tag t-patch">patch</span></td><td>Read/write <code>site_settings</code> with per-key validation (page size 1&ndash;500, reveal batch &ge; 8, photo filter must be a known preset, units from allow-lists, WA number digits, brass rate &gt; 0, chat labels 1&ndash;30, Ganesha cooldown 5&ndash;720 min / auto-shows 1&ndash;10 / collapse 2&ndash;60s; <code>spend_tier_offer</code> via <code>sanitizeSpendTierOffer</code> &mdash; 400 with the reason if a tier's discount &ge; its threshold, the ladder isn't strictly increasing, or the date window is inverted). <code>revalidateTag("site-settings","max")</code>.</td></tr>
 <tr><td><code>/api/admin/colors</code>, <code>/api/admin/materials</code>, <code>/api/admin/labels</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> (labels also <span class="tag t-patch">patch</span>)</td><td>Managed dropdown lists. <code>labels</code> also <code>revalidateTag("labels","max")</code>.</td></tr>
 <tr><td><code>/api/admin/labels/bulk-assign</code></td><td><span class="tag t-post">post</span></td><td>Tag many products at once &mdash; <code>mode: "category"</code> or <code>"home"</code> (all homepage-visible).</td></tr>
 <tr><td><code>/api/admin/chat-labels</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-del">delete</span></td><td>Preset pool for the chat button (per <code>kind</code>).</td></tr>
@@ -1943,6 +1966,11 @@ mid-checkout, <code>/api/razorpay</code> refuses (<code>code:"verification_requi
       (same math as the old footer).</li>
   <li>Coupon field &rarr; <code>/api/coupons/validate</code> (preview only), plus a <strong>tap-to-apply list of
       the live public coupons</strong> from <code>GET /api/coupons/public</code> (hidden once one is applied).</li>
+  <li><strong>Spend &amp; Save offer</strong> (<code>useSpendTierOffer</code> &rarr; <code>GET /api/offer</code>):
+      while it's running the whole coupon block is replaced by an offer card (the tier discount off the current
+      cart, or an "add &#8377;X more to save &#8377;Y" nudge), and the <code>POST /api/razorpay</code> body sends
+      no <code>couponCode</code>. The stash written for <code>/success</code> takes <code>subtotal</code>/
+      <code>discount</code>/<code>couponCode</code>/<code>offerLabel</code> from the server response, not client guesses.</li>
   <li>Mandatory bilingual refund-policy consent checkbox &mdash; the footer <strong>Pay &#8377;X</strong> button is
       disabled until it&rsquo;s ticked.</li>
   <li><strong>Pay:</strong> <code>m.submitPayment()</code> &rarr; <code>POST /api/razorpay</code>. On
@@ -1969,7 +1997,7 @@ mid-checkout, <code>/api/razorpay</code> refuses (<code>code:"verification_requi
       hold on payment. Does <em>not</em> eliminate oversell &mdash; a payment that lands after its hold expired
       still records + fires <code>sendOversellAlert</code>, exactly as before &mdash; it closes the
       checkout-vs-checkout race. Off &rarr; behaviour is exactly as before.</li>
-  <li>Coupon re-fetched &amp; re-validated; discount clamped to <code>[0, subtotal]</code>.</li>
+  <li><b>Spend &amp; Save</b> resolved first from <code>site_settings.spend_tier_offer</code>: if active, the tier discount for the re-priced subtotal is applied and any <code>couponCode</code> is ignored. Otherwise the coupon is re-fetched &amp; re-validated. Either way the discount is clamped to <code>[0, subtotal]</code>.</li>
   <li>GST computed per item&rsquo;s <em>category</em> rate (<code>calculateOrderGstBreakdown</code>), discount spread proportionally across rate groups.</li>
   <li>OTP: <code>isVerificationTokenValid(phone, token)</code> requires the exact token minted for <em>that</em>
       verification, still within its 60-min window &mdash; knowing an already-verified number is not enough.</li>
@@ -1984,6 +2012,7 @@ mid-checkout, <code>/api/razorpay</code> refuses (<code>code:"verification_requi
 <tr><td><code>app/utils/pricing.ts</code></td><td><code>calculateSlashedPrice(salePrice, categoryDiscountPercent)</code> &mdash; fabricates a struck-through &ldquo;MRP&rdquo; from the category&rsquo;s <code>discount_percent</code> purely for display, then <em>recomputes</em> the shown % from the rounded original so the two numbers stay consistent. The admin-set <code>price</code> is always the real amount charged. <code>roundUpBrassPrice()</code> &mdash; rounds a weight-derived brass price up to a clean &#8377;10 (&lt;1000) / &#8377;100 (&ge;1000) figure, never down.</td></tr>
 <tr><td><code>app/utils/gst.ts</code></td><td><code>GST_RATE = 0.05</code> fallback. <code>calculateGstBreakdown(inclusive, ratePercent)</code> back-calculates base+GST out of an inclusive amount. <code>calculateOrderGstBreakdown(items, discount)</code> groups line items by per-category <code>gstRate</code>, spreads any order-level discount proportionally, returns <code>{basePrice, gstAmount, totalPrice, byRate[]}</code> for mixed-rate baskets. <em>(11 unit tests, incl. 3-rate baskets, uneven discount split, over-discount clamp, empty basket.)</em></td></tr>
 <tr><td><code>app/utils/coupons.ts</code></td><td><code>validateAndCalculateDiscount(coupon, subtotal)</code> &mdash; pure function shared by <code>/api/coupons/validate</code> (preview) and <code>/api/razorpay</code> (authoritative). Checks <code>active</code>, <code>expires_at</code>, <code>max_uses</code> vs <code>used_count</code>.</td></tr>
+<tr><td><code>app/utils/spendTierOffer.ts</code></td><td>The storewide <strong>Spend &amp; Save</strong> tier offer &mdash; one JSON row (<code>site_settings.spend_tier_offer</code>). <code>parseSpendTierOffer(raw)</code> is lenient + <strong>fail-closed</strong> (bad JSON &rarr; inert offer &rarr; no discount, coupons keep working) for the read paths; <code>sanitizeSpendTierOffer(input)</code> is strict and returns <code>{offer, errors[]}</code> for the admin PATCH branch. Guarantees for &ldquo;pass on the benefit, not extra cost&rdquo;: every tier <code>discount</code> must be <code>&gt; 0</code> and <strong>&lt; its own <code>minSubtotal</code></strong> (bill can't hit &le; 0), and discounts must <strong>strictly increase</strong> with the thresholds (spend more can't save less; a fat-fingered huge low-tier discount is refused). <code>calculateSpendTierDiscount(offer, subtotal)</code> &rarr; flat amount for the highest tier the subtotal clears, clamped. While active it <strong>replaces coupons</strong>. <em>(27 unit tests.)</em></td></tr>
 </tbody></table></div>
 <div class="note">
 <p>The category <code>discount_percent</code> is <strong>marketing display only</strong> &mdash; it never touches
@@ -2478,7 +2507,7 @@ npm install
 # create products &amp; orders tables in Supabase (no migration file - see section 24),
 # then run supabase/migrations/0001...0040 in the SQL editor, in order
 npm run dev        # http://localhost:3000   (CSP disabled in dev)
-npm test           # vitest: money math, signatures, totp, backup codes, client-ip, checkout repricing, bootstrap settings, checkout machine  (88 tests)
+npm test           # vitest: money math, signatures, totp, backup codes, client-ip, checkout repricing, bootstrap settings, checkout machine, spend-tier offer  (~140 tests)
 npm run lint       # note: pre-existing no-explicit-any / set-state-in-effect debt
 
 # RLS regression test — talks to the live project, so it needs the anon creds:
@@ -2566,6 +2595,12 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
   <li>Read it server-side through a <code>getSiteSettings</code>-style cached helper. Expose to the browser
       <em>only</em> by adding the key to <code>PUBLIC_SETTING_KEYS</code> in <code>/api/settings</code> &mdash;
       think before you do (operational values like <code>last_keepalive_at</code> stay server-side).</li>
+  <li><strong>Structured value</strong> (a list, not a scalar): store one JSON string under one key and give it
+      a dedicated pure module &mdash; a <strong>lenient, fail-closed</strong> parser for reads and a
+      <strong>strict</strong> sanitiser (returns <code>errors[]</code>) for the admin PATCH branch. Unit-test it
+      like <code>coupons.ts</code>/<code>gst.ts</code>. If it's not in <code>PUBLIC_SETTING_KEYS</code> but the
+      storefront needs it, give it a narrow dedicated route (pattern: <code>spend_tier_offer</code> &rarr;
+      <code>app/utils/spendTierOffer.ts</code> + <code>GET /api/offer</code>).</li>
 </ul>
 
 <h3>Add a WhatsApp notification</h3>
@@ -2665,6 +2700,57 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-02<br>00:45</code></td>
+  <td><strong>Spend &amp; Save tier offer</strong> <span class="pill warnp">payment path</span><br>(owner: a periodic storewide sale &mdash; spend &#8805; a threshold, get a flat amount off the whole bill; &#8377;6,000&rarr;&#8377;800, &#8377;12,000&rarr;&#8377;1,500, &#8377;22,000&rarr;&#8377;3,000, &#8377;35,000&rarr;&#8377;5,000, plus a &#8377;2,000&rarr;&#8377;250 test rung; coupons paused while it runs; "coded so they pass on the benefit, not extra cost"; numbers editable in admin)</td>
+  <td>
+    Config is <strong>one JSON row</strong>, <code>site_settings.spend_tier_offer</code>, owned by a new pure
+    module <code>app/utils/spendTierOffer.ts</code>: <code>parseSpendTierOffer</code> (lenient, <strong>fail
+    closed</strong> &mdash; bad JSON &rarr; inert &rarr; no discount, coupons unaffected) for the read paths;
+    <code>sanitizeSpendTierOffer</code> (strict, returns <code>errors[]</code>) for the admin write.
+    <em>"Not extra cost"</em> is enforced there: each tier's <code>discount</code> must be <code>&gt; 0</code>
+    and <strong>&lt; its own <code>minSubtotal</code></strong> (a qualifying bill can't reach &le; 0 or refund
+    more than was spent), and discounts must <strong>strictly increase</strong> with the thresholds (spend
+    more can't save less; a fat-fingered huge low-tier discount is rejected). Ladder capped at 8 tiers,
+    optional start/end window.
+    <br><br>
+    <strong>Authoritative in <code>/api/razorpay</code></strong>: after re-pricing, it reads the setting and,
+    if the offer is active, applies <code>calculateSpendTierDiscount(offer, subtotal)</code> for the highest
+    tier the subtotal clears and <em>ignores any <code>couponCode</code></em> in the body (no 400 &mdash; a
+    stale tab must not fail at pay). <code>notes.offerLabel</code> added (display only); the webhook is
+    <strong>unchanged</strong> &mdash; it already derives <code>discount = subtotal &minus; captured total</code>
+    and splits GST proportionally, so the invoice / <code>/success</code> / receipt handle the tier discount
+    with no edit. <code>/api/coupons/validate</code> now 400s while the offer runs; new public
+    <code>GET /api/offer</code> (preview only, CDN 60s/300s) feeds the checkout Review step via
+    <code>useSpendTierOffer</code>, which replaces the coupon block with an offer card + "add &#8377;X more to
+    save &#8377;Y" nudge and drives <code>payTotal</code>. <code>/success</code> stash now takes
+    <code>subtotal/discount/couponCode/offerLabel</code> from the server response, not client guesses. New
+    admin <strong>Settings &rarr; Spend &amp; Save Offer</strong> card: enable toggle, label, date window,
+    add/edit/remove tier rows; save surfaces the sanitiser's 400 text. Migration
+    <code>0044_seed_spend_tier_offer.sql</code> seeds the disabled ladder (<code>on conflict do nothing</code>,
+    no schema change) &mdash; <strong>applied to the live DB by the owner</strong> ahead of the merge (same
+    pattern as 0041).
+  </td>
+  <td><em>new:</em> <code>app/utils/spendTierOffer.ts</code>, <code>app/utils/spendTierOffer.test.ts</code>,
+    <code>app/api/offer/route.ts</code>, <code>app/components/checkout/useSpendTierOffer.ts</code>,
+    <code>supabase/migrations/0044_seed_spend_tier_offer.sql</code><br>
+    <em>edited:</em> <code>app/api/razorpay/route.ts</code>, <code>app/api/coupons/validate/route.ts</code>,
+    <code>app/api/admin/settings/route.ts</code>, <code>app/components/checkout/CheckoutSheet.tsx</code>,
+    <code>app/components/checkout/steps/ReviewStep.tsx</code>, <code>app/success/page.tsx</code>,
+    <code>app/admin/tabs/SettingsTab.tsx</code> &middot; <code>docs/HANDBOOK.html</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 137 passed (1 pre-existing skip),
+    incl. 27 new <code>spendTierOffer</code> tests (fail-closed parse, discount&ge;threshold &amp;
+    non-monotonic rejection, tier select at/between/above rungs, window edges, clamp, and a fuzz invariant
+    that a sanitised ladder never drives the bill &le; 0) &middot; <code>eslint</code> on all changed files:
+    0 errors, no new warnings (the one <code>set-state-in-effect</code> warning in <code>success/page.tsx</code>
+    pre-dates this batch) &middot; <code>next build</code> exit 0, <code>/api/offer</code> registered.
+    Live against Supabase: <code>/api/offer</code> returns <code>{active:false}</code> with no row / a disabled
+    row and the full ladder when enabled; <code>/api/coupons/validate</code> returns the "coupons are paused"
+    400 while the offer is on and reverts when off. <span class="pill warnp">payment path</span> &mdash; the
+    <code>/api/razorpay</code> discount application and a full paid checkout are the owner's pre-merge
+    verification on live Razorpay (no test keys here); the discount math itself is pure + unit-tested and the
+    webhook/GST/invoice path is unchanged.</td>
+</tr>
 <tr>
   <td><code>2026-09-01<br>23:55</code></td>
   <td><strong>New public page: <code>/engineering</code></strong><br>(owner asked why the Handbook itself has no public route; offered three options &mdash; keep private / publish redacted / publish as-is &mdash; owner chose redacted)</td>
