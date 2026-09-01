@@ -33,8 +33,9 @@ care, land behind tests, never "blind".
   `endsAt` 2026-12-01 kept).
 - Verified: `tsc --noEmit` clean; `npm test` 137 passed (1 pre-existing skip); `eslint`
   on changed files 0 errors / no new warnings; `next build` exit 0. Owner tested the
-  selector locally. ⚠️ A full paid checkout on live Razorpay for each choice is the
-  owner's pre-merge check.
+  selector locally, then **confirmed live post-merge (2026-09-02): 2 real Razorpay
+  orders, one per choice — discounts correct, /success reached, coupon `used_count`
+  incremented, both refunded.** No longer a proposal.
 - See `docs/HANDBOOK.html` Change log 2026-09-02 21:40.
 
 ### Batch: Spend & Save tier offer — 2026-09-02 00:45 IST — ⚠️ payment path, SHIPS DISABLED
@@ -70,11 +71,10 @@ care, land behind tests, never "blind".
   new `spendTierOffer` tests (fail-closed parse, discount≥threshold & non-monotonic
   rejection, tier select at/between/above rungs, window edges, clamp, fuzz invariant
   that a sanitised ladder never drives the bill ≤ 0); `eslint` on changed files 0
-  errors / no new warnings; `next build` exit 0. Live: `/api/offer` and
-  `/api/coupons/validate` pause/resume behaviour confirmed against Supabase.
-  ⚠️ The `/api/razorpay` discount application + a full paid checkout are the owner's
-  pre-merge check on live Razorpay (no test keys here) — discount math is pure +
-  unit-tested and the webhook/GST/invoice path is untouched, so it's a proposal there.
+  errors / no new warnings; `next build` exit 0. Live: `/api/offer` confirmed against
+  Supabase. **Confirmed live post-merge (2026-09-02, with the offer-or-coupon-choice
+  batch): 2 real Razorpay orders — the tier discount applied correctly, /success
+  reached, then refunded.** No longer a proposal.
 - See `docs/HANDBOOK.html` Change log 2026-09-02 for the full writeup.
 
 ### Batch: Cut Supabase Storage egress — 2026-09-01 22:20 IST
