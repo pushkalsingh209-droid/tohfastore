@@ -2737,9 +2737,10 @@ Newest first.</p>
   <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 137 passed (1 pre-existing skip) &middot;
     <code>eslint</code> on changed files 0 errors / no new warnings &middot; <code>next build</code> exit 0.
     Owner tested the selector locally (default offer, switch to coupon, apply/remove, cart-below-threshold
-    fallback). <span class="pill warnp">payment path</span> &mdash; a full paid checkout on live Razorpay
-    (each of the two choices) is the owner's pre-merge check; the discount branch is a small readable change
-    over pure, unit-tested modules and the webhook path is untouched.</td>
+    fallback). <span class="pill warnp">payment path</span> &mdash; <strong>confirmed live post-merge
+    (2026-09-02):</strong> 2 real Razorpay orders, one per choice (offer, then coupon) &mdash; discounts
+    correct, <code>/success</code> reached, the coupon's <code>used_count</code> incremented, both orders then
+    refunded. No longer a proposal.</td>
 </tr>
 <tr>
   <td><code>2026-09-02<br>00:45</code></td>
@@ -2786,11 +2787,10 @@ Newest first.</p>
     0 errors, no new warnings (the one <code>set-state-in-effect</code> warning in <code>success/page.tsx</code>
     pre-dates this batch) &middot; <code>next build</code> exit 0, <code>/api/offer</code> registered.
     Live against Supabase: <code>/api/offer</code> returns <code>{active:false}</code> with no row / a disabled
-    row and the full ladder when enabled; <code>/api/coupons/validate</code> returns the "coupons are paused"
-    400 while the offer is on and reverts when off. <span class="pill warnp">payment path</span> &mdash; the
-    <code>/api/razorpay</code> discount application and a full paid checkout are the owner's pre-merge
-    verification on live Razorpay (no test keys here); the discount math itself is pure + unit-tested and the
-    webhook/GST/invoice path is unchanged.</td>
+    row and the full ladder when enabled. <span class="pill warnp">payment path</span> &mdash;
+    <strong>confirmed live post-merge (2026-09-02, together with the offer-or-coupon-choice batch above):</strong>
+    2 real Razorpay orders &mdash; the tier discount applied correctly, <code>/success</code> reached, then
+    refunded. No longer a proposal.</td>
 </tr>
 <tr>
   <td><code>2026-09-01<br>23:55</code></td>
