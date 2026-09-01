@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/app/context/CartContext";
 import { useWishlist } from "@/app/context/WishlistContext";
 import ProductGallery from "@/app/components/ProductGallery";
-import { getProductGallery } from "@/app/utils/productImages";
+import { getProductCardGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink, resolveProductWhatsappNumber } from "@/app/utils/whatsapp";
 import { trackWhatsappEnquiry } from "@/app/utils/trackWhatsappEnquiry";
 import TempleCardFrame from "@/app/components/TempleCardFrame";
@@ -93,7 +93,7 @@ export default function ProductCard({
     setIsDesktop(mq.matches);
   }, []);
 
-  const gallery = getProductGallery(product);
+  const gallery = getProductCardGallery(product);
   const { weightUnit, dimensionUnit } = useProductUnitSettings();
   const dimensionsLine = formatProductDimensionsLine(product, weightUnit, dimensionUnit);
   const attributesLine = formatProductAttributesLine(product);
