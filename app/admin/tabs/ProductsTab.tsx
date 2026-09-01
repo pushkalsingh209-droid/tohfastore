@@ -464,6 +464,22 @@ export default function ProductsTab() {
     }
   };
 
+  // Attach / detach supplier order-notification numbers straight from the
+  // stock tracker row (same effect as the checkboxes in the add/edit form),
+  // so you can manage them across the whole catalogue without opening each
+  // product. Server normalises + validates the array.
+  const handleInlineSuppliersUpdate = async (productId: string | number, supplierNumbers: string[]) => {
+    try {
+      const result = await apiRequest("/api/admin/products", {
+        method: "PATCH",
+        body: JSON.stringify({ id: productId, supplier_numbers: supplierNumbers }),
+      });
+      setProducts(products.map((p) => (p.id === productId ? result.product : p)));
+    } catch (err: unknown) {
+      alert(`Could not update supplier numbers: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   // Hide/unhide a product from the storefront without deleting it -- the
   // server (storeQueries.ts, product detail page, sitemap, search,
   // catalogue PDF, and the Razorpay order-creation guard) all filter on
@@ -1375,6 +1391,60 @@ export default function ProductsTab() {
                 </button>
               </div>
               </div>
+
+              {/* Inline supplier attach -- native <details> so it works on
+                  a phone with no popover/positioning fuss. Ticking a box
+                  PATCHes straight away (same as the add/edit form). */}
+              {orderNotificationNumbers.length > 0 && (() => {
+                const attached: string[] = Array.isArray(product.supplier_numbers) ? product.supplier_numbers : [];
+                return (
+                  <details className="text-xs">
+                    <summary
+                      className={`cursor-pointer select-none inline-flex items-center gap-1.5 px-3 py-2 rounded border font-semibold uppercase tracking-wide list-none [&::-webkit-details-marker]:hidden transition ${
+                        attached.length > 0
+                          ? "border-amber-300 bg-amber-50 text-amber-800"
+                          : "border-stone-300 text-stone-600 hover:bg-stone-100"
+                      }`}
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                      </svg>
+                      Notify suppliers{attached.length > 0 ? ` (${attached.length})` : ""}
+                    </summary>
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {orderNotificationNumbers.map((n) => {
+                        const checked = attached.includes(n.phone_number);
+                        return (
+                          <label
+                            key={n.id}
+                            className={`flex items-center gap-2.5 px-3 py-2.5 rounded border cursor-pointer transition ${
+                              checked ? "border-amber-400 bg-amber-50" : "border-stone-200 bg-stone-50 hover:bg-stone-100"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) =>
+                                handleInlineSuppliersUpdate(
+                                  product.id,
+                                  e.target.checked
+                                    ? [...attached, n.phone_number]
+                                    : attached.filter((p) => p !== n.phone_number)
+                                )
+                              }
+                              className="accent-amber-600 flex-shrink-0"
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-stone-800 truncate">{n.label || "—"}</span>
+                              <span className="block font-mono text-[10px] text-stone-500">+{n.phone_number}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </details>
+                );
+              })()}
 
               {product.label?.trim().toLowerCase() === "lightweight brass" && (() => {
                 const draft = brassDraft(product);

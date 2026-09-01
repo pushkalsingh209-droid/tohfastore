@@ -1039,12 +1039,16 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
       to customers), category, label, cover + gallery images, description, initial stock, weight &amp;
       dimensions (typed in whichever unit you pick; always stored as g/cm), material, colour, WhatsApp
       enquiry number, and <b>&ldquo;also notify suppliers&rdquo;</b> checkboxes &mdash; tick any
-      order-notification numbers (Settings) that should get a copy of every notification for this product.</li>
+      order-notification numbers (Settings) that should get a copy of every notification for this product.
+      The same supplier checkboxes are also a per-row <em>&ldquo;Notify suppliers&rdquo;</em> disclosure in
+      the <b>Live Storefront Catalog &amp; Stock Tracker</b>, so you can attach them across the whole
+      catalogue without opening each product.</li>
       <li><b>Product Statistics</b> &mdash; stock &amp; value broken down by label and by category.</li>
       <li><b>Inventory Insights</b> &mdash; top value products, dead stock, stock aging, cost &amp; margin.</li>
       <li><b>Live Storefront Catalog &amp; Stock Tracker</b> &mdash; search / filter / paginate; inline
-      &plusmn; stock, inline label / photo-look / cost price, hide/unhide, storefront position number; the
-      "Lightweight Brass" weight&nbsp;&times;&nbsp;rate&nbsp;&times;&nbsp;1.20 price calculator; a plain
+      &plusmn; stock, inline label / photo-look / cost price, hide/unhide, storefront position number, a
+      per-row "Notify suppliers" disclosure (attach order-notification numbers without opening the form);
+      the "Lightweight Brass" weight&nbsp;&times;&nbsp;rate&nbsp;&times;&nbsp;1.20 price calculator; a plain
       weight/dimensions/price editor for every other product. "Edit Details" pulls a row up into the form.</li>
       <li><b>Catalogue PDF</b> &mdash; a branded, category-wise PDF of every product.</li>
     </ul>
@@ -2730,6 +2734,27 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-03<br>01:45</code></td>
+  <td><strong>Attach suppliers from the stock tracker</strong><br>(owner: managing supplier numbers per product is easier from the already-listed products than opening each edit form)</td>
+  <td>
+    Each row of the <b>Live Storefront Catalog &amp; Stock Tracker</b> (ProductsTab) gets a native
+    <code>&lt;details&gt;</code> <em>&ldquo;Notify suppliers (N)&rdquo;</em> disclosure &mdash;
+    <code>&lt;details&gt;</code> rather than a popover so it just works on a phone. Open it, tick/untick the
+    order-notification numbers, and it PATCHes <code>/api/admin/products</code> with
+    <code>{ id, supplier_numbers }</code> immediately (new <code>handleInlineSuppliersUpdate</code>, same
+    shape as the existing inline label / photo-look / cost handlers). Mobile-first: single-column checkbox
+    grid on a phone, two columns from <code>sm:</code>; the summary is a real tap-target pill that goes amber
+    when any are attached. The add/edit form checkboxes are unchanged; nothing server-side changed (the PATCH
+    route already accepted <code>supplier_numbers</code> from the previous batch).
+  </td>
+  <td><code>app/admin/tabs/ProductsTab.tsx</code> &middot; <code>docs/HANDBOOK.html</code> &middot;
+    <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 155 passed (1 pre-existing skip) &middot;
+    <code>eslint app/admin/tabs/ProductsTab.tsx</code> 0 errors (1 pre-existing <code>set-state-in-effect</code>
+    warning at line&nbsp;294, not this change) &middot; <code>next build</code> exit 0. UI-only, no schema /
+    route / payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-03<br>01:15</code></td>
   <td><strong>Supplier order-notification numbers</strong> <span class="pill warnp">payment path (webhook)</span><br>(owner: a small managed list of supplier WhatsApp numbers; attach one or more to a product; every notification for that product also copies those numbers &mdash; the main business number keeps getting everything)</td>

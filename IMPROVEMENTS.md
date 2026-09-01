@@ -12,6 +12,21 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Attach suppliers from the stock tracker — 2026-09-03 01:45 IST
+- Owner: managing supplier numbers per product is easier from the already-listed products
+  than opening each edit form.
+- Each Live Storefront Catalog & Stock Tracker row (ProductsTab) gets a native
+  `<details>` "Notify suppliers (N)" disclosure — `<details>` not a popover so it works
+  on a phone. Tick/untick → PATCH `/api/admin/products` `{ id, supplier_numbers }`
+  immediately (new `handleInlineSuppliersUpdate`, same shape as the other inline
+  handlers). Mobile-first: 1-col checkbox grid on phone, 2-col from `sm:`; summary is a
+  real tap-target pill, amber when any attached.
+- UI-only: no schema / route / payment-path change (the PATCH route already accepted
+  `supplier_numbers`). Add/edit form checkboxes unchanged.
+- Verified: `tsc --noEmit` clean; `npm test` 155 passed (1 pre-existing skip); `eslint`
+  ProductsTab 0 errors (1 pre-existing warning); `next build` exit 0.
+- See `docs/HANDBOOK.html` Change log 2026-09-03 01:45.
+
 ### Batch: Supplier order-notification numbers — 2026-09-03 01:15 IST — ⚠️ webhook
 - Owner: a small managed list of supplier WhatsApp numbers; attach one or more per product;
   every notification for that product also copies those numbers. Main business number
