@@ -12,6 +12,30 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Enable RLS on `site_settings` — 2026-09-03 02:30 IST — 🔒 security
+- Trigger: Supabase advisor email — "Table publicly accessible / `rls_disabled_in_public`"
+  for project tohfastore.
+- Root cause: `site_settings` was created in migration `0011` with **no `enable row
+  level security` line** — the only `create table` migration in the repo that missed it.
+  For ~36 migrations the anon / publishable key (shipped in every visitor's JS bundle)
+  could **read and write** every KV row: `brass_price_per_kg`, `spend_tier_offer`,
+  `stock_reservations_enabled`, pagination, chat labels. No orders / coupons / customer
+  data lives in this table (those are correctly locked), but the write exposure is a real
+  pricing / discount / kill-switch tampering risk.
+- **Migration `0047`** (hand-run by owner): `alter table site_settings enable row level
+  security;` + defensive `drop policy if exists` for any stray dashboard "quick start"
+  policy. No policy added — every app path uses the service-role key, which bypasses RLS.
+  Identical lockdown to `orders` / `coupons`.
+- **Regression guard:** `app/utils/rlsProbes.ts` now probes `site_settings` read (via the
+  `key` column — it has no `id`) *and* write, so `rls.test.ts` (CI) and
+  `/api/cron/rls-check` (daily, live) catch a regression. `fullReadIsBlocked` gained an
+  optional column arg.
+- Verified: `tsc --noEmit` clean; `npm test` unchanged (rls.test.ts env-skips without live
+  creds); `eslint app/utils/rlsProbes.ts app/utils/rls.test.ts` 0 errors 0 warnings;
+  `next build` exit 0. Owner to run `0047`, re-run the advisor, and confirm the live
+  anon-key probe (no live creds here).
+- See `docs/HANDBOOK.html` Change log 2026-09-03 02:30.
+
 ### Batch: Attach suppliers from the stock tracker — 2026-09-03 01:45 IST
 - Owner: managing supplier numbers per product is easier from the already-listed products
   than opening each edit form.

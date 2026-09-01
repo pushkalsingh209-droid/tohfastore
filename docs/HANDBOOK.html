@@ -1642,7 +1642,7 @@ RLS: anon <code>SELECT USING (hidden = false)</code>; service role bypasses.</p>
 
 <h2 id="rls">Row Level Security model</h2>
 <p>The publishable/anon key ships in every visitor&rsquo;s JS bundle, so RLS is the real perimeter for
-direct-to-Supabase reads. Final effective state (migrations 0003 &rarr; 0039 &rarr; 0040):</p>
+direct-to-Supabase reads. Final effective state (migrations 0003 &rarr; 0039 &rarr; 0040 &rarr; 0047):</p>
 <div class="x"><table>
 <thead><tr><th>Table</th><th>Anon key &mdash; read</th><th>Anon key &mdash; write</th><th>Service role</th></tr></thead>
 <tbody>
@@ -1650,6 +1650,7 @@ direct-to-Supabase reads. Final effective state (migrations 0003 &rarr; 0039 &ra
 <tr><td><code>reviews</code></td><td class="yes">yes, where <code>approved = true</code></td><td class="no">no</td><td class="yes">full</td></tr>
 <tr><td><code>orders</code></td><td class="no">no policy &rarr; denied</td><td class="no">no</td><td class="yes">full</td></tr>
 <tr><td><code>coupons</code></td><td class="no">no policy &rarr; denied</td><td class="no">no</td><td class="yes">full</td></tr>
+<tr><td><code>site_settings</code></td><td class="no">no policy &rarr; denied <em>(RLS on since 0047)</em></td><td class="no">no</td><td class="yes">full</td></tr>
 <tr><td>every other table</td><td class="no">no policy &rarr; denied</td><td class="no">no</td><td class="yes">full</td></tr>
 </tbody></table></div>
 <div class="note">
@@ -1664,6 +1665,12 @@ four stray dashboard-generated policies (<code>products</code>, <code>orders</co
 policies, so one <code>ALL/true</code> policy grants unrestricted CRUD regardless of any stricter policy. 0040
 drops them. After any schema change, verify with <code>select * from pg_policies</code> that no stray permissive
 policy exists.</p>
+<p><strong>Second instance (0011, 0047):</strong> <code>site_settings</code> was created in 0011 with no
+<code>enable row level security</code> line &mdash; the only table migration that missed it &mdash; so the anon
+key could read <em>and write</em> every KV row (pricing, the Spend &amp; Save offer, feature kill switches) for
+~36 migrations, until Supabase's advisor flagged <code>rls_disabled_in_public</code>. 0047 turns it on (no
+policy). The lesson: <strong>every <code>create table</code> migration must include its RLS line</strong>, and
+<code>rlsProbes.ts</code> now covers <code>site_settings</code> read + write.</p>
 </div>
 
 <h2 id="migrations">Migration history</h2>
@@ -1680,7 +1687,7 @@ policy exists.</p>
 <tr><td>0007</td><td>add_category_gst_rate</td><td>Per-category <code>gst_rate</code> numeric(5,2) default 5.00.</td></tr>
 <tr><td>0008&ndash;0009</td><td>order awb_number / shipping_address</td><td><code>orders.awb_number</code> (+index), <code>orders.shipping_address</code> jsonb.</td></tr>
 <tr><td>0010</td><td>add_product_display_order</td><td><code>products.display_order</code> (backfilled, indexed).</td></tr>
-<tr><td>0011</td><td>add_pagination_settings</td><td><code>site_settings</code> table + <code>default_page_size</code>; <code>categories.default_page_size</code>.</td></tr>
+<tr><td>0011</td><td>add_pagination_settings</td><td><code>site_settings</code> table + <code>default_page_size</code>; <code>categories.default_page_size</code>. <em>(RLS omitted here &mdash; added in 0047.)</em></td></tr>
 <tr><td>0012 / 0014</td><td>leads / leads_contacted</td><td><code>leads</code> table; <code>contacted</code> + <code>contacted_at</code>.</td></tr>
 <tr><td>0013</td><td>add_category_discount_percent</td><td><code>categories.discount_percent</code> default 25 (display-only slashed pricing).</td></tr>
 <tr><td>0015&ndash;0018</td><td>dimensions / material+color / colors table / materials table</td><td><code>weight_g/height_cm/depth_cm/breadth_cm</code>; <code>material</code>/<code>color</code>; seeded dropdown tables.</td></tr>
@@ -1703,6 +1710,7 @@ policy exists.</p>
 <tr><td>0044</td><td>seed_spend_tier_offer</td><td>Seeds <code>site_settings.spend_tier_offer</code> &mdash; one JSON row for the storewide <strong>Spend &amp; Save</strong> tier offer (<code>app/utils/spendTierOffer.ts</code>). Full ladder (&#8377;2,000&rarr;&#8377;250 &hellip; &#8377;35,000&rarr;&#8377;5,000, the &#8377;2,000 rung a low test step), <code>enabled:false</code>. No schema change &mdash; <code>site_settings</code> is KV text; <code>on conflict (key) do nothing</code> so it never overwrites an owner-edited row. Owner turns it on from Settings &rarr; Spend &amp; Save Offer. While on, checkout lets the shopper pick the offer or a coupon (mutually exclusive); <code>/api/razorpay</code> re-validates whichever was chosen and is authoritative.</td></tr>
 <tr><td>0045</td><td>add_order_courier_name</td><td><code>orders.courier_name text</code> (nullable, no constraint). The delivery partner an order shipped with, set from <code>/api/admin/orders/update-status</code> alongside <code>awb_number</code>. No index &mdash; not a lookup key. Applied to the live DB by the owner ahead of the merge.</td></tr>
 <tr><td>0046</td><td>add_order_notification_numbers</td><td>New <code>order_notification_numbers</code> table (RLS on, no policies) + <code>products.supplier_numbers text[]</code>. Supplier list for order notifications, separate from the enquiry <code>whatsapp_numbers</code>. No cascade &mdash; deleting a number is safe because the send paths intersect with the live table anyway (the admin delete route also strips it from products for tidiness). Applied to the live DB by the owner ahead of the merge.</td></tr>
+<tr><td>0047</td><td>enable_rls_site_settings</td><td><code>alter table site_settings enable row level security;</code> (+ defensive <code>drop policy</code> for any stray dashboard "quick start" policy). <code>0011</code> created <code>site_settings</code> without RLS &mdash; the only table migration that missed it &mdash; so the anon/publishable key could read <em>and write</em> every KV row (<code>brass_price_per_kg</code>, <code>spend_tier_offer</code>, <code>stock_reservations_enabled</code>&hellip;). Supabase's advisor flags it as <code>rls_disabled_in_public</code>. No policy added: every app path uses the service-role key, which bypasses RLS &mdash; same lockdown as <code>orders</code>/<code>coupons</code>. <code>rlsProbes.ts</code> now probes <code>site_settings</code> read + write so CI and <code>/api/cron/rls-check</code> catch a regression. Applied to the live DB by the owner ahead of the merge.</td></tr>
 </tbody></table></div>
 
 <p><strong><code>product_sales</code> drift check</strong> &mdash; the tally is only self-correcting for cancellations
@@ -2739,6 +2747,40 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-03<br>02:30</code></td>
+  <td><strong>Enable RLS on <code>site_settings</code></strong> <span class="pill warnp">security</span><br>(Supabase advisor email: &ldquo;Table publicly accessible &mdash; <code>rls_disabled_in_public</code>&rdquo;)</td>
+  <td>
+    <strong>Root cause:</strong> <code>site_settings</code> was created in migration <strong>0011</strong>
+    with no <code>enable row level security</code> line &mdash; the only <code>create table</code> migration in
+    the repo that missed it. For ~36 migrations the anon / publishable key (in every visitor&rsquo;s JS bundle)
+    could <em>read and write</em> every KV row: <code>brass_price_per_kg</code>, <code>spend_tier_offer</code>,
+    <code>stock_reservations_enabled</code>, pagination, chat labels&hellip; No orders / coupons / customer data
+    is in this table (those are correctly locked), but the write exposure is a real
+    pricing / discount / kill-switch tampering risk.
+    <br><br>
+    Migration <strong>0047</strong>: <code>alter table site_settings enable row level security;</code> plus
+    defensive <code>drop policy if exists</code> for any stray dashboard &ldquo;quick start&rdquo; policy
+    (same class of bug as 0040). <strong>No policy added</strong> &mdash; every app path
+    (<code>storeQueries.ts</code>, <code>/api/settings</code>, <code>/api/offer</code>,
+    <code>/api/razorpay</code>, <code>/api/keepalive</code>, <code>/api/admin/settings</code>,
+    <code>/api/cron/abandoned-checkout</code>) uses the service-role key, which bypasses RLS. Identical
+    lockdown to <code>orders</code> / <code>coupons</code>.
+    <br><br>
+    <strong>Regression guard:</strong> <code>app/utils/rlsProbes.ts</code> now probes <code>site_settings</code>
+    read (via the <code>key</code> column &mdash; no <code>id</code>) <em>and</em> write, so both
+    <code>rls.test.ts</code> (CI) and <code>/api/cron/rls-check</code> (daily, live) catch a regression.
+    <code>fullReadIsBlocked</code> gained an optional column arg.
+  </td>
+  <td><em>new:</em> <code>supabase/migrations/0047_enable_rls_site_settings.sql</code><br>
+    <em>edited:</em> <code>app/utils/rlsProbes.ts</code>, <code>app/utils/rls.test.ts</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> &mdash; unchanged count, <code>rls.test.ts</code>
+    still env-skips without live creds &middot; <code>eslint app/utils/rlsProbes.ts app/utils/rls.test.ts</code>
+    0 errors 0 warnings &middot; <code>next build</code> exit 0. Owner runs 0047 in the SQL editor, then
+    re-runs the Supabase advisor. Live anon-key read/write probe against <code>site_settings</code> to be
+    confirmed by the owner post-migration (no live creds here).</td>
+</tr>
 <tr>
   <td><code>2026-09-03<br>01:45</code></td>
   <td><strong>Attach suppliers from the stock tracker</strong><br>(owner: managing supplier numbers per product is easier from the already-listed products than opening each edit form)</td>

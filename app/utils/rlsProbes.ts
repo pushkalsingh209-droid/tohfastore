@@ -12,14 +12,14 @@
 // Intended state (see docs/ARCHITECTURE.html "Row Level Security model"):
 //   products -- anon SELECT where hidden = false, no anon write
 //   reviews  -- anon SELECT where approved = true, no anon write
-//   orders / coupons / everything else -- no anon policy => denied
+//   orders / coupons / site_settings / everything else -- no anon policy => denied
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // PostgREST returns an empty set (not an error) for a table with RLS on and
 // no matching policy, so "denied" means error-or-empty; a non-empty result
 // is the leak.
-async function fullReadIsBlocked(anon: SupabaseClient, table: string): Promise<boolean> {
-  const { data, error } = await anon.from(table).select("id").limit(1);
+async function fullReadIsBlocked(anon: SupabaseClient, table: string, col = "id"): Promise<boolean> {
+  const { data, error } = await anon.from(table).select(col).limit(1);
   return (error ? [] : data ?? []).length === 0;
 }
 
@@ -31,6 +31,9 @@ export async function checkRlsPerimeter(anon: SupabaseClient): Promise<string[]>
   if (!(await fullReadIsBlocked(anon, "coupons"))) violations.push("anon can READ coupons");
   if (!(await fullReadIsBlocked(anon, "leads"))) violations.push("anon can READ leads");
   if (!(await fullReadIsBlocked(anon, "admin_sessions"))) violations.push("anon can READ admin_sessions");
+  // site_settings has no `id` column (PK is `key`); it was created in 0011
+  // without RLS and 0047 turned it on -- config the anon key must not touch.
+  if (!(await fullReadIsBlocked(anon, "site_settings", "key"))) violations.push("anon can READ site_settings");
 
   {
     const { data, error } = await anon.from("products").select("id").eq("hidden", true).limit(1);
@@ -58,6 +61,13 @@ export async function checkRlsPerimeter(anon: SupabaseClient): Promise<string[]>
   {
     const { error } = await anon.from("products").insert({ name: "rls_probe", price: 1, inventory: 0 });
     if (!error) violations.push("anon can WRITE products");
+  }
+  {
+    // A write to site_settings is worse than a read -- brass_price_per_kg and
+    // spend_tier_offer feed pricing/discounts. Must be rejected outright.
+    const stamp = `rls_probe_${Date.now()}`;
+    const { error } = await anon.from("site_settings").insert({ key: stamp, value: stamp });
+    if (!error) violations.push("anon can WRITE site_settings");
   }
 
   return violations;
