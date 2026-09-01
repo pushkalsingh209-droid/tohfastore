@@ -811,15 +811,17 @@
                              greenApi, razorpaySignature, slug, stock, phone, ...
   api/
     razorpay/  razorpay-webhook/  whatsapp-otp/{send,verify}/
-    coupons/{public,validate}/  stock/[id]/  checkout/release/
-    admin/*    (password-gated; service role)
+    coupons/{public,validate}/  offer/  stock/[id]/  checkout/release/
+    orders/{track,receipt}/
+    admin/*    (password-gated; service role) -- incl. orders/{update-status,notify},
+               order-notification-numbers/
     cron/{rls-check,product-sales-reconcile,abandoned-checkout}/  keepalive/
   admin/
     page.tsx                 ~231-line shell: auth gate + loadAll() + ?tab= + &lt;AdminDataProvider&gt;
     AdminDataContext.tsx     the shared slice each tab reads
     lib/apiRequest.ts        the only fetch wrapper the tabs use
     tabs/                    Overview, Products, Orders, Coupons, Settings, Reviews, Security
-supabase/migrations/         0001..0043 hand-run SQL
+supabase/migrations/         0001..0046 hand-run SQL
 docs/                        HANDBOOK.html (this -- the full reference), ARCHITECTURE.html (pointer),
                              PROJECT-STORY.html (served live at /story, see app/story/route.ts),
                              ENGINEERING-OVERVIEW.html (served live at /engineering, the redacted
@@ -944,12 +946,14 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
   </div>
 
   <h3 id="dev-testing">Testing</h3>
-  <p>Vitest, ~140 tests. Covered: money math &amp; GST breakdown, the Spend &amp; Save tier offer
+  <p>Vitest, ~155 tests. Covered: money math &amp; GST breakdown, the Spend &amp; Save tier offer
   (<code>spendTierOffer</code> &mdash; fail-closed parse, the &ldquo;not extra cost&rdquo; invariants, tier
-  selection, window edges), Razorpay signatures, TOTP, backup codes, client-IP extraction, Indian phone
-  normalisation, cart repricing, reservation availability (<code>computeAvailability</code>), the RLS
-  perimeter (one env-gated case calling <code>checkRlsPerimeter</code>), and <code>normalizeOrderItems</code>
-  (incl. a round-trip proving a well-formed order note is returned unchanged).</p>
+  selection, window edges), the customer status-update messages (<code>orderNotifications</code>) and the
+  supplier-target resolution (<code>orderNotificationNumbers</code> &mdash; <code>resolveSupplierTargets</code>),
+  Razorpay signatures, TOTP, backup codes, client-IP extraction, Indian phone normalisation, cart repricing,
+  reservation availability (<code>computeAvailability</code>), the RLS perimeter (one env-gated case calling
+  <code>checkRlsPerimeter</code>), and <code>normalizeOrderItems</code> (incl. a round-trip proving a
+  well-formed order note is returned unchanged).</p>
   <div class="note warn"><b>Payment-path changes</b>
   Razorpay is LIVE-only here &mdash; no test keys. A change to <code>/api/razorpay</code>,
   <code>/api/razorpay-webhook</code>, or the GST / coupon / signature utils lands <em>behind tests</em>, is
@@ -1298,7 +1302,7 @@ takes a second arg.</p>
 <tr><td>PDF</td><td><code>@react-pdf/renderer</code> 4.5</td><td>Catalogue PDF (pure JS). <code>sharp</code> re-encodes photos to thumbnails first.</td></tr>
 <tr><td>QR</td><td><code>qrcode</code> 1.5</td><td>Admin TOTP re-provisioning QR (SVG).</td></tr>
 <tr><td>Analytics / RUM</td><td><code>@vercel/analytics</code>, <code>@vercel/speed-insights</code>, <code>@next/third-parties</code> (GA4)</td><td>All free-tier. Purchase conversions fired client-side on <code>/success</code> with the real server-verified total.</td></tr>
-<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (137 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>bootstrapSettings</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>repricing</code>, <code>spendTierOffer</code>, <code>totp</code>, <code>useCheckoutMachine</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
+<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (~155 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>bootstrapSettings</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderNotifications</code>, <code>orderNotificationNumbers</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>repricing</code>, <code>reservation</code>, <code>spendTierOffer</code>, <code>totp</code>, <code>useCheckoutMachine</code>, <code>normalizeOrderItems</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
 <tr><td>Lint</td><td>ESLint 9 + <code>eslint-config-next</code></td><td><code>npm run lint</code>. (Next 16 no longer runs ESLint during <code>next build</code>.)</td></tr>
 </tbody></table></div>
 
@@ -1548,7 +1552,7 @@ paths produce an identical row because both re-read from Razorpay&rsquo;s own AP
 <tr><td><code>ADMIN_TOTP_SECRET</code></td><td>server</td><td>Base32 TOTP secret (RFC 6238, SHA1, 6 digits, 30s, &plusmn;1 step drift). Static &mdash; the QR tool just re-renders it.</td></tr>
 <tr><td><code>GREEN_API_URL</code>, <code>GREEN_API_ID_INSTANCE</code>, <code>GREEN_API_TOKEN_INSTANCE</code></td><td>server</td><td>Green API instance. All three required or every WhatsApp feature silently no-ops (OTP send surfaces an explicit error instead).</td></tr>
 <tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code>, <code>/api/cron/abandoned-checkout</code>, <code>/api/cron/product-sales-reconcile</code>, <code>/api/cron/rls-check</code>.</td></tr>
-<tr><td><code>RESEND_API_KEY</code></td><td>server</td><td>Missing &rarr; order emails skipped silently; contact form returns 500.</td></tr>
+<tr><td><code>RESEND_API_KEY</code></td><td>server</td><td>Missing &rarr; order-confirmation <em>and</em> shipped/delivered/status emails skipped silently; contact form returns 500.</td></tr>
 <tr><td><code>NEXT_PUBLIC_META_PIXEL_ID</code></td><td>public</td><td>Optional. Unset &rarr; <code>MetaPixel</code> and <code>trackMetaPurchase()</code> no-op.</td></tr>
 <tr><td><code>BUSINESS_WHATSAPP_NUMBER</code></td><td>server</td><td>Optional override for order/business alerts. Default <code>916302672351</code>.</td></tr>
 <tr><td><code>BUSINESS_GSTIN</code></td><td>server</td><td>Optional override. Default <code>05AXSPV8800E1Z3</code>. Shown on invoices.</td></tr>
@@ -2515,21 +2519,22 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
 |  |- admin/lib/apiRequest.ts  shared admin fetch wrapper
 |  |- admin/login/page.tsx
 |  |- api/
-|  |  |- razorpay/ razorpay-webhook/ coupons/validate/ orders/track/ orders/receipt/
+|  |  |- razorpay/ razorpay-webhook/ coupons/{validate,public}/ offer/ orders/{track,receipt}/
 |  |  |- whatsapp-otp/{send,verify}/ check-whatsapp-number/ stock/ stock/[id]/
 |  |  |- recent-views/[id]/ track-view/ stock-alerts/ reviews/ enquiries/ leads/
 |  |  |- contact/ catalogue/ categories/ labels/ settings/ pincode/[code]/
 |  |  |- keepalive/ cron/abandoned-checkout/
 |  |  '- admin/ (login, logout, sessions, login-attempts, backup-codes, totp-qr,
-|  |            products, orders, orders/update-status, coupons, categories, reviews,
-|  |            leads, leads/follow-up, colors, materials, labels, labels/bulk-assign,
-|  |            chat-labels, whatsapp-numbers, whatsapp-numbers/reassign, analytics,
+|  |            products, orders, orders/update-status, orders/notify, coupons, categories,
+|  |            reviews, leads, leads/follow-up, colors, materials, labels, labels/bulk-assign,
+|  |            chat-labels, whatsapp-numbers, whatsapp-numbers/reassign,
+|  |            order-notification-numbers, analytics,
 |  |            whatsapp-enquiries, catalogue, upload, settings)
 |  |- components/            ~60 files (+ components/admin/*)
 |  |- context/              10 providers
 |  |- lib/supabase.ts        browser publishable client
 |  '- utils/                 ~47 modules (+ *.test.ts) - see §20; incl. stock.ts, apiError.ts
-|- supabase/migrations/      0000 (reconstructed base) ... 0040 (hand-run SQL)
+|- supabase/migrations/      0000 (reconstructed base) ... 0046 (hand-run SQL)
 |- scripts/                  migrate-product-images.mjs, cleanup-legacy-product-images.mjs
 |- public/                   icon.svg, logo-mark.png, ganesha.jpg, audio/welcome.mp3
 '- docs/                     ARCHITECTURE.html (this file) + v1 feature manifest (HTML + PDF)</code></pre>
@@ -2539,9 +2544,9 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
 npm install
 # populate .env.local from the table in section 4 (no example file committed)
 # create products &amp; orders tables in Supabase (no migration file - see section 24),
-# then run supabase/migrations/0001...0040 in the SQL editor, in order
+# then run supabase/migrations/0001...0046 in the SQL editor, in order
 npm run dev        # http://localhost:3000   (CSP disabled in dev)
-npm test           # vitest: money math, signatures, totp, backup codes, client-ip, checkout repricing, bootstrap settings, checkout machine, spend-tier offer  (~140 tests)
+npm test           # vitest: money math, signatures, totp, backup codes, client-ip, checkout repricing, bootstrap settings, checkout machine, spend-tier offer, order notifications + supplier targets  (~155 tests)
 npm run lint       # note: pre-existing no-explicit-any / set-state-in-effect debt
 
 # RLS regression test — talks to the live project, so it needs the anon creds:
