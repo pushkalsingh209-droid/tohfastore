@@ -805,6 +805,8 @@
 supabase/migrations/         0001..0043 hand-run SQL
 docs/                        HANDBOOK.html (this -- the full reference), ARCHITECTURE.html (pointer),
                              PROJECT-STORY.html (served live at /story, see app/story/route.ts),
+                             ENGINEERING-OVERVIEW.html (served live at /engineering, the redacted
+                             public counterpart to this file -- see app/engineering/route.ts),
                              DESIGN-*.md, IMPROVEMENTS.md
 .claude/skills/              audit-perf.md, audit-security.md, refactor.md</code></pre>
 
@@ -998,11 +1000,12 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
     "check availability" clicks by category / product / source). Recent leads. And <strong>three heartbeat
     cards</strong> &mdash; keepalive, Green API session, abandoned-checkout cron. Green is healthy; amber
     means that signal has gone stale (a dead scheduler, or the Green API instance dropped its session).
-    A <strong>Documentation</strong> card (added 2026-09-01, updated same day once <code>/story</code>
-    shipped) links out to two references &mdash; the Engineering Handbook (this file, a private Claude
-    artifact needing the owner's account) and the Project Showcase (<code>/story</code>, served straight
-    from this repo, public and no-login) &mdash; so both stay one click away without hunting for the URL.
-    Plain links; nothing fetched or rendered.</p>
+    A <strong>Documentation</strong> card (added 2026-09-01, grown over the same day as <code>/story</code>
+    then <code>/engineering</code> shipped) links out to three references &mdash; the Engineering
+    Handbook (this file, a private Claude artifact needing the owner's account, by design), the Project
+    Showcase (<code>/story</code>, public), and the Engineering Overview (<code>/engineering</code>, the
+    redacted public counterpart to this file) &mdash; so all three stay one click away without hunting for
+    a URL. Plain links; nothing fetched or rendered.</p>
   </div>
 
   <div class="card">
@@ -1722,6 +1725,7 @@ resets and verify steady-state usage stays under cap.</p>
 <tr><td><code>/admin</code></td><td>app/admin/page.tsx (client SPA shell, 231 lines) + all 7 tab bodies as lazy components in <code>app/admin/tabs/</code> (#16 done)</td><td>client SPA behind proxy auth</td><td>Tabs via <code>?tab=</code>. See &sect;14.</td></tr>
 <tr><td><code>/admin/login</code></td><td>app/admin/login/page.tsx</td><td>client</td><td>Password + TOTP/backup code &rarr; <code>POST /api/admin/login</code>.</td></tr>
 <tr><td><code>/story</code></td><td>app/story/route.ts (added 2026-09-01)</td><td><code>force-static</code> Route Handler, not a page</td><td>Serves <code>docs/PROJECT-STORY.html</code> verbatim (read at build time, cached like the icon/splash routes) &mdash; a public, no-login &ldquo;behind the shop&rdquo; page: product highlights + engineering notes, no business-sensitive data. Distinct from the private, Claude-artifact-hosted Engineering Handbook (this document) &mdash; that one needs the owner's Claude account by design; this one doesn't need any account. Linked from the admin Overview tab's Documentation card.</td></tr>
+<tr><td><code>/engineering</code></td><td>app/engineering/route.ts (added 2026-09-01)</td><td><code>force-static</code> Route Handler, not a page</td><td>Serves <code>docs/ENGINEERING-OVERVIEW.html</code> verbatim &mdash; the public, redacted counterpart to <em>this</em> document: stack, system shape, caching/performance, checkout/payments, security principles, code quality &amp; process, observability, all at the &ldquo;how and why&rdquo; level with none of what makes this Handbook sensitive (no GSTIN/phone numbers, no schema dump, no exact admin route inventory, no RLS-gap specifics). Owner explicitly chose this redacted-public option over publishing the Handbook itself or leaving it private-only. Cross-links with <code>/story</code> in both directions.</td></tr>
 <tr><td>404 / loading</td><td>app/not-found.tsx, app/loading.tsx</td><td>&mdash;</td><td><code>loading.tsx</code> (branded spinner) makes <em>every</em> route stream &mdash; which is why <code>proxy.ts</code> must emit real status codes before the page (&sect;10).</td></tr>
 </tbody></table></div>
 
@@ -2661,6 +2665,35 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-01<br>23:55</code></td>
+  <td><strong>New public page: <code>/engineering</code></strong><br>(owner asked why the Handbook itself has no public route; offered three options &mdash; keep private / publish redacted / publish as-is &mdash; owner chose redacted)</td>
+  <td>
+    A genuine security trade-off, not just a formatting one: this Handbook has the GSTIN, business
+    WhatsApp numbers, the full <code>products</code>/<code>orders</code> schema, the complete admin route
+    inventory, and the exact &ldquo;which tables have zero RLS policies&rdquo; history in it &mdash;
+    material that's a real reconnaissance aid on a site taking live payments, not merely embarrassing.
+    Publishing it as-is on the open web was flagged and declined; a redacted public counterpart was built
+    instead. New <code>docs/ENGINEERING-OVERVIEW.html</code> covers the same ground at the &ldquo;how and
+    why&rdquo; level &mdash; stack, system shape (with a generic architecture diagram, no hostnames),
+    caching &amp; the ISR-quota incident, checkout &amp; payment idempotency, security principles (RLS as
+    perimeter, fail-closed config, 2FA admin auth, CSRF guard, no leaky error bodies) told without the
+    literal policy matrix or migration numbers, code quality &amp; the working-agreement process, and
+    observability &mdash; with none of the sensitive specifics above. Served at <code>/engineering</code>
+    by new <code>app/engineering/route.ts</code>, identical <code>force-static</code> pattern to
+    <code>/story</code>. Cross-linked both ways: <code>/story</code>'s Engineering Notes section now ends
+    with a link to <code>/engineering</code> for the longer version; <code>/engineering</code> links back
+    to <code>/story</code> and <code>/</code>. Admin Overview's Documentation card gained a third entry.
+  </td>
+  <td><em>new:</em> <code>app/engineering/route.ts</code>, <code>docs/ENGINEERING-OVERVIEW.html</code><br>
+    <code>docs/PROJECT-STORY.html</code>, <code>app/admin/tabs/OverviewTab.tsx</code> &middot;
+    <code>docs/HANDBOOK.html</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 110/110 passed (1 pre-existing skip)
+    &middot; <code>next build</code> exit 0, both <code>/story</code> and <code>/engineering</code>
+    compile static (<code>&cir;</code>). Smoke-tested against a local <code>next start</code>: both
+    routes 200 with correct <code>content-type</code> and the full CSP header set; confirmed the
+    <code>/story</code> &rarr; <code>/engineering</code> cross-link is present in the served HTML.</td>
+</tr>
 <tr>
   <td><code>2026-09-01<br>23:40</code></td>
   <td><strong>New public page: <code>/story</code></strong><br>(owner: the Project Showcase artifact required a Claude sign-in to open &mdash; friends without one saw &ldquo;Page not found / Sign in&rdquo;)</td>

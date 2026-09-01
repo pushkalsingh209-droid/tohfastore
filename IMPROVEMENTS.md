@@ -43,6 +43,15 @@ care, land behind tests, never "blind".
   (`force-static`, same pattern as the icon/splash routes). Admin Overview's Project
   Showcase link now points at `/story`; the Engineering Handbook link is unchanged (stays
   a private Claude artifact on purpose — internal reference only).
+- **Follow-up, 2026-09-01 23:55 (separate PR):** owner asked why the Handbook itself has
+  no public route. Flagged the real reason (it has the GSTIN, business phone numbers, full
+  schema, admin route inventory, and RLS-gap history — genuine recon material on a
+  payments site, not just internal-looking) and offered options; owner chose a redacted
+  public version over publishing it as-is or keeping it private-only. New
+  `docs/ENGINEERING-OVERVIEW.html`, served at `/engineering` via `app/engineering/route.ts`
+  — same architecture/caching/security/process ground as the Handbook, none of the
+  sensitive specifics. Cross-linked with `/story` both ways; Admin Overview's
+  Documentation card gained a third entry.
 
 ### Batch: Typed Supabase clients (#15) — 2026-08-30 10:30 IST
 - `types/db.ts` regenerated (`npm run gen:types` — now includes the `0043` reservation

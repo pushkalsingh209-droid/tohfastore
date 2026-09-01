@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TOHFA — Engineering Overview</title>
+<meta name="description" content="How TOHFA is actually built — stack, architecture, caching strategy, checkout and payments, security model, and the process behind it. The public counterpart to the internal engineering reference.">
+<meta name="theme-color" content="#2B1B12">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="TOHFA — Engineering Overview">
+<meta property="og:description" content="How TOHFA is actually built — stack, architecture, caching, payments, security, and process.">
+<meta property="og:url" content="https://tohfaonline.com/engineering">
+<meta name="twitter:card" content="summary">
+<!-- Public, no-login page -- the redacted counterpart to docs/HANDBOOK.html
+     (the internal engineering reference, kept as a private Claude artifact
+     on purpose: it has the GSTIN, business phone numbers, the full DB
+     schema, the exact admin route inventory, and the RLS gap history in
+     it). This file deliberately leaves all of that out and stays at the
+     level of "how it works and why", which is safe to publish. Served
+     straight from this repo via app/engineering/route.ts (force-static,
+     same pattern as /story). Same font/CSP notes as docs/PROJECT-STORY.html. -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,400..600&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+  :root{
+    --cream:#F7EFDD;
+    --sand:#EFE3C4;
+    --line:#DCC89C;
+    --ink:#2B1B12;
+    --ink-soft:#5B4A3A;
+    --brass:#B8863A;
+    --brass-bright:#D9A94F;
+    --brass-deep:#8F5F23;
+    --maroon:#6E1F27;
+    --patina:#4F6B57;
+    --shadow: 0 1px 2px rgba(43,27,18,.06), 0 18px 40px -20px rgba(43,27,18,.28);
+    --font-display:"Fraunces", Georgia, "Times New Roman", serif;
+    --font-body:"Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --cream:#17110A;
+      --sand:#221A10;
+      --line:#3B2F1D;
+      --ink:#F1E6D2;
+      --ink-soft:#C9B79A;
+      --brass:#E0AC54;
+      --brass-bright:#F0C377;
+      --brass-deep:#E0AC54;
+      --maroon:#D9767B;
+      --patina:#8FB39B;
+      --shadow: 0 1px 2px rgba(0,0,0,.5), 0 18px 44px -18px rgba(0,0,0,.7);
+    }
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+  body{
+    margin:0;
+    background:var(--cream);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:16.5px;
+    line-height:1.68;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  h1,h2,h3{font-family:var(--font-display); text-wrap:balance; margin:0; color:var(--ink)}
+  p{margin:0}
+  a{color:var(--brass-deep)}
+  img,svg{max-width:100%}
+  code{
+    font-family:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    font-size:.88em; background:var(--sand); border:1px solid var(--line);
+    border-radius:4px; padding:.05em .4em; color:var(--ink);
+  }
+
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:9px;
+    font-family:var(--font-body); font-weight:800; font-size:11.5px;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--maroon);
+  }
+  .eyebrow::before{ content:""; width:16px; height:1px; background:var(--maroon); flex:0 0 auto }
+
+  .wrap{max-width:760px; margin:0 auto; padding:0 28px}
+
+  /* ---------- masthead ---------- */
+  .masthead{ padding:clamp(56px,10vw,88px) 0 clamp(40px,7vw,60px); text-align:center }
+  .lamp{ width:40px; height:40px; margin:0 auto 18px; display:block; color:var(--brass-deep) }
+  .lamp .rim{ fill:none; stroke:currentColor; stroke-width:2.6 }
+  .lamp .bowl{ fill:color-mix(in srgb, var(--brass) 24%, transparent); stroke:currentColor; stroke-width:2.6 }
+  .lamp .flame{ fill:var(--maroon) }
+  .masthead h1{
+    font-size:clamp(32px,6vw,50px); font-weight:600; letter-spacing:-.01em;
+  }
+  .masthead .lede{
+    margin:16px auto 0; max-width:58ch; color:var(--ink-soft); font-size:17px;
+  }
+  .masthead nav{ margin-top:8px; font-size:13px }
+  .masthead nav a{ text-decoration:none; font-weight:600 }
+  .masthead nav a:hover{ text-decoration:underline }
+
+  .rule{ display:flex; align-items:center; gap:14px; max-width:760px; margin:0 auto; padding:0 28px }
+  .rule::before, .rule::after{ content:""; flex:1; height:1px; background:var(--line) }
+  .rule span{ width:7px; height:7px; background:var(--brass-deep); transform:rotate(45deg); flex:0 0 auto }
+
+  /* ---------- contents ---------- */
+  .toc{
+    background:var(--sand); border:1px solid var(--line); border-radius:8px;
+    padding:20px 24px; margin:40px 0;
+  }
+  .toc p{ font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:10px }
+  .toc ol{ margin:0; padding-left:0; list-style:none; columns:2; column-gap:24px; font-size:14.5px }
+  .toc li{ break-inside:avoid; margin:5px 0 }
+  .toc a{ text-decoration:none; font-weight:600 }
+  .toc a:hover{ text-decoration:underline }
+  @media (max-width:520px){ .toc ol{ columns:1 } }
+
+  /* ---------- article ---------- */
+  article{ padding:20px 0 100px }
+  section.doc{ margin-top:56px; scroll-margin-top:24px }
+  section.doc:first-of-type{ margin-top:0 }
+  section.doc h2{ font-size:clamp(23px,3.6vw,28px); font-weight:600; padding-bottom:10px; border-bottom:2px solid var(--line) }
+  section.doc > p{ margin-top:16px; color:var(--ink-soft) }
+  section.doc h3{ font-family:var(--font-display); font-size:17.5px; font-weight:600; margin:26px 0 8px; color:var(--ink) }
+  section.doc ul, section.doc ol{ margin:14px 0; padding-left:22px; color:var(--ink-soft) }
+  section.doc li{ margin:6px 0 }
+  section.doc li strong{ color:var(--ink) }
+
+  .x{ overflow-x:auto; margin:18px 0; border:1px solid var(--line); border-radius:8px }
+  table{ border-collapse:collapse; width:100%; font-size:14px; min-width:480px }
+  th,td{ text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); vertical-align:top }
+  th{ font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); background:var(--sand) }
+  tbody tr:last-child td{ border-bottom:0 }
+
+  figure{ margin:22px 0 8px }
+  figure svg{ width:100%; height:auto; background:var(--sand); border:1px solid var(--line); border-radius:10px; padding:18px }
+  figcaption{ font-size:12.5px; color:var(--ink-soft); margin-top:8px; text-align:center }
+
+  .note{
+    border-left:3px solid var(--brass-deep); background:var(--sand);
+    border-radius:0 8px 8px 0; padding:14px 18px; margin:20px 0; font-size:14.5px; color:var(--ink-soft);
+  }
+  .note b{ display:block; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--brass-deep); margin-bottom:4px }
+
+  /* ---------- closing ---------- */
+  .closing{ text-align:center; padding:60px 0 20px }
+  .closing h2{ font-size:clamp(24px,4vw,32px); font-weight:600 }
+  .closing p{ margin-top:14px; color:var(--ink-soft) }
+  .closing .actions{ margin-top:26px; display:flex; justify-content:center; gap:12px; flex-wrap:wrap }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:var(--font-body); font-weight:700; font-size:14px;
+    padding:12px 22px; border-radius:3px; text-decoration:none;
+  }
+  .btn-primary{ background:var(--brass); color:#241505; box-shadow:var(--shadow) }
+  .btn-ghost{ border:1px solid var(--line); color:var(--ink) }
+
+  footer{ padding:30px 28px 56px; text-align:center; font-size:12.5px; color:var(--ink-soft) }
+  footer a{ text-decoration:underline; text-underline-offset:2px }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="wrap">
+    <svg class="lamp" viewBox="0 0 100 100" role="img" aria-label="A diya, an oil lamp">
+      <path class="flame" d="M50 8 C 41 21, 41 33, 50 39 C 59 33, 59 21, 50 8 Z"/>
+      <path class="bowl" d="M18 54 C 18 44, 34 41, 50 41 C 66 41, 82 44, 82 54 C 82 68, 67 79, 50 79 C 33 79, 18 68, 18 54 Z"/>
+      <ellipse class="rim" cx="50" cy="54" rx="32" ry="8.5"/>
+    </svg>
+    <span class="eyebrow">Public engineering notes</span>
+    <h1 style="margin-top:10px">How TOHFA is actually built</h1>
+    <p class="lede">
+      This is the public counterpart to TOHFA's internal engineering reference — the same system,
+      written up without anything that shouldn't leave the team: no business contact details, no exact
+      route inventory, no schema dump. What's left is still real: the actual architecture, the actual
+      trade-offs, and the actual mistakes that got fixed along the way.
+    </p>
+    <p class="lede" style="margin-top:10px">
+      <nav><a href="/story">Read the shop's story</a> &middot; <a href="/">Visit tohfaonline.com</a></nav>
+    </p>
+  </div>
+</div>
+
+<div class="rule"><span></span></div>
+
+<article>
+  <div class="wrap">
+
+    <div class="toc">
+      <p>Contents</p>
+      <ol>
+        <li><a href="#stack">The stack</a></li>
+        <li><a href="#shape">System shape</a></li>
+        <li><a href="#caching">Caching &amp; performance</a></li>
+        <li><a href="#checkout">Checkout &amp; payments</a></li>
+        <li><a href="#security">Data &amp; security</a></li>
+        <li><a href="#quality">Code quality &amp; process</a></li>
+        <li><a href="#observability">Observability</a></li>
+      </ol>
+    </div>
+
+    <section class="doc" id="stack">
+      <h2>The stack</h2>
+      <p>Chosen for a single-store storefront run by one person, not a team — every default leans toward
+      &ldquo;costs nothing extra to operate&rdquo; over &ldquo;infinitely scalable.&rdquo;</p>
+      <div class="x"><table>
+        <thead><tr><th>Layer</th><th>Choice</th><th>Why this one</th></tr></thead>
+        <tbody>
+          <tr><td>Framework</td><td>Next.js 16, App&nbsp;Router</td><td>React 19, TypeScript in strict mode. Server Components for reads, Route Handlers for everything else — one framework, one deploy target.</td></tr>
+          <tr><td>Styling</td><td>Tailwind CSS v4</td><td>Class-based dark mode; a blocking script sets the theme before first paint so there's no light-mode flash.</td></tr>
+          <tr><td>Data</td><td>Supabase (Postgres + Storage)</td><td>A real relational database with row-level security built in, plus object storage for product photos — one provider, one bill.</td></tr>
+          <tr><td>Payments</td><td>Razorpay</td><td>Live keys only, always. Every payment this system processes is a real one.</td></tr>
+          <tr><td>Messaging</td><td>WhatsApp, via a third-party gateway</td><td>The primary customer channel here isn't email — order confirmations, dispatch updates and checkout verification all go out as WhatsApp messages.</td></tr>
+          <tr><td>Hosting</td><td>Vercel, free tier</td><td>The whole system is engineered to live comfortably inside a free tier's meters — see <a href="#caching">Caching &amp; performance</a>.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="doc" id="shape">
+      <h2>System shape</h2>
+      <p>Two rules shape almost everything else about how this is put together.</p>
+      <figure>
+        <svg viewBox="0 0 640 190" role="img" aria-label="Browser talks to the app, which splits reads through cached Server Components and writes through Route Handlers, which talk to the database, payments provider, and messaging gateway.">
+          <defs>
+            <marker id="eo-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <rect x="20" y="70" width="130" height="50" rx="8" fill="var(--cream)" stroke="var(--line)"/>
+          <text x="85" y="99" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)" font-family="Manrope, sans-serif">Browser</text>
+
+          <rect x="230" y="20" width="180" height="150" rx="10" fill="var(--cream)" stroke="var(--brass-deep)"/>
+          <text x="320" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="var(--brass-deep)" font-family="Manrope, sans-serif">The app</text>
+          <rect x="246" y="56" width="148" height="36" rx="6" fill="var(--sand)" stroke="var(--line)"/>
+          <text x="320" y="78" text-anchor="middle" font-size="10.5" fill="var(--ink)" font-family="Manrope, sans-serif">Server Components</text>
+          <text x="320" y="90" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="Manrope, sans-serif">cached reads</text>
+          <rect x="246" y="102" width="148" height="36" rx="6" fill="var(--sand)" stroke="var(--line)"/>
+          <text x="320" y="124" text-anchor="middle" font-size="10.5" fill="var(--ink)" font-family="Manrope, sans-serif">Route Handlers</text>
+          <text x="320" y="136" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="Manrope, sans-serif">writes, live reads, 3rd-party</text>
+
+          <rect x="490" y="16" width="130" height="40" rx="8" fill="var(--cream)" stroke="var(--line)"/>
+          <text x="555" y="40" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)" font-family="Manrope, sans-serif">Database</text>
+          <rect x="490" y="70" width="130" height="40" rx="8" fill="var(--cream)" stroke="var(--line)"/>
+          <text x="555" y="94" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)" font-family="Manrope, sans-serif">Payments</text>
+          <rect x="490" y="124" width="130" height="40" rx="8" fill="var(--cream)" stroke="var(--line)"/>
+          <text x="555" y="148" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)" font-family="Manrope, sans-serif">WhatsApp</text>
+
+          <g stroke="var(--ink-soft)" stroke-width="1.4" fill="none" marker-end="url(#eo-ah)">
+            <line x1="150" y1="95" x2="228" y2="95"/>
+            <line x1="394" y1="74" x2="488" y2="40"/>
+            <line x1="394" y1="120" x2="488" y2="90"/>
+            <line x1="394" y1="128" x2="488" y2="144"/>
+          </g>
+        </svg>
+        <figcaption>Reads are cached and server-rendered; writes, live data, and every third-party call go
+        through a separate layer. The browser never talks to the database, payments provider, or messaging
+        gateway directly.</figcaption>
+      </figure>
+      <p>
+        <strong>First:</strong> storefront reads are cached Server Components hitting the database
+        directly. Writes, third-party calls, and anything that has to be live instead go through Route
+        Handlers — a clean line between &ldquo;can be a day stale&rdquo; and &ldquo;must be correct right
+        now.&rdquo;
+      </p>
+      <p style="margin-top:12px">
+        <strong>Second:</strong> the browser never talks to the database for anything that matters. The
+        public database key genuinely ships inside the page source — that's normal for this kind of
+        architecture — so the database's own row-level security policies, not application code, are what
+        actually decide what that key is allowed to see. More on that in <a href="#security">Data &amp;
+        security</a>.
+      </p>
+    </section>
+
+    <section class="doc" id="caching">
+      <h2>Caching &amp; performance</h2>
+      <p>
+        Every storefront read is wrapped in a tagged cache entry — products, categories, coupons each get
+        their own tag. An admin edit invalidates just that tag; the next visitor to hit it triggers one
+        cheap refetch. A completed sale deliberately does <em>not</em> invalidate the products cache —
+        doing that would schedule a full-storefront regeneration on every single order. Instead, the
+        numbers that change on every sale (stock, &ldquo;N sold&rdquo;) are read live, client-side, so the
+        cached page underneath can stand for a full day.
+      </p>
+      <h3>The regeneration-quota incident</h3>
+      <p>
+        Product pages were originally statically generated with a 24-hour revalidate — one regeneration
+        entry per product. That meant every deploy, and every product edit, regenerated all of them at
+        once, and it quietly burned through most of the free hosting tier's monthly page-regeneration
+        quota in a matter of weeks. The fix was to render product pages dynamically, per request, over the
+        same cached database reads instead of pre-building them — a product page still costs on the order
+        of tens of milliseconds of server time, just zero regeneration writes. Same speed for the shopper,
+        a completely different cost profile for the host.
+      </p>
+      <h3>Images</h3>
+      <p>
+        Product photos are the single biggest weight on the page. Cards that only ever need a small
+        preview — cart, wishlist, the catalogue grid — load a purpose-generated thumbnail instead of the
+        full-resolution original, and uploaded images get a cache lifetime long enough to matter, since a
+        product photo's storage path never changes once it's uploaded. Small decisions like these are the
+        difference between a free storage tier lasting comfortably and not.
+      </p>
+      <div class="note"><b>Worth knowing</b>
+      None of this needs a CDN or an image-optimization service turned on to work — it's plain HTTP
+      caching and picking the right-sized asset for the context, which is available on every tier.</div>
+    </section>
+
+    <section class="doc" id="checkout">
+      <h2>Checkout &amp; payments</h2>
+      <p>
+        Checkout is a three-step guided flow — contact &amp; verify, delivery, review &amp; pay — driven
+        by a small state machine rather than a pile of boolean flags. The machine's current phase
+        <em>is</em> the current step; it holds the verification token and the OTP sub-state, but never the
+        typed field values, so going back a step or a stale-verification rewind can never lose what
+        someone's already typed.
+      </p>
+      <h3>Identity, checked server-side</h3>
+      <p>
+        Before payment, the phone number is verified with a one-time WhatsApp code, and the resulting
+        token is single-use and time-boxed. The server re-checks that token at payment-creation time — a
+        client that merely <em>claims</em> a number was verified earlier doesn't get past it.
+      </p>
+      <h3>A payment can be reported twice</h3>
+      <p>
+        A successful order gets reported to the server twice, independently — once by a fire-and-forget
+        call the moment checkout succeeds, and again by the payment provider's own server-to-server
+        callback, which retries on its own schedule. Both hit the same handler; each has to survive the
+        other firing first. A unique constraint on the payment id at the database level, checked before
+        either path writes anything, is what actually makes &ldquo;exactly once&rdquo; true rather than
+        just &ldquo;probably once.&rdquo;
+      </p>
+      <h3>The last-unit race</h3>
+      <p>
+        Stock used to drop only after a payment cleared, which meant two shoppers could both successfully
+        pay for the very last handmade piece before either checkout finished. A short-lived reservation
+        now holds the requested quantity the moment checkout starts: one database function locks every
+        line item in the cart, checks it against everything currently held by other in-progress checkouts,
+        and grants the whole cart or none of it. The hold expires on its own if the sale never completes,
+        so nothing has to sweep up after an abandoned cart by hand.
+      </p>
+      <p>Never trusted from the client, on every single order: the price, the discount, the stock level,
+      and whether the product is even still listed. All four are re-read from the database at the moment
+      of payment, regardless of what the checkout page displayed a minute earlier.</p>
+    </section>
+
+    <section class="doc" id="security">
+      <h2>Data &amp; security</h2>
+      <p>
+        The public-facing database key ships inside every visitor's browser, so row-level security
+        policies — not application code — are the real perimeter around anything that shouldn't be
+        world-readable: orders, coupons, admin sessions, hidden products, unapproved reviews. That
+        perimeter was silently broken for months, once, by a handful of leftover &ldquo;allow
+        everything&rdquo; policies nobody remembered writing — database permissions are additive, so one
+        forgotten permissive rule undoes every stricter one sitting next to it. It's re-asserted
+        automatically now, on a daily schedule, against the live database, with an alert the instant
+        anything drifts.
+      </p>
+      <h3>A few other standing rules</h3>
+      <ul>
+        <li><strong>Fail closed on missing configuration.</strong> If a required security secret isn't
+        set, the affected feature refuses to run rather than falling back to an insecure default.</li>
+        <li><strong>Admin access needs two factors</strong> — a password and a time-based one-time code —
+        with single-use backup codes for device loss, rate-limited login attempts, and a
+        &ldquo;sign out everywhere&rdquo; control that revokes every active session at once.</li>
+        <li><strong>Cross-origin admin writes are rejected</strong> at the edge before they reach any
+        route handler, on top of the session cookie's own same-site restriction.</li>
+        <li><strong>Error responses don't leak internals.</strong> A server failure returns a generic
+        message to the caller; the real exception is logged server-side, never echoed back.</li>
+      </ul>
+    </section>
+
+    <section class="doc" id="quality">
+      <h2>Code quality &amp; process</h2>
+      <h3>Type safety earns its keep</h3>
+      <p>
+        The database client is generated straight from the live schema, which turns a whole class of
+        silent bugs into compile errors instead: an id quietly compared as a string against a numeric
+        column, a JSON column read as an untyped blob, a nullable field treated as guaranteed. A stale
+        generated type fails the build outright rather than failing quietly in production.
+      </p>
+      <h3>Tests where it actually matters</h3>
+      <p>
+        Around 110 unit tests cover the parts that are expensive to get wrong — tax and discount math,
+        signature verification, one-time codes, cart re-pricing, stock-reservation availability. The
+        order-normalization tests include a deliberate round-trip check: feed it a well-formed order and
+        assert the output comes back byte-for-byte identical, so a &ldquo;safety&rdquo; refactor can't
+        quietly start mutating orders that were already fine. Anything touching the payment path is
+        treated as a proposal, not a done thing, until it's been watched against real orders.
+      </p>
+      <h3>No shortcuts on the type checker</h3>
+      <p>
+        The codebase went from 246 lint problems down to zero real errors, and untyped escape-hatch usage
+        from 174 occurrences to none — not by silencing the linter, but by writing out the actual shape of
+        every payload the code handles. The handful of warnings still left on purpose each carry a comment
+        explaining exactly why they're false positives, rather than being suppressed and forgotten.
+      </p>
+      <h3>Nothing ships undocumented</h3>
+      <p>
+        Every batch of work follows the same loop: make the change, verify it — typecheck, the full test
+        suite, a real production build — update the reference documentation and write a dated changelog
+        entry, and only then open it for review. Documentation is a precondition for shipping, not a
+        follow-up task. The main branch is protected so nothing merges without that verification passing
+        first, and changes are worked one at a time so two in-flight batches can never quietly overwrite
+        each other's notes.
+      </p>
+      <h3>Comments explain the why, not the what</h3>
+      <p>
+        The codebase is deliberately over-commented in one specific way — not describing what a line does,
+        but why it exists: the alternative that was rejected, the race condition being avoided, the
+        trade-off behind a setting. A new non-obvious decision doesn't ship without a line naming what it
+        deliberately isn't doing, and why.
+      </p>
+    </section>
+
+    <section class="doc" id="observability">
+      <h2>Observability</h2>
+      <p>
+        Scheduled jobs stamp a heartbeat every time they run; if one goes quiet, a dashboard card turns
+        amber instead of the failure being discovered a week later from a customer complaint. The security
+        perimeter re-checks itself once a day against the live database and raises an alert the instant
+        anything drifts — the same class of issue that, once, went unnoticed for months. The messaging
+        gateway's own connection state is polled the same way, so a dropped session shows up on the
+        dashboard instead of surfacing as a run of silently undelivered order confirmations.
+      </p>
+    </section>
+
+  </div>
+</article>
+
+<div class="closing">
+  <div class="wrap">
+    <h2>That's the shape of it</h2>
+    <p>A solo-run storefront, held together by defaults it doesn't have to think about twice.</p>
+    <div class="actions">
+      <a class="btn btn-primary" href="/">Visit the shop</a>
+      <a class="btn btn-ghost" href="/story">Read the story</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  A public engineering write-up for TOHFA — deliberately lighter than the internal reference. Back to
+  <a href="/">tohfaonline.com</a>.
+</footer>
+
+</body>
+</html>
