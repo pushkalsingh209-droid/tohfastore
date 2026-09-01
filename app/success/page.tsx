@@ -27,6 +27,10 @@ interface StashedOrder {
   offerLabel?: string | null;
   total: number;
   gst: OrderGstBreakdown;
+  // Filled once the order ships (from the phone-gated receipt re-fetch, not
+  // the fresh stash -- neither is known at purchase time).
+  awbNumber?: string | null;
+  courierName?: string | null;
 }
 
 export default function CheckoutSuccessPage() {
@@ -235,6 +239,23 @@ export default function CheckoutSuccessPage() {
                 <span>Billed to: {order.customerName}</span>
                 <span className="text-right">{order.customerPhone}</span>
               </div>
+
+              {(order.courierName || order.awbNumber) && (
+                <div className="text-[11px] text-stone-600 dark:text-stone-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded px-3 py-2 mb-6 space-y-0.5">
+                  {order.courierName && (
+                    <div className="flex justify-between">
+                      <span className="text-stone-400 uppercase tracking-wide">Delivery partner</span>
+                      <span>{order.courierName}</span>
+                    </div>
+                  )}
+                  {order.awbNumber && (
+                    <div className="flex justify-between">
+                      <span className="text-stone-400 uppercase tracking-wide">Tracking no.</span>
+                      <span className="font-mono">{order.awbNumber}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <table className="w-full text-xs mb-4">
                 <thead>
