@@ -161,6 +161,36 @@ export default function OverviewTab() {
       );
     })()}
 
+    {/* DOCUMENTATION LINKS: the two published Claude-artifact pages -- the
+        engineering handbook (docs/HANDBOOK.html, republished after every
+        batch per the working agreement) and a lighter public-facing project
+        page. Plain external links, not fetched/rendered data, so there's
+        nothing to keep in sync beyond these two URLs if either is ever
+        republished at a new address. */}
+    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-6 mb-6">
+      <p className="text-[10px] uppercase tracking-wider font-semibold mb-3 text-stone-500">Documentation</p>
+      <div className="flex flex-wrap gap-3">
+        <a
+          href="https://claude.ai/code/artifact/7aa7da6c-f415-4e08-a840-669955210d9d"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 min-w-[220px] rounded-lg border border-stone-200 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition p-4"
+        >
+          <p className="text-sm font-semibold text-stone-900">Engineering Handbook</p>
+          <p className="text-[11px] text-stone-500 mt-0.5">Schema, migrations, API routes, checkout flow, caching, gotchas &amp; the dated Change Log.</p>
+        </a>
+        <a
+          href="https://claude.ai/code/artifact/ae7c44d2-22bc-44f1-b806-69b7b6019dfc"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 min-w-[220px] rounded-lg border border-stone-200 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition p-4"
+        >
+          <p className="text-sm font-semibold text-stone-900">Project Showcase</p>
+          <p className="text-[11px] text-stone-500 mt-0.5">The shareable, non-technical page — what TOHFA is and how it&rsquo;s built.</p>
+        </a>
+      </div>
+    </div>
+
     {/* SECTION OVERVIEW: BUSINESS ANALYTICS */}
     <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
       <div className="border-b border-stone-200 pb-4 mb-6">

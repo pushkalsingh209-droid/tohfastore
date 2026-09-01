@@ -996,7 +996,11 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
     <p>Revenue, average order value, repeat-purchase rate, monthly trend. Enquiry analytics (WhatsApp
     "check availability" clicks by category / product / source). Recent leads. And <strong>three heartbeat
     cards</strong> &mdash; keepalive, Green API session, abandoned-checkout cron. Green is healthy; amber
-    means that signal has gone stale (a dead scheduler, or the Green API instance dropped its session).</p>
+    means that signal has gone stale (a dead scheduler, or the Green API instance dropped its session).
+    A <strong>Documentation</strong> card (added 2026-09-01) links out to the two published Claude-artifact
+    pages &mdash; the Engineering Handbook (this file) and a shareable, non-technical Project Showcase page
+    &mdash; so both stay one click away without hunting for the URL. Plain external links; nothing fetched
+    or rendered.</p>
   </div>
 
   <div class="card">
@@ -2654,6 +2658,26 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-01<br>23:05</code></td>
+  <td><strong>Admin Overview: Documentation links card</strong><br>(same PR as the egress batch above &mdash; owner asked for the handbook to stay reachable from the admin panel)</td>
+  <td>
+    New card at the top of the admin <strong>Overview</strong> tab, above the heartbeat cards: two plain
+    external links to the two published Claude-artifact pages &mdash; the <strong>Engineering Handbook</strong>
+    (this document) and a new, separate <strong>Project Showcase</strong> page (a lighter, non-technical
+    &ldquo;what TOHFA is and how it&rsquo;s built&rdquo; page meant for sharing outside the team, with its
+    own Engineering Notes section covering the caching strategy, the ISR-quota incident, payment
+    idempotency, the RLS lapse + daily probe, stock reservation, and the admin-panel refactor at a
+    reader-friendly level of detail &mdash; no business-sensitive data). Both artifacts are private by
+    default; the owner shares each independently from its own page. No new route, no fetch, no stored
+    state &mdash; two <code>&lt;a target="_blank"&gt;</code> tags styled to match the existing card
+    language.
+  </td>
+  <td><code>app/admin/tabs/OverviewTab.tsx</code> &middot; <code>docs/HANDBOOK.html</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 110/110 passed (1 pre-existing skip)
+    &middot; <code>next build</code> exit 0. Not click-tested against a running admin session here (static
+    JSX, no data dependency) &mdash; low risk.</td>
+</tr>
 <tr>
   <td><code>2026-09-01<br>22:20</code></td>
   <td><strong>Cut Supabase Storage egress: card-gallery thumbnails + long <code>cacheControl</code></strong><br>(owner asked why free-tier egress was climbing)</td>

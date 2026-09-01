@@ -32,6 +32,10 @@ care, land behind tests, never "blind".
   `BestsellersStrip`, `CategorySlider` still render `image_url` directly (bypass
   `ProductGallery`/thumbs entirely); `scripts/migrate-product-images.mjs` still uploads
   without an explicit `cacheControl`.
+- **Same PR, added 2026-09-01 23:05:** a Documentation card on the admin Overview tab
+  linking to the two published Claude-artifact pages (Engineering Handbook + a new
+  public-facing Project Showcase page) so both stay reachable without hunting for the
+  URL. `app/admin/tabs/OverviewTab.tsx` — plain external links, no new route/fetch/state.
 
 ### Batch: Typed Supabase clients (#15) — 2026-08-30 10:30 IST
 - `types/db.ts` regenerated (`npm run gen:types` — now includes the `0043` reservation
