@@ -164,10 +164,14 @@ export default function OverviewTab() {
     {/* DOCUMENTATION LINKS: the internal engineering reference (a private
         Claude artifact, docs/HANDBOOK.html republished after every batch per
         the working agreement -- needs the owner's Claude account, by
-        design) and the public "behind the shop" page, which is this repo's
-        own docs/PROJECT-STORY.html served live at /story (app/story/route.ts)
-        so it opens for anyone with the link, no sign-in. Plain links, not
-        fetched/rendered data. */}
+        design: it has the GSTIN, business phone numbers, the full DB
+        schema, the exact admin route inventory, and the RLS gap history)
+        plus two public, no-login pages served straight from this repo --
+        docs/PROJECT-STORY.html at /story (the shop's story) and
+        docs/ENGINEERING-OVERVIEW.html at /engineering (a redacted, public
+        version of the Handbook's content -- same architecture/caching/
+        security/process notes, none of the sensitive specifics). Plain
+        links, not fetched/rendered data. */}
     <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-6 mb-6">
       <p className="text-[10px] uppercase tracking-wider font-semibold mb-3 text-stone-500">Documentation</p>
       <div className="flex flex-wrap gap-3">
@@ -188,6 +192,15 @@ export default function OverviewTab() {
         >
           <p className="text-sm font-semibold text-stone-900">Project Showcase</p>
           <p className="text-[11px] text-stone-500 mt-0.5">The shareable page — what TOHFA is and how it&rsquo;s built. Public, no sign-in needed.</p>
+        </a>
+        <a
+          href="/engineering"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 min-w-[220px] rounded-lg border border-stone-200 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition p-4"
+        >
+          <p className="text-sm font-semibold text-stone-900">Engineering Overview</p>
+          <p className="text-[11px] text-stone-500 mt-0.5">The redacted, shareable write-up of the architecture, caching, security &amp; process. Public, no sign-in needed.</p>
         </a>
       </div>
     </div>
