@@ -25,7 +25,7 @@ const anon = configured ? createClient(url as string, anonKey as string) : null;
 describe.skipIf(!configured)("RLS perimeter (anon key)", () => {
   // The probe set lives in app/utils/rlsProbes.ts so the scheduled
   // production check (/api/cron/rls-check) and this CI guard can't drift.
-  it("is intact: anon can't read orders/coupons/leads/hidden products/unapproved reviews, can read visible products, can't write", async () => {
+  it("is intact: anon can't read orders/coupons/leads/site_settings/hidden products/unapproved reviews, can read visible products, can't write", async () => {
     const violations = await checkRlsPerimeter(anon!);
     expect(violations).toEqual([]);
   }, 30000);
