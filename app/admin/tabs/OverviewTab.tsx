@@ -7,9 +7,20 @@
 // comes from the shared loadAll() via AdminDataContext; behaviour is
 // unchanged from the old inline block.
 "use client";
+import { useState } from "react";
 import FinanceInsightsPanel from "@/app/components/admin/FinanceInsightsPanel";
 import { apiRequest } from "@/app/admin/lib/apiRequest";
 import { useAdminData } from "@/app/admin/AdminDataContext";
+
+const REPORT_PERIODS: { value: string; label: string }[] = [
+  { value: "this-month", label: "This month" },
+  { value: "last-month", label: "Last month" },
+  { value: "this-week", label: "This week (Mon–Sun)" },
+  { value: "last-week", label: "Last week (Mon–Sun)" },
+  { value: "this-fy", label: "This financial year (Apr–Mar)" },
+  { value: "all-time", label: "All time (consolidated)" },
+  { value: "custom", label: "Custom date range…" },
+];
 
 export default function OverviewTab() {
   const {
@@ -36,6 +47,44 @@ export default function OverviewTab() {
     }
   };
 
+  // --- Excel report download (orders + GSTR-style GST) ---
+  const [reportPeriod, setReportPeriod] = useState("this-month");
+  const [reportFrom, setReportFrom] = useState("");
+  const [reportTo, setReportTo] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState("");
+
+  const downloadReport = async () => {
+    setReportBusy(true);
+    setReportError("");
+    try {
+      const qs = new URLSearchParams({ preset: reportPeriod });
+      if (reportPeriod === "custom") {
+        qs.set("from", reportFrom);
+        qs.set("to", reportTo);
+      }
+      const res = await fetch(`/api/admin/reports?${qs.toString()}`);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || `Report failed (${res.status}).`);
+      }
+      const blob = await res.blob();
+      const match = (res.headers.get("content-disposition") || "").match(/filename="?([^"]+)"?/);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = match?.[1] || "tohfa-report.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setReportError(err instanceof Error ? err.message : "Could not generate the report.");
+    } finally {
+      setReportBusy(false);
+    }
+  };
+
   const handleDeleteLead = async (leadId: number, leadName: string) => {
     if (!window.confirm(`Delete the lead from "${leadName}"? This can't be undone.`)) return;
     try {
@@ -48,6 +97,63 @@ export default function OverviewTab() {
 
   return (
     <>
+    {/* REPORTS: server-generated .xlsx for a chosen period -- an Orders
+        sheet + a GSTR-style GST summary (CGST/SGST vs IGST by place of
+        supply) + GST-by-state. Cancelled orders are in the Orders sheet
+        but out of every GST total. */}
+    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-6 mb-6">
+      <p className="text-[10px] uppercase tracking-wider font-semibold mb-1 text-stone-500">Reports</p>
+      <p className="text-xs text-stone-500 mb-3">
+        Excel workbook &mdash; Orders + a GST summary (taxable value, CGST/SGST/IGST by place of supply) + GST
+        by state. IST-bounded; cancelled orders excluded from GST totals.
+      </p>
+      <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+        <div className="flex-1 min-w-0">
+          <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">Period</label>
+          <select
+            value={reportPeriod}
+            onChange={(e) => setReportPeriod(e.target.value)}
+            className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          >
+            {REPORT_PERIODS.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
+        </div>
+        {reportPeriod === "custom" && (
+          <>
+            <div>
+              <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">From</label>
+              <input
+                type="date"
+                value={reportFrom}
+                onChange={(e) => setReportFrom(e.target.value)}
+                className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">To</label>
+              <input
+                type="date"
+                value={reportTo}
+                onChange={(e) => setReportTo(e.target.value)}
+                className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+              />
+            </div>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={downloadReport}
+          disabled={reportBusy || (reportPeriod === "custom" && (!reportFrom || !reportTo))}
+          className="px-5 py-2 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider whitespace-nowrap disabled:opacity-50"
+        >
+          {reportBusy ? "Building…" : "Download Excel"}
+        </button>
+      </div>
+      {reportError && <p className="text-[11px] text-rose-600 mt-2">{reportError}</p>}
+    </div>
+
     {/* SYSTEM HEALTH: keepalive heartbeat. /api/keepalive stamps
         site_settings.last_keepalive_at on every run; an external
         scheduler is meant to hit it every 15-30 min. If this timestamp

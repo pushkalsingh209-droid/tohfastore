@@ -946,12 +946,14 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
   </div>
 
   <h3 id="dev-testing">Testing</h3>
-  <p>Vitest, ~155 tests. Covered: money math &amp; GST breakdown, the Spend &amp; Save tier offer
+  <p>Vitest, ~167 tests. Covered: money math &amp; GST breakdown, the Spend &amp; Save tier offer
   (<code>spendTierOffer</code> &mdash; fail-closed parse, the &ldquo;not extra cost&rdquo; invariants, tier
   selection, window edges), the customer status-update messages (<code>orderNotifications</code>) and the
   supplier-target resolution (<code>orderNotificationNumbers</code> &mdash; <code>resolveSupplierTargets</code>),
-  Razorpay signatures, TOTP, backup codes, client-IP extraction, Indian phone normalisation, cart repricing,
-  reservation availability (<code>computeAvailability</code>), the RLS perimeter (one env-gated case calling
+  the report period maths + GSTR-style split (<code>reports</code> &mdash; IST month/week/FY boundaries,
+  CGST/SGST vs IGST by place of supply, cancelled-order exclusion), Razorpay signatures, TOTP, backup codes,
+  client-IP extraction, Indian phone normalisation, cart repricing, reservation availability
+  (<code>computeAvailability</code>), the RLS perimeter (one env-gated case calling
   <code>checkRlsPerimeter</code>), and <code>normalizeOrderItems</code> (incl. a round-trip proving a
   well-formed order note is returned unchanged).</p>
   <div class="note warn"><b>Payment-path changes</b>
@@ -1024,7 +1026,12 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
 
   <div class="card">
     <h4>Overview</h4>
-    <p>Revenue, average order value, repeat-purchase rate, monthly trend. Enquiry analytics (WhatsApp
+    <p>A <strong>Reports</strong> card at the top &mdash; pick a period (this/last month, this/last week,
+    this financial year, all-time, or a custom range) and <strong>Download Excel</strong>: a
+    <code>.xlsx</code> with an <em>Orders</em> sheet, a <em>GST summary</em> (taxable value + CGST/SGST/IGST
+    by rate, split by whether the buyer is in Uttarakhand), and <em>GST by state</em> for GSTR-1. Cancelled
+    orders show in the Orders sheet but are left out of the GST totals. Then: revenue, average order value,
+    repeat-purchase rate, monthly trend. Enquiry analytics (WhatsApp
     "check availability" clicks by category / product / source). Recent leads. And <strong>three heartbeat
     cards</strong> &mdash; keepalive, Green API session, abandoned-checkout cron. Green is healthy; amber
     means that signal has gone stale (a dead scheduler, or the Green API instance dropped its session).
@@ -1300,9 +1307,10 @@ takes a second arg.</p>
 <tr><td>Email</td><td><code>resend</code> 6.18</td><td>Order confirmation emails + contact-form relay. No-ops without <code>RESEND_API_KEY</code>.</td></tr>
 <tr><td>WhatsApp</td><td>Green API (REST, no SDK)</td><td><code>app/utils/greenApi.ts</code> &mdash; text / image-with-caption / registration check / keepalive.</td></tr>
 <tr><td>PDF</td><td><code>@react-pdf/renderer</code> 4.5</td><td>Catalogue PDF (pure JS). <code>sharp</code> re-encodes photos to thumbnails first.</td></tr>
+<tr><td>Spreadsheet</td><td><code>exceljs</code> 4.4 (MIT, free)</td><td>The admin Overview &ldquo;Download Excel&rdquo; report (<code>/api/admin/reports</code>) &mdash; a 3-sheet <code>.xlsx</code> (Orders, GST summary, GST by state). Server-side only.</td></tr>
 <tr><td>QR</td><td><code>qrcode</code> 1.5</td><td>Admin TOTP re-provisioning QR (SVG).</td></tr>
 <tr><td>Analytics / RUM</td><td><code>@vercel/analytics</code>, <code>@vercel/speed-insights</code>, <code>@next/third-parties</code> (GA4)</td><td>All free-tier. Purchase conversions fired client-side on <code>/success</code> with the real server-verified total.</td></tr>
-<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (~155 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>bootstrapSettings</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderNotifications</code>, <code>orderNotificationNumbers</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>repricing</code>, <code>reservation</code>, <code>spendTierOffer</code>, <code>totp</code>, <code>useCheckoutMachine</code>, <code>normalizeOrderItems</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
+<tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (~167 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>bootstrapSettings</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderNotifications</code>, <code>orderNotificationNumbers</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>reports</code>, <code>repricing</code>, <code>reservation</code>, <code>spendTierOffer</code>, <code>totp</code>, <code>useCheckoutMachine</code>, <code>normalizeOrderItems</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
 <tr><td>Lint</td><td>ESLint 9 + <code>eslint-config-next</code></td><td><code>npm run lint</code>. (Next 16 no longer runs ESLint during <code>next build</code>.)</td></tr>
 </tbody></table></div>
 
@@ -1890,6 +1898,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/admin/order-notification-numbers</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-del">delete</span></td><td>The supplier / order-notification list (0046). POST validates + caps at <code>MAX_ORDER_NOTIFICATION_NUMBERS</code> (10); DELETE also strips the number from any <code>products.supplier_numbers</code>. Distinct from <code>/api/admin/whatsapp-numbers</code> (enquiries).</td></tr>
 <tr><td><code>/api/admin/whatsapp-numbers/reassign</code></td><td><span class="tag t-post">post</span></td><td>Bulk-move products to a number, filtered by current number or category. <code>revalidateTag("products","max")</code>.</td></tr>
 <tr><td><code>/api/admin/analytics</code></td><td><span class="tag t-get">get</span></td><td>Order metrics computed in JS from <code>orders</code> <strong>where <code>status != 'cancelled'</code></strong>: totals, AOV, unique/repeat customers (placeholder contacts excluded from identity), 6-month revenue trend.</td></tr>
+<tr><td><code>/api/admin/reports</code></td><td><span class="tag t-get">get</span></td><td>Streams a <code>.xlsx</code> for a period (<code>?preset=this-month|last-month|this-week|last-week|this-fy|all-time|custom</code>, <code>+ &amp;from=&amp;to=</code> for custom). IST-bounded. 3 sheets: <b>Orders</b> (flat row per order incl. cancelled), <b>GST summary</b> (taxable value + CGST/SGST/IGST by rate), <b>GST by state</b> (place-of-supply split for GSTR-1 B2C). Cancelled orders excluded from every GST total. Maths from <code>app/utils/reports.ts</code>; workbook via <code>exceljs</code>. <code>maxDuration = 60</code>.</td></tr>
 <tr><td><code>/api/admin/whatsapp-enquiries</code></td><td><span class="tag t-get">get</span></td><td>Aggregates the <code>whatsapp_enquiries</code> log: totals, by category/product/number/source, 14-day daily trend.</td></tr>
 <tr><td><code>/api/admin/catalogue</code></td><td><span class="tag t-get">get</span></td><td>Live (uncached) catalogue PDF download. <code>maxDuration = 60</code>.</td></tr>
 <tr><td><code>/api/admin/upload</code></td><td><span class="tag t-post">post</span></td><td>multipart image upload &rarr; <code>brass-images</code> + thumbnail. &le; 4MB, webp/jpeg/png. Returns a 10-year signed URL.</td></tr>
@@ -2357,6 +2366,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>couriers.ts</code></td><td><code>COURIER_PRESETS</code> (dropdown list for the admin Orders tab) + <code>normalizeCourierName(raw)</code> (trim + clamp to 60, empty &rarr; null). The stored <code>orders.courier_name</code> is unconstrained free text; this list is convenience only. <em>(0045)</em></td></tr>
 <tr><td><code>orderNotifications.ts</code></td><td>Customer status-update message text (<code>buildStatusWhatsappMessage</code>) + email HTML (<code>buildStatusEmailHtml</code>, <code>statusEmailSubject</code>) for all four statuses, plus <code>cleanNotifyComment</code> (trim + clamp 600). Pure &mdash; the text builder is imported client-side too for the Notify dialog's live preview. Used only by <code>/api/admin/orders/notify</code>. <strong>11 unit tests.</strong></td></tr>
 <tr><td><code>orderNotificationNumbers.ts</code></td><td>Supplier order-notification list (0046). <code>MAX_ORDER_NOTIFICATION_NUMBERS</code> (10), <code>isValidOrderNotificationNumber</code> (<code>/^91[6-9]\d{9}$/</code>), and the pure <code>resolveSupplierTargets(productSupplierArrays, liveNumbers, businessNumber)</code> &mdash; distinct in-list supplier numbers across an order's products, minus the business number, de-duped. DB reads live in the routes / webhook. <strong>7 unit tests.</strong></td></tr>
+<tr><td><code>reports.ts</code></td><td>Pure logic for the admin Excel report. <code>resolvePeriod(preset, now, from?, to?)</code> &rarr; an IST-bounded <code>[from, to)</code> (month / Mon&ndash;Sun week / Apr&ndash;Mar FY / all-time / custom), TZ-independent (Vercel is UTC). <code>buildReport(orders, period)</code> &rarr; flat order rows + a GSTR-style GST summary (<code>calculateOrderGstBreakdown</code> per order; CGST=SGST=tax/2 when the buyer state is Uttarakhand &mdash; <code>isIntraStateSupply</code> &mdash; else IGST) + a by-state table. Cancelled orders stay in the order rows but are dropped from every GST total. The <code>.xlsx</code> assembly (exceljs) lives in the route. <strong>12 unit tests.</strong></td></tr>
 <tr><td><code>chatLabels.ts</code>, <code>indianStates.ts</code>, <code>pagination.ts</code>, <code>loadingMessages.ts</code>, <code>downloadCsv.ts</code>, <code>brandMark.tsx</code>, <code>appleSplashScreens.ts</code></td><td>Small constants / helpers.</td></tr>
 </tbody></table></div>
 
@@ -2536,7 +2546,7 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
 |  |            products, orders, orders/update-status, orders/notify, coupons, categories,
 |  |            reviews, leads, leads/follow-up, colors, materials, labels, labels/bulk-assign,
 |  |            chat-labels, whatsapp-numbers, whatsapp-numbers/reassign,
-|  |            order-notification-numbers, analytics,
+|  |            order-notification-numbers, analytics, reports,
 |  |            whatsapp-enquiries, catalogue, upload, settings)
 |  |- components/            ~60 files (+ components/admin/*)
 |  |- context/              10 providers
@@ -2554,7 +2564,7 @@ npm install
 # create products &amp; orders tables in Supabase (no migration file - see section 24),
 # then run supabase/migrations/0001...0046 in the SQL editor, in order
 npm run dev        # http://localhost:3000   (CSP disabled in dev)
-npm test           # vitest: money math, signatures, totp, backup codes, client-ip, checkout repricing, bootstrap settings, checkout machine, spend-tier offer, order notifications + supplier targets  (~155 tests)
+npm test           # vitest: money math, signatures, totp, backup codes, client-ip, checkout repricing, bootstrap settings, checkout machine, spend-tier offer, order notifications + supplier targets, report/GST maths  (~167 tests)
 npm run lint       # note: pre-existing no-explicit-any / set-state-in-effect debt
 
 # RLS regression test — talks to the live project, so it needs the anon creds:
@@ -2747,6 +2757,47 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-03<br>03:15</code></td>
+  <td><strong>Downloadable Excel reports (Orders + GST)</strong><br>(owner: monthly / weekly / consolidated orders report and a monthly GST report, both as real <code>.xlsx</code>)</td>
+  <td>
+    New dependency <strong><code>exceljs</code> 4.4</strong> (MIT, free) &mdash; server-side <code>.xlsx</code>
+    assembly. New <strong><code>GET /api/admin/reports</code></strong> (<code>force-dynamic</code>,
+    <code>maxDuration = 60</code>): <code>?preset=this-month|last-month|this-week|last-week|this-fy|all-time|custom</code>
+    (<code>+ &amp;from=&amp;to=</code>, inclusive end date, for <code>custom</code>). Streams a 3-sheet workbook &mdash;
+    <b>Orders</b> (one flat row per order in the range, <em>including</em> cancelled: customer + address flattened,
+    items summary, items subtotal, discount, taxable value, GST, total paid, status, courier, AWB; bold TOTAL row),
+    <b>GST summary</b> (taxable value + CGST / SGST / IGST + total tax + order count, by GST rate; GSTIN note; bold
+    TOTAL), <b>GST by state</b> (the same split per place of supply, labelled Intra / Inter &mdash; for GSTR-1 B2C).
+    <br><br>
+    New pure <strong><code>app/utils/reports.ts</code></strong> &mdash; <code>resolvePeriod()</code> returns an
+    <strong>IST-bounded</strong> <code>[from, to)</code> window (whole IST calendar month / Mon&ndash;Sun week /
+    Apr&ndash;Mar Indian FY / all-time / custom), computed with explicit <code>Date.UTC(&hellip;) &minus; IST_OFFSET</code>
+    arithmetic so it is correct on Vercel&rsquo;s UTC runtime. <code>buildReport(orders, period)</code> derives each
+    order&rsquo;s discount as <code>itemsSubtotal &minus; amountPaid</code>, runs
+    <code>calculateOrderGstBreakdown</code> (same GST-inclusive back-calc as the invoice / webhook), and aggregates
+    by rate and by <code>state||rate</code>: <code>CGST = SGST = tax / 2</code> when the buyer state is Uttarakhand
+    (<code>isIntraStateSupply</code>, matches <code>uttarakhand</code> / <code>uttrakhand</code> / <code>uk</code> /
+    <code>ua</code>), else <code>IGST = tax</code>. <strong>Cancelled orders stay in the Orders sheet but are
+    excluded from every GST and money total.</strong> <strong>12 unit tests</strong>
+    (<code>app/utils/reports.test.ts</code>).
+    <br><br>
+    <strong>Admin (mobile-first)</strong>: a <em>Reports</em> card at the top of the Overview tab &mdash; period
+    <code>&lt;select&gt;</code>, <code>&lt;input type="date"&gt;</code> From / To shown only for <em>custom</em>,
+    <em>Download Excel</em> button (disabled until a custom range is complete). <code>downloadReport()</code>
+    fetches the route, reads the <code>content-disposition</code> filename, and clicks a synthetic
+    <code>&lt;a download&gt;</code>. No schema change; read-only over <code>orders</code>; not on the payment path.
+  </td>
+  <td><em>new:</em> <code>app/utils/reports.ts</code>, <code>app/utils/reports.test.ts</code>,
+    <code>app/api/admin/reports/route.ts</code><br>
+    <em>edited:</em> <code>app/admin/tabs/OverviewTab.tsx</code>, <code>package.json</code> +
+    <code>package-lock.json</code> (<code>exceljs</code>), <code>docs/HANDBOOK.html</code>,
+    <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 167 passed (1 pre-existing skip), incl. 12
+    new in <code>reports.test.ts</code> &middot; <code>eslint</code> on the 4 changed/new files 0 errors 0 warnings
+    &middot; <code>next build</code> exit 0 with <code>&fnof; /api/admin/reports</code> registered &middot; exceljs
+    assembly smoke test produced a valid re-readable <code>.xlsx</code>. No schema / payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-03<br>02:30</code></td>
   <td><strong>Enable RLS on <code>site_settings</code></strong> <span class="pill warnp">security</span><br>(Supabase advisor email: &ldquo;Table publicly accessible &mdash; <code>rls_disabled_in_public</code>&rdquo;)</td>
