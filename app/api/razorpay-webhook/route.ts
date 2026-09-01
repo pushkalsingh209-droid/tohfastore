@@ -11,6 +11,7 @@ import { calculateSlashedPrice } from "@/app/utils/pricing";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
 import { productHref } from "@/app/utils/slug";
 import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
+import { resolveSupplierTargets } from "@/app/utils/orderNotificationNumbers";
 import { normalizeOrderItems } from "./normalizeOrderItems";
 import type { PricedItem } from "@/app/utils/repricing";
 import type { Json } from "@/types/db";
@@ -230,6 +231,41 @@ export async function POST(req: Request) {
         }
       }
 
+      // 1a-bis. Supplier / order-notification numbers (migration 0046). A
+      // product can be attached to one or more managed numbers; EVERY
+      // notification for that product -- this new order below, plus any
+      // low-stock / oversell alert -- also goes to those numbers. Resolved
+      // once here: per-product (for the stock alerts) and unioned (for the
+      // order message). Best-effort -- empty on any failure, and every
+      // number is re-checked against the live order_notification_numbers
+      // list. The main BUSINESS_WHATSAPP_NUMBER is always notified separately.
+      const BUSINESS_WA = process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351";
+      const supplierNumbersByProduct = new Map<string, string[]>();
+      let orderSupplierNumbers: string[] = [];
+      try {
+        const pids = orderItems
+          .map((i) => Number(i.id))
+          .filter((n) => Number.isFinite(n) && n > 0);
+        if (pids.length > 0) {
+          const [{ data: prodRows }, { data: liveRows }] = await Promise.all([
+            supabase.from("products").select("id, supplier_numbers").in("id", pids),
+            supabase.from("order_notification_numbers").select("phone_number"),
+          ]);
+          const liveNumbers = ((liveRows ?? []).map((r) => r.phone_number).filter(Boolean)) as string[];
+          for (const p of prodRows ?? []) {
+            const targets = resolveSupplierTargets([p.supplier_numbers], liveNumbers, BUSINESS_WA);
+            if (targets.length > 0) supplierNumbersByProduct.set(String(p.id), targets);
+          }
+          orderSupplierNumbers = resolveSupplierTargets(
+            (prodRows ?? []).map((p) => p.supplier_numbers),
+            liveNumbers,
+            BUSINESS_WA
+          );
+        }
+      } catch (supplierLookupErr) {
+        console.error("Supplier notification-number lookup failed:", supplierLookupErr);
+      }
+
       // 1b. Deduct purchased quantities from live stock so sold-out items stop
       // accepting further orders. Two paths, same outcome + same alerts:
       //
@@ -247,17 +283,25 @@ export async function POST(req: Request) {
       // alerts below. oversold_by = units ordered beyond what was in stock at
       // capture time -- payment is real, so the order still stands; a human
       // sorts fulfilment via the alert.
-      const runStockAlerts = async (label: string | number, qty: number, newInventory: number, oversoldBy: number) => {
+      const runStockAlerts = async (
+        productId: string | number,
+        label: string | number,
+        qty: number,
+        newInventory: number,
+        oversoldBy: number
+      ) => {
+        // Also copy this product's attached supplier numbers, if any.
+        const supplierExtras = supplierNumbersByProduct.get(String(productId)) ?? [];
         if (oversoldBy > 0) {
           try {
-            await sendOversellAlert(label, qty, Math.max(0, qty - oversoldBy));
+            await sendOversellAlert(label, qty, Math.max(0, qty - oversoldBy), supplierExtras);
           } catch (oversellErr) {
             console.error("Oversell alert failed:", oversellErr);
           }
         }
         try {
           if (newInventory <= LOW_STOCK_THRESHOLD) {
-            await sendLowStockAlert(label, newInventory);
+            await sendLowStockAlert(label, newInventory, supplierExtras);
           }
         } catch (lowStockErr) {
           console.error("Low-stock alert failed:", lowStockErr);
@@ -281,6 +325,7 @@ export async function POST(req: Request) {
               const pid = row.product_id;
               const matched = orderItems.find((it) => String(it.id) === String(pid));
               await runStockAlerts(
+                pid,
                 matched?.name ?? pid,
                 Number(matched?.quantity || 0),
                 Number(row.new_inventory),
@@ -311,6 +356,7 @@ export async function POST(req: Request) {
             if (!result) continue; // product row gone -- nothing to decrement
 
             await runStockAlerts(
+              productId,
               item.name || item.id,
               qty,
               Number(result.new_inventory),
@@ -489,6 +535,20 @@ export async function POST(req: Request) {
           ]);
         } catch (waError) {
           console.error("WhatsApp dispatch skip:", waError);
+        }
+
+        // Copy the same order summary to any supplier numbers attached to
+        // the products in this order (migration 0046). Best-effort, one by
+        // one, never blocks -- the business + customer sends above already
+        // ran.
+        if (orderSupplierNumbers.length > 0) {
+          const results = await Promise.allSettled(
+            orderSupplierNumbers.map((n) => sendWhatsappMessage(n, businessMessage, heroImage))
+          );
+          results.forEach((r, i) => {
+            if (r.status === "rejected")
+              console.error(`Supplier order WhatsApp to ${orderSupplierNumbers[i]} failed:`, r.reason);
+          });
         }
 
         // 3. Best-effort order confirmation emails (Resend) -- one to the
@@ -763,21 +823,28 @@ async function sendOrderEmails(params: {
   }
 }
 
-async function sendLowStockAlert(productName: string | number, remaining: number) {
+// `extraNumbers` -- the attached supplier numbers for this product, if any
+// (migration 0046). They get the same alert as the business number.
+async function sendLowStockAlert(productName: string | number, remaining: number, extraNumbers: string[] = []) {
   const message = [
     "Low stock alert!",
     `Product: ${productName}`,
     `Remaining units: ${remaining}`,
     remaining === 0 ? "This item is now OUT OF STOCK." : "Consider restocking soon.",
   ].join("\n");
-  await sendWhatsappMessage(process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351", message);
+  await fanOutAlert(message, extraNumbers);
 }
 
 // Fired when a captured order asked for more units of an item than were in
 // stock at the moment the webhook ran (see decrement_inventory, migration
 // 0041). The payment is genuine and the order row is recorded -- this is a
 // heads-up that fulfilment for this line can't be met as-is.
-async function sendOversellAlert(productName: string | number, ordered: number, available: number) {
+async function sendOversellAlert(
+  productName: string | number,
+  ordered: number,
+  available: number,
+  extraNumbers: string[] = []
+) {
   const inStock = Math.max(0, available);
   const message = [
     "⚠️ OVERSELL — action needed",
@@ -787,5 +854,15 @@ async function sendOversellAlert(productName: string | number, ordered: number, 
     `Short by: ${ordered - inStock} unit(s)`,
     "Payment is real and the order is recorded. Restock, split-ship, or refund the shortfall.",
   ].join("\n");
-  await sendWhatsappMessage(process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351", message);
+  await fanOutAlert(message, extraNumbers);
+}
+
+// Send a plain-text alert to the main business number plus any extra
+// (supplier) numbers -- each best-effort, none blocking the others.
+async function fanOutAlert(message: string, extraNumbers: string[]) {
+  const targets = [process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351", ...extraNumbers];
+  const results = await Promise.allSettled(targets.map((n) => sendWhatsappMessage(n, message)));
+  results.forEach((r, i) => {
+    if (r.status === "rejected") console.error(`Alert WhatsApp to ${targets[i]} failed:`, r.reason);
+  });
 }

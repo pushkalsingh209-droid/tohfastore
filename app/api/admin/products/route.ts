@@ -7,13 +7,15 @@ import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { attachThumbUrls } from "@/app/utils/imageThumb";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
 import { productHref } from "@/app/utils/slug";
+import { normalizeIndianPhone } from "@/app/utils/phone";
+import { isValidOrderNotificationNumber } from "@/app/utils/orderNotificationNumbers";
 import type { Insert, Update } from "@/types/tables";
 
 // Some Supabase projects may not have every column yet (added by a later
 // migration the admin hasn't run) -- these routes degrade gracefully by
 // dropping whichever optional column Postgres complains about and retrying,
 // instead of failing the whole save.
-const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg", "hidden"];
+const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg", "hidden", "supplier_numbers"];
 
 function isMissingColumn(error: unknown, columnHint: string) {
   const e = (error ?? {}) as { message?: string; code?: string };
@@ -74,6 +76,22 @@ function parseOptionalText(value: unknown): string | null {
   return trimmed || null;
 }
 
+// Supplier / order-notification numbers attached to this product (0046).
+// An array of normalised, valid Indian numbers; blanks/invalids dropped;
+// empty => null so the column reads clean. The webhook still cross-checks
+// each against the live order_notification_numbers list before sending.
+function parseSupplierNumbers(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const clean = Array.from(
+    new Set(
+      value
+        .map((v) => normalizeIndianPhone(String(v ?? "")))
+        .filter(isValidOrderNotificationNumber)
+    )
+  );
+  return clean.length ? clean : null;
+}
+
 // Blank/unset means "no override -- fall back to the label's own filter,
 // then the site default"; anything else must be one of the known presets.
 function parseOptionalPhotoFilter(value: unknown): string | null {
@@ -122,6 +140,7 @@ export async function POST(req: Request) {
       photo_filter: parseOptionalPhotoFilter(body.photo_filter),
       cost_price: parseOptionalPositiveNumber(body.cost_price),
       cost_price_per_kg: parseOptionalPositiveNumber(body.cost_price_per_kg),
+      supplier_numbers: parseSupplierNumbers(body.supplier_numbers),
       // A brand-new product published with stock already on hand counts as
       // restocked right now -- that's when this capital actually got tied up.
       last_restocked_at: Number(body.inventory) > 0 ? new Date().toISOString() : null,
@@ -188,6 +207,7 @@ export async function PATCH(req: Request) {
     if (fields.photo_filter !== undefined) payload.photo_filter = parseOptionalPhotoFilter(fields.photo_filter);
     if (fields.cost_price !== undefined) payload.cost_price = parseOptionalPositiveNumber(fields.cost_price);
     if (fields.cost_price_per_kg !== undefined) payload.cost_price_per_kg = parseOptionalPositiveNumber(fields.cost_price_per_kg);
+    if (fields.supplier_numbers !== undefined) payload.supplier_numbers = parseSupplierNumbers(fields.supplier_numbers);
     if (fields.hidden !== undefined) payload.hidden = Boolean(fields.hidden);
 
     // Fetched before the update specifically to detect a 0 -> positive

@@ -68,6 +68,7 @@ function AdminDashboard() {
   const [materials, setMaterials] = useState<AdminNamedOption[]>([]);
   const [labels, setLabels] = useState<AdminLabel[]>([]);
   const [whatsappNumbers, setWhatsappNumbers] = useState<AdminWhatsappNumber[]>([]);
+  const [orderNotificationNumbers, setOrderNotificationNumbers] = useState<AdminWhatsappNumber[]>([]);
   // Preset "Chat for ..." button labels (chat_button_labels table) --
   // separate saved lists for in-stock/out-of-stock, switched via the
   // chat_label_in_stock/chat_label_out_of_stock settings. See ProductCard.tsx.
@@ -118,7 +119,7 @@ function AdminDashboard() {
   // them in parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes, loginAttemptsRes, backupCodesRes, chatLabelsRes] = await Promise.allSettled([
+    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes, loginAttemptsRes, backupCodesRes, chatLabelsRes, orderNotificationNumbersRes] = await Promise.allSettled([
       apiRequest("/api/admin/products"),
       apiRequest("/api/admin/orders"),
       apiRequest("/api/admin/reviews"),
@@ -135,6 +136,7 @@ function AdminDashboard() {
       apiRequest("/api/admin/login-attempts"),
       apiRequest("/api/admin/backup-codes"),
       apiRequest("/api/admin/chat-labels"),
+      apiRequest("/api/admin/order-notification-numbers"),
     ]);
     if (productsRes.status === "fulfilled") setProducts(productsRes.value.products);
     if (ordersRes.status === "fulfilled") setOrders(ordersRes.value.orders);
@@ -162,6 +164,7 @@ function AdminDashboard() {
     if (loginAttemptsRes.status === "fulfilled") setLoginAttempts(loginAttemptsRes.value.attempts);
     if (backupCodesRes.status === "fulfilled") setBackupCodesRemaining(backupCodesRes.value.remaining);
     if (chatLabelsRes.status === "fulfilled") setChatLabelPresets(chatLabelsRes.value.labels);
+    if (orderNotificationNumbersRes.status === "fulfilled") setOrderNotificationNumbers(orderNotificationNumbersRes.value.numbers);
     setLoadingOrders(false);
   };
 
@@ -175,7 +178,7 @@ function AdminDashboard() {
   };
 
   return (
-    <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, coupons, setCoupons, orders, setOrders, loadingOrders, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, abandonedCheckoutStale, settings, setSettings, chatLabelPresets, setChatLabelPresets, products, setProducts, categories, setCategories, labels, setLabels, colors, setColors, materials, setMaterials, whatsappNumbers, setWhatsappNumbers, refetch: fetchData }}>
+    <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, coupons, setCoupons, orders, setOrders, loadingOrders, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, abandonedCheckoutStale, settings, setSettings, chatLabelPresets, setChatLabelPresets, products, setProducts, categories, setCategories, labels, setLabels, colors, setColors, materials, setMaterials, whatsappNumbers, setWhatsappNumbers, orderNotificationNumbers, setOrderNotificationNumbers, refetch: fetchData }}>
     <div className="bg-[var(--background)] min-h-screen py-12">
       <div className="max-w-5xl mx-auto px-6 space-y-12">
 

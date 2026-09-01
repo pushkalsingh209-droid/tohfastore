@@ -679,6 +679,10 @@
     <li><b>Units-sold tally.</b> <code>apply_product_sales(items, +1)</code> (migration 0042).</li>
     <li><b>Notify.</b> Build the summary once; send business + customer WhatsApp (with a hero image) and both
     Resend emails. All best-effort &mdash; a failure logs and is swallowed.</li>
+    <li><b>Supplier copies</b> (0046). Resolve <code>products.supplier_numbers</code> for this order's items
+    against the live <code>order_notification_numbers</code> list (<code>resolveSupplierTargets</code>): the
+    unioned set gets the same business order message; each product's own set is copied on that product's
+    low-stock / oversell alert. Best-effort, <code>Promise.allSettled</code>, never blocks.</li>
   </ol>
   <div class="note"><b>Deliberately absent</b>
   No <code>revalidateTag("products")</code> or <code>"orders")</code> here. Those tags are read on every
@@ -1034,7 +1038,8 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
       <li><b>Add / edit form</b> &mdash; title, price, cost price (optional; powers margin stats, never shown
       to customers), category, label, cover + gallery images, description, initial stock, weight &amp;
       dimensions (typed in whichever unit you pick; always stored as g/cm), material, colour, WhatsApp
-      enquiry number.</li>
+      enquiry number, and <b>&ldquo;also notify suppliers&rdquo;</b> checkboxes &mdash; tick any
+      order-notification numbers (Settings) that should get a copy of every notification for this product.</li>
       <li><b>Product Statistics</b> &mdash; stock &amp; value broken down by label and by category.</li>
       <li><b>Inventory Insights</b> &mdash; top value products, dead stock, stock aging, cost &amp; margin.</li>
       <li><b>Live Storefront Catalog &amp; Stock Tracker</b> &mdash; search / filter / paginate; inline
@@ -1072,9 +1077,11 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
   <div class="card">
     <h4>Settings</h4>
     <p>Storefront defaults; the <b>Spend &amp; Save Offer</b> (see below); the WhatsApp-numbers pool + bulk
-    reassignment; the "Chat for&hellip;" button labels; product labels + bulk-assign; and categories (each
-    with its own GST %, discount %, per-page size, and homepage visibility). See the table below for what
-    each control actually changes.</p>
+    reassignment; <b>Order Notification Numbers</b> (supplier list &mdash; up to 10 extra WhatsApp numbers
+    that get order notifications for the products they're attached to, on top of the main business number);
+    the "Chat for&hellip;" button labels; product labels + bulk-assign; and categories (each with its own
+    GST %, discount %, per-page size, and homepage visibility). See the table below for what each control
+    actually changes.</p>
   </div>
 
   <div class="card">
@@ -1101,6 +1108,7 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
       <tr><td>Ganesha popup: auto-shows / cooldown / collapse delay</td><td>How often the mascot popup appears and how long its floating trigger stays expanded</td><td>Storefront popup</td></tr>
       <tr><td>WhatsApp Numbers &rarr; Set as Default</td><td>The number used for enquiries on products with none of their own (falls back to +91&nbsp;6302672351)</td><td>Product "chat" buttons</td></tr>
       <tr><td>WhatsApp Numbers &rarr; Bulk switch</td><td>Moves a whole group of products (by current number, or by category) to another number in one write</td><td>&mdash;</td></tr>
+      <tr><td>Order Notification Numbers</td><td>Up to 10 extra WhatsApp numbers (suppliers). Tick them per-product in the product form; every notification for that product &mdash; new paid order, low-stock, oversell, shipped/delivered &mdash; then also goes to those numbers. The main business number always gets everything regardless.</td><td>Supplier WhatsApp</td></tr>
       <tr><td>Chat Button Labels</td><td>The text on the product WhatsApp button, one active label per stock state (in-stock / out-of-stock)</td><td>Every card / product page</td></tr>
       <tr><td>Product Labels &rarr; Photo look</td><td>A per-label photo filter override (beats the site default; a product's own override beats this)</td><td>That label's products</td></tr>
       <tr><td>Product Labels &rarr; Bulk-assign</td><td>Tags every homepage product, or every product in a category, with a label in one write</td><td>&mdash;</td></tr>
@@ -1148,6 +1156,7 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
       <tr><td><b>product_sales drift</b></td><td>The units-sold aggregate no longer matches a full recount &mdash; usually an order cancelled outside the normal admin path</td><td>Open the reconcile job's response, sanity-check the diff, then hit the URL once with <code>?heal=1</code> to write the corrected values.</td></tr>
       <tr><td><b>Oversell</b></td><td>An order was for more units than were in stock at capture time. The payment is real &mdash; the order stands</td><td>Fulfil what you can, contact the customer about the rest, restock.</td></tr>
       <tr><td><b>Low stock</b></td><td>A product dropped to or below the low-stock threshold</td><td>Restock, or hide it from the storefront.</td></tr>
+      <tr><td><b>Supplier copies</b></td><td>Any product with Order Notification Numbers attached &mdash; its supplier(s) get the same new-order / low-stock / oversell / status message you do (0046)</td><td>Nothing extra; it's informational. Manage the list in Settings.</td></tr>
       <tr><td><b>Green API session lost</b></td><td>The WhatsApp instance dropped its authorised session &mdash; customer confirmations may not be sending</td><td>Re-scan the QR / re-authorise the Green API instance. The Overview card goes amber too.</td></tr>
       <tr><td><b>Stale heartbeat</b> (Overview card, not a WhatsApp)</td><td>A scheduled job hasn't stamped its timestamp in the expected window</td><td>Check the cron-job.org job's history for failures; check <code>CRON_SECRET</code> matches.</td></tr>
     </tbody>
@@ -1570,6 +1579,7 @@ Column lists below are the <em>current</em> effective schema, reconstructed from
 <tr><td><code>last_restocked_at</code></td><td>timestamptz</td><td>Stamped whenever a save <em>increases</em> inventory (incl. creation with stock &gt; 0). Backs Stock Aging stat. <em>(0035)</em></td></tr>
 <tr><td><code>cost_price_per_kg</code></td><td>numeric</td><td>Cost analogue of <code>price_per_kg</code> (no margin). <em>(0036)</em></td></tr>
 <tr><td><code>hidden</code></td><td>boolean = false</td><td>Hides from all listings, search, sitemap, catalogue PDF, sliders, <em>and</em> direct URL (detail 404s; order creation rejects). <em>(0038)</em></td></tr>
+<tr><td><code>supplier_numbers</code></td><td>text[]</td><td>Normalised WhatsApp numbers (from <code>order_notification_numbers</code>) that also get this product's order notifications, on top of the business number. NULL = none. The webhook / notify route re-check each against the live list before sending. Set via the product form&rsquo;s supplier checkboxes. <em>(0046)</em></td></tr>
 <tr><td><code>created_at</code></td><td>timestamptz</td><td>Index <code>products_created_at_idx</code> (desc).</td></tr>
 </tbody></table></div>
 <p class="muted">Indexes: <code>products_created_at_idx</code>, <code>products_display_order_idx</code>.
@@ -1603,6 +1613,7 @@ RLS: anon <code>SELECT USING (hidden = false)</code>; service role bypasses.</p>
 <tr><td><code>site_settings</code></td><td><code>key</code> text PK, <code>value</code> text</td><td>KV store. Keys: <code>default_page_size</code>, <code>brass_price_per_kg</code>, <code>catalog_reveal_batch_size</code>, <code>weight_unit</code>, <code>dimension_unit</code>, <code>default_whatsapp_number</code>, <code>default_photo_filter</code>, <code>ganesha_cooldown_minutes</code>, <code>ganesha_max_auto_shows</code>, <code>ganesha_collapse_delay_seconds</code>, <code>chat_label_in_stock</code>, <code>chat_label_out_of_stock</code>, <code>last_keepalive_at</code> / <code>last_greenapi_state</code> / <code>last_greenapi_error</code> (all stamped by <code>/api/keepalive</code>, read by the admin Overview), <code>last_abandoned_checkout_run_at</code> (stamped by that cron, #14), <code>stock_reservations_enabled</code> (<code>'0'</code>/<code>'1'</code> kill switch for the 0043 reservation feature), <code>spend_tier_offer</code> (JSON blob &mdash; the Spend &amp; Save tier offer; <code>app/utils/spendTierOffer.ts</code>; ships disabled, 0044). Public subset via <code>/api/settings</code>; the Spend &amp; Save offer is exposed (only while live) via <code>/api/offer</code>. <em>(0011, 0022, 0025, 0043, 0044)</em></td></tr>
 <tr><td><code>product_colors</code>, <code>product_materials</code>, <code>labels</code></td><td><code>name</code> UNIQUE (+ <code>labels.photo_filter</code>)</td><td>Managed dropdown lists for the admin product form. Storefront reads distinct in-use labels off <code>products</code> via <code>/api/labels</code> instead. <em>(0017, 0018, 0021, 0023)</em></td></tr>
 <tr><td><code>whatsapp_numbers</code></td><td><code>phone_number</code> UNIQUE (<code>91&hellip;</code>), <code>label</code></td><td>Additional per-product enquiry numbers. The active site-wide default lives in <code>site_settings.default_whatsapp_number</code>. <em>(0019)</em></td></tr>
+<tr><td><code>order_notification_numbers</code></td><td><code>phone_number</code> UNIQUE (<code>91&hellip;</code>), <code>label</code></td><td>Supplier / order-notification numbers &mdash; SEPARATE from <code>whatsapp_numbers</code> (enquiries). Extra recipients: attach one or more to a product (<code>products.supplier_numbers</code>) and every notification for that product (new paid order, low-stock, oversell, shipped/delivered) also goes to them. The main <code>BUSINESS_WHATSAPP_NUMBER</code> is always notified regardless. Admin cap 10 (<code>MAX_ORDER_NOTIFICATION_NUMBERS</code>). <em>(0046)</em></td></tr>
 <tr><td><code>chat_button_labels</code></td><td><code>kind</code> in_stock|out_of_stock, <code>label</code> 1&ndash;30, UNIQUE(kind,label)</td><td>Preset pool for the &ldquo;Chat for &hellip;&rdquo; product-card button. Active choice is a plain-text <code>site_settings</code> value. <em>(0033)</em></td></tr>
 </tbody></table></div>
 
@@ -1683,6 +1694,7 @@ policy exists.</p>
 <tr><td>0043</td><td>add_stock_reservations</td><td><code>stock_reservations</code> table (<code>held</code>/<code>consumed</code>/<code>released</code>, <code>expires_at</code>) + <code>reserve_stock(token, items jsonb, ttl_seconds)</code> (two-pass, all-or-nothing, row-locks each product, returns <code>ok</code> / offending product + <code>available</code>) + <code>consume_reservation(token)</code> (decrement + mark consumed, same <code>(new_inventory, oversold_by)</code> shape as 0041; returns nothing if no held rows &rarr; caller falls back to the 0041 loop). <code>EXECUTE</code> service-role only (0041/0042 grant gotcha). Seeds kill switch <code>site_settings.stock_reservations_enabled='0'</code>. <strong>Ships disabled</strong> &mdash; flip to <code>'1'</code> in the SQL editor after the checks in the migration file pass. See &sect;checkout + <code>docs/DESIGN-stock-reservation.md</code>.</td></tr>
 <tr><td>0044</td><td>seed_spend_tier_offer</td><td>Seeds <code>site_settings.spend_tier_offer</code> &mdash; one JSON row for the storewide <strong>Spend &amp; Save</strong> tier offer (<code>app/utils/spendTierOffer.ts</code>). Full ladder (&#8377;2,000&rarr;&#8377;250 &hellip; &#8377;35,000&rarr;&#8377;5,000, the &#8377;2,000 rung a low test step), <code>enabled:false</code>. No schema change &mdash; <code>site_settings</code> is KV text; <code>on conflict (key) do nothing</code> so it never overwrites an owner-edited row. Owner turns it on from Settings &rarr; Spend &amp; Save Offer. While on, checkout lets the shopper pick the offer or a coupon (mutually exclusive); <code>/api/razorpay</code> re-validates whichever was chosen and is authoritative.</td></tr>
 <tr><td>0045</td><td>add_order_courier_name</td><td><code>orders.courier_name text</code> (nullable, no constraint). The delivery partner an order shipped with, set from <code>/api/admin/orders/update-status</code> alongside <code>awb_number</code>. No index &mdash; not a lookup key. Applied to the live DB by the owner ahead of the merge.</td></tr>
+<tr><td>0046</td><td>add_order_notification_numbers</td><td>New <code>order_notification_numbers</code> table (RLS on, no policies) + <code>products.supplier_numbers text[]</code>. Supplier list for order notifications, separate from the enquiry <code>whatsapp_numbers</code>. No cascade &mdash; deleting a number is safe because the send paths intersect with the live table anyway (the admin delete route also strips it from products for tidiness). Applied to the live DB by the owner ahead of the merge.</td></tr>
 </tbody></table></div>
 
 <p><strong><code>product_sales</code> drift check</strong> &mdash; the tally is only self-correcting for cancellations
@@ -1845,7 +1857,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/admin/login-attempts</code></td><td><span class="tag t-get">get</span></td><td>Last 50 attempts for the Security tab.</td></tr>
 <tr><td><code>/api/admin/backup-codes</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span></td><td>GET remaining count; POST regenerates all 8 (plaintext returned once).</td></tr>
 <tr><td><code>/api/admin/totp-qr</code></td><td><span class="tag t-get">get</span></td><td>Renders an <code>otpauth://</code> QR for the existing <code>ADMIN_TOTP_SECRET</code>. Does not rotate anything.</td></tr>
-<tr><td><code>/api/admin/products</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span></td><td>Product CRUD-ish. <code>insert/updateWithFallback</code> drops any optional column Postgres complains about and retries. Stamps <code>last_restocked_at</code> on inventory increases; fires back-in-stock WhatsApp on 0&rarr;&gt;0. <code>revalidateTag("products","max")</code>.</td></tr>
+<tr><td><code>/api/admin/products</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span></td><td>Product CRUD-ish. <code>insert/updateWithFallback</code> drops any optional column Postgres complains about and retries. Stamps <code>last_restocked_at</code> on inventory increases; fires back-in-stock WhatsApp on 0&rarr;&gt;0. Accepts <code>supplier_numbers</code> (array &mdash; normalised + validated + de-duped, empty &rarr; null). <code>revalidateTag("products","max")</code>.</td></tr>
 <tr><td><code>/api/admin/orders</code></td><td><span class="tag t-get">get</span></td><td>All orders, newest first.</td></tr>
 <tr><td><code>/api/admin/orders/update-status</code></td><td><span class="tag t-post">post</span></td><td>Persists status (+ optional <code>awb_number</code> / <code>courier_name</code> &mdash; each only written when the body includes it, so a status-only change keeps them). <strong>Does NOT notify the customer</strong> &mdash; that's the separate explicit <code>/api/admin/orders/notify</code> action, so editing tracking fields never re-spams. Cancel transition still backs units out of <code>product_sales</code>. <code>revalidateTag("orders","max")</code>.</td></tr>
 <tr><td><code>/api/admin/orders/notify</code></td><td><span class="tag t-post">post</span></td><td><code>{ id, comment? }</code> &mdash; sends a customer notification for the order's <em>current</em> status (any of the four), on an explicit admin click only (the "Notify customer" dialog). Best-effort <strong>WhatsApp + email</strong>, each its own try/catch; message text + email HTML from <code>app/utils/orderNotifications.ts</code>; shipped carries the courier + tracking line, delivered a review link, and the one-off <code>comment</code> (&le; 600 chars, not stored) is appended to both. Returns <code>{ ok, status, whatsapp, email }</code> with each channel <code>"sent"|"skipped"|"failed"</code>. Changes nothing on the order.</td></tr>
@@ -1859,6 +1871,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/admin/labels/bulk-assign</code></td><td><span class="tag t-post">post</span></td><td>Tag many products at once &mdash; <code>mode: "category"</code> or <code>"home"</code> (all homepage-visible).</td></tr>
 <tr><td><code>/api/admin/chat-labels</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-del">delete</span></td><td>Preset pool for the chat button (per <code>kind</code>).</td></tr>
 <tr><td><code>/api/admin/whatsapp-numbers</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span></td><td>Managed enquiry-number list. POST normalises via <code>phone.ts</code> and now validates <code>/^91[6-9]\d{9}$/</code> (was a loose <code>length &lt; 10</code> guard).</td></tr>
+<tr><td><code>/api/admin/order-notification-numbers</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-del">delete</span></td><td>The supplier / order-notification list (0046). POST validates + caps at <code>MAX_ORDER_NOTIFICATION_NUMBERS</code> (10); DELETE also strips the number from any <code>products.supplier_numbers</code>. Distinct from <code>/api/admin/whatsapp-numbers</code> (enquiries).</td></tr>
 <tr><td><code>/api/admin/whatsapp-numbers/reassign</code></td><td><span class="tag t-post">post</span></td><td>Bulk-move products to a number, filtered by current number or category. <code>revalidateTag("products","max")</code>.</td></tr>
 <tr><td><code>/api/admin/analytics</code></td><td><span class="tag t-get">get</span></td><td>Order metrics computed in JS from <code>orders</code> <strong>where <code>status != 'cancelled'</code></strong>: totals, AOV, unique/repeat customers (placeholder contacts excluded from identity), 6-month revenue trend.</td></tr>
 <tr><td><code>/api/admin/whatsapp-enquiries</code></td><td><span class="tag t-get">get</span></td><td>Aggregates the <code>whatsapp_enquiries</code> log: totals, by category/product/number/source, 14-day daily trend.</td></tr>
@@ -2093,10 +2106,10 @@ normalisation goes through <code>app/utils/phone.ts</code> (#18).</p>
 <tbody>
 <tr><td>Product enquiry link</td><td>&ldquo;Chat&rdquo; buttons on card/detail (<code>getProductWhatsappLink</code>)</td><td>opens <code>wa.me</code>; click logged via <code>/api/enquiries</code> beacon. Number priority: product&rsquo;s own <code>whatsapp_number</code> &gt; (out-of-stock &amp;&amp; &ldquo;Misc&rdquo; &rarr; <code>919058542074</code>) &gt; site default (<code>site_settings.default_whatsapp_number</code>) &gt; hardcoded <code>916302672351</code>.</td></tr>
 <tr><td>Checkout OTP</td><td><code>/api/whatsapp-otp/send</code></td><td>&rarr; customer (6-digit code, 5-min TTL)</td></tr>
-<tr><td>Order confirmation</td><td><code>/api/razorpay-webhook</code></td><td>&rarr; business (ops alert) + &rarr; customer (GST invoice + a <code>/success?order_id=</code> link), both as image-with-caption using the first item photo. The customer email carries a &ldquo;View / print invoice&rdquo; button (<code>invoiceUrl</code> param, customer copy only).</td></tr>
-<tr><td>Low-stock alert</td><td>webhook, inventory &le; 3 after a sale</td><td>&rarr; business</td></tr>
+<tr><td>Order confirmation</td><td><code>/api/razorpay-webhook</code></td><td>&rarr; business (ops alert) + &rarr; customer (GST invoice + a <code>/success?order_id=</code> link), both as image-with-caption using the first item photo. The customer email carries a &ldquo;View / print invoice&rdquo; button (<code>invoiceUrl</code> param, customer copy only). <strong>+ &rarr; any supplier numbers</strong> (0046) attached to the products in this order &mdash; they get the same business ops message.</td></tr>
+<tr><td>Low-stock alert</td><td>webhook, inventory &le; 3 after a sale</td><td>&rarr; business <strong>+ that product's supplier numbers</strong> (0046)</td></tr>
 <tr><td>Back-in-stock</td><td>admin product PATCH, inventory 0 &rarr; &gt; 0</td><td>&rarr; each pending <code>stock_alert_subscriptions</code> phone</td></tr>
-<tr><td>Order status update (manual)</td><td><code>/api/admin/orders/notify</code> &mdash; the "Notify customer" dialog, any status</td><td>&rarr; customer, <strong>WhatsApp + email</strong> (best-effort each). Shipped carries the delivery partner + tracking number; delivered links to the review form; all carry a <code>/success?order_id=</code> invoice link and any one-off admin note. Never fires on its own &mdash; only on an explicit send.</td></tr>
+<tr><td>Order status update (manual)</td><td><code>/api/admin/orders/notify</code> &mdash; the "Notify customer" dialog, any status</td><td>&rarr; customer, <strong>WhatsApp + email</strong> (best-effort each). Shipped carries the delivery partner + tracking number; delivered links to the review form; all carry a <code>/success?order_id=</code> invoice link and any one-off admin note. <strong>+ &rarr; supplier numbers</strong> (0046) attached to the order's products, same status text. Never fires on its own &mdash; only on an explicit send.</td></tr>
 <tr><td>Lead follow-up</td><td><code>/api/leads</code> (auto) or <code>/api/admin/leads/follow-up</code> (manual)</td><td>&rarr; lead</td></tr>
 <tr><td>Abandoned checkout</td><td><code>/api/cron/abandoned-checkout</code></td><td>&rarr; lead (once, 2h&ndash;7d old)</td></tr>
 <tr><td>Session keepalive</td><td><code>/api/keepalive</code></td><td><code>getStateInstance</code> ping (no message)</td></tr>
@@ -2327,6 +2340,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>recentlyViewed.ts</code>, <code>visitorId.ts</code></td><td>localStorage recently-viewed list (max 8); anonymous per-browser UUID.</td></tr>
 <tr><td><code>couriers.ts</code></td><td><code>COURIER_PRESETS</code> (dropdown list for the admin Orders tab) + <code>normalizeCourierName(raw)</code> (trim + clamp to 60, empty &rarr; null). The stored <code>orders.courier_name</code> is unconstrained free text; this list is convenience only. <em>(0045)</em></td></tr>
 <tr><td><code>orderNotifications.ts</code></td><td>Customer status-update message text (<code>buildStatusWhatsappMessage</code>) + email HTML (<code>buildStatusEmailHtml</code>, <code>statusEmailSubject</code>) for all four statuses, plus <code>cleanNotifyComment</code> (trim + clamp 600). Pure &mdash; the text builder is imported client-side too for the Notify dialog's live preview. Used only by <code>/api/admin/orders/notify</code>. <strong>11 unit tests.</strong></td></tr>
+<tr><td><code>orderNotificationNumbers.ts</code></td><td>Supplier order-notification list (0046). <code>MAX_ORDER_NOTIFICATION_NUMBERS</code> (10), <code>isValidOrderNotificationNumber</code> (<code>/^91[6-9]\d{9}$/</code>), and the pure <code>resolveSupplierTargets(productSupplierArrays, liveNumbers, businessNumber)</code> &mdash; distinct in-list supplier numbers across an order's products, minus the business number, de-duped. DB reads live in the routes / webhook. <strong>7 unit tests.</strong></td></tr>
 <tr><td><code>chatLabels.ts</code>, <code>indianStates.ts</code>, <code>pagination.ts</code>, <code>loadingMessages.ts</code>, <code>downloadCsv.ts</code>, <code>brandMark.tsx</code>, <code>appleSplashScreens.ts</code></td><td>Small constants / helpers.</td></tr>
 </tbody></table></div>
 
@@ -2716,6 +2730,55 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-03<br>01:15</code></td>
+  <td><strong>Supplier order-notification numbers</strong> <span class="pill warnp">payment path (webhook)</span><br>(owner: a small managed list of supplier WhatsApp numbers; attach one or more to a product; every notification for that product also copies those numbers &mdash; the main business number keeps getting everything)</td>
+  <td>
+    Migration <strong>0046</strong>: new <code>order_notification_numbers</code> table (RLS on, no policies)
+    + <code>products.supplier_numbers text[]</code>. A managed list SEPARATE from the enquiry
+    <code>whatsapp_numbers</code>. Applied to the live DB by the owner ahead of the merge;
+    <code>types/db.ts</code> hand-edited.
+    <br><br>
+    New pure <strong><code>app/utils/orderNotificationNumbers.ts</code></strong> &mdash;
+    <code>MAX_ORDER_NOTIFICATION_NUMBERS</code> (10), <code>isValidOrderNotificationNumber</code>, and
+    <code>resolveSupplierTargets(productSupplierArrays, liveNumbers, businessNumber)</code> (distinct in-list
+    supplier numbers across an order's products, minus the business number). <strong>7 unit tests.</strong>
+    New <strong><code>/api/admin/order-notification-numbers</code></strong> (GET / POST cap-checked / DELETE
+    which also strips the number from <code>products.supplier_numbers</code>).
+    <code>/api/admin/products</code> accepts <code>supplier_numbers</code> (normalised + validated + de-duped,
+    added to <code>OPTIONAL_COLUMNS</code>).
+    <br><br>
+    <strong>razorpay-webhook</strong> <span class="pill warnp">payment path</span>: after the existing
+    business + customer sends, resolve the order's products' <code>supplier_numbers</code> against the live
+    list and (a) copy the business order message to the unioned set, (b) copy each product's low-stock /
+    oversell alert to that product's set (<code>runStockAlerts</code> gained a <code>productId</code> arg;
+    <code>sendLowStockAlert</code>/<code>sendOversellAlert</code> gained an <code>extraNumbers</code> arg and
+    fan out via a shared <code>fanOutAlert</code>). All best-effort, <code>Promise.allSettled</code>, never
+    blocks order recording &mdash; a lookup failure just yields no supplier copies.
+    <code>/api/admin/orders/notify</code> also copies the status message to the order's supplier numbers.
+    <br><br>
+    <strong>Admin (mobile-first)</strong>: Settings &rarr; <em>Order Notification Numbers</em> card (list /
+    add / remove, cap 10). Product add/edit form &rarr; <em>&ldquo;also notify suppliers&rdquo;</em>
+    checkbox grid. <code>orderNotificationNumbers</code> added to <code>AdminDataContext</code> +
+    <code>loadAll()</code>.
+  </td>
+  <td><em>new:</em> <code>supabase/migrations/0046_add_order_notification_numbers.sql</code>,
+    <code>app/utils/orderNotificationNumbers.ts</code>, <code>app/utils/orderNotificationNumbers.test.ts</code>,
+    <code>app/api/admin/order-notification-numbers/route.ts</code><br>
+    <em>edited:</em> <code>app/api/razorpay-webhook/route.ts</code>,
+    <code>app/api/admin/orders/notify/route.ts</code>, <code>app/api/admin/products/route.ts</code>,
+    <code>app/admin/page.tsx</code>, <code>app/admin/AdminDataContext.tsx</code>,
+    <code>app/admin/tabs/SettingsTab.tsx</code>, <code>app/admin/tabs/ProductsTab.tsx</code>,
+    <code>types/db.ts</code> &middot; <code>docs/HANDBOOK.html</code> &middot; <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 155 passed (1 pre-existing skip), incl. 7
+    new <code>orderNotificationNumbers</code> tests &middot; <code>eslint</code> on all 10 changed files:
+    0 errors (3 pre-existing <code>set-state-in-effect</code> warnings) &middot; <code>next build</code> exit 0,
+    new route registered. Live: migration 0046 present (table + column queryable); dev-server smoke &mdash;
+    new admin route 401s (auth gate) not 500s, <code>/api/offer</code> / <code>/api/coupons/*</code>
+    regressions clean. <span class="pill warnp">payment path</span> &mdash; the webhook supplier fan-out is
+    best-effort around unchanged order recording; owner watches one real paid order (for an attached product)
+    to confirm the supplier copy lands.</td>
+</tr>
 <tr>
   <td><code>2026-09-03<br>00:20</code></td>
   <td><strong>Manual "Notify customer" &mdash; decouple status save from the message</strong><br>(owner: the WhatsApp fired every time status was set to Shipped <em>or</em> the AWB / courier was edited; wanted to set all three first, then send one notification &mdash; and a send button for every status, with an optional comment)</td>

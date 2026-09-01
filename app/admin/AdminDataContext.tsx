@@ -101,6 +101,9 @@ export interface AdminWhatsappNumber {
   phone_number: string;
   label?: string | null;
 }
+// Supplier / order-notification numbers (migration 0046) -- same shape,
+// different table + purpose (extra recipients for order notifications).
+export type AdminOrderNotificationNumber = AdminWhatsappNumber;
 
 // Preset "Chat for ..." button labels (chat_button_labels table) -- managed
 // by the settings tab's Chat Button Labels panel.
@@ -189,6 +192,10 @@ export interface AdminData {
   setMaterials: (value: AdminNamedOption[]) => void;
   whatsappNumbers: AdminWhatsappNumber[];
   setWhatsappNumbers: (value: AdminWhatsappNumber[]) => void;
+  // Supplier / order-notification numbers (0046) -- managed in SettingsTab,
+  // attached to products in ProductsTab.
+  orderNotificationNumbers: AdminOrderNotificationNumber[];
+  setOrderNotificationNumbers: (value: AdminOrderNotificationNumber[]) => void;
   // Re-runs the page's loadAll() -- products handlers that touch many rows
   // at once (bulk label assign, full add/edit) refetch rather than trying to
   // patch local state.

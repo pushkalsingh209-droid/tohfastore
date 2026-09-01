@@ -13,6 +13,7 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { productHref } from "@/app/utils/slug";
 import { normalizeIndianPhone } from "@/app/utils/phone";
 import { normalizeCourierName } from "@/app/utils/couriers";
+import { resolveSupplierTargets } from "@/app/utils/orderNotificationNumbers";
 import { asCustomerDetails, asOrderItems } from "@/app/utils/orderTypes";
 import {
   buildStatusWhatsappMessage,
@@ -108,7 +109,46 @@ export async function POST(req: Request) {
       console.error("Notify email error:", emailError);
     }
 
-    return NextResponse.json({ ok: true, status, whatsapp, email });
+    // --- Supplier copies (best-effort) --- the same status message also
+    // goes to any order-notification numbers attached to the products in
+    // this order (migration 0046), re-checked against the live list.
+    let suppliersNotified = 0;
+    try {
+      const greenApiUrl = process.env.GREEN_API_URL;
+      const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
+      const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
+      const pids = asOrderItems(order.items)
+        .map((i) => Number(i.id))
+        .filter((n) => Number.isFinite(n) && n > 0);
+      if (greenApiUrl && greenApiIdInstance && greenApiTokenInstance && pids.length > 0) {
+        const businessNumber = process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351";
+        const [{ data: prodRows }, { data: liveRows }] = await Promise.all([
+          supabase.from("products").select("supplier_numbers").in("id", pids),
+          supabase.from("order_notification_numbers").select("phone_number"),
+        ]);
+        const liveNumbers = ((liveRows ?? []).map((r) => r.phone_number).filter(Boolean)) as string[];
+        const targets = resolveSupplierTargets(
+          (prodRows ?? []).map((p) => p.supplier_numbers),
+          liveNumbers,
+          businessNumber
+        );
+        const message = buildStatusWhatsappMessage(input);
+        const results = await Promise.allSettled(
+          targets.map((n) =>
+            fetch(`${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chatId: `${normalizeIndianPhone(n)}@c.us`, message }),
+            })
+          )
+        );
+        suppliersNotified = results.filter((r) => r.status === "fulfilled" && r.value.ok).length;
+      }
+    } catch (supplierError) {
+      console.error("Notify supplier copies error:", supplierError);
+    }
+
+    return NextResponse.json({ ok: true, status, whatsapp, email, suppliersNotified });
   } catch (err) {
     return serverErrorResponse("admin orders notify", err);
   }

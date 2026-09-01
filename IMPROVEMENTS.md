@@ -12,6 +12,33 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Supplier order-notification numbers — 2026-09-03 01:15 IST — ⚠️ webhook
+- Owner: a small managed list of supplier WhatsApp numbers; attach one or more per product;
+  every notification for that product also copies those numbers. Main business number
+  keeps getting everything.
+- Migration `0046`: `order_notification_numbers` table (RLS on, no policies) +
+  `products.supplier_numbers text[]`. Separate from the enquiry `whatsapp_numbers` list.
+  Applied to the live DB by the owner; `types/db.ts` hand-edited.
+- New pure `app/utils/orderNotificationNumbers.ts` — `MAX_ORDER_NOTIFICATION_NUMBERS` (10),
+  `isValidOrderNotificationNumber`, `resolveSupplierTargets(...)` (distinct in-list supplier
+  numbers across an order's products, minus the business number). 7 unit tests.
+- New `/api/admin/order-notification-numbers` (GET / POST cap-checked / DELETE that also
+  strips from products). `/api/admin/products` accepts `supplier_numbers`.
+- razorpay-webhook (⚠️): after the existing sends, copies the business order message to the
+  order's unioned supplier set, and each product's low-stock/oversell alert to that
+  product's set. `runStockAlerts` gained a `productId` arg; alert helpers gained
+  `extraNumbers` + a shared `fanOutAlert`. All best-effort, `Promise.allSettled`, never
+  blocks order recording. `/api/admin/orders/notify` also copies status messages to the
+  order's supplier numbers.
+- Admin (mobile-first): Settings → Order Notification Numbers card; product form → "also
+  notify suppliers" checkbox grid. Added to `AdminDataContext` + `loadAll()`.
+- Verified: `tsc --noEmit` clean; `npm test` 155 passed (1 pre-existing skip), incl. 7 new;
+  `eslint` on all 10 changed files 0 errors (3 pre-existing warnings); `next build` exit 0.
+  Live: migration 0046 present; dev-server smoke — new admin route 401s not 500s,
+  `/api/offer` + `/api/coupons/*` regressions clean. ⚠️ Owner watches one real paid order
+  for an attached product to confirm the supplier copy lands.
+- See `docs/HANDBOOK.html` Change log 2026-09-03 01:15.
+
 ### Batch: Manual "Notify customer" — decouple status save from the message — 2026-09-03 00:20 IST
 - Owner: the WhatsApp fired every time status was set to Shipped, or the AWB / courier
   was edited (spamming the customer). Wanted: set status + partner + AWB first, then
