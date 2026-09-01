@@ -12,6 +12,27 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Cut Supabase Storage egress — 2026-09-01 22:20 IST
+- Owner asked why free-tier Storage egress (2.05/5GB) was climbing. Root cause: with
+  `images.unoptimized: true` still on (unchanged — Vercel Image Optimization quota
+  safety net), every catalog-grid `ProductCard` streamed the full ~1600px original for
+  its first photo on every page load; a thumbnail pipeline (`imageThumb.ts`) already
+  existed but was only wired into cart/wishlist/admin-list/recently-viewed, not the grid.
+- Added `getProductCardGallery` (`app/utils/productImages.ts`) — swaps just the
+  always-rendered first photo for `product.thumb_url` (falls back to the full image if
+  none exists); `ProductCard` now calls it instead of `getProductGallery`. Detail-page
+  gallery is unchanged (still full-res, needed for zoom).
+- `/api/admin/upload`'s two `.upload()` calls now pass an explicit 1-year
+  `cacheControl` (was the Supabase SDK's 1-hour default) — upload paths are
+  `timestamp-randomhex` and never reused (`upsert: false`), so every object is
+  permanently immutable once written and safe to cache indefinitely.
+- Verified: `tsc --noEmit` clean, `npm test` 110/110 passed (1 pre-existing skip),
+  `next build` exit 0. See `docs/HANDBOOK.html` Change log 2026-09-01 for the full writeup.
+- **Follow-up filed as a new Active item below:** `HeroProductRotator`,
+  `BestsellersStrip`, `CategorySlider` still render `image_url` directly (bypass
+  `ProductGallery`/thumbs entirely); `scripts/migrate-product-images.mjs` still uploads
+  without an explicit `cacheControl`.
+
 ### Batch: Typed Supabase clients (#15) — 2026-08-30 10:30 IST
 - `types/db.ts` regenerated (`npm run gen:types` — now includes the `0043` reservation
   table + RPCs). `app/utils/supabaseAdmin.ts` and `app/components/SearchBar.tsx`'s anon
@@ -349,6 +370,15 @@ care, land behind tests, never "blind".
    dropped for free (tracked in auto-memory `vercel_image_optimization_unoptimized_flag.md`).
    Supabase Storage image transforms (`?width=`) are ruled out — they need the Pro plan (💰).
    No action until the free trigger; then just remove the flag.
+
+9a. **Extend thumbnail use to the remaining full-res image spots** (follow-up to the
+    2026-09-01 egress batch, no owner action needed — just effort). `HeroProductRotator`,
+    `BestsellersStrip`, and `CategorySlider` render `product.image_url` directly (they
+    don't go through `ProductGallery`/`getProductCardGallery`), and
+    `scripts/migrate-product-images.mjs` still calls `.upload()` without an explicit
+    `cacheControl` (defaults to the Supabase SDK's 1 hour). Lower priority than the grid
+    fix already shipped — these are homepage-only surfaces (rotator/bestsellers) or a
+    one-off migration script, much smaller traffic share than the catalog grid.
 
 10. **`count: "exact"` on every catalog query** (`getCatalogPage`) is a full scan.
     Premature at ~140 products; revisit at scale with `count: "planned"` + a separately

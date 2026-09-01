@@ -2264,7 +2264,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>clientIp.ts</code></td><td><code>x-forwarded-for</code> first entry &rarr; <code>x-real-ip</code> &rarr; <code>"unknown"</code>. Unit-tested.</td></tr>
 <tr><td><code>imageThumb.ts</code></td><td>Full URL &rarr; thumb signed URL resolution (<code>getThumbUrl</code>, <code>attachThumbUrls</code>). <code>server-only</code>.</td></tr>
 <tr><td><code>compressImage.ts</code></td><td>Client-side canvas WebP downscale (max 1600px, q0.85) before upload.</td></tr>
-<tr><td><code>productImages.ts</code>, <code>productDimensions.ts</code>, <code>productAttributes.ts</code>, <code>productUnits.ts</code></td><td>Gallery dedupe; compact dimension/attribute display lines; g/cm &harr; display-unit conversion.</td></tr>
+<tr><td><code>productImages.ts</code>, <code>productDimensions.ts</code>, <code>productAttributes.ts</code>, <code>productUnits.ts</code></td><td>Gallery dedupe (<code>getProductGallery</code>) + a card-only variant (<code>getProductCardGallery</code>, added 2026-09-01) that swaps just the first photo for <code>thumb_url</code>; compact dimension/attribute display lines; g/cm &harr; display-unit conversion.</td></tr>
 <tr><td><code>photoFilters.ts</code></td><td>6 CSS-<code>filter</code> presets (Normal, Bright [default], Warm, Vivid, Golden, Antique).</td></tr>
 <tr><td><code>catalogueGenerator.ts</code></td><td><code>@react-pdf/renderer</code> catalogue (cover + category pages), <code>sharp</code> thumbnails, 1h base64 cache for the public route.</td></tr>
 <tr><td><code>categoryContent.ts</code>, <code>categorySliderItems.ts</code></td><td>Hand-written category SEO copy; one random in-stock product photo per category (re-rolled per request).</td></tr>
@@ -2354,7 +2354,7 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
     the revised deploy step in &sect;27 / the working agreement.</dd>
   <dt>Last verified build</dt><dd><code>next build</code> exit 0 &mdash; ~86 SSG pages (product pages are now <code>force-dynamic</code>, not prerendered &mdash; 2026-08-30), all routes + middleware compiled, <code>tsc --noEmit</code> clean, unit tests pass.</dd>
   <dt>CSP</dt><dd>Enforced only when <code>NODE_ENV === "production"</code> (dev tooling needs looser rules). Directive list compiled by grepping every <code>https://</code> the code loads + each integration&rsquo;s documented requirements; deliberately generous on <code>script/connect/frame</code>.</dd>
-  <dt>Images</dt><dd><code>remotePatterns</code>: <code>gxlervcazzddqcoagewy.supabase.co/storage/v1/object/**</code>, <code>images.unsplash.com/**</code>. <code>unoptimized: true</code> &mdash; on hold by owner decision (2026-08-29): stays until the Vercel quota cycle resets and the flag can be dropped for free. Supabase image transforms (Pro-only) are ruled out.</dd>
+  <dt>Images</dt><dd><code>remotePatterns</code>: <code>gxlervcazzddqcoagewy.supabase.co/storage/v1/object/**</code>, <code>images.unsplash.com/**</code>. <code>unoptimized: true</code> &mdash; on hold by owner decision (2026-08-29): stays until the Vercel quota cycle resets and the flag can be dropped for free. Supabase image transforms (Pro-only) are ruled out. With no server-side resize available, the catalog grid's first-photo-per-card now uses the pre-generated <code>thumb_url</code> instead of the full original (<code>getProductCardGallery</code>, added 2026-09-01) to keep Supabase Storage egress down; and every Storage upload (<code>/api/admin/upload</code>) sets an explicit 1-year <code>cacheControl</code> (was the SDK's 1-hour default) since upload paths are never reused/overwritten. See Change log 2026-09-01.</dd>
   <dt>Lint debt</dt><dd>The repo carries pre-existing <code>@typescript-eslint/no-explicit-any</code> and <code>react-hooks/set-state-in-effect</code> errors (<code>npm run lint</code> is not clean). Next 16 does not run ESLint during <code>next build</code>, so deploys are unaffected.</dd>
   <dt>tsconfig</dt><dd><code>paths: { "@/*": ["./*"] }</code>, <code>strict</code>, <code>noEmit</code>, incremental.</dd>
   <dt>Not committed</dt><dd><code>.env*</code>, <code>.next/</code>, <code>*.tsbuildinfo</code>, <code>scripts/.image-migration-manifest.json</code>.</dd>
@@ -2654,6 +2654,40 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-01<br>22:20</code></td>
+  <td><strong>Cut Supabase Storage egress: card-gallery thumbnails + long <code>cacheControl</code></strong><br>(owner asked why free-tier egress was climbing)</td>
+  <td>
+    With <code>images.unoptimized: true</code> still on (Vercel Image Optimization quota safety
+    net &mdash; unchanged by this batch), every catalog-grid <code>ProductCard</code> was
+    streaming the full ~1600px original for its first photo on every page load, even though a
+    thumbnail pipeline (<code>imageThumb.ts</code>) already existed and was only wired into
+    cart/wishlist/admin-list/recently-viewed. Added <code>getProductCardGallery</code>
+    (<code>app/utils/productImages.ts</code>) &mdash; a card-only variant of
+    <code>getProductGallery</code> that swaps just the always-rendered first photo for
+    <code>product.thumb_url</code> (falls back to the full image if no thumb exists), leaving
+    any additional gallery photos &mdash; only loaded on hover/tap for the flip-back/slide
+    preview, a much smaller slice of traffic &mdash; untouched. <code>ProductCard</code> now
+    calls it instead of <code>getProductGallery</code>; the product-detail page gallery
+    (<code>size="detail"</code>) is unchanged and still uses the full image. Separately,
+    <code>/api/admin/upload</code>'s two <code>.upload()</code> calls (main image + thumbnail)
+    now pass an explicit <code>cacheControl: "31536000"</code> (1 year) instead of relying on
+    the Supabase SDK's 1-hour default &mdash; upload paths are <code>timestamp-randomhex</code>
+    and never reused (<code>upsert: false</code>), so every object is permanently immutable
+    once written and safe to cache indefinitely; this cuts repeat-visit egress for returning
+    shoppers. Not in this batch (flagged as a follow-up in <code>IMPROVEMENTS.md</code>):
+    <code>HeroProductRotator</code>, <code>BestsellersStrip</code>, and
+    <code>CategorySlider</code> still render <code>image_url</code> directly (no
+    <code>ProductGallery</code>/thumb involvement) and the one-off
+    <code>scripts/migrate-product-images.mjs</code> migration script still uploads without an
+    explicit <code>cacheControl</code>.
+  </td>
+  <td><code>app/utils/productImages.ts</code> &middot; <code>app/components/ProductCard.tsx</code> &middot;
+    <code>app/api/admin/upload/route.ts</code> &middot; <code>docs/HANDBOOK.html</code> &middot;
+    <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 110/110 passed (1 pre-existing
+    skip) &middot; <code>next build</code> exit 0, all 124 routes + middleware compiled.</td>
+</tr>
 <tr>
   <td><code>2026-08-31<br>04:10</code></td>
   <td><strong>Viewport meta added to <code>HANDBOOK.html</code></strong><br>(mobile-first follow-up, PR&nbsp;4)</td>

@@ -22,6 +22,15 @@ const MAX_BYTES = 4 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/webp", "image/jpeg", "image/png"]);
 const THUMB_MAX_DIMENSION = 240;
 const THUMB_WEBP_QUALITY = 80;
+// Supabase Storage's own default (when this option is omitted) is a 1-hour
+// max-age -- far too short for these objects, since the upload path below
+// never reuses a filename (timestamp + random hex, upsert:false) and a
+// product's image_url is repointed at a brand-new path on re-upload rather
+// than overwriting the old one in place. Every object here is therefore
+// permanently immutable once written, so it's safe to cache for years:
+// cuts repeat-visit Storage egress instead of re-fetching the same bytes
+// every hour.
+const CACHE_CONTROL_SECONDS = "31536000";
 
 function extensionFor(mimeType: string): string {
   if (mimeType === "image/png") return "png";
@@ -50,6 +59,7 @@ export async function POST(req: Request) {
     const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, buffer, {
       contentType,
       upsert: false,
+      cacheControl: CACHE_CONTROL_SECONDS,
     });
     if (uploadError) {
       console.error("Admin image upload failed:", uploadError);
@@ -79,7 +89,11 @@ export async function POST(req: Request) {
         .toBuffer();
       const { error: thumbUploadError } = await supabase.storage
         .from(BUCKET)
-        .upload(thumbPathFor(path), thumbBuffer, { contentType: "image/webp", upsert: false });
+        .upload(thumbPathFor(path), thumbBuffer, {
+          contentType: "image/webp",
+          upsert: false,
+          cacheControl: CACHE_CONTROL_SECONDS,
+        });
       if (thumbUploadError) console.error("Admin image thumbnail upload failed:", thumbUploadError);
     } catch (thumbErr) {
       console.error("Admin image thumbnail generation failed:", thumbErr);
