@@ -161,12 +161,13 @@ export default function OverviewTab() {
       );
     })()}
 
-    {/* DOCUMENTATION LINKS: the two published Claude-artifact pages -- the
-        engineering handbook (docs/HANDBOOK.html, republished after every
-        batch per the working agreement) and a lighter public-facing project
-        page. Plain external links, not fetched/rendered data, so there's
-        nothing to keep in sync beyond these two URLs if either is ever
-        republished at a new address. */}
+    {/* DOCUMENTATION LINKS: the internal engineering reference (a private
+        Claude artifact, docs/HANDBOOK.html republished after every batch per
+        the working agreement -- needs the owner's Claude account, by
+        design) and the public "behind the shop" page, which is this repo's
+        own docs/PROJECT-STORY.html served live at /story (app/story/route.ts)
+        so it opens for anyone with the link, no sign-in. Plain links, not
+        fetched/rendered data. */}
     <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-6 mb-6">
       <p className="text-[10px] uppercase tracking-wider font-semibold mb-3 text-stone-500">Documentation</p>
       <div className="flex flex-wrap gap-3">
@@ -177,16 +178,16 @@ export default function OverviewTab() {
           className="flex-1 min-w-[220px] rounded-lg border border-stone-200 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition p-4"
         >
           <p className="text-sm font-semibold text-stone-900">Engineering Handbook</p>
-          <p className="text-[11px] text-stone-500 mt-0.5">Schema, migrations, API routes, checkout flow, caching, gotchas &amp; the dated Change Log.</p>
+          <p className="text-[11px] text-stone-500 mt-0.5">Schema, migrations, API routes, checkout flow, caching, gotchas &amp; the dated Change Log. Private (your Claude account).</p>
         </a>
         <a
-          href="https://claude.ai/code/artifact/ae7c44d2-22bc-44f1-b806-69b7b6019dfc"
+          href="/story"
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1 min-w-[220px] rounded-lg border border-stone-200 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition p-4"
         >
           <p className="text-sm font-semibold text-stone-900">Project Showcase</p>
-          <p className="text-[11px] text-stone-500 mt-0.5">The shareable, non-technical page — what TOHFA is and how it&rsquo;s built.</p>
+          <p className="text-[11px] text-stone-500 mt-0.5">The shareable page — what TOHFA is and how it&rsquo;s built. Public, no sign-in needed.</p>
         </a>
       </div>
     </div>
