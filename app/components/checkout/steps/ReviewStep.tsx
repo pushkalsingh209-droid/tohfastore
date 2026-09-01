@@ -10,7 +10,7 @@ import Image from "next/image";
 import { calculateGstBreakdown, GST_RATE } from "@/app/utils/gst";
 import { calculateSlashedPrice } from "@/app/utils/pricing";
 import PriceDisplay from "@/app/components/PriceDisplay";
-import { useAvailableCoupons, couponUrgencyText } from "@/app/components/checkout/useAvailableCoupons";
+import { useAvailableCoupons, couponUrgencyText, type AvailableCoupon } from "@/app/components/checkout/useAvailableCoupons";
 import type { CartItem } from "@/app/types/product";
 
 export interface ReviewBag {
@@ -18,15 +18,20 @@ export interface ReviewBag {
   cartTotal: number;
   categoryDiscounts: Record<string, number>;
 
-  // Storewide "Spend & Save" tier offer. When `offerActive`, the coupon
-  // field is hidden entirely (coupons are paused) and the discount comes
-  // from the tier the cart currently clears -- `offerDiscount` (0 if the
-  // cart hasn't reached the lowest rung yet). `nextTier`, when set, drives
-  // the "add ₹X more to save ₹Y" nudge.
+  // Storewide "Spend & Save" tier offer. The offer and a coupon are
+  // mutually exclusive but never forced -- while `offerActive`, the shopper
+  // picks which one applies via `discountChoice` (a two-option selector
+  // above the coupon UI); `onChooseOffer`/`onChooseCoupon` flip it.
+  // `offerDiscount` is the tier the cart currently clears (0 if it hasn't
+  // reached the lowest rung yet); `nextTier`, when set, drives the "add ₹X
+  // more to save ₹Y" nudge.
   offerActive: boolean;
   offerLabel: string | null;
   offerDiscount: number;
   nextTier: { minSubtotal: number; discount: number } | null;
+  discountChoice: "offer" | "coupon";
+  onChooseOffer: () => void;
+  onChooseCoupon: () => void;
 
   couponInput: string;
   setCouponInput: (v: string) => void;
@@ -45,17 +50,19 @@ export interface ReviewBag {
 
 export default function ReviewStep({ bag }: { bag: ReviewBag }) {
   const b = bag;
-  // No coupon fetch while the Spend & Save offer is running -- coupons are paused.
-  const available = useAvailableCoupons(!b.offerActive);
+  // Whichever of the two mutually-exclusive discounts is actually in play
+  // right now -- the coupon path whenever the offer isn't running at all,
+  // or whenever it is and the shopper picked "use a coupon" instead.
+  const usingCoupon = b.offerActive ? b.discountChoice === "coupon" : true;
+  // Coupon list/preview only fetched while the coupon path is the one in use.
+  const available = useAvailableCoupons(usingCoupon);
 
-  // One discount, from whichever channel is in play. The offer supersedes
-  // coupons (b.offerActive is mutually exclusive with an applied coupon).
-  const discountAmount = b.offerActive ? b.offerDiscount : b.appliedCoupon?.discount ?? 0;
-  const discountLabel = b.offerActive
-    ? b.offerLabel ?? "Offer"
-    : b.appliedCoupon
-    ? `Coupon (${b.appliedCoupon.code})`
-    : null;
+  const discountAmount = usingCoupon ? b.appliedCoupon?.discount ?? 0 : b.offerDiscount;
+  const discountLabel = usingCoupon
+    ? b.appliedCoupon
+      ? `Coupon (${b.appliedCoupon.code})`
+      : null
+    : b.offerLabel ?? "Offer";
   const showDiscountRow = discountAmount > 0;
   const finalTotal = Math.max(0, b.cartTotal - discountAmount);
   const gst = calculateGstBreakdown(finalTotal);
@@ -148,87 +155,75 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
         </div>
       </details>
 
-      {/* --- Offer (Spend & Save) OR coupon --- while the storewide offer
-          runs, coupons are paused and the offer state shows here instead. */}
+      {/* --- Discount: storewide offer vs coupon --- both exist, never
+          stacked; while the offer is running the shopper picks which one
+          applies with the two-option selector below. When it isn't running
+          there's nothing to choose between -- straight to the coupon UI. */}
       {b.offerActive ? (
-        <div className="rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-3 space-y-1">
-          {b.offerDiscount > 0 ? (
-            <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
-              🎉 {b.offerLabel}: &minus;₹{b.offerDiscount.toLocaleString("en-IN")} off your order
-            </p>
-          ) : (
-            <p className="text-xs font-medium text-stone-700 dark:text-stone-300">
-              <span className="font-bold text-emerald-800 dark:text-emerald-300">{b.offerLabel}</span> is live
-              {b.nextTier ? "." : " — add more to your bag to unlock a discount."}
-            </p>
-          )}
-          {b.nextTier && (
-            <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
-              Add ₹{nextTierGap.toLocaleString("en-IN")} more to save ₹{b.nextTier.discount.toLocaleString("en-IN")}.
-            </p>
-          )}
-          <p className="text-[10px] text-stone-400">Coupon codes are paused while this offer runs.</p>
-        </div>
-      ) : (
-      <div>
-        {b.appliedCoupon ? (
-          <div className="flex items-center justify-between p-2.5 text-xs bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 rounded">
-            <span>
-              Coupon <span className="font-mono font-bold">{b.appliedCoupon.code}</span> applied &minus;₹{b.appliedCoupon.discount.toLocaleString("en-IN")}
-            </span>
-            <button type="button" onClick={b.onRemoveCoupon} className="text-emerald-700 dark:text-emerald-400 hover:underline font-medium">
-              Remove
+        <div className="space-y-2">
+          <div role="radiogroup" aria-label="Discount" className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!usingCoupon}
+              onClick={b.onChooseOffer}
+              className={`text-left p-2.5 rounded border text-xs transition ${
+                !usingCoupon
+                  ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
+                  : "border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800"
+              }`}
+            >
+              <span className="block font-bold text-stone-800 dark:text-stone-100">Use offer</span>
+              <span className="block text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+                {b.offerDiscount > 0 ? <>{b.offerLabel} &middot; &minus;₹{b.offerDiscount.toLocaleString("en-IN")}</> : b.offerLabel}
+              </span>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={usingCoupon}
+              onClick={b.onChooseCoupon}
+              className={`text-left p-2.5 rounded border text-xs transition ${
+                usingCoupon
+                  ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
+                  : "border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800"
+              }`}
+            >
+              <span className="block font-bold text-stone-800 dark:text-stone-100">Use a coupon</span>
+              <span className="block text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+                {b.appliedCoupon ? (
+                  <>{b.appliedCoupon.code} &middot; &minus;₹{b.appliedCoupon.discount.toLocaleString("en-IN")}</>
+                ) : (
+                  "Have a code?"
+                )}
+              </span>
             </button>
           </div>
-        ) : (
-          <>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={b.couponInput}
-                onChange={(e) => b.setCouponInput(e.target.value.toUpperCase())}
-                placeholder="Coupon code"
-                className="flex-grow px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700 font-mono"
-              />
-              <button
-                type="button"
-                onClick={b.onApplyCoupon}
-                disabled={b.applyingCoupon}
-                className="px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded border border-stone-300 dark:border-stone-600 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition disabled:opacity-50"
-              >
-                {b.applyingCoupon ? "Checking..." : "Apply"}
-              </button>
-            </div>
 
-            {suggestions.length > 0 && (
-              <div className="mt-2 space-y-1.5">
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-stone-400">Available coupons</p>
-                {suggestions.map((c) => {
-                  const urgency = couponUrgencyText(c);
-                  const off = c.discount_type === "percent" ? `${c.discount_value}% off` : `₹${c.discount_value} off`;
-                  return (
-                    <button
-                      key={c.code}
-                      type="button"
-                      onClick={() => b.onApplyCouponCode(c.code)}
-                      disabled={b.applyingCoupon}
-                      className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded border border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-100 dark:hover:bg-amber-900/20 transition text-left disabled:opacity-50"
-                    >
-                      <span className="min-w-0">
-                        <span className="font-mono font-bold text-xs text-amber-900 dark:text-amber-300">{c.code}</span>
-                        <span className="text-[11px] text-amber-800 dark:text-amber-400"> &middot; {off}</span>
-                        {urgency && <span className="ml-1 text-[9px] uppercase font-bold text-rose-600 dark:text-rose-400">{urgency}</span>}
-                      </span>
-                      <span className="text-[10px] uppercase font-bold text-amber-700 dark:text-amber-500 flex-shrink-0">Apply</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-        {b.couponError && <p className="text-[11px] text-rose-600 mt-1.5">{b.couponError}</p>}
-      </div>
+          {!usingCoupon && (
+            <div className="rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-3 space-y-1">
+              {b.offerDiscount > 0 ? (
+                <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                  🎉 {b.offerLabel}: &minus;₹{b.offerDiscount.toLocaleString("en-IN")} off your order
+                </p>
+              ) : (
+                <p className="text-xs font-medium text-stone-700 dark:text-stone-300">
+                  <span className="font-bold text-emerald-800 dark:text-emerald-300">{b.offerLabel}</span> is live
+                  {b.nextTier ? "." : " — add more to your bag to unlock a discount."}
+                </p>
+              )}
+              {b.nextTier && (
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                  Add ₹{nextTierGap.toLocaleString("en-IN")} more to save ₹{b.nextTier.discount.toLocaleString("en-IN")}.
+                </p>
+              )}
+            </div>
+          )}
+
+          {usingCoupon && <CouponPanel b={b} suggestions={suggestions} />}
+        </div>
+      ) : (
+        <CouponPanel b={b} suggestions={suggestions} />
       )}
 
       {/* --- Cancellation & Refund Policy (bilingual, required consent) ---
@@ -294,6 +289,73 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           </span>
         </label>
       </div>
+    </div>
+  );
+}
+
+// The coupon input / applied-card / available-coupons UI -- shared by the
+// "offer not running" case and the "shopper picked coupon" case above it,
+// so the two render paths stay byte-identical instead of drifting.
+function CouponPanel({ b, suggestions }: { b: ReviewBag; suggestions: AvailableCoupon[] }) {
+  return (
+    <div>
+      {b.appliedCoupon ? (
+        <div className="flex items-center justify-between p-2.5 text-xs bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 rounded">
+          <span>
+            Coupon <span className="font-mono font-bold">{b.appliedCoupon.code}</span> applied &minus;₹{b.appliedCoupon.discount.toLocaleString("en-IN")}
+          </span>
+          <button type="button" onClick={b.onRemoveCoupon} className="text-emerald-700 dark:text-emerald-400 hover:underline font-medium">
+            Remove
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={b.couponInput}
+              onChange={(e) => b.setCouponInput(e.target.value.toUpperCase())}
+              placeholder="Coupon code"
+              className="flex-grow px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700 font-mono"
+            />
+            <button
+              type="button"
+              onClick={b.onApplyCoupon}
+              disabled={b.applyingCoupon}
+              className="px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded border border-stone-300 dark:border-stone-600 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition disabled:opacity-50"
+            >
+              {b.applyingCoupon ? "Checking..." : "Apply"}
+            </button>
+          </div>
+
+          {suggestions.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-stone-400">Available coupons</p>
+              {suggestions.map((c) => {
+                const urgency = couponUrgencyText(c);
+                const off = c.discount_type === "percent" ? `${c.discount_value}% off` : `₹${c.discount_value} off`;
+                return (
+                  <button
+                    key={c.code}
+                    type="button"
+                    onClick={() => b.onApplyCouponCode(c.code)}
+                    disabled={b.applyingCoupon}
+                    className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded border border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-100 dark:hover:bg-amber-900/20 transition text-left disabled:opacity-50"
+                  >
+                    <span className="min-w-0">
+                      <span className="font-mono font-bold text-xs text-amber-900 dark:text-amber-300">{c.code}</span>
+                      <span className="text-[11px] text-amber-800 dark:text-amber-400"> &middot; {off}</span>
+                      {urgency && <span className="ml-1 text-[9px] uppercase font-bold text-rose-600 dark:text-rose-400">{urgency}</span>}
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-amber-700 dark:text-amber-500 flex-shrink-0">Apply</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+      {b.couponError && <p className="text-[11px] text-rose-600 mt-1.5">{b.couponError}</p>}
     </div>
   );
 }

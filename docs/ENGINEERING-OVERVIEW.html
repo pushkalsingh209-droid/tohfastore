@@ -353,8 +353,9 @@
         amounts have to grow as the thresholds do (so &ldquo;spend more&rdquo; can never mean &ldquo;save
         less,&rdquo; and a mistyped figure is rejected at save time with the reason). The checkout preview
         reads one relaxed, fail-closed parser; the admin save runs a stricter one that reports every
-        problem. While the offer is live it fully replaces coupon codes rather than stacking with them, on
-        both the preview and the authoritative payment path. It ships switched off.
+        problem. While the offer is live, the offer and a coupon are mutually exclusive &mdash; never
+        stacked &mdash; but the shopper chooses which one to use; the server re-validates only the choice
+        that was made. It ships switched off.
       </p>
     </section>
 
