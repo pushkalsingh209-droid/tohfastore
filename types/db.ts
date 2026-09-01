@@ -234,6 +234,7 @@ export type Database = {
         Row: {
           amount: number | null
           awb_number: string | null
+          courier_name: string | null
           created_at: string
           customer_details: Json | null
           id: number
@@ -246,6 +247,7 @@ export type Database = {
         Insert: {
           amount?: number | null
           awb_number?: string | null
+          courier_name?: string | null
           created_at?: string
           customer_details?: Json | null
           id?: number
@@ -258,6 +260,7 @@ export type Database = {
         Update: {
           amount?: number | null
           awb_number?: string | null
+          courier_name?: string | null
           created_at?: string
           customer_details?: Json | null
           id?: number

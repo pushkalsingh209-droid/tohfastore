@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
     const { data } = await supabase
       .from("orders")
-      .select("order_id, amount, items, created_at, customer_details")
+      .select("order_id, amount, items, created_at, customer_details, awb_number, courier_name")
       .eq("order_id", cleanOrderId)
       .maybeSingle();
 
@@ -66,6 +66,8 @@ export async function POST(req: Request) {
       couponCode: null,
       total,
       gst,
+      awbNumber: data.awb_number || null,
+      courierName: data.courier_name || null,
     });
   } catch (err) {
     return serverErrorResponse("Order receipt lookup failed", err, "Could not load your receipt right now. Please try again.");

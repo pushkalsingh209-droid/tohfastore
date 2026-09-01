@@ -9,6 +9,7 @@ interface TrackedOrder {
   amount: number;
   createdAt: string;
   awbNumber: string | null;
+  courierName: string | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -123,12 +124,24 @@ export default function TrackOrderPage() {
               Placed on {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
             </p>
 
-            {order.awbNumber && (
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded px-4 py-3">
-                <span className="block text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-500 font-semibold mb-1">
-                  Courier Tracking Number
-                </span>
-                <span className="font-mono text-sm text-stone-900 dark:text-stone-100">{order.awbNumber}</span>
+            {(order.awbNumber || order.courierName) && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded px-4 py-3 space-y-2">
+                {order.courierName && (
+                  <div>
+                    <span className="block text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-500 font-semibold mb-1">
+                      Delivery Partner
+                    </span>
+                    <span className="text-sm text-stone-900 dark:text-stone-100">{order.courierName}</span>
+                  </div>
+                )}
+                {order.awbNumber && (
+                  <div>
+                    <span className="block text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-500 font-semibold mb-1">
+                      Courier Tracking Number
+                    </span>
+                    <span className="font-mono text-sm text-stone-900 dark:text-stone-100">{order.awbNumber}</span>
+                  </div>
+                )}
               </div>
             )}
 

@@ -55,6 +55,7 @@ export interface AdminOrder {
   amount: number | string;
   status?: string;
   awb_number?: string | null;
+  courier_name?: string | null;
   customer_details?: { name?: string; email?: string; contact?: string } | null;
   shipping_address?: { line?: string; landmark?: string; city?: string; state?: string; pincode?: string } | null;
   items?: AdminOrderItem[];

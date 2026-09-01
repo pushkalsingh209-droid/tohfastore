@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     // Two separate lookups (order_id, then awb_number) rather than a single
     // OR filter, so the user-supplied reference is never interpolated into
     // a PostgREST filter string.
-    const columns = "order_id, status, items, amount, created_at, customer_details, awb_number";
+    const columns = "order_id, status, items, amount, created_at, customer_details, awb_number, courier_name";
     let { data } = await supabase.from("orders").select(columns).eq("order_id", cleanReference).maybeSingle();
     if (!data) {
       ({ data } = await supabase.from("orders").select(columns).eq("awb_number", cleanReference).maybeSingle());
@@ -46,6 +46,7 @@ export async function POST(req: Request) {
       amount: data.amount,
       createdAt: data.created_at,
       awbNumber: data.awb_number || null,
+      courierName: data.courier_name || null,
     });
   } catch (err) {
     return serverErrorResponse("Order tracking lookup failed", err, "Could not look up your order right now. Please try again.");

@@ -10,6 +10,9 @@
 import { useMemo, useState } from "react";
 import Pagination from "@/app/components/Pagination";
 import { useAdminData } from "@/app/admin/AdminDataContext";
+import { COURIER_PRESETS } from "@/app/utils/couriers";
+
+const OTHER_COURIER = "__other__";
 
 const ORDER_STATUS_TABS: { key: string; label: string }[] = [
   { key: "all", label: "All" },
@@ -102,23 +105,38 @@ export default function OrdersTab() {
     }
   };
 
-  // Optional courier AWB / tracking number -- not required to change an
-  // order's status, settable any time once a courier has assigned one.
-  const handleAwbUpdate = async (orderId: number, currentStatus: string, awbNumber: string) => {
+  // Rows where the admin just picked "Other…" from the courier dropdown --
+  // shows a free-text box until they type a name (no value stored yet).
+  const [otherCourierRows, setOtherCourierRows] = useState<Set<number>>(new Set());
+
+  // Optional courier AWB / tracking number + the delivery partner -- neither
+  // is required to change an order's status, both settable any time. Sends
+  // only the field(s) in `patch`; the API leaves the others untouched.
+  const handleTrackingUpdate = async (
+    orderId: number,
+    currentStatus: string,
+    patch: { awb_number?: string; courier_name?: string | null }
+  ) => {
     try {
       const res = await fetch("/api/admin/orders/update-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: orderId, status: currentStatus, awb_number: awbNumber }),
+        body: JSON.stringify({ id: orderId, status: currentStatus, ...patch }),
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(`Could not update tracking number: ${data.error || "Unknown error"}`);
+        alert(`Could not update tracking details: ${data.error || "Unknown error"}`);
         return;
       }
-      setOrders(orders.map((o) => (o.id === orderId ? { ...o, awb_number: data.order.awb_number } : o)));
+      setOrders(
+        orders.map((o) =>
+          o.id === orderId
+            ? { ...o, awb_number: data.order.awb_number, courier_name: data.order.courier_name }
+            : o
+        )
+      );
     } catch (err: unknown) {
-      alert(`Could not update tracking number: ${err instanceof Error ? err.message : String(err)}`);
+      alert(`Could not update tracking details: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -270,18 +288,69 @@ export default function OrdersTab() {
                       <option value="delivered">Delivered</option>
                       <option value="cancelled">Cancelled</option>
                     </select>
-                    <input
-                      key={`${order.id}-${order.awb_number ?? ""}`}
-                      type="text"
-                      defaultValue={order.awb_number || ""}
-                      placeholder="AWB / tracking no. (optional)"
-                      title="Courier AWB / tracking number -- optional, not needed for local pickup or courier-free deliveries"
-                      onBlur={(e) => {
-                        const next = e.target.value.trim();
-                        if (next !== (order.awb_number || "")) handleAwbUpdate(order.id, order.status || "processing", next);
-                      }}
-                      className="mt-2 block w-40 px-2 py-1.5 rounded border border-stone-200 text-[11px] font-mono focus:outline-none focus:border-amber-600 bg-stone-50 placeholder:text-stone-400"
-                    />
+                    {(() => {
+                      const courier = order.courier_name || "";
+                      const isPreset = (COURIER_PRESETS as readonly string[]).includes(courier);
+                      const showOther = otherCourierRows.has(order.id) || (courier !== "" && !isPreset);
+                      const selectValue = isPreset ? courier : showOther ? OTHER_COURIER : "";
+                      const currentStatus = order.status || "processing";
+                      return (
+                        <div className="mt-2 space-y-1.5">
+                          <input
+                            key={`${order.id}-awb-${order.awb_number ?? ""}`}
+                            type="text"
+                            defaultValue={order.awb_number || ""}
+                            placeholder="AWB / tracking no. (optional)"
+                            title="Courier AWB / tracking number -- optional, not needed for local pickup or courier-free deliveries"
+                            onBlur={(e) => {
+                              const next = e.target.value.trim();
+                              if (next !== (order.awb_number || "")) handleTrackingUpdate(order.id, currentStatus, { awb_number: next });
+                            }}
+                            className="block w-44 px-2 py-1.5 rounded border border-stone-200 text-[11px] font-mono focus:outline-none focus:border-amber-600 bg-stone-50 placeholder:text-stone-400"
+                          />
+                          <select
+                            value={selectValue}
+                            title="Delivery partner -- optional"
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === OTHER_COURIER) {
+                                setOtherCourierRows((s) => new Set(s).add(order.id));
+                                return; // wait for the free-text box below
+                              }
+                              setOtherCourierRows((s) => {
+                                const n = new Set(s);
+                                n.delete(order.id);
+                                return n;
+                              });
+                              handleTrackingUpdate(order.id, currentStatus, { courier_name: v || null });
+                            }}
+                            className="block w-44 px-2 py-1.5 rounded border border-stone-200 text-[11px] focus:outline-none focus:border-amber-600 bg-stone-50 text-stone-700"
+                          >
+                            <option value="">Delivery partner…</option>
+                            {COURIER_PRESETS.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                            <option value={OTHER_COURIER}>Other…</option>
+                          </select>
+                          {showOther && (
+                            <input
+                              key={`${order.id}-courier-${courier}`}
+                              type="text"
+                              defaultValue={isPreset ? "" : courier}
+                              placeholder="Courier name"
+                              autoFocus={otherCourierRows.has(order.id)}
+                              onBlur={(e) => {
+                                const next = e.target.value.trim();
+                                if (next !== (order.courier_name || "")) {
+                                  handleTrackingUpdate(order.id, currentStatus, { courier_name: next || null });
+                                }
+                              }}
+                              className="block w-44 px-2 py-1.5 rounded border border-stone-200 text-[11px] focus:outline-none focus:border-amber-600 bg-stone-50 placeholder:text-stone-400"
+                            />
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="p-4 text-right font-mono font-bold text-amber-800 text-base">
                     ₹{Number(order.amount).toLocaleString("en-IN")}

@@ -12,6 +12,30 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Order delivery-partner name + shipped email — 2026-09-02 23:10 IST
+- Owner: when the admin enters the AWB / tracking number, also capture the delivery
+  partner (courier) name and include it in the notifications — and send an email too,
+  not just WhatsApp.
+- Migration `0045` adds `orders.courier_name text` (nullable, unconstrained). Applied to
+  the live DB by the owner ahead of the merge. `types/db.ts` hand-edited for it.
+- New `app/utils/couriers.ts` — `COURIER_PRESETS` (10 common Indian couriers) +
+  `normalizeCourierName` (trim + clamp 60 → null). Admin Orders tab: AWB input + a
+  Delivery-partner dropdown (presets + "Other…" → free text). `handleAwbUpdate` →
+  `handleTrackingUpdate(id, status, patch)` sends only the changed field(s);
+  `/api/admin/orders/update-status` writes `awb_number` / `courier_name` only when the
+  body includes them (status-only change keeps both).
+- `shipped`/`delivered` notifications: the WhatsApp now carries "Shipped via X · Tracking
+  No: Y", and a **new best-effort email** (Resend, own try/catch, no-ops without
+  `RESEND_API_KEY` / a real email) sends a compact branded shipped/delivered message with
+  courier + tracking + invoice link (delivered: review link).
+- `/api/orders/track` + `/api/orders/receipt` return `courierName`; `/track` shows a
+  "Delivery Partner" line; `/success` invoice shows a courier/tracking block once shipped.
+- Verified: `tsc --noEmit` clean; `npm test` 137 passed (1 pre-existing skip); `eslint` on
+  changed files 0 errors; `next build` exit 0. Not a payment-path change. Owner to confirm
+  live: set courier + AWB on a shipped order → WhatsApp + email arrive with both, `/track`
+  and the invoice show them.
+- See `docs/HANDBOOK.html` Change log 2026-09-02 23:10.
+
 ### Batch: Spend & Save — shopper picks offer or coupon — 2026-09-02 21:40 IST — ⚠️ payment path
 - Owner: "there should be an option to apply either the discount or the offer." Reverses
   the original "coupons paused while the offer runs" rule — offer and coupon stay
