@@ -804,6 +804,7 @@
     tabs/                    Overview, Products, Orders, Coupons, Settings, Reviews, Security
 supabase/migrations/         0001..0043 hand-run SQL
 docs/                        HANDBOOK.html (this -- the full reference), ARCHITECTURE.html (pointer),
+                             PROJECT-STORY.html (served live at /story, see app/story/route.ts),
                              DESIGN-*.md, IMPROVEMENTS.md
 .claude/skills/              audit-perf.md, audit-security.md, refactor.md</code></pre>
 
@@ -997,10 +998,11 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
     "check availability" clicks by category / product / source). Recent leads. And <strong>three heartbeat
     cards</strong> &mdash; keepalive, Green API session, abandoned-checkout cron. Green is healthy; amber
     means that signal has gone stale (a dead scheduler, or the Green API instance dropped its session).
-    A <strong>Documentation</strong> card (added 2026-09-01) links out to the two published Claude-artifact
-    pages &mdash; the Engineering Handbook (this file) and a shareable, non-technical Project Showcase page
-    &mdash; so both stay one click away without hunting for the URL. Plain external links; nothing fetched
-    or rendered.</p>
+    A <strong>Documentation</strong> card (added 2026-09-01, updated same day once <code>/story</code>
+    shipped) links out to two references &mdash; the Engineering Handbook (this file, a private Claude
+    artifact needing the owner's account) and the Project Showcase (<code>/story</code>, served straight
+    from this repo, public and no-login) &mdash; so both stay one click away without hunting for the URL.
+    Plain links; nothing fetched or rendered.</p>
   </div>
 
   <div class="card">
@@ -1719,6 +1721,7 @@ resets and verify steady-state usage stays under cap.</p>
 <tr><td><code>/about</code>, <code>/contact</code>, <code>/corporate</code>, <code>/privacy</code>, <code>/terms</code>, <code>/refunds</code></td><td>app/&lt;name&gt;/page.tsx</td><td>static</td><td><code>/contact</code> + <code>/corporate</code> have forms &rarr; <code>/api/contact</code> / <code>/api/leads</code>.</td></tr>
 <tr><td><code>/admin</code></td><td>app/admin/page.tsx (client SPA shell, 231 lines) + all 7 tab bodies as lazy components in <code>app/admin/tabs/</code> (#16 done)</td><td>client SPA behind proxy auth</td><td>Tabs via <code>?tab=</code>. See &sect;14.</td></tr>
 <tr><td><code>/admin/login</code></td><td>app/admin/login/page.tsx</td><td>client</td><td>Password + TOTP/backup code &rarr; <code>POST /api/admin/login</code>.</td></tr>
+<tr><td><code>/story</code></td><td>app/story/route.ts (added 2026-09-01)</td><td><code>force-static</code> Route Handler, not a page</td><td>Serves <code>docs/PROJECT-STORY.html</code> verbatim (read at build time, cached like the icon/splash routes) &mdash; a public, no-login &ldquo;behind the shop&rdquo; page: product highlights + engineering notes, no business-sensitive data. Distinct from the private, Claude-artifact-hosted Engineering Handbook (this document) &mdash; that one needs the owner's Claude account by design; this one doesn't need any account. Linked from the admin Overview tab's Documentation card.</td></tr>
 <tr><td>404 / loading</td><td>app/not-found.tsx, app/loading.tsx</td><td>&mdash;</td><td><code>loading.tsx</code> (branded spinner) makes <em>every</em> route stream &mdash; which is why <code>proxy.ts</code> must emit real status codes before the page (&sect;10).</td></tr>
 </tbody></table></div>
 
@@ -2658,6 +2661,39 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-01<br>23:40</code></td>
+  <td><strong>New public page: <code>/story</code></strong><br>(owner: the Project Showcase artifact required a Claude sign-in to open &mdash; friends without one saw &ldquo;Page not found / Sign in&rdquo;)</td>
+  <td>
+    The Project Showcase page (product highlights + the two-part Engineering Notes section from the
+    previous two batches) is now this repo's own <code>docs/PROJECT-STORY.html</code>, served live at
+    <code>tohfaonline.com/story</code> by a new <code>app/story/route.ts</code> &mdash; a
+    <code>force-static</code> Route Handler (same pattern as the icon/splash routes) that reads the file
+    at build time and returns it verbatim as <code>text/html</code>, so it renders once and is served as
+    a cached static asset, not re-read per hit. No sign-in, no Claude account, works for anyone with the
+    link, including inside the installed PWA (manifest <code>scope</code> is <code>/</code>, so
+    <code>/story</code> is in-scope). Content is unchanged from the artifact version except the two
+    &ldquo;Visit the shop&rdquo; buttons now link to <code>/</code> (same-origin, no <code>target=_blank</code>)
+    instead of the external <code>https://tohfaonline.com</code> URL, since the page is now hosted on the
+    site itself; added standard <code>&lt;head&gt;</code> metadata (title, description, Open Graph,
+    theme-color) since there's no artifact wrapper supplying those here. Fonts are the same two Google
+    Fonts already used before &mdash; both already allow-listed in <code>next.config.ts</code>'s CSP
+    (<code>style-src</code> has <code>fonts.googleapis.com</code>, <code>font-src</code> has
+    <code>fonts.gstatic.com</code>), so no CSP change was needed. The admin Overview tab's
+    <strong>Project Showcase</strong> link now points at <code>/story</code> instead of the Claude
+    artifact URL; the <strong>Engineering Handbook</strong> link is unchanged (stays a private Claude
+    artifact by design &mdash; it's the internal reference, not meant for outside sharing). The Claude
+    artifact copy of the showcase page still exists but is no longer the canonical link anywhere in the
+    app; <code>docs/PROJECT-STORY.html</code> is now the single source of truth for its content.
+  </td>
+  <td><em>new:</em> <code>app/story/route.ts</code>, <code>docs/PROJECT-STORY.html</code><br>
+    <code>app/admin/tabs/OverviewTab.tsx</code> &middot; <code>docs/HANDBOOK.html</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 110/110 passed (1 pre-existing skip)
+    &middot; <code>next build</code> exit 0, <code>/story</code> compiles static (<code>&cir;</code>).
+    Smoke-tested against a local <code>next start</code>: <code>GET /story</code> &rarr; 200, correct
+    <code>content-type: text/html; charset=utf-8</code>, the full CSP header set applied, response cached
+    (<code>x-nextjs-cache: HIT</code>, <code>s-maxage=31536000</code>), title tag correct.</td>
+</tr>
 <tr>
   <td><code>2026-09-01<br>23:05</code></td>
   <td><strong>Admin Overview: Documentation links card</strong><br>(same PR as the egress batch above &mdash; owner asked for the handbook to stay reachable from the admin panel)</td>

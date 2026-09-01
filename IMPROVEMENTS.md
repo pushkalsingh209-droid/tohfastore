@@ -36,6 +36,13 @@ care, land behind tests, never "blind".
   linking to the two published Claude-artifact pages (Engineering Handbook + a new
   public-facing Project Showcase page) so both stay reachable without hunting for the
   URL. `app/admin/tabs/OverviewTab.tsx` — plain external links, no new route/fetch/state.
+- **Follow-up, 2026-09-01 23:40 (separate PR):** the Project Showcase page needed a
+  Claude sign-in to open, which defeated the point of sharing it with friends who don't
+  have an account. Moved its content into this repo as `docs/PROJECT-STORY.html`, served
+  live and public at `tohfaonline.com/story` via a new `app/story/route.ts`
+  (`force-static`, same pattern as the icon/splash routes). Admin Overview's Project
+  Showcase link now points at `/story`; the Engineering Handbook link is unchanged (stays
+  a private Claude artifact on purpose — internal reference only).
 
 ### Batch: Typed Supabase clients (#15) — 2026-08-30 10:30 IST
 - `types/db.ts` regenerated (`npm run gen:types` — now includes the `0043` reservation
