@@ -12,6 +12,31 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Manual "Notify customer" — decouple status save from the message — 2026-09-03 00:20 IST
+- Owner: the WhatsApp fired every time status was set to Shipped, or the AWB / courier
+  was edited (spamming the customer). Wanted: set status + partner + AWB first, then
+  press one "Send notification" — and a send button for every status, with an optional
+  comment.
+- `/api/admin/orders/update-status` no longer notifies — it only persists
+  status/awb_number/courier_name. New `POST /api/admin/orders/notify` `{ id, comment? }`
+  sends for the order's *current* status (any of the four), best-effort WhatsApp + email,
+  each its own try/catch, returns per-channel `"sent"|"skipped"|"failed"`. Nothing on the
+  order changes.
+- New pure `app/utils/orderNotifications.ts` — `buildStatusWhatsappMessage` /
+  `buildStatusEmailHtml` / `statusEmailSubject` / `cleanNotifyComment` (trim + clamp 600).
+  Per-status lead line, shipped tracking line, optional "Note from TOHFA: <comment>" block
+  (not stored), invoice link, delivered review link. 11 unit tests. Old inline email
+  builders removed from update-status.
+- Admin Orders tab: a "Notify customer" button per row opens a mobile-first dialog
+  (bottom sheet on phones, card from `sm:`) — recipient summary, optional note textarea,
+  live WhatsApp preview (same pure fn), Send, per-channel result. Status/AWB/courier
+  controls unchanged, now save-only.
+- Verified: `tsc --noEmit` clean; `npm test` 148 passed (1 pre-existing skip), incl. 11
+  new; `eslint` on changed files 0 errors; `next build` exit 0. No schema change, not a
+  payment path. Owner to confirm live: set status + courier + AWB (no message), then
+  Notify → one WhatsApp + email with the right content + comment.
+- See `docs/HANDBOOK.html` Change log 2026-09-03 00:20.
+
 ### Batch: Order delivery-partner name + shipped email — 2026-09-02 23:10 IST
 - Owner: when the admin enters the AWB / tracking number, also capture the delivery
   partner (courier) name and include it in the notifications — and send an email too,
