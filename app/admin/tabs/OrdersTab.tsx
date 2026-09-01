@@ -9,10 +9,14 @@
 "use client";
 import { useMemo, useState } from "react";
 import Pagination from "@/app/components/Pagination";
-import { useAdminData } from "@/app/admin/AdminDataContext";
+import { useAdminData, type AdminOrder } from "@/app/admin/AdminDataContext";
 import { COURIER_PRESETS } from "@/app/utils/couriers";
+import { productHref } from "@/app/utils/slug";
+import { buildStatusWhatsappMessage, MAX_NOTIFY_COMMENT_LENGTH } from "@/app/utils/orderNotifications";
 
 const OTHER_COURIER = "__other__";
+
+type ChannelResult = "sent" | "skipped" | "failed";
 
 const ORDER_STATUS_TABS: { key: string; label: string }[] = [
   { key: "all", label: "All" },
@@ -139,6 +143,66 @@ export default function OrdersTab() {
       alert(`Could not update tracking details: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
+
+  // --- Notify customer (separate from any status/tracking save) ---
+  const [notifyOrder, setNotifyOrder] = useState<AdminOrder | null>(null);
+  const [notifyComment, setNotifyComment] = useState("");
+  const [notifySending, setNotifySending] = useState(false);
+  const [notifyResult, setNotifyResult] = useState<{ whatsapp: ChannelResult; email: ChannelResult } | null>(null);
+
+  const openNotify = (order: AdminOrder) => {
+    setNotifyOrder(order);
+    setNotifyComment("");
+    setNotifyResult(null);
+  };
+  const closeNotify = () => {
+    if (notifySending) return;
+    setNotifyOrder(null);
+  };
+
+  const sendNotify = async () => {
+    if (!notifyOrder) return;
+    setNotifySending(true);
+    setNotifyResult(null);
+    try {
+      const res = await fetch("/api/admin/orders/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: notifyOrder.id, comment: notifyComment }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Could not send the notification: ${data.error || "Unknown error"}`);
+        return;
+      }
+      setNotifyResult({ whatsapp: data.whatsapp, email: data.email });
+    } catch (err: unknown) {
+      alert(`Could not send the notification: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setNotifySending(false);
+    }
+  };
+
+  // Live preview of the WhatsApp text -- the email carries the same wording.
+  const notifyStatus = notifyOrder?.status || "processing";
+  const notifyFirstItem = Array.isArray(notifyOrder?.items) ? notifyOrder!.items[0] : undefined;
+  const notifyReviewUrl =
+    notifyStatus === "delivered" && notifyFirstItem?.id != null
+      ? `https://tohfaonline.com${productHref({ id: notifyFirstItem.id, name: notifyFirstItem.name })}`
+      : undefined;
+  const notifyPreview = notifyOrder
+    ? buildStatusWhatsappMessage({
+        status: notifyStatus,
+        orderId: notifyOrder.order_id || "",
+        courierName: notifyOrder.courier_name,
+        awbNumber: notifyOrder.awb_number,
+        comment: notifyComment,
+        reviewUrl: notifyReviewUrl,
+      })
+    : "";
+
+  const channelText = (r: ChannelResult, label: string, skipReason: string) =>
+    r === "sent" ? `✓ ${label} sent` : r === "failed" ? `✗ ${label} failed` : `${label} not sent — ${skipReason}`;
 
   return (
     <>
@@ -351,6 +415,16 @@ export default function OrdersTab() {
                         </div>
                       );
                     })()}
+                    <button
+                      type="button"
+                      onClick={() => openNotify(order)}
+                      className="mt-2 inline-flex items-center gap-1.5 rounded border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 transition"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                      </svg>
+                      Notify customer
+                    </button>
                   </td>
                   <td className="p-4 text-right font-mono font-bold text-amber-800 text-base">
                     ₹{Number(order.amount).toLocaleString("en-IN")}
@@ -371,6 +445,114 @@ export default function OrdersTab() {
         </>
       )}
     </div>
+
+    {/* --- Notify customer dialog (mobile-first: bottom sheet on phones,
+        centered card from sm: up). Sending is a deliberate, explicit
+        action -- status / AWB / courier saves never notify on their own. --- */}
+    {notifyOrder && (
+      <div
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-stone-900/40 sm:p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Notify customer"
+        onClick={closeNotify}
+      >
+        <div
+          className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-xl shadow-xl max-h-[92vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start justify-between gap-3 p-4 sm:p-5 border-b border-stone-200">
+            <div>
+              <h3 className="text-base font-serif font-bold text-stone-900">Notify customer</h3>
+              <p className="text-[11px] text-stone-500 mt-0.5 font-mono">{notifyOrder.order_id}</p>
+            </div>
+            <span
+              className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${
+                notifyStatus === "delivered"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : notifyStatus === "shipped"
+                  ? "bg-amber-50 text-amber-700"
+                  : notifyStatus === "cancelled"
+                  ? "bg-rose-50 text-rose-700"
+                  : "bg-stone-100 text-stone-600"
+              }`}
+            >
+              {notifyStatus}
+            </span>
+          </div>
+
+          <div className="p-4 sm:p-5 space-y-4">
+            <p className="text-xs text-stone-500 leading-relaxed">
+              Sends a <strong className="text-stone-700">{notifyStatus}</strong> update to{" "}
+              <span className="font-mono">{notifyOrder.customer_details?.contact || "—"}</span> on WhatsApp
+              {notifyOrder.customer_details?.email ? (
+                <>
+                  {" "}
+                  and <span className="font-mono">{notifyOrder.customer_details.email}</span> by email
+                </>
+              ) : (
+                <> (no email on file)</>
+              )}
+              .
+            </p>
+
+            <div>
+              <label className="block text-[11px] uppercase tracking-wider font-semibold text-stone-500 mb-1">
+                Note to include (optional)
+              </label>
+              <textarea
+                value={notifyComment}
+                onChange={(e) => setNotifyComment(e.target.value)}
+                maxLength={MAX_NOTIFY_COMMENT_LENGTH}
+                rows={3}
+                placeholder="e.g. Expected delivery Tue–Wed. Sorry for the short delay."
+                className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50 resize-y"
+              />
+              <p className="text-[10px] text-stone-400 mt-0.5 text-right">
+                {notifyComment.length}/{MAX_NOTIFY_COMMENT_LENGTH}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[11px] uppercase tracking-wider font-semibold text-stone-500 mb-1">Preview</p>
+              <pre className="whitespace-pre-wrap break-words text-xs text-stone-700 bg-stone-50 border border-stone-200 rounded p-3 font-sans">
+                {notifyPreview}
+              </pre>
+            </div>
+
+            {notifyResult && (
+              <div className="text-xs rounded border border-stone-200 bg-stone-50 p-3 space-y-1">
+                <p className={notifyResult.whatsapp === "sent" ? "text-emerald-700" : notifyResult.whatsapp === "failed" ? "text-rose-600" : "text-stone-500"}>
+                  {channelText(notifyResult.whatsapp, "WhatsApp", "not configured or no number on file")}
+                </p>
+                <p className={notifyResult.email === "sent" ? "text-emerald-700" : notifyResult.email === "failed" ? "text-rose-600" : "text-stone-500"}>
+                  {channelText(notifyResult.email, "Email", "no email on file")}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2 p-4 sm:p-5 border-t border-stone-200 sticky bottom-0 bg-white">
+            <button
+              type="button"
+              onClick={closeNotify}
+              disabled={notifySending}
+              className="flex-1 py-2.5 rounded border border-stone-300 text-sm font-semibold text-stone-600 hover:bg-stone-50 transition disabled:opacity-50"
+            >
+              {notifyResult ? "Close" : "Cancel"}
+            </button>
+            <button
+              type="button"
+              onClick={sendNotify}
+              disabled={notifySending}
+              className="flex-1 py-2.5 rounded bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 transition disabled:opacity-50"
+            >
+              {notifySending ? "Sending…" : notifyResult ? "Send again" : "Send notification"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }

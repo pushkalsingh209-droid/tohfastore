@@ -1047,11 +1047,13 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
 
   <div class="card">
     <h4>Orders</h4>
-    <p>List, search, filter by status. Change a status (Processing &rarr; Shipped &rarr; Delivered, or
-    Cancelled) &mdash; <strong>Shipped</strong> and <strong>Delivered</strong> fire a WhatsApp <em>and</em> an
-    email to the customer. Set an AWB / tracking number and the <strong>delivery partner</strong> (dropdown of
-    common couriers + &ldquo;Other&hellip;&rdquo;) any time &mdash; both ride along on the shipped
-    notification, the public <code>/track</code> page, and the invoice.</p>
+    <p>List, search, filter by status. Change a status, set an AWB / tracking number, and pick the
+    <strong>delivery partner</strong> (dropdown of common couriers + &ldquo;Other&hellip;&rdquo;) &mdash; all
+    saved silently, <em>no message goes out</em>. When you're ready, hit <strong>Notify customer</strong> on
+    that row: a dialog shows a preview of the message for the order's current status, lets you add an optional
+    one-off note, and sends it by <strong>WhatsApp + email</strong>. Works for every status (a "your order was
+    cancelled" note, a "running a day late" heads-up, etc.). Courier + tracking also show on the public
+    <code>/track</code> page and the invoice.</p>
     <div class="note"><b>After refunding a test order</b>
     Set its status to <strong>Cancelled</strong>. A cancelled order is excluded from analytics, bestsellers,
     and the units-sold tally &mdash; so your real numbers stay clean.</div>
@@ -1845,7 +1847,8 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/admin/totp-qr</code></td><td><span class="tag t-get">get</span></td><td>Renders an <code>otpauth://</code> QR for the existing <code>ADMIN_TOTP_SECRET</code>. Does not rotate anything.</td></tr>
 <tr><td><code>/api/admin/products</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span></td><td>Product CRUD-ish. <code>insert/updateWithFallback</code> drops any optional column Postgres complains about and retries. Stamps <code>last_restocked_at</code> on inventory increases; fires back-in-stock WhatsApp on 0&rarr;&gt;0. <code>revalidateTag("products","max")</code>.</td></tr>
 <tr><td><code>/api/admin/orders</code></td><td><span class="tag t-get">get</span></td><td>All orders, newest first.</td></tr>
-<tr><td><code>/api/admin/orders/update-status</code></td><td><span class="tag t-post">post</span></td><td>Set status (+ optional <code>awb_number</code> and <code>courier_name</code> &mdash; each only written when the body includes it, so a status-only change keeps them). <code>shipped</code>/<code>delivered</code> &rarr; best-effort customer <strong>WhatsApp <em>and</em> email</strong> (Resend), each in its own try/catch; both carry the courier + tracking number and an invoice link, delivered also a review link. <code>revalidateTag("orders","max")</code>.</td></tr>
+<tr><td><code>/api/admin/orders/update-status</code></td><td><span class="tag t-post">post</span></td><td>Persists status (+ optional <code>awb_number</code> / <code>courier_name</code> &mdash; each only written when the body includes it, so a status-only change keeps them). <strong>Does NOT notify the customer</strong> &mdash; that's the separate explicit <code>/api/admin/orders/notify</code> action, so editing tracking fields never re-spams. Cancel transition still backs units out of <code>product_sales</code>. <code>revalidateTag("orders","max")</code>.</td></tr>
+<tr><td><code>/api/admin/orders/notify</code></td><td><span class="tag t-post">post</span></td><td><code>{ id, comment? }</code> &mdash; sends a customer notification for the order's <em>current</em> status (any of the four), on an explicit admin click only (the "Notify customer" dialog). Best-effort <strong>WhatsApp + email</strong>, each its own try/catch; message text + email HTML from <code>app/utils/orderNotifications.ts</code>; shipped carries the courier + tracking line, delivered a review link, and the one-off <code>comment</code> (&le; 600 chars, not stored) is appended to both. Returns <code>{ ok, status, whatsapp, email }</code> with each channel <code>"sent"|"skipped"|"failed"</code>. Changes nothing on the order.</td></tr>
 <tr><td><code>/api/admin/coupons</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span> <span class="tag t-del">delete</span></td><td>Coupon CRUD. <code>revalidateTag("coupons","max")</code>.</td></tr>
 <tr><td><code>/api/admin/categories</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span> <span class="tag t-del">delete</span></td><td>Category CRUD incl. <code>show_on_home</code>, <code>gst_rate</code> (0&ndash;100), <code>discount_percent</code> (0&ndash;&lt;100), <code>default_page_size</code>. <code>revalidateTag("categories","max")</code>.</td></tr>
 <tr><td><code>/api/admin/reviews</code></td><td><span class="tag t-get">get</span> <span class="tag t-patch">patch</span> <span class="tag t-del">delete</span></td><td>List (joined with product name), approve, reject. <code>revalidateTag("reviews","max")</code>.</td></tr>
@@ -2093,7 +2096,7 @@ normalisation goes through <code>app/utils/phone.ts</code> (#18).</p>
 <tr><td>Order confirmation</td><td><code>/api/razorpay-webhook</code></td><td>&rarr; business (ops alert) + &rarr; customer (GST invoice + a <code>/success?order_id=</code> link), both as image-with-caption using the first item photo. The customer email carries a &ldquo;View / print invoice&rdquo; button (<code>invoiceUrl</code> param, customer copy only).</td></tr>
 <tr><td>Low-stock alert</td><td>webhook, inventory &le; 3 after a sale</td><td>&rarr; business</td></tr>
 <tr><td>Back-in-stock</td><td>admin product PATCH, inventory 0 &rarr; &gt; 0</td><td>&rarr; each pending <code>stock_alert_subscriptions</code> phone</td></tr>
-<tr><td>Ship / deliver</td><td><code>/api/admin/orders/update-status</code></td><td>&rarr; customer, <strong>WhatsApp + email</strong> (best-effort each). Both carry the delivery partner + tracking number and a <code>/success?order_id=</code> invoice link; delivered also links to the review form.</td></tr>
+<tr><td>Order status update (manual)</td><td><code>/api/admin/orders/notify</code> &mdash; the "Notify customer" dialog, any status</td><td>&rarr; customer, <strong>WhatsApp + email</strong> (best-effort each). Shipped carries the delivery partner + tracking number; delivered links to the review form; all carry a <code>/success?order_id=</code> invoice link and any one-off admin note. Never fires on its own &mdash; only on an explicit send.</td></tr>
 <tr><td>Lead follow-up</td><td><code>/api/leads</code> (auto) or <code>/api/admin/leads/follow-up</code> (manual)</td><td>&rarr; lead</td></tr>
 <tr><td>Abandoned checkout</td><td><code>/api/cron/abandoned-checkout</code></td><td>&rarr; lead (once, 2h&ndash;7d old)</td></tr>
 <tr><td>Session keepalive</td><td><code>/api/keepalive</code></td><td><code>getStateInstance</code> ping (no message)</td></tr>
@@ -2323,6 +2326,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>seo.ts</code>, <code>metaPixel.ts</code>, <code>googleTranslate.ts</code>, <code>trackWhatsappEnquiry.ts</code></td><td>OG default; Meta purchase event; translate cookie + voice-command parsing; enquiry beacon.</td></tr>
 <tr><td><code>recentlyViewed.ts</code>, <code>visitorId.ts</code></td><td>localStorage recently-viewed list (max 8); anonymous per-browser UUID.</td></tr>
 <tr><td><code>couriers.ts</code></td><td><code>COURIER_PRESETS</code> (dropdown list for the admin Orders tab) + <code>normalizeCourierName(raw)</code> (trim + clamp to 60, empty &rarr; null). The stored <code>orders.courier_name</code> is unconstrained free text; this list is convenience only. <em>(0045)</em></td></tr>
+<tr><td><code>orderNotifications.ts</code></td><td>Customer status-update message text (<code>buildStatusWhatsappMessage</code>) + email HTML (<code>buildStatusEmailHtml</code>, <code>statusEmailSubject</code>) for all four statuses, plus <code>cleanNotifyComment</code> (trim + clamp 600). Pure &mdash; the text builder is imported client-side too for the Notify dialog's live preview. Used only by <code>/api/admin/orders/notify</code>. <strong>11 unit tests.</strong></td></tr>
 <tr><td><code>chatLabels.ts</code>, <code>indianStates.ts</code>, <code>pagination.ts</code>, <code>loadingMessages.ts</code>, <code>downloadCsv.ts</code>, <code>brandMark.tsx</code>, <code>appleSplashScreens.ts</code></td><td>Small constants / helpers.</td></tr>
 </tbody></table></div>
 
@@ -2712,6 +2716,40 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-03<br>00:20</code></td>
+  <td><strong>Manual "Notify customer" &mdash; decouple status save from the message</strong><br>(owner: the WhatsApp fired every time status was set to Shipped <em>or</em> the AWB / courier was edited; wanted to set all three first, then send one notification &mdash; and a send button for every status, with an optional comment)</td>
+  <td>
+    <code>/api/admin/orders/update-status</code> <strong>no longer notifies anyone</strong> &mdash; it just
+    persists status / <code>awb_number</code> / <code>courier_name</code>. The customer message is now a
+    separate explicit action: new <strong><code>POST /api/admin/orders/notify</code></strong>
+    (<code>{ id, comment? }</code>) sends for the order's <em>current</em> status &mdash; any of the four,
+    not just shipped/delivered &mdash; best-effort WhatsApp + email, each its own try/catch, returning per-channel
+    <code>"sent"|"skipped"|"failed"</code>. Changes nothing on the order.
+    <br><br>
+    Message text + email HTML moved into a new pure module
+    <strong><code>app/utils/orderNotifications.ts</code></strong> (<code>buildStatusWhatsappMessage</code> /
+    <code>buildStatusEmailHtml</code> / <code>statusEmailSubject</code> / <code>cleanNotifyComment</code>,
+    11 unit tests) &mdash; per-status lead line, shipped tracking line, optional "Note from TOHFA: &lt;comment&gt;"
+    block (&le; 600 chars, not stored), invoice link, delivered review link. The old inline email builders left
+    <code>update-status</code>.
+    <br><br>
+    <strong>Admin Orders tab</strong> &mdash; a <em>Notify customer</em> button per row opens a mobile-first
+    dialog (bottom sheet on phones, centered card from <code>sm:</code>): shows who it goes to, an optional
+    note textarea, a live preview of the WhatsApp text (built from the same pure fn), Send, and a per-channel
+    result line. The status dropdown / AWB / courier controls are unchanged but now purely save-only.
+  </td>
+  <td><em>new:</em> <code>app/utils/orderNotifications.ts</code>,
+    <code>app/utils/orderNotifications.test.ts</code>, <code>app/api/admin/orders/notify/route.ts</code><br>
+    <em>edited:</em> <code>app/api/admin/orders/update-status/route.ts</code> (notification block removed),
+    <code>app/admin/tabs/OrdersTab.tsx</code> &middot; <code>docs/HANDBOOK.html</code> &middot;
+    <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 148 passed (1 pre-existing skip), incl. 11
+    new <code>orderNotifications</code> tests &middot; <code>eslint</code> on changed files 0 errors &middot;
+    <code>next build</code> exit 0, <code>/api/admin/orders/notify</code> registered. No schema change, not a
+    payment path. Owner to confirm live: set status + courier + AWB with no message sent, then Notify &rarr;
+    one WhatsApp + email with the right content and comment.</td>
+</tr>
 <tr>
   <td><code>2026-09-02<br>23:10</code></td>
   <td><strong>Order delivery-partner (courier) name + shipped email</strong><br>(owner: when entering the AWB/tracking, also capture the delivery partner and send it on the notifications &mdash; and send an email too, not just WhatsApp)</td>
