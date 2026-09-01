@@ -12,6 +12,33 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Downloadable Excel reports (Orders + GST) — 2026-09-03 03:15 IST
+- Owner: monthly / weekly / consolidated orders report, and a monthly GST report, both
+  as real `.xlsx`.
+- New dep **`exceljs` 4.4** (MIT, free) — server-side `.xlsx` assembly.
+- New **`GET /api/admin/reports`** (`force-dynamic`, `maxDuration = 60`):
+  `?preset=this-month|last-month|this-week|last-week|this-fy|all-time|custom` (`+ &from=&to=`,
+  inclusive end date, for `custom`). Streams a 3-sheet workbook — **Orders** (one flat row
+  per order in range, *incl.* cancelled; bold TOTAL), **GST summary** (taxable value +
+  CGST/SGST/IGST + total tax + order count, by rate), **GST by state** (same split per
+  place of supply, Intra/Inter — for GSTR-1 B2C).
+- New pure **`app/utils/reports.ts`** — `resolvePeriod()` returns an **IST-bounded**
+  `[from, to)` window (whole IST month / Mon–Sun week / Apr–Mar Indian FY / all-time /
+  custom), computed with explicit `Date.UTC(…) − IST_OFFSET` so it's correct on Vercel's
+  UTC runtime. `buildReport()` derives discount as `itemsSubtotal − amountPaid`, runs
+  `calculateOrderGstBreakdown` (same GST-inclusive back-calc as invoice/webhook), and
+  aggregates by rate and by `state||rate`: `CGST = SGST = tax/2` when the buyer state is
+  Uttarakhand (`isIntraStateSupply`), else `IGST = tax`. **Cancelled orders stay in the
+  Orders sheet but are excluded from every GST/money total.** 12 unit tests.
+- Admin (mobile-first): a *Reports* card at the top of the Overview tab — period `<select>`,
+  `<input type="date">` From/To for *custom* only, *Download Excel* button.
+- No schema change; read-only over `orders`; not on the payment path.
+- Verified: `tsc --noEmit` clean; `npm test` 167 passed (1 pre-existing skip), +12 in
+  `reports.test.ts`; `eslint` on the 4 changed/new files 0 errors 0 warnings; `next build`
+  exit 0 with `/api/admin/reports` registered; exceljs assembly smoke test produced a
+  valid re-readable `.xlsx`.
+- See `docs/HANDBOOK.html` Change log 2026-09-03 03:15.
+
 ### Batch: Enable RLS on `site_settings` — 2026-09-03 02:30 IST — 🔒 security
 - Trigger: Supabase advisor email — "Table publicly accessible / `rls_disabled_in_public`"
   for project tohfastore.
