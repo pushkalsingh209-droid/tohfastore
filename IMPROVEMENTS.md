@@ -12,6 +12,29 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Per-category WhatsApp enquiry number — 2026-09-02 18:10 IST
+- Owner: enquiries should go to the site default unless a category or product has its own
+  WhatsApp number set.
+- Generalizes the old `MISC_OUT_OF_STOCK_WHATSAPP_NUMBER` hardcode (Misc category, out-of-stock
+  only, not admin-configurable) into a per-category override any category can use. Confirmed
+  with owner first: (1) applies to every enquiry for that category regardless of stock, same
+  semantics as a product's own override; (2) the legacy Misc hardcode is left completely
+  untouched as a fallback, not migrated — only superseded if the owner deliberately sets a
+  number for Misc.
+- Migration `0049`: `categories.whatsapp_number text` (nullable, from the managed
+  `whatsapp_numbers` pool). `app/utils/whatsapp.ts` gains an optional `categoryWhatsappNumber`
+  param; new priority: product's own number > category's number > legacy Misc-out-of-stock
+  hardcode > site default. 11 new unit tests (`whatsapp.test.ts`, previously untested).
+- New `getCategoryWhatsappNumberMap()` (`storeQueries.ts`), folded into `getBootstrapData()`.
+  New `useCategoryWhatsappNumber(category)` selector (client) + a direct server call in
+  `product/[id]/page.tsx` feed the resolver everywhere the enquiry link is built.
+- Admin: Settings → Categories row gains a WhatsApp-number `<select>`, PATCHing via
+  `/api/admin/categories` (trim-or-null, no format validation needed).
+- Verified: `tsc --noEmit` clean; `npm test` 178 passed (1 pre-existing skip, +11 new);
+  `eslint` on all 9 changed/new source files 0 errors 0 warnings; `next build` exit 0. Owner
+  to run migration 0049 in the SQL editor before deploy. No payment-path change.
+- See `docs/HANDBOOK.html` Change log 2026-09-02 18:10.
+
 ### Batch: Settings — add a WhatsApp number directly — 2026-09-02 17:05 IST
 - Owner: no option in the admin panel's Settings → WhatsApp Numbers to add a number.
 - The WhatsApp Numbers card always listed numbers, set-default, and bulk-reassign, but never

@@ -25,7 +25,7 @@ import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink, resolveProductWhatsappNumber } from "@/app/utils/whatsapp";
 import WhatsappEnquiryLink from "@/app/components/WhatsappEnquiryLink";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
-import { getRelatedProducts, getProductUnitSettings, getDefaultWhatsappNumber, getSoldCounts } from "@/app/utils/storeQueries";
+import { getRelatedProducts, getProductUnitSettings, getDefaultWhatsappNumber, getCategoryWhatsappNumberMap, getSoldCounts } from "@/app/utils/storeQueries";
 import { getThumbUrl } from "@/app/utils/imageThumb";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
@@ -180,22 +180,25 @@ export default async function ProductDetailPage({
   // (The recent-viewers count is no longer fetched here -- its 60s refresh
   // window used to drag this whole static route down to a 60s ISR
   // revalidate. It's read client-side now: see RecentViewersNoteLive.)
-  const [reviews, categorySliderItems, relatedProducts, unitSettings, defaultWhatsappNumber] = await Promise.all([
-    product ? getApprovedReviews(product.id) : Promise.resolve([]),
-    getCategorySliderItems(),
-    product ? getRelatedProducts(product.category ?? "", product.id) : Promise.resolve([]),
-    getProductUnitSettings(),
-    getDefaultWhatsappNumber(),
-  ]);
+  const [reviews, categorySliderItems, relatedProducts, unitSettings, defaultWhatsappNumber, categoryWhatsappNumbers] =
+    await Promise.all([
+      product ? getApprovedReviews(product.id) : Promise.resolve([]),
+      getCategorySliderItems(),
+      product ? getRelatedProducts(product.category ?? "", product.id) : Promise.resolve([]),
+      getProductUnitSettings(),
+      getDefaultWhatsappNumber(),
+      getCategoryWhatsappNumberMap(),
+    ]);
 
   const stock = product ? Number(product.inventory) || 0 : 0;
   const outOfStock = stock <= 0;
   const lowStock = !outOfStock && stock <= 3;
+  const categoryWhatsappNumber = product?.category ? categoryWhatsappNumbers[product.category] : undefined;
   const whatsappHref = product
-    ? getProductWhatsappLink(product, outOfStock, defaultWhatsappNumber || undefined)
+    ? getProductWhatsappLink(product, outOfStock, defaultWhatsappNumber || undefined, categoryWhatsappNumber)
     : "#";
   const whatsappNumberUsed = product
-    ? resolveProductWhatsappNumber(product, outOfStock, defaultWhatsappNumber || undefined)
+    ? resolveProductWhatsappNumber(product, outOfStock, defaultWhatsappNumber || undefined, categoryWhatsappNumber)
     : "";
   const dimensionsLine = product
     ? formatProductDimensionsLine(product, unitSettings.weightUnit, unitSettings.dimensionUnit)

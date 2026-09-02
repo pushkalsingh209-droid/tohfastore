@@ -328,6 +328,28 @@ export const getCategoryDiscountMap = unstable_cache(
   { tags: ["categories"], revalidate: 86400 }
 );
 
+// Category name -> WhatsApp number (migration 0049), for the customer
+// enquiry link -- generalizes the old Misc-only, out-of-stock-only hardcode
+// (app/utils/whatsapp.ts) into an admin-configurable per-category override
+// that sits between a product's own number and the site-wide default.
+export const getCategoryWhatsappNumberMap = unstable_cache(
+  async (): Promise<Record<string, string>> => {
+    try {
+      const { data, error } = await supabase.from("categories").select("name, whatsapp_number");
+      if (error || !data) return {};
+      const map: Record<string, string> = {};
+      for (const row of data) {
+        if (row.name && row.whatsapp_number && row.whatsapp_number.trim()) map[row.name] = row.whatsapp_number.trim();
+      }
+      return map;
+    } catch {
+      return {};
+    }
+  },
+  ["category-whatsapp-number-map"],
+  { tags: ["categories"], revalidate: 86400 }
+);
+
 export interface BootstrapData {
   chatLabels: ReturnType<typeof parseChatLabels>;
   defaultWhatsappNumber: string;
@@ -336,6 +358,7 @@ export interface BootstrapData {
   productUnits: { weightUnit: WeightUnit; dimensionUnit: DimensionUnit };
   labelPhotoFilters: Record<string, string>;
   categoryDiscounts: Record<string, number>;
+  categoryWhatsappNumbers: Record<string, string>;
 }
 
 // One server-side read of everything the storefront's client contexts used
@@ -344,11 +367,12 @@ export interface BootstrapData {
 // it); the parsing is cheap and pure (bootstrapSettings.ts), so this
 // wrapper itself isn't cached.
 export async function getBootstrapData(): Promise<BootstrapData> {
-  const [rawSettings, productUnits, labelPhotoFilters, categoryDiscounts] = await Promise.all([
+  const [rawSettings, productUnits, labelPhotoFilters, categoryDiscounts, categoryWhatsappNumbers] = await Promise.all([
     getPublicSettingsMap(),
     getProductUnitSettings(),
     getLabelPhotoFilters(),
     getCategoryDiscountMap(),
+    getCategoryWhatsappNumberMap(),
   ]);
   return {
     chatLabels: parseChatLabels(rawSettings),
@@ -358,6 +382,7 @@ export async function getBootstrapData(): Promise<BootstrapData> {
     productUnits,
     labelPhotoFilters,
     categoryDiscounts,
+    categoryWhatsappNumbers,
   };
 }
 

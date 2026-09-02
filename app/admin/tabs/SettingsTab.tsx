@@ -575,6 +575,22 @@ export default function SettingsTab() {
     }
   };
 
+  // A category's own WhatsApp enquiry-number override (migration 0049) --
+  // sits between a product's own number and the site default. Value is
+  // always one of the managed whatsappNumbers, or "" to clear it back to
+  // no override.
+  const handleUpdateCategoryWhatsappNumber = async (categoryId: number, value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/categories", {
+        method: "PATCH",
+        body: JSON.stringify({ id: categoryId, whatsapp_number: value }),
+      });
+      setCategories(categories.map((c) => (c.id === categoryId ? { ...c, whatsapp_number: result.category.whatsapp_number } : c)));
+    } catch (err: unknown) {
+      alert(`Could not update category WhatsApp number: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   return (
     <>
     {/* SECTION D.0: STOREFRONT SETTINGS */}
@@ -1242,7 +1258,7 @@ export default function SettingsTab() {
     <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
       <div className="border-b border-stone-200 pb-4 mb-6">
         <h2 className="text-xl font-serif text-stone-900">Categories</h2>
-        <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form’s dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category’s products appear in the homepage&rsquo;s default view (they’re still reachable by selecting the category directly). GST % is set per category and used to break down the final bill. &ldquo;% Off&rdquo; shows a struck-through original price everywhere on the site (product price you set stays the real price charged -- this is display only). &ldquo;Products/page&rdquo; overrides the site-wide default just for that category&rsquo;s own page -- leave blank to use the default above.</p>
+        <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form’s dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category’s products appear in the homepage&rsquo;s default view (they’re still reachable by selecting the category directly). GST % is set per category and used to break down the final bill. &ldquo;% Off&rdquo; shows a struck-through original price everywhere on the site (product price you set stays the real price charged -- this is display only). &ldquo;Products/page&rdquo; overrides the site-wide default just for that category&rsquo;s own page -- leave blank to use the default above. The enquiry WhatsApp dropdown routes every &ldquo;Chat&rdquo; click for that category's products to a specific number (from WhatsApp Numbers above) instead of the site default -- a product's own number (set in the product form) still wins over this if it has one.</p>
       </div>
 
       {/* Mobile-first: the name input takes its own full-width row, and
@@ -1352,6 +1368,18 @@ export default function SettingsTab() {
                   />
                   <span className="text-[11px] text-stone-400">/page</span>
                 </div>
+                <select
+                  key={`${cat.id}-${cat.whatsapp_number ?? ""}`}
+                  defaultValue={cat.whatsapp_number ?? ""}
+                  title="WhatsApp number for enquiries on this category's products -- overrides the site default, but a product's own number (product form) still wins over this"
+                  onChange={(e) => handleUpdateCategoryWhatsappNumber(cat.id, e.target.value)}
+                  className="px-2 py-1.5 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-stone-50 max-w-[140px]"
+                >
+                  <option value="">Enquiries: Default</option>
+                  {whatsappNumbers.map((n) => (
+                    <option key={n.id} value={n.phone_number}>{n.label ? `${n.label} — ` : ""}+{n.phone_number}</option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   onClick={() => handleToggleCategoryHome(cat.id, !cat.show_on_home)}

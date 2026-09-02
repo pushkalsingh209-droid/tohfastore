@@ -74,3 +74,12 @@ export function useCategoryDiscount(category: string | null | undefined): number
   if (!category) return null;
   return discounts[category] ?? null;
 }
+
+// A category's own WhatsApp enquiry-number override (migration 0049) --
+// sits between a product's own number and the site-wide default in
+// resolveProductWhatsappNumber's priority order.
+export function useCategoryWhatsappNumber(category: string | null | undefined): string | null {
+  const numbers = useBootstrap().categoryWhatsappNumbers;
+  if (!category) return null;
+  return numbers[category] ?? null;
+}
