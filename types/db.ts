@@ -415,6 +415,7 @@ export type Database = {
           image_url: string | null
           images: string[] | null
           inventory: number | null
+          is_spotlight: boolean
           label: string | null
           last_restocked_at: string | null
           material: string | null
@@ -422,6 +423,7 @@ export type Database = {
           photo_filter: string | null
           price: number | null
           price_per_kg: number | null
+          spotlight_order: number | null
           supplier_numbers: string[] | null
           weight_g: number | null
           whatsapp_number: string | null
@@ -442,6 +444,7 @@ export type Database = {
           image_url?: string | null
           images?: string[] | null
           inventory?: number | null
+          is_spotlight?: boolean
           label?: string | null
           last_restocked_at?: string | null
           material?: string | null
@@ -449,6 +452,7 @@ export type Database = {
           photo_filter?: string | null
           price?: number | null
           price_per_kg?: number | null
+          spotlight_order?: number | null
           supplier_numbers?: string[] | null
           weight_g?: number | null
           whatsapp_number?: string | null
@@ -469,6 +473,7 @@ export type Database = {
           image_url?: string | null
           images?: string[] | null
           inventory?: number | null
+          is_spotlight?: boolean
           label?: string | null
           last_restocked_at?: string | null
           material?: string | null
@@ -476,6 +481,7 @@ export type Database = {
           photo_filter?: string | null
           price?: number | null
           price_per_kg?: number | null
+          spotlight_order?: number | null
           supplier_numbers?: string[] | null
           weight_g?: number | null
           whatsapp_number?: string | null

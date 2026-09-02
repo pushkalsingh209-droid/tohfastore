@@ -1062,8 +1062,11 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
       <li><b>Live Storefront Catalog &amp; Stock Tracker</b> &mdash; search / filter / paginate; inline
       &plusmn; stock, inline label / photo-look / cost price, hide/unhide, storefront position number, a
       per-row "Notify suppliers" disclosure (attach order-notification numbers without opening the form);
-      the "Lightweight Brass" weight&nbsp;&times;&nbsp;rate&nbsp;&times;&nbsp;1.20 price calculator; a plain
-      weight/dimensions/price editor for every other product. "Edit Details" pulls a row up into the form.</li>
+      a per-row <b>&ldquo;★ Featured&rdquo; / &ldquo;☆ Feature&rdquo;</b> toggle (0050) for the
+      <code>/spotlight</code> marketing page &mdash; feature any product, any category, any count, no
+      constraint; the "Lightweight Brass" weight&nbsp;&times;&nbsp;rate&nbsp;&times;&nbsp;1.20 price
+      calculator; a plain weight/dimensions/price editor for every other product. "Edit Details" pulls a
+      row up into the form.</li>
       <li><b>Catalogue PDF</b> &mdash; a branded, category-wise PDF of every product.</li>
     </ul>
   </div>
@@ -1094,12 +1097,15 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
 
   <div class="card">
     <h4>Settings</h4>
-    <p>Storefront defaults; the <b>Spend &amp; Save Offer</b> (see below); the WhatsApp-numbers pool + bulk
+    <p>Storefront defaults; the <b>Spend &amp; Save Offer</b> (see below); the <b>Featured Spotlight</b>
+    campaign (0050 &mdash; enable, title, description, start/end window for <code>/spotlight</code>, a live
+    count of currently-featured products with a one-click &ldquo;Clear all&rdquo; &mdash; <em>which</em>
+    products is set from the Products tab's own toggle, not here); the WhatsApp-numbers pool + bulk
     reassignment; <b>Order Notification Numbers</b> (supplier list &mdash; up to 10 extra WhatsApp numbers
     that get order notifications for the products they're attached to, on top of the main business number);
     the "Chat for&hellip;" button labels; product labels + bulk-assign; and categories (each with its own
-    GST %, discount %, per-page size, and homepage visibility). See the table below for what each control
-    actually changes.</p>
+    GST %, discount %, per-page size, homepage visibility, and its own WhatsApp enquiry-number override).
+    See the table below for what each control actually changes.</p>
   </div>
 
   <div class="card">
@@ -1118,6 +1124,7 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
     <thead><tr><th>Setting</th><th>Effect</th><th>Where it shows</th></tr></thead>
     <tbody>
       <tr><td>Spend &amp; Save Offer</td><td>Storewide "spend &#8805; &#8377;X, get a flat &#8377;Y off the whole bill" ladder. Switch on/off; optional start/end window; add/edit/remove tiers (e.g. &#8377;6,000&rarr;&#8377;800, &#8377;12,000&rarr;&#8377;1,500&hellip;). Each tier's discount must be less than its own threshold, and discounts must grow with the thresholds &mdash; a bad edit is rejected with the reason. <b>While it's on</b>, checkout offers the shopper a choice between the offer and a coupon code (one or the other); GST is re-worked out of the reduced total. Config is one JSON row, <code>site_settings.spend_tier_offer</code>.</td><td>Checkout Review step; the amount charged</td></tr>
+      <tr><td>Featured Spotlight (0050)</td><td>The <code>/spotlight</code> marketing page's campaign window. Switch on/off; title; description; start/end (end date <b>required</b> while on &mdash; the countdown is the whole point). Which products show is set separately, per-product, from the Products tab's &ldquo;Feature&rdquo; toggle &mdash; this card only shows a live count + &ldquo;Clear all&rdquo;. Config is one JSON row, <code>site_settings.featured_spotlight</code>.</td><td><code>/spotlight</code></td></tr>
       <tr><td>Default products per page</td><td>Catalog page size when a visitor hasn't chosen one</td><td>Every catalog grid</td></tr>
       <tr><td>Cards loaded per scroll batch</td><td>How many product cards mount at once as the shopper scrolls (lower = smoother on long pages; min 8)</td><td>Catalog grid</td></tr>
       <tr><td>Default product photo look</td><td>Site-wide photo filter; a visitor's own tap overrides it for their view</td><td>Every card / gallery</td></tr>
@@ -1601,6 +1608,8 @@ Column lists below are the <em>current</em> effective schema, reconstructed from
 <tr><td><code>cost_price_per_kg</code></td><td>numeric</td><td>Cost analogue of <code>price_per_kg</code> (no margin). <em>(0036)</em></td></tr>
 <tr><td><code>hidden</code></td><td>boolean = false</td><td>Hides from all listings, search, sitemap, catalogue PDF, sliders, <em>and</em> direct URL (detail 404s; order creation rejects). <em>(0038)</em></td></tr>
 <tr><td><code>supplier_numbers</code></td><td>text[]</td><td>Normalised WhatsApp numbers (from <code>order_notification_numbers</code>) that also get this product's order notifications, on top of the business number. NULL = none. The webhook / notify route re-check each against the live list before sending. Set via the product form&rsquo;s supplier checkboxes. <em>(0046)</em></td></tr>
+<tr><td><code>is_spotlight</code></td><td>boolean = false</td><td>Membership in the <code>/spotlight</code> marketing page. Toggled per row from the Products tab's Live Storefront Catalog table (a single-row <code>UPDATE</code> &mdash; deliberately not a shared JSON id-array, see &sect;7 migration 0050). Any product, any category, any count &mdash; free-form curation, no per-category constraint. <em>(0050)</em></td></tr>
+<tr><td><code>spotlight_order</code></td><td>int</td><td>Manual curator ordering for the spotlight grid, NULLS LAST. Column exists for a future reorder UI; not wired to any admin control yet &mdash; every toggle-on today leaves it null and just appends in id order. <em>(0050)</em></td></tr>
 <tr><td><code>created_at</code></td><td>timestamptz</td><td>Index <code>products_created_at_idx</code> (desc).</td></tr>
 </tbody></table></div>
 <p class="muted">Indexes: <code>products_created_at_idx</code>, <code>products_display_order_idx</code>.
@@ -1727,6 +1736,7 @@ policy). The lesson: <strong>every <code>create table</code> migration must incl
 <tr><td>0047</td><td>enable_rls_site_settings</td><td><code>alter table site_settings enable row level security;</code> (+ defensive <code>drop policy</code> for any stray dashboard "quick start" policy). <code>0011</code> created <code>site_settings</code> without RLS &mdash; the only table migration that missed it &mdash; so the anon/publishable key could read <em>and write</em> every KV row (<code>brass_price_per_kg</code>, <code>spend_tier_offer</code>, <code>stock_reservations_enabled</code>&hellip;). Supabase's advisor flags it as <code>rls_disabled_in_public</code>. No policy added: every app path uses the service-role key, which bypasses RLS &mdash; same lockdown as <code>orders</code>/<code>coupons</code>. <code>rlsProbes.ts</code> now probes <code>site_settings</code> read + write so CI and <code>/api/cron/rls-check</code> catch a regression. Applied to the live DB by the owner ahead of the merge.</td></tr>
 <tr><td>0048</td><td>add_order_notification_log</td><td>New <code>order_notification_log</code> table (RLS on, no policies &mdash; same lockdown as <code>orders</code>/<code>coupons</code>): <code>order_id</code> (FK &rarr; <code>orders.id</code>, cascade delete), <code>status</code>, <code>whatsapp</code>/<code>email</code> channel results, <code>sent_at</code>. One row per explicit &ldquo;Notify customer&rdquo; send from <code>/api/admin/orders/notify</code>. Feeds the Orders tab's per-order/per-status send counter (e.g. <code>Shipped (2)</code>) and a client-side notification-analytics panel (date-range totals by status) &mdash; both read the whole log via <code>GET /api/admin/orders/notification-log</code>, no aggregation query needed at this scale. Applied to the live DB by the owner ahead of the merge.</td></tr>
 <tr><td>0049</td><td>add_category_whatsapp_number</td><td><code>categories.whatsapp_number text</code> (nullable, one of the managed <code>whatsapp_numbers</code> pool). Generalizes the old Misc-only, out-of-stock-only hardcode (<code>MISC_OUT_OF_STOCK_WHATSAPP_NUMBER</code> in <code>app/utils/whatsapp.ts</code>) into an admin-configurable per-category override for the customer enquiry link, applying regardless of stock state. Priority: product's own number &gt; category's number &gt; the legacy Misc hardcode (untouched, still fires when a category has no number set) &gt; site-wide default. Owner's explicit call to keep the hardcode as a separate, unmodified fallback rather than migrating it into the new field.</td></tr>
+<tr><td>0050</td><td>add_product_spotlight</td><td><code>products.is_spotlight boolean = false</code> + <code>products.spotlight_order int</code> (nullable, unused until a future manual-reorder UI &mdash; <code>NULLS LAST</code>) + a partial index on <code>is_spotlight</code>. Backs the <code>/spotlight</code> marketing page (<code>app/utils/featuredSpotlight.ts</code>). <strong>Deliberately a per-product column, not a product-id array in <code>site_settings</code></strong> &mdash; the admin toggles membership from a single button per row in the Products tab's existing catalog table (a single-row <code>UPDATE</code>); a shared JSON array would instead need read-full-array&rarr;splice&rarr;write-full-array on every toggle, silently dropping a concurrent edit from a second open admin tab. Exposed under the existing anon <code>hidden = false</code> SELECT policy like every other product column &mdash; not sensitive. The campaign window itself (title/description/start/end) is a separate, small <code>site_settings</code> row (key <code>featured_spotlight</code>) using the same lenient-parse/strict-sanitize split as <code>spend_tier_offer</code>, safe as a whole-object write since only the Settings tab's one form ever writes it.</td></tr>
 </tbody></table></div>
 
 <p><strong><code>product_sales</code> drift check</strong> &mdash; the tally is only self-correcting for cancellations
@@ -1797,6 +1807,7 @@ resets and verify steady-state usage stays under cap.</p>
 <tr><td><code>/success</code></td><td>app/success/page.tsx</td><td>client</td><td>Reads <code>sessionStorage.tohfa_last_order</code>; clears cart; fires deduped GA4/Meta purchase events; printable invoice. If sessionStorage is gone but <code>?order_id=</code> is present, offers a phone-gated re-fetch via <code>/api/orders/receipt</code> (no analytics on that path).</td></tr>
 <tr><td><code>/track</code></td><td>app/track/page.tsx</td><td>client</td><td>Reference (order id or AWB) + phone &rarr; <code>POST /api/orders/track</code>.</td></tr>
 <tr><td><code>/wishlist</code></td><td>app/wishlist/page.tsx</td><td>client</td><td>localStorage-backed wishlist grid.</td></tr>
+<tr><td><code>/spotlight</code></td><td>app/spotlight/page.tsx (added 2026-09-02)</td><td><code>force-dynamic</code> over <code>unstable_cache</code>'d reads, same reasoning as <code>/product/[id]</code></td><td>The admin-curated, time-boxed featured-products marketing page (see &sect;5 <code>products.is_spotlight</code> / 0050 and <code>app/utils/featuredSpotlight.ts</code>). No active campaign, or an active one with zero eligible (unhidden) products &rarr; a &ldquo;check back soon&rdquo; panel, still <strong>200</strong> (never a redirect, so a shared link keeps working between campaigns). Otherwise: title/description, a ticking <code>&lt;SpotlightCountdown&gt;</code> to <code>endsAt</code>, and a grid of real <code>&lt;ProductCard&gt;</code>s (Add to Cart / wishlist work right from this page). In <code>sitemap.ts</code> (unlike <code>/handbook</code>, this is meant to be found).</td></tr>
 <tr><td><code>/about</code>, <code>/contact</code>, <code>/corporate</code>, <code>/privacy</code>, <code>/terms</code>, <code>/refunds</code></td><td>app/&lt;name&gt;/page.tsx</td><td>static</td><td><code>/contact</code> + <code>/corporate</code> have forms &rarr; <code>/api/contact</code> / <code>/api/leads</code>.</td></tr>
 <tr><td><code>/admin</code></td><td>app/admin/page.tsx (client SPA shell, 231 lines) + all 7 tab bodies as lazy components in <code>app/admin/tabs/</code> (#16 done)</td><td>client SPA behind proxy auth</td><td>Tabs via <code>?tab=</code>. See &sect;14.</td></tr>
 <tr><td><code>/admin/login</code></td><td>app/admin/login/page.tsx</td><td>client</td><td>Password + TOTP/backup code &rarr; <code>POST /api/admin/login</code>.</td></tr>
@@ -1890,7 +1901,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/admin/login-attempts</code></td><td><span class="tag t-get">get</span></td><td>Last 50 attempts for the Security tab.</td></tr>
 <tr><td><code>/api/admin/backup-codes</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span></td><td>GET remaining count; POST regenerates all 8 (plaintext returned once).</td></tr>
 <tr><td><code>/api/admin/totp-qr</code></td><td><span class="tag t-get">get</span></td><td>Renders an <code>otpauth://</code> QR for the existing <code>ADMIN_TOTP_SECRET</code>. Does not rotate anything.</td></tr>
-<tr><td><code>/api/admin/products</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span></td><td>Product CRUD-ish. <code>insert/updateWithFallback</code> drops any optional column Postgres complains about and retries. Stamps <code>last_restocked_at</code> on inventory increases; fires back-in-stock WhatsApp on 0&rarr;&gt;0. Accepts <code>supplier_numbers</code> (array &mdash; normalised + validated + de-duped, empty &rarr; null). <code>revalidateTag("products","max")</code>.</td></tr>
+<tr><td><code>/api/admin/products</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span></td><td>Product CRUD-ish. <code>insert/updateWithFallback</code> drops any optional column Postgres complains about and retries. Stamps <code>last_restocked_at</code> on inventory increases; fires back-in-stock WhatsApp on 0&rarr;&gt;0. Accepts <code>supplier_numbers</code> (array &mdash; normalised + validated + de-duped, empty &rarr; null). PATCH also accepts <code>is_spotlight</code> (0050, boolean, the Products tab's per-row &ldquo;Feature&rdquo; toggle) &mdash; when present, revalidates <code>site-settings</code> too, alongside the usual <code>products</code> tag, since <code>getSpotlightProducts</code> is tagged both. <code>revalidateTag("products","max")</code>.</td></tr>
 <tr><td><code>/api/admin/orders</code></td><td><span class="tag t-get">get</span></td><td>All orders, newest first.</td></tr>
 <tr><td><code>/api/admin/orders/update-status</code></td><td><span class="tag t-post">post</span></td><td>Persists status (+ optional <code>awb_number</code> / <code>courier_name</code> &mdash; each only written when the body includes it, so a status-only change keeps them). <strong>Does NOT notify the customer</strong> &mdash; that's the separate explicit <code>/api/admin/orders/notify</code> action, so editing tracking fields never re-spams. Cancel transition still backs units out of <code>product_sales</code>. <code>revalidateTag("orders","max")</code>.</td></tr>
 <tr><td><code>/api/admin/orders/notify</code></td><td><span class="tag t-post">post</span></td><td><code>{ id, comment? }</code> &mdash; sends a customer notification for the order's <em>current</em> status (any of the four), on an explicit admin click only (the "Notify customer" dialog). Best-effort <strong>WhatsApp + email</strong>, each its own try/catch; message text + email HTML from <code>app/utils/orderNotifications.ts</code>; shipped carries the courier + tracking line, delivered a review link, and the one-off <code>comment</code> (&le; 600 chars, not stored) is appended to both. Also logs the send to <code>order_notification_log</code> (0048, best-effort) and returns the fresh per-order/per-status count. Returns <code>{ ok, status, whatsapp, email, suppliersNotified, notificationCount, logEntry }</code> with each channel <code>"sent"|"skipped"|"failed"</code>. Changes nothing on the order itself.</td></tr>
@@ -1900,7 +1911,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/admin/reviews</code></td><td><span class="tag t-get">get</span> <span class="tag t-patch">patch</span> <span class="tag t-del">delete</span></td><td>List (joined with product name), approve, reject. <code>revalidateTag("reviews","max")</code>.</td></tr>
 <tr><td><code>/api/admin/leads</code></td><td><span class="tag t-get">get</span> <span class="tag t-del">delete</span></td><td>List / delete leads.</td></tr>
 <tr><td><code>/api/admin/leads/follow-up</code></td><td><span class="tag t-post">post</span></td><td>Manual WhatsApp follow-up (source-specific copy) or <code>markOnly</code> = &ldquo;contacted via other channel&rdquo;.</td></tr>
-<tr><td><code>/api/admin/settings</code></td><td><span class="tag t-get">get</span> <span class="tag t-patch">patch</span></td><td>Read/write <code>site_settings</code> with per-key validation (page size 1&ndash;500, reveal batch &ge; 8, photo filter must be a known preset, units from allow-lists, WA number digits, brass rate &gt; 0, chat labels 1&ndash;30, Ganesha cooldown 5&ndash;720 min / auto-shows 1&ndash;10 / collapse 2&ndash;60s; <code>spend_tier_offer</code> via <code>sanitizeSpendTierOffer</code> &mdash; 400 with the reason if a tier's discount &ge; its threshold, the ladder isn't strictly increasing, or the date window is inverted). <code>revalidateTag("site-settings","max")</code>.</td></tr>
+<tr><td><code>/api/admin/settings</code></td><td><span class="tag t-get">get</span> <span class="tag t-patch">patch</span></td><td>Read/write <code>site_settings</code> with per-key validation (page size 1&ndash;500, reveal batch &ge; 8, photo filter must be a known preset, units from allow-lists, WA number digits, brass rate &gt; 0, chat labels 1&ndash;30, Ganesha cooldown 5&ndash;720 min / auto-shows 1&ndash;10 / collapse 2&ndash;60s; <code>spend_tier_offer</code> via <code>sanitizeSpendTierOffer</code> &mdash; 400 with the reason if a tier's discount &ge; its threshold, the ladder isn't strictly increasing, or the date window is inverted; <code>featured_spotlight</code> via <code>sanitizeFeaturedSpotlight</code>, same split &mdash; 400 if enabled with no end date, or the window is inverted). <code>revalidateTag("site-settings","max")</code>.</td></tr>
 <tr><td><code>/api/admin/colors</code>, <code>/api/admin/materials</code>, <code>/api/admin/labels</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> (labels also <span class="tag t-patch">patch</span>)</td><td>Managed dropdown lists. <code>labels</code> also <code>revalidateTag("labels","max")</code>.</td></tr>
 <tr><td><code>/api/admin/labels/bulk-assign</code></td><td><span class="tag t-post">post</span></td><td>Tag many products at once &mdash; <code>mode: "category"</code> or <code>"home"</code> (all homepage-visible).</td></tr>
 <tr><td><code>/api/admin/chat-labels</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-del">delete</span></td><td>Preset pool for the chat button (per <code>kind</code>).</td></tr>
@@ -2121,10 +2132,10 @@ untyped <code>any</code> the JSX always had (a follow-up typing pass, <code>IMPR
 <thead><tr><th>Tab</th><th>Contents</th></tr></thead>
 <tbody>
 <tr><td><code>overview</code></td><td>A <strong>Keepalive heartbeat</strong> card (last-run timestamp + amber <em>Check</em> badge if &gt; 90 min stale), then Business Overview (revenue, orders, AOV, repeat-rate, 6-month revenue chart), WhatsApp Enquiries analytics (14-day trend, by category/product/number/source), Leads list (follow-up / mark-contacted / delete), all with CSV export.</td></tr>
-<tr><td><code>products</code></td><td>Add-product form (name, price, description, images via <code>ImageUploadField</code>, category, inventory, weight/dimensions with selectable input unit + converter, material/color/label dropdowns, per-product WhatsApp number, photo filter, cost price). <strong>Live Storefront Catalog &amp; Stock Tracker:</strong> inline stock steppers, spec drafts, a &ldquo;Lightweight Brass&rdquo; price calculator (<code>weight &times; &#8377;/kg &times; 1.20</code> &rarr; <code>roundUpBrassPrice</code>), bulk label assign, hide/unhide.</td></tr>
+<tr><td><code>products</code></td><td>Add-product form (name, price, description, images via <code>ImageUploadField</code>, category, inventory, weight/dimensions with selectable input unit + converter, material/color/label dropdowns, per-product WhatsApp number, photo filter, cost price). <strong>Live Storefront Catalog &amp; Stock Tracker:</strong> inline stock steppers, spec drafts, a &ldquo;Lightweight Brass&rdquo; price calculator (<code>weight &times; &#8377;/kg &times; 1.20</code> &rarr; <code>roundUpBrassPrice</code>), bulk label assign, hide/unhide, and a per-row &ldquo;★ Featured&rdquo;/&ldquo;☆ Feature&rdquo; toggle (0050) for the <code>/spotlight</code> marketing page &mdash; any product, any category, any count.</td></tr>
 <tr><td><code>orders</code></td><td>A <strong>Notifications sent</strong> analytics card (per-status totals over an admin-chosen date range, blank = all time &mdash; client-side over the full <code>order_notification_log</code>, 0048) above the order table. Table filtered by status (<code>ORDER_STATUS_TABS</code>), status updates + AWB entry, customer/address/items view (an amber &ldquo;Gift &mdash; receiver: &lt;number&gt;&rdquo; pill when <code>shipping_address.recipientPhone</code> is set, post-0049 &mdash; also in the search box), and a per-order/per-status send counter (e.g. <code>Shipped (2)</code>) next to the &ldquo;Notify customer&rdquo; button and on the notify dialog's status pill, both fed by the same log.</td></tr>
 <tr><td><code>coupons</code></td><td>Coupon CRUD, public/private toggle, usage vs limit.</td></tr>
-<tr><td><code>settings</code></td><td>Storefront Settings (page size, reveal batch, photo filter, units, default WhatsApp number, brass &#8377;/kg, Ganesha popup tuning), Categories management (show-on-home, GST rate, discount %, page-size override), WhatsApp Numbers + bulk reassign, Chat Button Labels.</td></tr>
+<tr><td><code>settings</code></td><td>Storefront Settings (page size, reveal batch, photo filter, units, default WhatsApp number, brass &#8377;/kg, Ganesha popup tuning), Spend &amp; Save Offer, <strong>Featured Spotlight</strong> (0050 &mdash; enable/title/description/start/end for the <code>/spotlight</code> page, a live count of currently-featured products with a &ldquo;Clear all&rdquo;; which products is set from the Products tab), WhatsApp Numbers + bulk reassign, Order Notification Numbers, Chat Button Labels, Categories management (show-on-home, GST rate, discount %, page-size override, per-category WhatsApp number).</td></tr>
 <tr><td><code>reviews</code></td><td>Pending/approved review moderation (approve / reject).</td></tr>
 <tr><td><code>security</code></td><td>Recent login attempts, backup-codes remaining + regenerate, TOTP QR re-provision, &ldquo;Log Out Everywhere&rdquo;.</td></tr>
 </tbody></table></div>
@@ -2224,7 +2235,9 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       <code>getSoldCounts</code> (reads the <code>product_sales</code> aggregate &mdash; migration 0042 &mdash; not
       an order scan), <code>getRecentOrderItems</code> (shared last-300-orders scan behind
       <code>getBestsellers</code> + <code>getRelatedProducts</code>; tally is the pure
-      <code>orderTally.ts</code>), <code>getCategoryImage</code>.
+      <code>orderTally.ts</code>), <code>getCategoryImage</code>, <code>getSpotlightProducts</code> (0050 &mdash;
+      <code>/spotlight</code>'s product grid, tagged both <code>products</code> and <code>site-settings</code>)
+      + <code>getFeaturedSpotlightCampaign</code> (its campaign window, tag <code>site-settings</code>).
       <strong>Storefront bootstrap (#11):</strong> <code>getPublicSettingsMap</code> (tag <code>site-settings</code>)
       + <code>getCategoryDiscountMap</code> + <code>getCategoryWhatsappNumberMap</code> (both tag <code>categories</code>,
       the latter new in 0049), composed with the existing
@@ -2335,6 +2348,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <h4>Marketing / admin</h4>
 <ul class="tight">
 <li><code>WelcomeGaneshaPopup</code> &mdash; audio (<code>/public/audio/welcome.mp3</code>) + configurable auto-show</li>
+<li><code>SpotlightCountdown</code> &mdash; the <code>/spotlight</code> page's ticking &ldquo;ends in&hellip;&rdquo; banner (0050); client-only, computed inside <code>useEffect</code> to dodge a hydration mismatch, <code>aria-live="off"</code> on the digits</li>
 <li><code>AbandonedCartNudge</code>, <code>CookieConsent</code>, <code>InstallPrompt</code></li>
 <li><code>admin/ImageUploadField</code>, <code>admin/DownloadCsvButton</code></li>
 <li><code>admin/FinanceInsightsPanel</code>, <code>admin/InventoryInsightsPanel</code>, <code>admin/GroupStatsPanel</code></li>
@@ -2360,6 +2374,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>bootstrapSettings.ts</code></td><td><code>parseChatLabels</code> / <code>parseGaneshaSettings</code> / <code>parsePhotoFilterIndex</code> / <code>parseDefaultWhatsappNumber</code> &mdash; pure parsers for the storefront <code>site_settings</code> values, run server-side in <code>getBootstrapData()</code> (#11). Reproduce the old per-context parse + clamp + fallback rules exactly. <strong>8 unit tests.</strong></td></tr>
 <tr><td><code>phone.ts</code></td><td><code>normalizeIndianPhone(raw)</code> &mdash; the <em>one</em> canonical Indian-phone normaliser (&rarr; bare digits <code>91XXXXXXXXXX</code>). Replaced 4 near-identical local copies (<code>whatsappOtp.ts</code>, <code>greenApi.ts</code> &times;2, <code>stock-alerts</code>, admin <code>whatsapp-numbers</code>) + an inline one in admin <code>orders/update-status</code>. Does not validate &mdash; callers keep their own <code>/^91[6-9]\d{9}$/</code> check. Unit-tested (7). <em>(#18)</em></td></tr>
 <tr><td><code>whatsapp.ts</code></td><td>Enquiry-link builder (<code>getProductWhatsappLink</code>) + number-resolution priority (<code>resolveProductWhatsappNumber</code>) &mdash; product &gt; category (0049) &gt; legacy Misc-out-of-stock hardcode &gt; site default. <strong>11 unit tests</strong> (<code>whatsapp.test.ts</code>, new).</td></tr>
+<tr><td><code>featuredSpotlight.ts</code></td><td>The <code>/spotlight</code> campaign window &mdash; one JSON row (<code>site_settings.featured_spotlight</code>), same lenient-parse/strict-sanitize split as <code>spendTierOffer.ts</code>. <code>parseFeaturedSpotlight(raw)</code> fail-closed &rarr; inert (disabled) campaign for every read path; <code>sanitizeFeaturedSpotlight(input)</code> strict, returns <code>{campaign, errors[]}</code> for the admin PATCH branch &mdash; rejects an inverted window and (campaign-specific rule spendTierOffer.ts doesn't have) an enabled campaign with no end date. <code>isFeaturedSpotlightActive(campaign, now?)</code>. <strong>Which products show is NOT here</strong> &mdash; that's <code>products.is_spotlight</code> (0050), a per-product column, deliberately not a product-id array in this JSON (read-modify-write race risk against a second open admin tab &mdash; see the migration's header comment). <strong>18 unit tests</strong> (<code>featuredSpotlight.test.ts</code>, new).</td></tr>
 <tr><td><code>whatsappOtp.ts</code></td><td>OTP send/verify/token-check + all abuse limits + opportunistic verification-row pruning. Phone form via <code>phone.ts</code> (<code>normalizePhoneForRecord</code> re-exports it for <code>/api/razorpay</code>).</td></tr>
 <tr><td><code>greenApi.ts</code></td><td>Green API send (text / image+caption) + <code>checkWhatsappNumber</code>. Chat-id / phone form via <code>phone.ts</code>.</td></tr>
 <tr><td><code>razorpaySignature.ts</code></td><td><code>isValidPaymentSignature</code> (client path) + <code>isValidWebhookSignature</code> (Dashboard path). Unit-tested.</td></tr>
@@ -2772,6 +2787,77 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-02<br>23:55</code></td>
+  <td><strong>Spotlight: an admin-curated, time-boxed featured-products page</strong><br>(owner: a page showcasing a changeable set of featured products &mdash; any count &mdash; for a chosen window, to build interest and drive traffic back to the catalog; free-form selection, any mix of categories, multiple picks from one category allowed)</td>
+  <td>
+    New public page <strong><code>/spotlight</code></strong> (<code>app/spotlight/page.tsx</code>,
+    <code>force-dynamic</code> over <code>unstable_cache</code>'d reads, same reasoning as
+    <code>/product/[id]</code>): campaign title/description, a ticking
+    <code>&lt;SpotlightCountdown&gt;</code> to the end date, and a grid of real
+    <code>&lt;ProductCard&gt;</code>s (Add to Cart / wishlist work right from the page, not just a link
+    out) linked via <code>productHref</code>. No active campaign, or an active one whose products all
+    got hidden since curation &rarr; a &ldquo;check back soon&rdquo; panel, still <strong>200</strong>
+    (never a redirect &mdash; a shared/bookmarked link keeps working between campaigns). Added to
+    <code>sitemap.ts</code> (unlike <code>/handbook</code>, this is meant to be found).
+    <br><br>
+    <strong>Data model, the one real design decision here:</strong> product <em>membership</em> is a new
+    per-product column pair &mdash; <code>products.is_spotlight boolean</code> +
+    <code>spotlight_order int</code> (migration <strong>0050</strong>, nullable/unused until a future
+    reorder UI) &mdash; deliberately <em>not</em> a product-id array inside the campaign's JSON. The
+    admin toggles membership from a single button per row in the Products tab's existing catalog table
+    (mirrors the Hide toggle exactly), which is then a single-row <code>UPDATE</code>; a shared JSON
+    array would instead need read-full-array&rarr;splice&rarr;write-full-array on every toggle, silently
+    dropping a concurrent edit from a second open admin tab. No cap on how many products can be
+    featured &mdash; the admin's own judgement plus the live count in Settings is the only guardrail,
+    matching &ldquo;5, 8, 10, 15, or any number.&rdquo; Exposed under the existing anon
+    <code>hidden = false</code> SELECT policy like every other product column.
+    <br><br>
+    The <em>campaign window</em> (title/description/start/end) stays a small JSON blob &mdash; new
+    <strong><code>app/utils/featuredSpotlight.ts</code></strong>, same lenient-parse/strict-sanitize
+    split as <code>spendTierOffer.ts</code>: <code>parseFeaturedSpotlight</code> fail-closed for every
+    read path, <code>sanitizeFeaturedSpotlight</code> strict for the admin PATCH branch (rejects an
+    inverted window, and &mdash; the one rule <code>spendTierOffer.ts</code> doesn't need &mdash; an
+    <em>enabled</em> campaign with no end date, since the countdown is the whole premise).
+    <code>isFeaturedSpotlightActive(campaign, now?)</code>. <strong>18 unit tests.</strong>
+    <br><br>
+    New <code>getSpotlightProducts()</code> / <code>getFeaturedSpotlightCampaign()</code>
+    (<code>storeQueries.ts</code>, same column list as <code>getCatalogPage</code> so
+    <code>&lt;ProductCard&gt;</code> renders identically; tagged <code>products</code> +
+    <code>site-settings</code> and <code>site-settings</code> respectively).
+    <strong><code>/api/admin/settings</code></strong> gains a <code>featured_spotlight</code> PATCH
+    branch (identical shape to <code>spend_tier_offer</code>'s). <strong><code>/api/admin/products</code></strong>
+    PATCH accepts <code>is_spotlight</code>, added to <code>OPTIONAL_COLUMNS</code> for graceful
+    degradation pre-migration, and revalidates <code>site-settings</code> alongside <code>products</code>
+    when it's touched (the spotlight query is tagged both).
+    <br><br>
+    <strong>Admin</strong>: Settings &rarr; new <em>Featured Spotlight</em> card (enable, title,
+    description, start/end, a live &ldquo;N products currently spotlighted&rdquo; count with a
+    &ldquo;Clear all&rdquo; that loops a PATCH over every featured product). Products tab &rarr; a
+    per-row &ldquo;★ Featured&rdquo; / &ldquo;☆ Feature&rdquo; toggle in the Live Storefront Catalog
+    table, next to Hide / Edit Details.
+  </td>
+  <td><em>new:</em> <code>supabase/migrations/0050_add_product_spotlight.sql</code>,
+    <code>app/utils/featuredSpotlight.ts</code>, <code>app/utils/featuredSpotlight.test.ts</code>,
+    <code>app/spotlight/page.tsx</code>, <code>app/components/SpotlightCountdown.tsx</code><br>
+    <em>edited:</em> <code>app/utils/storeQueries.ts</code>, <code>app/api/admin/settings/route.ts</code>,
+    <code>app/api/admin/products/route.ts</code>, <code>app/admin/tabs/SettingsTab.tsx</code>,
+    <code>app/admin/tabs/ProductsTab.tsx</code>, <code>app/sitemap.ts</code>, <code>types/db.ts</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 196 passed (1 pre-existing skip,
+    +18 new) &middot; <code>eslint</code> on all 10 changed/new source files 0 errors (1 pre-existing
+    unrelated <code>set-state-in-effect</code> warning in <code>ProductsTab.tsx</code>, predates this
+    batch) &middot; <code>next build</code> exit 0, <code>/spotlight</code> registered <code>&fnof;</code>.
+    Read-only smoke test against the live DB via a local dev server confirmed <code>GET /spotlight</code>
+    &rarr; 200 with the &ldquo;no active spotlight&rdquo; fallback rendering correctly even before
+    migration 0050 is applied (both new reads fail closed to an inert/empty result). <strong>No admin
+    click-through against production was done</strong> &mdash; toggling &ldquo;Feature&rdquo; or saving
+    a campaign before the migration runs would silently no-op via the <code>OPTIONAL_COLUMNS</code>
+    fallback rather than actually persisting, so that's owner-side to verify after running migration
+    0050: toggle a few products, save a near-future campaign, confirm <code>/spotlight</code> shows the
+    grid and the countdown ticks, then confirm the &ldquo;check back soon&rdquo; state returns after
+    switching it off. Not a payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-02<br>19:05</code></td>
   <td><strong>Docs sweep: fix stale &ldquo;Handbook is private-only&rdquo; comments</strong><br>(owner: &ldquo;update the documents&rdquo; &mdash; a general check after several rapid batches)</td>

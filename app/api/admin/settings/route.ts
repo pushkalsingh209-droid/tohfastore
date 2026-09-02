@@ -7,6 +7,7 @@ import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
 import { MAX_CHAT_LABEL_LENGTH } from "@/app/utils/chatLabels";
 import { sanitizeSpendTierOffer } from "@/app/utils/spendTierOffer";
+import { sanitizeFeaturedSpotlight } from "@/app/utils/featuredSpotlight";
 
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 500;
@@ -215,6 +216,17 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: errors.join(" ") }, { status: 400 });
       }
       updates.push({ key: "spend_tier_offer", value: JSON.stringify(offer) });
+    }
+
+    // Same strict-write / lenient-read split as spend_tier_offer above --
+    // see app/utils/featuredSpotlight.ts. The read paths use
+    // parseFeaturedSpotlight() instead.
+    if (body.featured_spotlight !== undefined) {
+      const { campaign, errors } = sanitizeFeaturedSpotlight(body.featured_spotlight);
+      if (errors.length > 0) {
+        return NextResponse.json({ error: errors.join(" ") }, { status: 400 });
+      }
+      updates.push({ key: "featured_spotlight", value: JSON.stringify(campaign) });
     }
 
     if (updates.length === 0) {
