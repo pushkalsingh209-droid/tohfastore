@@ -1615,7 +1615,7 @@ RLS: anon <code>SELECT USING (hidden = false)</code>; service role bypasses.</p>
 <tr><td><code>payment_id</code></td><td>text</td><td>Razorpay payment id. <strong>UNIQUE</strong> (<code>orders_payment_id_key</code>, 0037) &mdash; idempotency backstop.</td></tr>
 <tr><td><code>amount</code></td><td>numeric</td><td>Server-verified captured amount (&#8377; = paise &divide; 100).</td></tr>
 <tr><td><code>customer_details</code></td><td>jsonb</td><td><code>{ email, contact, name }</code>. <code>contact</code> is the OTP-verified phone pinned in <code>order.notes</code>, not Razorpay&rsquo;s editable <code>payment.contact</code>. Placeholders <code>customer@example.com</code> / <code>9999999999</code> when Razorpay supplies nothing.</td></tr>
-<tr><td><code>shipping_address</code></td><td>jsonb</td><td><code>{ line, landmark, city, state, pincode }</code>. <em>(0009)</em></td></tr>
+<tr><td><code>shipping_address</code></td><td>jsonb</td><td><code>{ line, landmark, city, state, pincode, recipientPhone? }</code>. <code>recipientPhone</code> (added post-0049, no schema migration &mdash; jsonb, additive) is the gift receiver's own number, captured only when it differs from the buyer's OTP-verified phone, so the courier has someone to call. Optional, free text, not itself verified. <em>(0009)</em></td></tr>
 <tr><td><code>items</code></td><td>jsonb</td><td>Array of <code>{ id, name, price, quantity, gstRate, image_url, category }</code> &mdash; the server-repriced list from <code>order.notes</code>.</td></tr>
 <tr><td><code>status</code></td><td>text = <code>processing</code></td><td><code>CHECK IN ('processing','shipped','delivered','cancelled')</code>. <em>(0001)</em></td></tr>
 <tr><td><code>awb_number</code></td><td>text</td><td>Courier tracking number, admin-set. Index <code>orders_awb_number_idx</code>. Searchable on the public tracking page. <em>(0008)</em></td></tr>
@@ -2017,6 +2017,10 @@ mid-checkout, <code>/api/razorpay</code> refuses (<code>code:"verification_requi
       auto-fills city/state (both stay editable). Then address line, landmark (optional), city, state dropdown
       (<code>INDIAN_STATES</code>).</li>
   <li><code>validateDelivery()</code> (pincode / address / city / state) gates the Continue button.</li>
+  <li><strong>Receiver&rsquo;s phone (optional, added post-0049)</strong> &mdash; a gift-order field: only fill
+      it when the parcel is going to someone other than the buyer, so the courier has a number to call at the
+      delivery address. Free text, no format check, never gates Continue &mdash; purely informational, distinct
+      from the buyer's own OTP-verified phone. Stored as <code>shippingAddress.recipientPhone</code>.</li>
 </ul>
 
 <h4>Step 3 &mdash; Review &amp; Pay</h4>
@@ -2118,7 +2122,7 @@ untyped <code>any</code> the JSX always had (a follow-up typing pass, <code>IMPR
 <tbody>
 <tr><td><code>overview</code></td><td>A <strong>Keepalive heartbeat</strong> card (last-run timestamp + amber <em>Check</em> badge if &gt; 90 min stale), then Business Overview (revenue, orders, AOV, repeat-rate, 6-month revenue chart), WhatsApp Enquiries analytics (14-day trend, by category/product/number/source), Leads list (follow-up / mark-contacted / delete), all with CSV export.</td></tr>
 <tr><td><code>products</code></td><td>Add-product form (name, price, description, images via <code>ImageUploadField</code>, category, inventory, weight/dimensions with selectable input unit + converter, material/color/label dropdowns, per-product WhatsApp number, photo filter, cost price). <strong>Live Storefront Catalog &amp; Stock Tracker:</strong> inline stock steppers, spec drafts, a &ldquo;Lightweight Brass&rdquo; price calculator (<code>weight &times; &#8377;/kg &times; 1.20</code> &rarr; <code>roundUpBrassPrice</code>), bulk label assign, hide/unhide.</td></tr>
-<tr><td><code>orders</code></td><td>A <strong>Notifications sent</strong> analytics card (per-status totals over an admin-chosen date range, blank = all time &mdash; client-side over the full <code>order_notification_log</code>, 0048) above the order table. Table filtered by status (<code>ORDER_STATUS_TABS</code>), status updates + AWB entry, customer/address/items view, and a per-order/per-status send counter (e.g. <code>Shipped (2)</code>) next to the &ldquo;Notify customer&rdquo; button and on the notify dialog's status pill, both fed by the same log.</td></tr>
+<tr><td><code>orders</code></td><td>A <strong>Notifications sent</strong> analytics card (per-status totals over an admin-chosen date range, blank = all time &mdash; client-side over the full <code>order_notification_log</code>, 0048) above the order table. Table filtered by status (<code>ORDER_STATUS_TABS</code>), status updates + AWB entry, customer/address/items view (an amber &ldquo;Gift &mdash; receiver: &lt;number&gt;&rdquo; pill when <code>shipping_address.recipientPhone</code> is set, post-0049 &mdash; also in the search box), and a per-order/per-status send counter (e.g. <code>Shipped (2)</code>) next to the &ldquo;Notify customer&rdquo; button and on the notify dialog's status pill, both fed by the same log.</td></tr>
 <tr><td><code>coupons</code></td><td>Coupon CRUD, public/private toggle, usage vs limit.</td></tr>
 <tr><td><code>settings</code></td><td>Storefront Settings (page size, reveal batch, photo filter, units, default WhatsApp number, brass &#8377;/kg, Ganesha popup tuning), Categories management (show-on-home, GST rate, discount %, page-size override), WhatsApp Numbers + bulk reassign, Chat Button Labels.</td></tr>
 <tr><td><code>reviews</code></td><td>Pending/approved review moderation (approve / reject).</td></tr>
@@ -2141,7 +2145,7 @@ normalisation goes through <code>app/utils/phone.ts</code> (#18).</p>
 <tbody>
 <tr><td>Product enquiry link</td><td>&ldquo;Chat&rdquo; buttons on card/detail (<code>getProductWhatsappLink</code>)</td><td>opens <code>wa.me</code>; click logged via <code>/api/enquiries</code> beacon. Number priority (0049): product&rsquo;s own <code>whatsapp_number</code> &gt; product&rsquo;s category's own <code>categories.whatsapp_number</code> (applies regardless of stock) &gt; legacy hardcode (out-of-stock &amp;&amp; &ldquo;Misc&rdquo; &rarr; <code>919058542074</code>, fires only when Misc has no category number set) &gt; site default (<code>site_settings.default_whatsapp_number</code>) &gt; hardcoded <code>916302672351</code>.</td></tr>
 <tr><td>Checkout OTP</td><td><code>/api/whatsapp-otp/send</code></td><td>&rarr; customer (6-digit code, 5-min TTL)</td></tr>
-<tr><td>Order confirmation</td><td><code>/api/razorpay-webhook</code></td><td>&rarr; business (ops alert) + &rarr; customer (GST invoice + a <code>/success?order_id=</code> link), both as image-with-caption using the first item photo. The customer email carries a &ldquo;View / print invoice&rdquo; button (<code>invoiceUrl</code> param, customer copy only). <strong>+ &rarr; any supplier numbers</strong> (0046) attached to the products in this order &mdash; they get the same business ops message.</td></tr>
+<tr><td>Order confirmation</td><td><code>/api/razorpay-webhook</code></td><td>&rarr; business (ops alert) + &rarr; customer (GST invoice + a <code>/success?order_id=</code> link), both as image-with-caption using the first item photo. The customer email carries a &ldquo;View / print invoice&rdquo; button (<code>invoiceUrl</code> param, customer copy only). <strong>+ &rarr; any supplier numbers</strong> (0046) attached to the products in this order &mdash; they get the same business ops message. When <code>shippingAddress.recipientPhone</code> is set (gift order, 0049), a &ldquo;Receiver contact: &hellip;&rdquo; line is appended to the shared <code>formattedAddress</code> string &mdash; shows on both WhatsApp messages and both HTML emails, not just the business copy.</td></tr>
 <tr><td>Low-stock alert</td><td>webhook, inventory &le; 3 after a sale</td><td>&rarr; business <strong>+ that product's supplier numbers</strong> (0046)</td></tr>
 <tr><td>Back-in-stock</td><td>admin product PATCH, inventory 0 &rarr; &gt; 0</td><td>&rarr; each pending <code>stock_alert_subscriptions</code> phone</td></tr>
 <tr><td>Order status update (manual)</td><td><code>/api/admin/orders/notify</code> &mdash; the "Notify customer" dialog, any status</td><td>&rarr; customer, <strong>WhatsApp + email</strong> (best-effort each). Shipped carries the delivery partner + tracking number; delivered links to the review form; all carry a <code>/success?order_id=</code> invoice link and any one-off admin note. <strong>+ &rarr; supplier numbers</strong> (0046) attached to the order's products, same status text. Never fires on its own &mdash; only on an explicit send.</td></tr>
@@ -2351,7 +2355,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>rlsProbes.ts</code></td><td><code>checkRlsPerimeter(anon)</code> &mdash; the RLS boundary as runnable anon-key probes; returns a list of violation strings (empty = intact). One source for <code>rls.test.ts</code> (CI) and <code>/api/cron/rls-check</code> (scheduled, prod). <em>(#3)</em></td></tr>
 <tr><td><code>rls.test.ts</code></td><td>Anon-key RLS perimeter regression test (&sect;6) &mdash; one <code>it()</code> calling <code>checkRlsPerimeter</code>. Env-gated (skips without Supabase creds).</td></tr>
 <tr><td><code>orderTally.ts</code></td><td><code>tallyUnitsSold(orders, {excludeId?})</code> &mdash; pure line-item quantity tally, shared by <code>getBestsellers</code> / <code>getRelatedProducts</code> via <code>getRecentOrderItems</code> (the last 300 <strong>non-cancelled</strong> orders). Unit-tested.</td></tr>
-<tr><td><code>orderTypes.ts</code></td><td><code>OrderCustomerDetails</code> / <code>OrderItem</code> shapes + <code>asCustomerDetails(json)</code> / <code>asOrderItems(json)</code> narrowers for the <code>orders</code> table's <code>customer_details</code> / <code>items</code> jsonb columns (the generated types can only say <code>Json</code>). <em>(#15)</em></td></tr>
+<tr><td><code>orderTypes.ts</code></td><td><code>OrderCustomerDetails</code> / <code>OrderShippingAddress</code> (incl. <code>recipientPhone</code>, 0049) / <code>OrderItem</code> shapes + <code>asCustomerDetails(json)</code> / <code>asOrderItems(json)</code> narrowers for the <code>orders</code> table's <code>customer_details</code> / <code>items</code> jsonb columns (the generated types can only say <code>Json</code>). <em>(#15)</em></td></tr>
 <tr><td><code>repricing.ts</code></td><td><code>repriceCart(clientItems, dbProducts, categoryGstRates, defaultGstPercent)</code> &mdash; the &ldquo;never trust the client at checkout&rdquo; guard extracted from <code>/api/razorpay</code>: rebuilds every line from the DB price/name/GST rate, rejects unknown/hidden ids and over-stock lines, returns the authoritative subtotal. Byte-for-byte match of the old inline block. <strong>12 unit tests.</strong></td></tr>
 <tr><td><code>bootstrapSettings.ts</code></td><td><code>parseChatLabels</code> / <code>parseGaneshaSettings</code> / <code>parsePhotoFilterIndex</code> / <code>parseDefaultWhatsappNumber</code> &mdash; pure parsers for the storefront <code>site_settings</code> values, run server-side in <code>getBootstrapData()</code> (#11). Reproduce the old per-context parse + clamp + fallback rules exactly. <strong>8 unit tests.</strong></td></tr>
 <tr><td><code>phone.ts</code></td><td><code>normalizeIndianPhone(raw)</code> &mdash; the <em>one</em> canonical Indian-phone normaliser (&rarr; bare digits <code>91XXXXXXXXXX</code>). Replaced 4 near-identical local copies (<code>whatsappOtp.ts</code>, <code>greenApi.ts</code> &times;2, <code>stock-alerts</code>, admin <code>whatsapp-numbers</code>) + an inline one in admin <code>orders/update-status</code>. Does not validate &mdash; callers keep their own <code>/^91[6-9]\d{9}$/</code> check. Unit-tested (7). <em>(#18)</em></td></tr>
@@ -2768,6 +2772,56 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-02<br>18:55</code></td>
+  <td><strong>Gift orders: optional receiver phone</strong> <span class="pill warnp">payment path</span><br>(owner: shipping to someone in another city as a gift &mdash; the courier needs that person's number, and there was nowhere in checkout to capture it)</td>
+  <td>
+    A single new optional field on the Delivery step (kept the existing address structure otherwise unchanged,
+    per owner direction) &mdash; <strong>&ldquo;Receiver&rsquo;s Phone Number (optional &mdash; only if this is
+    a gift for someone else)&rdquo;</strong>, placed after the City/State row. Free text, no format validation,
+    never gates Continue/Pay &mdash; purely informational for the courier, deliberately <em>not</em> OTP-verified
+    (that would be friction for entering someone else's number). Distinct from the buyer's own OTP-verified
+    contact phone throughout.
+    <br><br>
+    Threaded through the same path every other <code>shippingAddress</code> field already takes: <code>
+    DeliveryStep.tsx</code> (new field) &rarr; <code>CheckoutSheet.tsx</code> (<code>recipientPhone</code> state,
+    included in the <code>POST /api/razorpay</code> body) &rarr; <strong><code>/api/razorpay</code></strong>
+    (trimmed + capped at 20 chars into <code>order.notes.shippingAddress</code>, same as <code>line</code>/
+    <code>landmark</code>/etc.) &rarr; <strong><code>/api/razorpay-webhook</code></strong> (parsed back out,
+    written verbatim into <code>orders.shipping_address</code> jsonb &mdash; <strong>no schema migration</strong>,
+    jsonb is unconstrained). <code>OrderShippingAddress</code> (<code>orderTypes.ts</code>) gains
+    <code>recipientPhone?: string</code>.
+    <br><br>
+    Appended as one extra segment in the webhook's shared <code>formattedAddress</code> string builder
+    (&ldquo;Receiver contact: &hellip;&rdquo;, only when set) &mdash; since every WhatsApp message and HTML
+    email already interpolates that single string, this one change point makes it show on the business ops
+    alert (who the courier should call), the customer confirmation (an echo/typo-check), and both emails, with
+    no new template code.
+    <br><br>
+    <strong>Admin Orders tab</strong>: an amber &ldquo;Gift &mdash; receiver: &lt;number&gt;&rdquo; pill under
+    the shipping address block when present, and added to the search box's haystack. <code>AdminOrder</code>'s
+    <code>shipping_address</code> type widened to match.
+    <br><br>
+    Deliberately out of scope (confirmed with owner): no separate &ldquo;receiver name&rdquo; field &mdash;
+    phone only. Not surfaced on <code>/track</code> or the <code>/success</code> invoice &mdash; neither
+    currently shows <code>shipping_address</code> at all (they only ever read <code>customer_details</code>),
+    so this doesn't regress anything there; extending those is a separate, larger change if ever wanted. Not
+    added to the admin Excel report (<code>reports.ts</code>) &mdash; that export already omits the street
+    address entirely (GST/financial report, not a packing slip), so a lone phone column with no address
+    context wouldn't be useful there.
+  </td>
+  <td><em>edited:</em> <code>app/utils/orderTypes.ts</code>, <code>app/components/checkout/steps/DeliveryStep.tsx</code>,
+    <code>app/components/checkout/CheckoutSheet.tsx</code>, <code>app/api/razorpay/route.ts</code>,
+    <code>app/api/razorpay-webhook/route.ts</code>, <code>app/admin/AdminDataContext.tsx</code>,
+    <code>app/admin/tabs/OrdersTab.tsx</code>, <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 178 passed (1 pre-existing skip), unchanged
+    &middot; <code>eslint</code> on all 7 changed source files 0 errors 0 warnings &middot; <code>next build</code>
+    exit 0. <span class="pill warnp">payment path</span> &mdash; a pure additive field on top of existing
+    sanitize/pin/parse/write logic, no pricing/stock/idempotency touched, but per the working agreement this is
+    a proposal until the owner watches one real order end-to-end with a receiver phone filled in: confirm it
+    lands in <code>orders.shipping_address</code>, shows on the Orders tab pill, and appears in both the
+    business and customer WhatsApp/email.</td>
+</tr>
 <tr>
   <td><code>2026-09-02<br>18:10</code></td>
   <td><strong>Per-category WhatsApp enquiry number</strong><br>(owner: enquiries should go to the site default unless a category or product has its own WhatsApp number set)</td>

@@ -22,6 +22,8 @@ export interface DeliveryBag {
   setCity: (v: string) => void;
   addressState: string;
   setAddressState: (v: string) => void;
+  recipientPhone: string;
+  setRecipientPhone: (v: string) => void;
 
   pincodeLookupStatus: PincodeLookupStatus;
 
@@ -142,6 +144,21 @@ export default function DeliveryStep({ bag }: { bag: DeliveryBag }) {
             ))}
           </select>
         </div>
+      </div>
+
+      <div>
+        <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">
+          Receiver&rsquo;s Phone Number <span className="normal-case text-stone-400">(optional &mdash; only if this is a gift for someone else)</span>
+        </label>
+        <input
+          type="tel"
+          inputMode="tel"
+          value={b.recipientPhone}
+          onChange={(e) => b.setRecipientPhone(e.target.value)}
+          placeholder="If different from your own number"
+          className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700"
+        />
+        <p className="text-[9px] text-stone-400 mt-1">So the courier can reach them if you&rsquo;re not the one receiving it.</p>
       </div>
     </div>
   );

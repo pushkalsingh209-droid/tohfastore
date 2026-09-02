@@ -266,6 +266,11 @@ export async function POST(req: Request) {
           city: String(shippingAddress?.city || "").trim().slice(0, 100),
           state: String(shippingAddress?.state || "").trim().slice(0, 100),
           pincode: String(shippingAddress?.pincode || "").trim().slice(0, 10),
+          // Gift orders: the receiver's own number, only when it differs
+          // from the buyer's OTP-verified phone -- so the courier has
+          // someone to call. Optional, unverified, display-only like the
+          // rest of shippingAddress.
+          recipientPhone: String(shippingAddress?.recipientPhone || "").trim().slice(0, 20),
         }),
         // Present only when the reservation feature is on. Immutable by the
         // client after creation; the webhook reads it via orders.fetch and

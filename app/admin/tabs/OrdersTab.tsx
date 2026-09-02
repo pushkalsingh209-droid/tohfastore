@@ -100,6 +100,7 @@ export default function OrdersTab() {
         order.shipping_address?.city,
         order.shipping_address?.state,
         order.shipping_address?.pincode,
+        order.shipping_address?.recipientPhone,
       ]
         .filter(Boolean)
         .join(" ")
@@ -411,6 +412,11 @@ export default function OrdersTab() {
                         <div>
                           {order.shipping_address.city}, {order.shipping_address.state} &mdash; <span className="font-mono">{order.shipping_address.pincode}</span>
                         </div>
+                        {order.shipping_address.recipientPhone && (
+                          <div className="mt-1 inline-block px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 font-semibold">
+                            Gift &mdash; receiver: <span className="font-mono">{order.shipping_address.recipientPhone}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </td>

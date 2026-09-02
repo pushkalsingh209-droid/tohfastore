@@ -17,6 +17,10 @@ export interface OrderShippingAddress {
   city?: string;
   state?: string;
   pincode?: string;
+  // Gift orders: the receiver's own contact number, only captured when it
+  // differs from the buyer's (OTP-verified) phone -- so the courier has
+  // someone to call at the delivery address. Optional, not itself verified.
+  recipientPhone?: string;
 }
 
 // A line item as stored in `orders.items` (jsonb) -- written from the

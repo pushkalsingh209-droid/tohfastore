@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       let customerEmail = "customer@example.com";
       let customerPhone = "9999999999";
       let customerName = "Premium Customer";
-      let shippingAddress: { line: string; landmark: string; city: string; state: string; pincode: string } | null = null;
+      let shippingAddress: { line: string; landmark: string; city: string; state: string; pincode: string; recipientPhone?: string } | null = null;
       try {
         const [capturedPayment, capturedOrder] = await Promise.all([
           razorpay.payments.fetch(paymentId),
@@ -446,6 +446,12 @@ export async function POST(req: Request) {
             shippingAddress.city,
             shippingAddress.state,
             shippingAddress.pincode,
+            // Gift orders: the receiver's own number (optional, unverified)
+            // -- appended here rather than threaded separately so it shows
+            // up everywhere formattedAddress already does: the business
+            // alert (who the courier should call), the customer copy (a
+            // confirmation echo), and both HTML emails.
+            shippingAddress.recipientPhone ? `Receiver contact: ${shippingAddress.recipientPhone}` : "",
           ]
             .filter(Boolean)
             .join(", ");
