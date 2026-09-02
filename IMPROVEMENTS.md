@@ -12,6 +12,17 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Docs sweep — fix stale "Handbook is private-only" comments — 2026-09-02 19:05 IST
+- Owner: "update the documents" — a general check after several rapid batches.
+- `docs/HANDBOOK.html` and this file were already current (updated before every merge this
+  session). `docs/ENGINEERING-OVERVIEW.html` and `docs/PROJECT-STORY.html` each had a stale
+  header comment claiming the Handbook is "kept as a private Claude artifact" — no longer
+  true since `/handbook` shipped. Corrected both; noted why neither links to it (still
+  carries the GSTIN, phone numbers, schema, admin route inventory).
+- Comment-only, no visible copy affected. Verified: `next build` exit 0, `/story` and
+  `/engineering` still static.
+- See `docs/HANDBOOK.html` Change log 2026-09-02 19:05.
+
 ### Batch: Gift orders — optional receiver phone — 2026-09-02 18:55 IST — ⚠️ payment path
 - Owner: shipping to someone in another city as a gift — the courier needs that person's
   number, and there was nowhere in checkout to capture it.

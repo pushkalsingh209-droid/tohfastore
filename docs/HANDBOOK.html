@@ -2773,6 +2773,28 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-09-02<br>19:05</code></td>
+  <td><strong>Docs sweep: fix stale &ldquo;Handbook is private-only&rdquo; comments</strong><br>(owner: &ldquo;update the documents&rdquo; &mdash; a general check after several rapid batches)</td>
+  <td>
+    <code>docs/HANDBOOK.html</code> and <code>IMPROVEMENTS.md</code> were already current (updated as a
+    precondition of every merge this session, per the working agreement). Checking the other two public docs
+    turned up one real drift: both <code>docs/ENGINEERING-OVERVIEW.html</code> and
+    <code>docs/PROJECT-STORY.html</code> carried a header comment claiming the Handbook is &ldquo;kept as a
+    private Claude artifact&rdquo; &mdash; stale since the <code>/handbook</code> route shipped
+    (2026-09-02, 16:20 batch above). Corrected both to note it's also served unauthenticated at
+    <code>/handbook</code> now, while still explaining why neither page links to it (it still carries the
+    GSTIN, phone numbers, schema, and admin route inventory &mdash; kept out of the sitemap/robots.txt, not
+    linked from anywhere public). Comment-only &mdash; no visible copy on either public page made the same
+    claim, so nothing a reader would have seen was wrong; this was purely a source-comment accuracy fix for
+    whoever (human or agent) next reads these files to understand the system.
+  </td>
+  <td><em>edited:</em> <code>docs/ENGINEERING-OVERVIEW.html</code>, <code>docs/PROJECT-STORY.html</code>,
+    <code>docs/HANDBOOK.html</code></td>
+  <td><code>next build</code> exit 0, both <code>/story</code> and <code>/engineering</code> still compile
+    static (<code>&cir;</code>). Comment-only change in files served verbatim by
+    <code>force-static</code> routes &mdash; no runtime logic touched, nothing else to verify.</td>
+</tr>
+<tr>
   <td><code>2026-09-02<br>18:55</code></td>
   <td><strong>Gift orders: optional receiver phone</strong> <span class="pill warnp">payment path</span><br>(owner: shipping to someone in another city as a gift &mdash; the courier needs that person's number, and there was nowhere in checkout to capture it)</td>
   <td>
