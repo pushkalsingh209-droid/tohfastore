@@ -12,6 +12,20 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Settings — add a WhatsApp number directly — 2026-09-02 17:05 IST
+- Owner: no option in the admin panel's Settings → WhatsApp Numbers to add a number.
+- The WhatsApp Numbers card always listed numbers, set-default, and bulk-reassign, but never
+  had an add form — the only way to add one was via the product form's "+ Add new" next to
+  its WhatsApp Number dropdown. The empty-state copy already (wrongly) claimed "… or below";
+  pre-dates this session, present since the tab was extracted from `admin/page.tsx` (#16).
+- New label + number + "Add number" inline form in the card, same layout as the Order
+  Notification Numbers card just below it, wired to the existing `POST
+  /api/admin/whatsapp-numbers` (no backend change — same route the product form already
+  posts to). New `handleAddWhatsappNumber` in `SettingsTab.tsx`. Empty-state copy corrected.
+- Verified: `tsc --noEmit` clean; `npm test` 167 passed (1 pre-existing skip), unchanged;
+  `eslint app/admin/tabs/SettingsTab.tsx` 0 errors 0 warnings; `next build` exit 0. UI-only.
+- See `docs/HANDBOOK.html` Change log 2026-09-02 17:05.
+
 ### Batch: Handbook served on the domain, unauthenticated — 2026-09-02 16:20 IST — 🔒 security
 - Owner: publish the Handbook at tohfaonline.com instead of the Claude artifact link, because
   the artifact always requires a Claude sign-in.

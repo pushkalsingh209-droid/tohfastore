@@ -62,6 +62,7 @@ export default function SettingsTab() {
     labels,
     setLabels,
     whatsappNumbers,
+    setWhatsappNumbers,
     orderNotificationNumbers,
     setOrderNotificationNumbers,
     settings,
@@ -77,6 +78,10 @@ export default function SettingsTab() {
   const [bulkLabelMode, setBulkLabelMode] = useState<"home" | "category">("home");
   const [bulkLabelCategory, setBulkLabelCategory] = useState("");
   const [bulkLabelStatus, setBulkLabelStatus] = useState("");
+
+  const [newWhatsappNumber, setNewWhatsappNumber] = useState("");
+  const [newWhatsappLabel, setNewWhatsappLabel] = useState("");
+  const [whatsappNumberStatus, setWhatsappNumberStatus] = useState("");
 
   const [reassignMode, setReassignMode] = useState<"number" | "category">("number");
   const [reassignFrom, setReassignFrom] = useState("");
@@ -261,6 +266,29 @@ export default function SettingsTab() {
       setSettings((prev) => ({ ...prev, ...result.settings }));
     } catch (err: unknown) {
       alert(`Could not set default WhatsApp number: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Adds a number to the managed enquiry-number pool -- same
+  // POST /api/admin/whatsapp-numbers the product form's inline "+ Add new"
+  // uses, just reachable from Settings too instead of only via a product.
+  const handleAddWhatsappNumber = async () => {
+    const phone = newWhatsappNumber.trim();
+    if (!phone) return;
+    setWhatsappNumberStatus("Adding number...");
+    try {
+      const result = await apiRequest("/api/admin/whatsapp-numbers", {
+        method: "POST",
+        body: JSON.stringify({ phone_number: phone, label: newWhatsappLabel.trim() }),
+      });
+      setWhatsappNumbers(
+        [...whatsappNumbers, result.number].sort((a, b) => (a.label || "").localeCompare(b.label || ""))
+      );
+      setNewWhatsappNumber("");
+      setNewWhatsappLabel("");
+      setWhatsappNumberStatus("");
+    } catch (err: unknown) {
+      setWhatsappNumberStatus(err instanceof Error ? err.message : "Could not add the number.");
     }
   };
 
@@ -814,7 +842,7 @@ export default function SettingsTab() {
 
       {whatsappNumbers.length === 0 ? (
         <p className="text-stone-400 text-sm text-center py-4">
-          No extra numbers added yet -- add one from the product form&rsquo;s WhatsApp Number field, or below.
+          No extra numbers added yet -- add one below, or from the product form&rsquo;s WhatsApp Number field.
         </p>
       ) : (
         <div className="overflow-x-auto mb-6">
@@ -868,6 +896,37 @@ export default function SettingsTab() {
           </button>
         </p>
       )}
+
+      <div className="border-t border-stone-100 pt-6 mb-6 flex flex-col sm:flex-row sm:items-end gap-2">
+        <div className="flex-1">
+          <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">Label (optional)</label>
+          <input
+            type="text"
+            value={newWhatsappLabel}
+            onChange={(e) => setNewWhatsappLabel(e.target.value)}
+            placeholder="e.g. Sales team"
+            className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">WhatsApp number</label>
+          <input
+            type="tel"
+            value={newWhatsappNumber}
+            onChange={(e) => setNewWhatsappNumber(e.target.value)}
+            placeholder="10-digit number"
+            className="w-full px-3 py-2 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={handleAddWhatsappNumber}
+          className="px-4 py-2 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
+        >
+          Add number
+        </button>
+      </div>
+      {whatsappNumberStatus && <p className="text-[11px] text-stone-500 -mt-4 mb-6">{whatsappNumberStatus}</p>}
 
       <div className="border-t border-stone-100 pt-6">
         <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
