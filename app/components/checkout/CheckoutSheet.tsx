@@ -73,6 +73,10 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
   const [pincode, setPincode] = useState("");
   const [city, setCity] = useState("");
   const [addressState, setAddressState] = useState("");
+  // Gift orders: the receiver's own number, only when it differs from the
+  // buyer's OTP-verified phone -- so the courier has someone to call.
+  // Optional, unverified, never blocks Continue/Pay either way.
+  const [recipientPhone, setRecipientPhone] = useState("");
   const [pincodeLookupStatus, setPincodeLookupStatus] = useState<PincodeLookupStatus>("idle");
   const pincodeLookupRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -437,6 +441,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
             city: city.trim(),
             state: addressState,
             pincode,
+            recipientPhone: recipientPhone.trim(),
           },
         }),
       });
@@ -677,6 +682,8 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
                 setCity,
                 addressState,
                 setAddressState,
+                recipientPhone,
+                setRecipientPhone,
                 pincodeLookupStatus,
                 invalidField,
                 clearInvalid: () => setInvalidField(null),

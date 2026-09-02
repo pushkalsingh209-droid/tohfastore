@@ -12,6 +12,30 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Gift orders — optional receiver phone — 2026-09-02 18:55 IST — ⚠️ payment path
+- Owner: shipping to someone in another city as a gift — the courier needs that person's
+  number, and there was nowhere in checkout to capture it.
+- One new optional field on the Delivery step (existing address structure otherwise
+  unchanged, per owner direction) — "Receiver's Phone Number (optional — only if this is a
+  gift for someone else)". Free text, no format validation, never gates Continue/Pay,
+  deliberately not OTP-verified.
+- Threaded through the existing `shippingAddress` path: `DeliveryStep.tsx` → `CheckoutSheet.tsx`
+  (`recipientPhone` state) → `/api/razorpay` (trimmed, capped 20 chars, into `order.notes`) →
+  `/api/razorpay-webhook` (parsed back out, written into `orders.shipping_address` jsonb — no
+  schema migration needed). `OrderShippingAddress` gains `recipientPhone?: string`.
+- Appended to the webhook's shared `formattedAddress` builder ("Receiver contact: …") — shows
+  on the business alert, customer confirmation, and both HTML emails with one change point.
+- Admin Orders tab: amber "Gift — receiver: <number>" pill, added to search.
+- Deliberately out of scope: no separate receiver-name field (phone only, confirmed with
+  owner); not added to `/track`/`/success` (neither shows shipping_address at all today, so
+  no regression); not added to the Excel report (that export omits the street address
+  entirely already, a lone phone column wouldn't help there).
+- Verified: `tsc --noEmit` clean; `npm test` 178 passed (1 pre-existing skip), unchanged;
+  `eslint` on all 7 changed files 0 errors 0 warnings; `next build` exit 0. ⚠️ Payment path —
+  additive only, no pricing/stock/idempotency touched, but a proposal until the owner watches
+  one real order end-to-end with the field filled in.
+- See `docs/HANDBOOK.html` Change log 2026-09-02 18:55.
+
 ### Batch: Per-category WhatsApp enquiry number — 2026-09-02 18:10 IST
 - Owner: enquiries should go to the site default unless a category or product has its own
   WhatsApp number set.
