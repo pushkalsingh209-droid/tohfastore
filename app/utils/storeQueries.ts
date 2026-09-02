@@ -42,6 +42,7 @@ import {
   parseDefaultWhatsappNumber,
   type RawSettings,
 } from "@/app/utils/bootstrapSettings";
+import { parseFeaturedSpotlight, FEATURED_SPOTLIGHT_KEY } from "@/app/utils/featuredSpotlight";
 
 // PostgREST's "in"/"not.in" list literal: comma-separated, with any value
 // containing a comma or quote wrapped in double quotes (quotes doubled).
@@ -500,6 +501,59 @@ export const getCatalogPage = unstable_cache(
   },
   ["catalog-page"],
   { tags: ["products"], revalidate: 86400 }
+);
+
+// The /spotlight marketing page's product grid -- whichever products the
+// admin has flagged products.is_spotlight (migration 0050), still visible
+// (hidden=false), in the admin's curator order. Same column list as
+// getCatalogPage above -- the /spotlight page reuses <ProductCard> verbatim
+// for a consistent look (and a working Add to Cart / wishlist right from
+// the spotlight page), so it needs the same fields that card reads. Tagged
+// "site-settings" as well as "products": the only write path that flips
+// is_spotlight is the admin products PATCH route, which calls
+// revalidateTag for both (see its comment) since campaign-window edits
+// and product-membership edits both need this list fresh.
+export const getSpotlightProducts = unstable_cache(
+  async () => {
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select(
+          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm"
+        )
+        .eq("is_spotlight", true)
+        .eq("hidden", false)
+        .order("spotlight_order", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true });
+      if (error || !data) return [];
+      return attachThumbUrls(data);
+    } catch {
+      return [];
+    }
+  },
+  ["spotlight-products"],
+  { tags: ["products", "site-settings"], revalidate: 86400 }
+);
+
+// The /spotlight page's campaign window (title/description/start/end) --
+// see app/utils/featuredSpotlight.ts for the parse/sanitize split. Read via
+// the lenient parser so a malformed settings row can never throw the page.
+export const getFeaturedSpotlightCampaign = unstable_cache(
+  async () => {
+    try {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", FEATURED_SPOTLIGHT_KEY)
+        .maybeSingle();
+      if (error) return parseFeaturedSpotlight(null);
+      return parseFeaturedSpotlight(data?.value ?? null);
+    } catch {
+      return parseFeaturedSpotlight(null);
+    }
+  },
+  ["featured-spotlight-campaign"],
+  { tags: ["site-settings"], revalidate: 86400 }
 );
 
 // Whole-catalog product count for the hero's trust strip -- doesn't need to

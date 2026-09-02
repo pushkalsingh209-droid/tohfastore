@@ -15,7 +15,7 @@ import type { Insert, Update } from "@/types/tables";
 // migration the admin hasn't run) -- these routes degrade gracefully by
 // dropping whichever optional column Postgres complains about and retrying,
 // instead of failing the whole save.
-const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg", "hidden", "supplier_numbers"];
+const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg", "hidden", "supplier_numbers", "is_spotlight", "spotlight_order"];
 
 function isMissingColumn(error: unknown, columnHint: string) {
   const e = (error ?? {}) as { message?: string; code?: string };
@@ -209,6 +209,11 @@ export async function PATCH(req: Request) {
     if (fields.cost_price_per_kg !== undefined) payload.cost_price_per_kg = parseOptionalPositiveNumber(fields.cost_price_per_kg);
     if (fields.supplier_numbers !== undefined) payload.supplier_numbers = parseSupplierNumbers(fields.supplier_numbers);
     if (fields.hidden !== undefined) payload.hidden = Boolean(fields.hidden);
+    // Spotlight marketing page membership (0050) -- the Products tab's
+    // per-row "Feature" toggle. spotlight_order isn't wired to any UI yet
+    // (a future manual-reorder pass); NULLS LAST keeps newly toggled
+    // products appending in id order until it exists.
+    if (fields.is_spotlight !== undefined) payload.is_spotlight = Boolean(fields.is_spotlight);
 
     // Fetched before the update specifically to detect a 0 -> positive
     // inventory transition below -- "was this product actually sold out a
@@ -237,6 +242,11 @@ export async function PATCH(req: Request) {
     // stock, hidden, etc.) with one call, since they all live on the same
     // cached product rows.
     revalidateTag("products", "max");
+    // getSpotlightProducts (storeQueries.ts) is tagged "site-settings" as
+    // well as "products" -- see its comment for why -- so a spotlight
+    // toggle needs this second tag too. Guarded so an unrelated product
+    // edit doesn't pay for an extra invalidation.
+    if (payload.is_spotlight !== undefined) revalidateTag("site-settings", "max");
 
     // Best-effort back-in-stock notifications -- never blocks the save
     // itself. Only fires on a genuine 0 -> positive transition (not, say,

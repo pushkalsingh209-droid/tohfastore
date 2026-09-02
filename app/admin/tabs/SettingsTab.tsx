@@ -16,6 +16,7 @@ import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
 import { CHAT_LABEL_KINDS, DEFAULT_CHAT_LABELS, MAX_CHAT_LABEL_LENGTH, type ChatLabelKind } from "@/app/utils/chatLabels";
 import { parseSpendTierOffer, SAMPLE_SPEND_TIER_OFFER, MAX_SPEND_TIERS } from "@/app/utils/spendTierOffer";
+import { parseFeaturedSpotlight } from "@/app/utils/featuredSpotlight";
 import { MAX_ORDER_NOTIFICATION_NUMBERS } from "@/app/utils/orderNotificationNumbers";
 
 // --- "Spend & Save" offer editor (Storefront Settings) -------------------
@@ -55,6 +56,31 @@ function offerToDraft(stored: string | undefined): SpendOfferDraft {
   };
 }
 
+// --- "Featured Spotlight" campaign editor (Storefront Settings) ----------
+// The campaign window lives as one JSON row in site_settings; the strict
+// validation is server-side in /api/admin/settings (sanitizeFeaturedSpotlight).
+// WHICH products are spotlighted is separate -- a per-product column
+// (products.is_spotlight, migration 0050) toggled from the Products tab,
+// not part of this draft -- see app/utils/featuredSpotlight.ts for why.
+interface SpotlightDraft {
+  enabled: boolean;
+  title: string;
+  description: string;
+  startsAt: string; // datetime-local value; "" = no bound
+  endsAt: string;
+}
+
+function spotlightToDraft(stored: string | undefined): SpotlightDraft {
+  const src = parseFeaturedSpotlight(stored);
+  return {
+    enabled: src.enabled,
+    title: src.title,
+    description: src.description,
+    startsAt: isoToLocalInput(src.startsAt),
+    endsAt: isoToLocalInput(src.endsAt),
+  };
+}
+
 export default function SettingsTab() {
   const {
     categories,
@@ -69,6 +95,8 @@ export default function SettingsTab() {
     setSettings,
     chatLabelPresets,
     setChatLabelPresets,
+    products,
+    setProducts,
     refetch,
   } = useAdminData();
 
@@ -113,6 +141,15 @@ export default function SettingsTab() {
     setOfferDraft(offerToDraft(settings.spend_tier_offer));
   }, [settings.spend_tier_offer]);
 
+  // --- "Featured Spotlight" campaign draft --- same re-seed pattern as the
+  // offer draft above.
+  const [spotlightDraft, setSpotlightDraft] = useState<SpotlightDraft>(() => spotlightToDraft(settings.featured_spotlight));
+  const [spotlightStatus, setSpotlightStatus] = useState("");
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSpotlightDraft(spotlightToDraft(settings.featured_spotlight));
+  }, [settings.featured_spotlight]);
+
   const setOfferTier = (i: number, field: keyof OfferTierDraft, value: string) =>
     setOfferDraft((d) => ({ ...d, tiers: d.tiers.map((t, j) => (j === i ? { ...t, [field]: value } : t)) }));
   const addOfferTier = () =>
@@ -145,6 +182,59 @@ export default function SettingsTab() {
     } catch (err: unknown) {
       setOfferStatus(err instanceof Error ? err.message : "Could not save the offer.");
     }
+  };
+
+  // Server-side sanitizeFeaturedSpotlight does the real validation (incl.
+  // "enabled needs an end date") and returns a 400 with the specific
+  // problem -- surface that text as-is.
+  const handleSaveSpotlight = async () => {
+    setSpotlightStatus("Saving...");
+    try {
+      const payload = {
+        enabled: spotlightDraft.enabled,
+        title: spotlightDraft.title,
+        description: spotlightDraft.description,
+        startsAt: spotlightDraft.startsAt || null,
+        endsAt: spotlightDraft.endsAt || null,
+      };
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ featured_spotlight: payload }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+      setSpotlightStatus("Saved.");
+    } catch (err: unknown) {
+      setSpotlightStatus(err instanceof Error ? err.message : "Could not save the spotlight.");
+    }
+  };
+
+  const spotlightedProducts = products.filter((p) => p.is_spotlight);
+
+  // Un-features every currently spotlighted product in one go -- a fresh
+  // start for the next campaign without hunting each one down in the
+  // Products tab. One PATCH per product (same await-in-loop shape as this
+  // file's other bulk actions); local `products` state updated as each
+  // response comes back.
+  const handleClearSpotlight = async () => {
+    if (spotlightedProducts.length === 0) return;
+    if (!window.confirm(`Remove all ${spotlightedProducts.length} product(s) from the spotlight?`)) return;
+    // Accumulate into a local copy rather than reading `products` fresh each
+    // iteration -- that closure variable is fixed for the life of this call,
+    // so repeatedly mapping over it would let each PATCH response overwrite
+    // the previous one instead of building on it.
+    let next = products;
+    for (const p of spotlightedProducts) {
+      try {
+        const result = await apiRequest("/api/admin/products", {
+          method: "PATCH",
+          body: JSON.stringify({ id: p.id, is_spotlight: false }),
+        });
+        next = next.map((prod) => (prod.id === p.id ? result.product : prod));
+      } catch (err: unknown) {
+        alert(`Could not clear "${p.name}": ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    setProducts(next);
   };
 
   const handleCreateCategory = async (e: React.FormEvent) => {
@@ -846,6 +936,101 @@ export default function SettingsTab() {
       </div>
     </div>
 
+    {/* SECTION D.0.3: FEATURED SPOTLIGHT */}
+    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
+      <div className="border-b border-stone-200 pb-4 mb-6">
+        <h2 className="text-xl font-serif text-stone-900">Featured Spotlight</h2>
+        <p className="text-stone-500 text-xs mt-1">
+          A time-boxed marketing page at <code className="font-mono">/spotlight</code> showing whichever
+          products you&rsquo;ve flagged &ldquo;Feature&rdquo; from the Products tab&rsquo;s Live Storefront
+          Catalog &amp; Stock Tracker (any number, any mix of categories) &mdash; with a countdown to the
+          end date below, driving shoppers back to the full catalog. Requires an end date while switched on;
+          leave the start blank to mean &ldquo;live as soon as you save&rdquo;.
+        </p>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm text-stone-700 font-medium">
+        <input
+          type="checkbox"
+          checked={spotlightDraft.enabled}
+          onChange={(e) => setSpotlightDraft((d) => ({ ...d, enabled: e.target.checked }))}
+          className="accent-amber-700"
+        />
+        Spotlight is running
+      </label>
+
+      <div className="flex items-center gap-3 flex-wrap mt-4">
+        <label className="text-sm text-stone-700 font-medium">Title shown to shoppers</label>
+        <input
+          type="text"
+          maxLength={80}
+          value={spotlightDraft.title}
+          onChange={(e) => setSpotlightDraft((d) => ({ ...d, title: e.target.value }))}
+          placeholder="e.g. Diwali Picks"
+          className="w-64 px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+        />
+      </div>
+
+      <div className="mt-4">
+        <label className="block text-sm text-stone-700 font-medium mb-1">Description (optional)</label>
+        <textarea
+          maxLength={300}
+          rows={2}
+          value={spotlightDraft.description}
+          onChange={(e) => setSpotlightDraft((d) => ({ ...d, description: e.target.value }))}
+          placeholder="A short line shown under the title on the spotlight page."
+          className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50 resize-y"
+        />
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap mt-4">
+        <label className="text-sm text-stone-700 font-medium">Starts</label>
+        <input
+          type="datetime-local"
+          value={spotlightDraft.startsAt}
+          onChange={(e) => setSpotlightDraft((d) => ({ ...d, startsAt: e.target.value }))}
+          className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+        />
+        <label className="text-sm text-stone-700 font-medium ml-2">Ends</label>
+        <input
+          type="datetime-local"
+          value={spotlightDraft.endsAt}
+          onChange={(e) => setSpotlightDraft((d) => ({ ...d, endsAt: e.target.value }))}
+          className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+        />
+        <span className="text-stone-400 text-xs w-full">
+          Pick any window &mdash; a few days, a week, ten days, a month, whatever suits this campaign.
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between flex-wrap gap-3 mt-6 pt-5 border-t border-stone-100">
+        <p className="text-xs text-stone-500">
+          <strong className="text-stone-800">{spotlightedProducts.length}</strong> product{spotlightedProducts.length === 1 ? "" : "s"} currently
+          spotlighted &mdash; toggle &ldquo;Feature&rdquo; per product from the Products tab.
+        </p>
+        {spotlightedProducts.length > 0 && (
+          <button
+            type="button"
+            onClick={handleClearSpotlight}
+            className="text-xs font-semibold text-rose-600 hover:underline"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3 mt-4">
+        <button
+          type="button"
+          onClick={handleSaveSpotlight}
+          className="px-5 py-2 rounded bg-stone-900 text-white text-xs font-semibold uppercase tracking-wider hover:bg-amber-700 transition"
+        >
+          Save spotlight
+        </button>
+        {spotlightStatus && <span className="text-xs text-stone-500">{spotlightStatus}</span>}
+      </div>
+    </div>
+
     {/* SECTION D.0.5: WHATSAPP NUMBERS */}
     <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
       <div className="border-b border-stone-200 pb-4 mb-6">
@@ -1258,7 +1443,7 @@ export default function SettingsTab() {
     <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
       <div className="border-b border-stone-200 pb-4 mb-6">
         <h2 className="text-xl font-serif text-stone-900">Categories</h2>
-        <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form’s dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category’s products appear in the homepage&rsquo;s default view (they’re still reachable by selecting the category directly). GST % is set per category and used to break down the final bill. &ldquo;% Off&rdquo; shows a struck-through original price everywhere on the site (product price you set stays the real price charged -- this is display only). &ldquo;Products/page&rdquo; overrides the site-wide default just for that category&rsquo;s own page -- leave blank to use the default above. The enquiry WhatsApp dropdown routes every &ldquo;Chat&rdquo; click for that category's products to a specific number (from WhatsApp Numbers above) instead of the site default -- a product's own number (set in the product form) still wins over this if it has one.</p>
+        <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form’s dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category’s products appear in the homepage&rsquo;s default view (they’re still reachable by selecting the category directly). GST % is set per category and used to break down the final bill. &ldquo;% Off&rdquo; shows a struck-through original price everywhere on the site (product price you set stays the real price charged -- this is display only). &ldquo;Products/page&rdquo; overrides the site-wide default just for that category&rsquo;s own page -- leave blank to use the default above. The enquiry WhatsApp dropdown routes every &ldquo;Chat&rdquo; click for that category&rsquo;s products to a specific number (from WhatsApp Numbers above) instead of the site default -- a product&rsquo;s own number (set in the product form) still wins over this if it has one.</p>
       </div>
 
       {/* Mobile-first: the name input takes its own full-width row, and

@@ -12,6 +12,37 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Spotlight — an admin-curated, time-boxed featured-products page — 2026-09-02 23:55 IST
+- Owner: a page showcasing a changeable set of featured products (any count) for a chosen
+  window, to build interest and drive traffic back to the catalog — free-form selection,
+  any mix of categories, multiple picks from one category allowed.
+- New public page `/spotlight` (`app/spotlight/page.tsx`, `force-dynamic` over cached
+  reads): campaign title/description, a ticking countdown to the end date, a grid of real
+  `<ProductCard>`s (Add to Cart/wishlist work right from the page). No campaign, or an empty
+  one → a "check back soon" panel at 200 (not a redirect). Added to `sitemap.ts`.
+- Data model decision: product membership is a new `products.is_spotlight` +
+  `spotlight_order` column pair (migration `0050`), NOT a product-id array in the campaign's
+  JSON — the Products tab's per-row toggle is then a single-row `UPDATE`, avoiding a
+  read-modify-write race a shared array would have against a second open admin tab. No cap
+  on how many products can be featured.
+- Campaign window (title/description/dates) stays a small JSON blob — new
+  `app/utils/featuredSpotlight.ts`, same lenient-parse/strict-sanitize split as
+  `spendTierOffer.ts`, plus one extra rule: enabled requires an end date. 18 unit tests.
+- New `getSpotlightProducts()`/`getFeaturedSpotlightCampaign()` in `storeQueries.ts`.
+  `/api/admin/settings` gains a `featured_spotlight` PATCH branch; `/api/admin/products`
+  PATCH accepts `is_spotlight` (added to `OPTIONAL_COLUMNS`, revalidates `site-settings`
+  too when touched).
+- Admin: Settings → Featured Spotlight card (enable/title/description/dates, live count,
+  "Clear all"); Products tab → per-row "★ Featured"/"☆ Feature" toggle.
+- Verified: `tsc --noEmit` clean; `npm test` 196 passed (1 pre-existing skip, +18 new);
+  `eslint` on all 10 changed/new files 0 errors; `next build` exit 0, `/spotlight`
+  registered. Read-only smoke test against the live DB confirmed the fallback state renders
+  correctly pre-migration. No admin click-through against production (would silently no-op
+  before migration 0050 runs) — owner to verify post-migration: toggle products, save a
+  campaign, confirm the grid + countdown, confirm the fallback returns when switched off.
+  Not a payment-path change.
+- See `docs/HANDBOOK.html` Change log 2026-09-02 23:55.
+
 ### Batch: Docs sweep — fix stale "Handbook is private-only" comments — 2026-09-02 19:05 IST
 - Owner: "update the documents" — a general check after several rapid batches.
 - `docs/HANDBOOK.html` and this file were already current (updated before every merge this

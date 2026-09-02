@@ -498,6 +498,22 @@ export default function ProductsTab() {
     }
   };
 
+  // Membership in the /spotlight marketing page (migration 0050) -- see
+  // app/utils/featuredSpotlight.ts for why this is a per-product column
+  // toggled here rather than a list picked in Settings. The campaign window
+  // itself (title/description/dates) lives in Settings -> Featured Spotlight.
+  const handleInlineSpotlightToggle = async (productId: string | number, isSpotlight: boolean) => {
+    try {
+      const result = await apiRequest("/api/admin/products", {
+        method: "PATCH",
+        body: JSON.stringify({ id: productId, is_spotlight: isSpotlight }),
+      });
+      setProducts(products.map((p) => (p.id === productId ? result.product : p)));
+    } catch (err: unknown) {
+      alert(`Could not update spotlight status: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   // Manual storefront position -- lower numbers show first. Left blank
   // (null), a product falls back to sorting last (newest-first among
   // other unassigned products) until an admin gives it a number.
@@ -1384,6 +1400,19 @@ export default function ProductsTab() {
                   }`}
                 >
                   {product.hidden ? "Unhide" : "Hide"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInlineSpotlightToggle(product.id, !product.is_spotlight)}
+                  title={product.is_spotlight ? "Remove from the /spotlight marketing page" : "Feature on the /spotlight marketing page"}
+                  className={`px-4 py-2 rounded font-semibold text-xs uppercase shadow-sm transition border ${
+                    product.is_spotlight
+                      ? "border-amber-600 bg-amber-50 text-amber-800"
+                      : "border-stone-400 text-stone-600 hover:bg-stone-100"
+                  }`}
+                >
+                  {product.is_spotlight ? "★ Featured" : "☆ Feature"}
                 </button>
 
                 <button type="button" onClick={() => handleEditClick(product)} className="px-4 py-2 border border-amber-600 rounded text-amber-700 hover:bg-amber-50 font-semibold text-xs uppercase shadow-sm transition">
