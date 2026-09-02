@@ -78,11 +78,15 @@ function parseCategoryPageSize(value: unknown): number | null | undefined {
 
 export async function PATCH(req: Request) {
   try {
-    const { id, show_on_home, gst_rate, default_page_size, discount_percent } = await req.json();
+    const { id, show_on_home, gst_rate, default_page_size, discount_percent, whatsapp_number } = await req.json();
     if (!id) return NextResponse.json({ error: "Missing category id." }, { status: 400 });
 
     const updates: Update<"categories"> = {};
     if (typeof show_on_home === "boolean") updates.show_on_home = show_on_home;
+    // Sourced from a <select> over the managed whatsapp_numbers list (same
+    // pattern as products.whatsapp_number), never free text -- so a plain
+    // trim-or-null is enough, no format validation needed here.
+    if (whatsapp_number !== undefined) updates.whatsapp_number = String(whatsapp_number || "").trim() || null;
     if (gst_rate !== undefined) {
       const gstRate = parseGstRate(gst_rate);
       if (gstRate === null) {

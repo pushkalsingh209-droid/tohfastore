@@ -92,6 +92,7 @@ export type Database = {
           id: number
           name: string
           show_on_home: boolean
+          whatsapp_number: string | null
         }
         Insert: {
           created_at?: string
@@ -101,6 +102,7 @@ export type Database = {
           id?: never
           name: string
           show_on_home?: boolean
+          whatsapp_number?: string | null
         }
         Update: {
           created_at?: string
@@ -110,6 +112,7 @@ export type Database = {
           id?: never
           name?: string
           show_on_home?: boolean
+          whatsapp_number?: string | null
         }
         Relationships: []
       }

@@ -14,6 +14,7 @@ import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { useProductUnitSettings } from "@/app/context/ProductUnitSettingContext";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
 import { useDefaultWhatsappNumber } from "@/app/context/DefaultWhatsappNumberContext";
+import { useCategoryWhatsappNumber } from "@/app/context/BootstrapContext";
 import { useChatLabels } from "@/app/context/ChatLabelSettingContext";
 import StockStatusBadge from "@/app/components/StockStatusBadge";
 import { productHref } from "@/app/utils/slug";
@@ -98,6 +99,7 @@ export default function ProductCard({
   const dimensionsLine = formatProductDimensionsLine(product, weightUnit, dimensionUnit);
   const attributesLine = formatProductAttributesLine(product);
   const defaultWhatsappNumber = useDefaultWhatsappNumber();
+  const categoryWhatsappNumber = useCategoryWhatsappNumber(product.category);
   const chatLabels = useChatLabels();
 
   function handleImageClick(e: React.MouseEvent) {
@@ -201,12 +203,12 @@ export default function ProductCard({
         </div>
 
         <a
-          href={getProductWhatsappLink(product, outOfStock, defaultWhatsappNumber)}
+          href={getProductWhatsappLink(product, outOfStock, defaultWhatsappNumber, categoryWhatsappNumber)}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => {
             e.stopPropagation();
-            trackWhatsappEnquiry(product, outOfStock, resolveProductWhatsappNumber(product, outOfStock, defaultWhatsappNumber), "card_front");
+            trackWhatsappEnquiry(product, outOfStock, resolveProductWhatsappNumber(product, outOfStock, defaultWhatsappNumber, categoryWhatsappNumber), "card_front");
           }}
           className={`mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-1.5 w-full text-white text-[11px] uppercase tracking-wider font-semibold py-2.5 px-3 rounded transition active:scale-95 ${
             outOfStock ? "bg-amber-700 hover:bg-amber-800" : "bg-emerald-600 hover:bg-emerald-700"
@@ -291,11 +293,11 @@ export default function ProductCard({
         </div>
 
         <a
-          href={getProductWhatsappLink(product, outOfStock, defaultWhatsappNumber)}
+          href={getProductWhatsappLink(product, outOfStock, defaultWhatsappNumber, categoryWhatsappNumber)}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => {
-            trackWhatsappEnquiry(product, outOfStock, resolveProductWhatsappNumber(product, outOfStock, defaultWhatsappNumber), "card_back");
+            trackWhatsappEnquiry(product, outOfStock, resolveProductWhatsappNumber(product, outOfStock, defaultWhatsappNumber, categoryWhatsappNumber), "card_back");
           }}
           className={`grid grid-cols-[auto_1fr_auto] items-center gap-1.5 w-full text-white text-[11px] uppercase tracking-wider font-semibold py-2.5 px-3 rounded transition active:scale-95 ${
             outOfStock ? "bg-amber-700 hover:bg-amber-800" : "bg-emerald-600 hover:bg-emerald-700"

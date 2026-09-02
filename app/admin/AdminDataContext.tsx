@@ -86,6 +86,7 @@ export interface AdminCategory {
   gst_rate?: number | string;
   discount_percent?: number | string;
   default_page_size?: number | string | null;
+  whatsapp_number?: string | null;
 }
 export interface AdminLabel {
   id: number;
