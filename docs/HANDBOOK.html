@@ -1124,6 +1124,7 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
       <tr><td>Weight / dimension display unit</td><td>Unit shown to customers (values are always stored g/cm)</td><td>Card + product page</td></tr>
       <tr><td>Default Brass Rate (&#8377;/kg)</td><td>Prefills the "Lightweight Brass" calculator for a product with no rate of its own; never rewrites a saved price</td><td>Products &rarr; Stock Tracker</td></tr>
       <tr><td>Ganesha popup: auto-shows / cooldown / collapse delay</td><td>How often the mascot popup appears and how long its floating trigger stays expanded</td><td>Storefront popup</td></tr>
+      <tr><td>WhatsApp Numbers &rarr; Add number</td><td>Adds a number to the managed enquiry-number pool directly from Settings (was previously only addable from the product form's WhatsApp Number field). Same <code>POST /api/admin/whatsapp-numbers</code> either way.</td><td>Product "chat" buttons</td></tr>
       <tr><td>WhatsApp Numbers &rarr; Set as Default</td><td>The number used for enquiries on products with none of their own (falls back to +91&nbsp;6302672351)</td><td>Product "chat" buttons</td></tr>
       <tr><td>WhatsApp Numbers &rarr; Bulk switch</td><td>Moves a whole group of products (by current number, or by category) to another number in one write</td><td>&mdash;</td></tr>
       <tr><td>Order Notification Numbers</td><td>Up to 10 extra WhatsApp numbers (suppliers). Tick them per-product in the product form; every notification for that product &mdash; new paid order, low-stock, oversell, shipped/delivered &mdash; then also goes to those numbers. The main business number always gets everything regardless.</td><td>Supplier WhatsApp</td></tr>
@@ -2764,6 +2765,29 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-02<br>17:05</code></td>
+  <td><strong>Settings: add a WhatsApp number directly</strong><br>(owner: no option in the admin panel's Settings &rarr; WhatsApp Numbers to add a number)</td>
+  <td>
+    The Settings &rarr; WhatsApp Numbers card has always listed numbers, set-default, and bulk-reassign,
+    but never actually had an add form &mdash; the only way to add one was via the product add/edit form's
+    &ldquo;+ Add new&rdquo; affordance next to its WhatsApp Number dropdown. The empty-state copy already
+    claimed &ldquo;&hellip; or below&rdquo;, which was never true; pre-dates this session (present since the
+    tab was extracted from <code>app/admin/page.tsx</code>, #16).
+    <br><br>
+    New label + number + <em>Add number</em> inline form in the WhatsApp Numbers card (same layout as the
+    Order Notification Numbers card just below it), wired to the existing <strong><code>POST
+    /api/admin/whatsapp-numbers</code></strong> &mdash; no backend change, it's the same route the product
+    form already posts to. New <code>handleAddWhatsappNumber</code> in <code>SettingsTab.tsx</code>, mirroring
+    <code>ProductsTab.tsx</code>'s <code>handleAddWhatsappNumber</code>. Empty-state copy corrected to
+    &ldquo;add one below, or from the product form&hellip;&rdquo; now that it's actually true.
+  </td>
+  <td><em>edited:</em> <code>app/admin/tabs/SettingsTab.tsx</code> &middot; <code>docs/HANDBOOK.html</code>
+    &middot; <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 167 passed (1 pre-existing skip),
+    unchanged &middot; <code>next build</code> exit 0. UI-only, no schema / route / payment-path change (POST
+    /api/admin/whatsapp-numbers already existed and was already exercised from the product form).</td>
+</tr>
 <tr>
   <td><code>2026-09-02<br>16:20</code></td>
   <td><strong>Handbook served on the domain, unauthenticated</strong> <span class="pill warnp">security</span><br>(owner: publish the Handbook at tohfaonline.com instead of the Claude artifact link, because the artifact always requires a Claude sign-in)</td>
