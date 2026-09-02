@@ -230,6 +230,33 @@ export type Database = {
         }
         Relationships: []
       }
+      order_notification_log: {
+        Row: {
+          email: string | null
+          id: number
+          order_id: number
+          sent_at: string
+          status: string
+          whatsapp: string | null
+        }
+        Insert: {
+          email?: string | null
+          id?: never
+          order_id: number
+          sent_at?: string
+          status: string
+          whatsapp?: string | null
+        }
+        Update: {
+          email?: string | null
+          id?: never
+          order_id?: number
+          sent_at?: string
+          status?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
       order_notification_numbers: {
         Row: {
           created_at: string

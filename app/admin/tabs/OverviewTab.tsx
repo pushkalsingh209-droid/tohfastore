@@ -267,28 +267,30 @@ export default function OverviewTab() {
       );
     })()}
 
-    {/* DOCUMENTATION LINKS: the internal engineering reference (a private
-        Claude artifact, docs/HANDBOOK.html republished after every batch per
-        the working agreement -- needs the owner's Claude account, by
-        design: it has the GSTIN, business phone numbers, the full DB
-        schema, the exact admin route inventory, and the RLS gap history)
-        plus two public, no-login pages served straight from this repo --
-        docs/PROJECT-STORY.html at /story (the shop's story) and
-        docs/ENGINEERING-OVERVIEW.html at /engineering (a redacted, public
-        version of the Handbook's content -- same architecture/caching/
-        security/process notes, none of the sensitive specifics). Plain
-        links, not fetched/rendered data. */}
+    {/* DOCUMENTATION LINKS: the internal engineering reference, now served
+        straight from this repo at /handbook (docs/HANDBOOK.html, force-static
+        -- see app/handbook/route.ts) -- owner's explicit call (2026-09-02) to
+        drop the Claude-sign-in requirement of the old artifact link. It has
+        the GSTIN, business phone numbers, the full DB schema, the exact
+        admin route inventory, and the RLS gap history in it, so it's
+        deliberately kept out of the sitemap + robots.txt and marked
+        noindex/nofollow -- reachable by anyone with this exact URL, not
+        surfaced by search. Plus two public, no-login pages -- PROJECT-
+        STORY.html at /story (the shop's story) and ENGINEERING-OVERVIEW.html
+        at /engineering (the redacted counterpart -- same architecture/
+        caching/security/process notes, none of the sensitive specifics).
+        Plain links, not fetched/rendered data. */}
     <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-6 mb-6">
       <p className="text-[10px] uppercase tracking-wider font-semibold mb-3 text-stone-500">Documentation</p>
       <div className="flex flex-wrap gap-3">
         <a
-          href="https://claude.ai/code/artifact/7aa7da6c-f415-4e08-a840-669955210d9d"
+          href="/handbook"
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1 min-w-[220px] rounded-lg border border-stone-200 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition p-4"
         >
           <p className="text-sm font-semibold text-stone-900">Engineering Handbook</p>
-          <p className="text-[11px] text-stone-500 mt-0.5">Schema, migrations, API routes, checkout flow, caching, gotchas &amp; the dated Change Log. Private (your Claude account).</p>
+          <p className="text-[11px] text-stone-500 mt-0.5">Schema, migrations, API routes, checkout flow, caching, gotchas &amp; the dated Change Log. Public URL, unlisted (noindex) &mdash; contains sensitive details, only share this link deliberately.</p>
         </a>
         <a
           href="/story"

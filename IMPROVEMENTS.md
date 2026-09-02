@@ -12,6 +12,53 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Handbook served on the domain, unauthenticated — 2026-09-02 16:20 IST — 🔒 security
+- Owner: publish the Handbook at tohfaonline.com instead of the Claude artifact link, because
+  the artifact always requires a Claude sign-in.
+- Flagged before implementing: this file has the GSTIN, business WhatsApp numbers, the full
+  DB schema, the exact admin route inventory, and the RLS gap history — the reason
+  `/engineering` (a redacted counterpart) was built instead of publishing this one, back on
+  2026-09-01. Owner explicitly confirmed "publish the full Handbook, no gate" after that
+  trade-off was spelled out.
+- New `app/handbook/route.ts` — same `force-static` pattern as `/story`/`/engineering`, reads
+  `docs/HANDBOOK.html` at build time and serves it verbatim, wrapped in an explicit doctype +
+  head/body shell (the source file is a bare Claude-artifact-publish fragment with no doctype
+  — served raw it would render in quirks mode). `docs/HANDBOOK.html` itself is unchanged; the
+  Claude artifact republish stays the primary authoring step.
+- Not indexed: added to `robots.ts`'s disallow list + the route's own `noindex, nofollow`
+  meta, not in `sitemap.ts`. Doesn't restrict access (anyone with the URL, no login) — only
+  discovery via search, a partial mitigation on top of the owner's go-ahead.
+- Admin Overview's Documentation card: Engineering Handbook link now points at `/handbook`
+  instead of the Claude artifact URL; copy updated to flag it as sensitive/unlisted.
+- Verified: `tsc --noEmit` clean; `npm test` 167 passed (1 pre-existing skip), unchanged;
+  `next build` exit 0, `/handbook` static; local `next start` smoke test — 200, correct
+  content-type, doctype + noindex meta present, `/robots.txt` lists the disallow.
+- See `docs/HANDBOOK.html` Change log 2026-09-02 16:20.
+
+### Batch: Notify-send counters + notification analytics — 2026-09-02 15:45 IST
+- Owner: show a per-status send count next to each order's status (e.g. `Shipped (2)`)
+  that increments on every "Notify customer" send, plus a date-range breakdown of how
+  many of each notification type went out.
+- New table **`order_notification_log`** (migration `0048`, RLS on / no policies — same
+  lockdown as `orders`/`coupons`): `order_id` FK→`orders.id` ON DELETE CASCADE, `status`,
+  `whatsapp`/`email` channel results, `sent_at`. `POST /api/admin/orders/notify` inserts
+  one row per send (best-effort) and returns the fresh per-order/per-status count as
+  `notificationCount` + the inserted `logEntry`.
+- New **`GET /api/admin/orders/notification-log`** — the whole log, newest first. Small
+  table (one row per explicit admin action), so no pagination or server-side aggregation.
+- Admin (Orders tab): a *Notifications sent* card above the order table — per-status
+  totals for an admin-chosen date range (blank = all time), computed client-side over the
+  already-loaded log. Each order row shows a small per-status send-count line under
+  "Notify customer"; the notify dialog's status pill reads `shipped (2)` and updates
+  immediately from the response, not a refetch.
+- `AdminDataContext` gained `notificationLog`/`setNotificationLog`, fetched once in
+  `loadAll()` alongside `orders`. No change to what gets sent or when — purely additive
+  logging + read-side display.
+- Verified: `tsc --noEmit` clean; `npm test` 167 passed (1 pre-existing skip), unchanged
+  count; `next build` exit 0 with `/api/admin/orders/notification-log` registered. Owner
+  ran migration 0048 in the SQL editor ahead of this batch. No payment-path change.
+- See `docs/HANDBOOK.html` Change log 2026-09-02 15:45.
+
 ### Batch: Downloadable Excel reports (Orders + GST) — 2026-09-03 03:15 IST
 - Owner: monthly / weekly / consolidated orders report, and a monthly GST report, both
   as real `.xlsx`.

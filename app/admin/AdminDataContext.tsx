@@ -105,6 +105,16 @@ export interface AdminWhatsappNumber {
 // different table + purpose (extra recipients for order notifications).
 export type AdminOrderNotificationNumber = AdminWhatsappNumber;
 
+// One row per "Notify customer" send (order_notification_log, migration
+// 0048) -- powers the Orders tab's per-order/per-status send counter and
+// the notification analytics date-range panel.
+export interface AdminNotificationLogEntry {
+  id: number;
+  order_id: number;
+  status: string;
+  sent_at: string;
+}
+
 // Preset "Chat for ..." button labels (chat_button_labels table) -- managed
 // by the settings tab's Chat Button Labels panel.
 export interface AdminChatLabel {
@@ -167,6 +177,8 @@ export interface AdminData {
   orders: AdminOrder[];
   setOrders: (value: AdminOrder[]) => void;
   loadingOrders: boolean;
+  notificationLog: AdminNotificationLogEntry[];
+  setNotificationLog: (value: AdminNotificationLogEntry[]) => void;
   // --- overview tab ---
   analytics: AdminAnalytics | null;
   enquiryAnalytics: AdminEnquiryAnalytics | null;
