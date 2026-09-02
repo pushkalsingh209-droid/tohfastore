@@ -148,7 +148,32 @@ export async function POST(req: Request) {
       console.error("Notify supplier copies error:", supplierError);
     }
 
-    return NextResponse.json({ ok: true, status, whatsapp, email, suppliersNotified });
+    // --- Log this send (migration 0048) --- feeds the Orders tab's
+    // per-order/per-status send counter and the notification analytics
+    // panel. Logged regardless of whatsapp/email outcome -- it's "a notify
+    // was sent for this status", not "delivery confirmed" (delivery
+    // confirmation isn't available from either channel here).
+    let notificationCount = 0;
+    let logEntry: { id: number; order_id: number; status: string; sent_at: string } | null = null;
+    try {
+      const { data: inserted, error: logError } = await supabase
+        .from("order_notification_log")
+        .insert({ order_id: id, status, whatsapp, email })
+        .select("id, order_id, status, sent_at")
+        .single();
+      if (logError) throw logError;
+      logEntry = inserted;
+      const { count } = await supabase
+        .from("order_notification_log")
+        .select("id", { count: "exact", head: true })
+        .eq("order_id", id)
+        .eq("status", status);
+      notificationCount = count ?? 0;
+    } catch (logErr) {
+      console.error("Notify log error (is migration 0048 applied?):", logErr);
+    }
+
+    return NextResponse.json({ ok: true, status, whatsapp, email, suppliersNotified, notificationCount, logEntry });
   } catch (err) {
     return serverErrorResponse("admin orders notify", err);
   }

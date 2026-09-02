@@ -27,7 +27,42 @@ const ORDER_STATUS_TABS: { key: string; label: string }[] = [
 ];
 
 export default function OrdersTab() {
-  const { orders, setOrders, loadingOrders } = useAdminData();
+  const { orders, setOrders, loadingOrders, notificationLog, setNotificationLog } = useAdminData();
+
+  // Per-order, per-status send counts, derived from the full notification
+  // log (migration 0048) -- how many times "Shipped", "Delivered", etc. has
+  // been sent for THIS order. Keyed by order id -> status -> count.
+  const notificationCounts = useMemo(() => {
+    const counts = new Map<number, Record<string, number>>();
+    for (const entry of notificationLog) {
+      const forOrder = counts.get(entry.order_id) ?? {};
+      forOrder[entry.status] = (forOrder[entry.status] || 0) + 1;
+      counts.set(entry.order_id, forOrder);
+    }
+    return counts;
+  }, [notificationLog]);
+  const countFor = (orderId: number, status: string) => notificationCounts.get(orderId)?.[status] ?? 0;
+
+  // --- Notification analytics: totals by status over an admin-chosen date
+  // range (default: all time). Purely a client-side filter/aggregate over
+  // the already-loaded log -- no extra request needed. `to` is inclusive of
+  // the whole calendar day.
+  const [notifFrom, setNotifFrom] = useState("");
+  const [notifTo, setNotifTo] = useState("");
+  const notifTotals = useMemo(() => {
+    const fromMs = notifFrom ? new Date(`${notifFrom}T00:00:00`).getTime() : null;
+    const toMs = notifTo ? new Date(`${notifTo}T23:59:59.999`).getTime() : null;
+    const totals: Record<string, number> = { processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
+    let total = 0;
+    for (const entry of notificationLog) {
+      const t = new Date(entry.sent_at).getTime();
+      if (fromMs !== null && t < fromMs) continue;
+      if (toMs !== null && t > toMs) continue;
+      totals[entry.status] = (totals[entry.status] || 0) + 1;
+      total += 1;
+    }
+    return { byStatus: totals, total };
+  }, [notificationLog, notifFrom, notifTo]);
 
   const [orderSearch, setOrderSearch] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>("all");
@@ -148,7 +183,7 @@ export default function OrdersTab() {
   const [notifyOrder, setNotifyOrder] = useState<AdminOrder | null>(null);
   const [notifyComment, setNotifyComment] = useState("");
   const [notifySending, setNotifySending] = useState(false);
-  const [notifyResult, setNotifyResult] = useState<{ whatsapp: ChannelResult; email: ChannelResult } | null>(null);
+  const [notifyResult, setNotifyResult] = useState<{ whatsapp: ChannelResult; email: ChannelResult; notificationCount: number } | null>(null);
 
   const openNotify = (order: AdminOrder) => {
     setNotifyOrder(order);
@@ -175,7 +210,8 @@ export default function OrdersTab() {
         alert(`Could not send the notification: ${data.error || "Unknown error"}`);
         return;
       }
-      setNotifyResult({ whatsapp: data.whatsapp, email: data.email });
+      setNotifyResult({ whatsapp: data.whatsapp, email: data.email, notificationCount: data.notificationCount ?? 0 });
+      if (data.logEntry) setNotificationLog([...notificationLog, data.logEntry]);
     } catch (err: unknown) {
       alert(`Could not send the notification: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -206,6 +242,65 @@ export default function OrdersTab() {
 
   return (
     <>
+    {/* NOTIFICATION ANALYTICS: totals by status of "Notify customer" sends
+        (migration 0048's log), over an admin-chosen date range -- e.g. how
+        many Shipped notifications went out this week vs. all time. Purely
+        client-side over the already-loaded log, so it updates immediately
+        after each send. */}
+    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-6 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-lg font-serif text-stone-900">Notifications sent</h2>
+          <p className="text-stone-500 text-xs mt-0.5">
+            &ldquo;Notify customer&rdquo; sends by status, for the range below (blank = all time).
+          </p>
+        </div>
+        <div className="flex items-end gap-2">
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">From</label>
+            <input
+              type="date"
+              value={notifFrom}
+              onChange={(e) => setNotifFrom(e.target.value)}
+              max={notifTo || undefined}
+              className="px-2.5 py-1.5 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">To</label>
+            <input
+              type="date"
+              value={notifTo}
+              onChange={(e) => setNotifTo(e.target.value)}
+              min={notifFrom || undefined}
+              className="px-2.5 py-1.5 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-stone-50"
+            />
+          </div>
+          {(notifFrom || notifTo) && (
+            <button
+              type="button"
+              onClick={() => { setNotifFrom(""); setNotifTo(""); }}
+              className="px-2.5 py-1.5 rounded border border-stone-300 text-xs font-semibold text-stone-500 hover:bg-stone-50 transition"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {ORDER_STATUS_TABS.filter((t) => t.key !== "all").map((t) => (
+          <div key={t.key} className="bg-stone-50 border border-stone-200 rounded-lg p-3">
+            <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">{t.label}</p>
+            <p className="text-lg font-mono font-bold text-stone-900">{notifTotals.byStatus[t.key] ?? 0}</p>
+          </div>
+        ))}
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <p className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">Total</p>
+          <p className="text-lg font-mono font-bold text-amber-800">{notifTotals.total}</p>
+        </div>
+      </div>
+    </div>
+
     {/* SECTION C: SECURE INCOMING CUSTOMER ORDERS LEDGER */}
     <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
       <div className="border-b border-stone-200 pb-4 mb-6">
@@ -425,6 +520,17 @@ export default function OrdersTab() {
                       </svg>
                       Notify customer
                     </button>
+                    {/* Per-order send counts by status -- how many times
+                        each status notification has gone out for this
+                        order (migration 0048's log). Zero for every status
+                        until the first send. */}
+                    <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] font-mono text-stone-400">
+                      {ORDER_STATUS_TABS.filter((t) => t.key !== "all").map((t) => (
+                        <span key={t.key} className={countFor(order.id, t.key) > 0 ? "text-stone-500 font-semibold" : undefined}>
+                          {t.label} ({countFor(order.id, t.key)})
+                        </span>
+                      ))}
+                    </div>
                   </td>
                   <td className="p-4 text-right font-mono font-bold text-amber-800 text-base">
                     ₹{Number(order.amount).toLocaleString("en-IN")}
@@ -477,7 +583,7 @@ export default function OrdersTab() {
                   : "bg-stone-100 text-stone-600"
               }`}
             >
-              {notifyStatus}
+              {notifyStatus} ({notifyResult ? notifyResult.notificationCount : countFor(notifyOrder.id, notifyStatus)})
             </span>
           </div>
 

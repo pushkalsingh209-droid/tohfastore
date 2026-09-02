@@ -822,7 +822,9 @@
     lib/apiRequest.ts        the only fetch wrapper the tabs use
     tabs/                    Overview, Products, Orders, Coupons, Settings, Reviews, Security
 supabase/migrations/         0001..0046 hand-run SQL
-docs/                        HANDBOOK.html (this -- the full reference), ARCHITECTURE.html (pointer),
+docs/                        HANDBOOK.html (this -- the full reference; also served live,
+                             unauthenticated, at /handbook -- see app/handbook/route.ts),
+                             ARCHITECTURE.html (pointer),
                              PROJECT-STORY.html (served live at /story, see app/story/route.ts),
                              ENGINEERING-OVERVIEW.html (served live at /engineering, the redacted
                              public counterpart to this file -- see app/engineering/route.ts),
@@ -1035,12 +1037,13 @@ docs/                        HANDBOOK.html (this -- the full reference), ARCHITE
     "check availability" clicks by category / product / source). Recent leads. And <strong>three heartbeat
     cards</strong> &mdash; keepalive, Green API session, abandoned-checkout cron. Green is healthy; amber
     means that signal has gone stale (a dead scheduler, or the Green API instance dropped its session).
-    A <strong>Documentation</strong> card (added 2026-09-01, grown over the same day as <code>/story</code>
-    then <code>/engineering</code> shipped) links out to three references &mdash; the Engineering
-    Handbook (this file, a private Claude artifact needing the owner's account, by design), the Project
-    Showcase (<code>/story</code>, public), and the Engineering Overview (<code>/engineering</code>, the
-    redacted public counterpart to this file) &mdash; so all three stay one click away without hunting for
-    a URL. Plain links; nothing fetched or rendered.</p>
+    A <strong>Documentation</strong> card (added 2026-09-01, grown as <code>/story</code>, <code>/engineering</code>,
+    then <code>/handbook</code> shipped) links out to three references &mdash; the Engineering
+    Handbook (this file, served unauthenticated at <code>/handbook</code> since 2026-09-02, unlisted/noindex
+    &mdash; contains sensitive specifics, share the link deliberately), the Project Showcase
+    (<code>/story</code>, public), and the Engineering Overview (<code>/engineering</code>, the redacted
+    public counterpart to this file) &mdash; so all three stay one click away without hunting for a URL.
+    Plain links; nothing fetched or rendered.</p>
   </div>
 
   <div class="card">
@@ -1646,6 +1649,7 @@ RLS: anon <code>SELECT USING (hidden = false)</code>; service role bypasses.</p>
 <tr><td><code>admin_sessions</code></td><td><code>token_hash</code> UNIQUE (SHA-256), <code>expires_at</code>, <code>revoked_at</code></td><td>Server-side session records &rarr; individually + bulk revocable. 12h TTL. Raw token only in the httpOnly cookie. <em>(0028)</em></td></tr>
 <tr><td><code>whatsapp_otp_verifications</code></td><td><code>phone</code>, <code>ip</code>, <code>code_hash</code>, <code>attempts</code> int=0, <code>expires_at</code>, <code>verified_at</code>, <code>verified_expires_at</code>, <code>verification_token</code> UNIQUE (partial)</td><td>Checkout OTP. Code TTL 5 min; verified state TTL 60 min; &le; 5 verify attempts; 45s resend cooldown; &le; 5/hr per phone, &le; 10/hr per IP. <code>verification_token</code> proves <em>this</em> session did the verifying. Pruned (&gt;7d) on 2% of sends. <em>(0029, 0030)</em></td></tr>
 <tr><td><code>rate_limit_events</code></td><td><code>bucket</code>, <code>ip</code>, <code>created_at</code></td><td>Generic DB-backed IP limiter (serverless has no shared memory). Buckets: <code>coupon-validate</code> (20/10min), <code>track-view</code> (60/10min), <code>lead-submit</code> (10/60min), <code>stock-alert-subscribe</code> (15/60min). Self-pruned (&gt;24h) on 2% of writes. Fails <em>open</em> on read error. <em>(0031)</em></td></tr>
+<tr><td><code>order_notification_log</code></td><td><code>order_id</code> FK&rarr;orders ON DELETE CASCADE, <code>status</code>, <code>whatsapp</code>, <code>email</code>, <code>sent_at</code></td><td>One row per explicit &ldquo;Notify customer&rdquo; send. Not pruned (small &mdash; one row per admin action, not per order/visitor). Feeds the Orders tab's per-order/per-status send counter and the notification-analytics date-range panel, both client-side over the whole log via <code>GET /api/admin/orders/notification-log</code>. <em>(0048)</em></td></tr>
 </tbody></table></div>
 
 <h2 id="rls">Row Level Security model</h2>
@@ -1719,6 +1723,7 @@ policy). The lesson: <strong>every <code>create table</code> migration must incl
 <tr><td>0045</td><td>add_order_courier_name</td><td><code>orders.courier_name text</code> (nullable, no constraint). The delivery partner an order shipped with, set from <code>/api/admin/orders/update-status</code> alongside <code>awb_number</code>. No index &mdash; not a lookup key. Applied to the live DB by the owner ahead of the merge.</td></tr>
 <tr><td>0046</td><td>add_order_notification_numbers</td><td>New <code>order_notification_numbers</code> table (RLS on, no policies) + <code>products.supplier_numbers text[]</code>. Supplier list for order notifications, separate from the enquiry <code>whatsapp_numbers</code>. No cascade &mdash; deleting a number is safe because the send paths intersect with the live table anyway (the admin delete route also strips it from products for tidiness). Applied to the live DB by the owner ahead of the merge.</td></tr>
 <tr><td>0047</td><td>enable_rls_site_settings</td><td><code>alter table site_settings enable row level security;</code> (+ defensive <code>drop policy</code> for any stray dashboard "quick start" policy). <code>0011</code> created <code>site_settings</code> without RLS &mdash; the only table migration that missed it &mdash; so the anon/publishable key could read <em>and write</em> every KV row (<code>brass_price_per_kg</code>, <code>spend_tier_offer</code>, <code>stock_reservations_enabled</code>&hellip;). Supabase's advisor flags it as <code>rls_disabled_in_public</code>. No policy added: every app path uses the service-role key, which bypasses RLS &mdash; same lockdown as <code>orders</code>/<code>coupons</code>. <code>rlsProbes.ts</code> now probes <code>site_settings</code> read + write so CI and <code>/api/cron/rls-check</code> catch a regression. Applied to the live DB by the owner ahead of the merge.</td></tr>
+<tr><td>0048</td><td>add_order_notification_log</td><td>New <code>order_notification_log</code> table (RLS on, no policies &mdash; same lockdown as <code>orders</code>/<code>coupons</code>): <code>order_id</code> (FK &rarr; <code>orders.id</code>, cascade delete), <code>status</code>, <code>whatsapp</code>/<code>email</code> channel results, <code>sent_at</code>. One row per explicit &ldquo;Notify customer&rdquo; send from <code>/api/admin/orders/notify</code>. Feeds the Orders tab's per-order/per-status send counter (e.g. <code>Shipped (2)</code>) and a client-side notification-analytics panel (date-range totals by status) &mdash; both read the whole log via <code>GET /api/admin/orders/notification-log</code>, no aggregation query needed at this scale. Applied to the live DB by the owner ahead of the merge.</td></tr>
 </tbody></table></div>
 
 <p><strong><code>product_sales</code> drift check</strong> &mdash; the tally is only self-correcting for cancellations
@@ -1792,15 +1797,16 @@ resets and verify steady-state usage stays under cap.</p>
 <tr><td><code>/about</code>, <code>/contact</code>, <code>/corporate</code>, <code>/privacy</code>, <code>/terms</code>, <code>/refunds</code></td><td>app/&lt;name&gt;/page.tsx</td><td>static</td><td><code>/contact</code> + <code>/corporate</code> have forms &rarr; <code>/api/contact</code> / <code>/api/leads</code>.</td></tr>
 <tr><td><code>/admin</code></td><td>app/admin/page.tsx (client SPA shell, 231 lines) + all 7 tab bodies as lazy components in <code>app/admin/tabs/</code> (#16 done)</td><td>client SPA behind proxy auth</td><td>Tabs via <code>?tab=</code>. See &sect;14.</td></tr>
 <tr><td><code>/admin/login</code></td><td>app/admin/login/page.tsx</td><td>client</td><td>Password + TOTP/backup code &rarr; <code>POST /api/admin/login</code>.</td></tr>
-<tr><td><code>/story</code></td><td>app/story/route.ts (added 2026-09-01)</td><td><code>force-static</code> Route Handler, not a page</td><td>Serves <code>docs/PROJECT-STORY.html</code> verbatim (read at build time, cached like the icon/splash routes) &mdash; a public, no-login &ldquo;behind the shop&rdquo; page: product highlights + engineering notes, no business-sensitive data. Distinct from the private, Claude-artifact-hosted Engineering Handbook (this document) &mdash; that one needs the owner's Claude account by design; this one doesn't need any account. Linked from the admin Overview tab's Documentation card.</td></tr>
-<tr><td><code>/engineering</code></td><td>app/engineering/route.ts (added 2026-09-01)</td><td><code>force-static</code> Route Handler, not a page</td><td>Serves <code>docs/ENGINEERING-OVERVIEW.html</code> verbatim &mdash; the public, redacted counterpart to <em>this</em> document: stack, system shape, caching/performance, checkout/payments, security principles, code quality &amp; process, observability, all at the &ldquo;how and why&rdquo; level with none of what makes this Handbook sensitive (no GSTIN/phone numbers, no schema dump, no exact admin route inventory, no RLS-gap specifics). Owner explicitly chose this redacted-public option over publishing the Handbook itself or leaving it private-only. Cross-links with <code>/story</code> in both directions.</td></tr>
+<tr><td><code>/story</code></td><td>app/story/route.ts (added 2026-09-01)</td><td><code>force-static</code> Route Handler, not a page</td><td>Serves <code>docs/PROJECT-STORY.html</code> verbatim (read at build time, cached like the icon/splash routes) &mdash; a public, no-login &ldquo;behind the shop&rdquo; page: product highlights + engineering notes, no business-sensitive data. Linked from the admin Overview tab's Documentation card.</td></tr>
+<tr><td><code>/engineering</code></td><td>app/engineering/route.ts (added 2026-09-01)</td><td><code>force-static</code> Route Handler, not a page</td><td>Serves <code>docs/ENGINEERING-OVERVIEW.html</code> verbatim &mdash; the public, redacted counterpart to <em>this</em> document: stack, system shape, caching/performance, checkout/payments, security principles, code quality &amp; process, observability, all at the &ldquo;how and why&rdquo; level with none of what makes this Handbook sensitive (no GSTIN/phone numbers, no schema dump, no exact admin route inventory, no RLS-gap specifics). Cross-links with <code>/story</code> in both directions.</td></tr>
+<tr><td><code>/handbook</code></td><td>app/handbook/route.ts (added 2026-09-02)</td><td><code>force-static</code> Route Handler, not a page</td><td>Serves <code>docs/HANDBOOK.html</code> itself (this document) verbatim, wrapped in an explicit <code>&lt;!doctype&gt;</code>+head/body shell (the source file is an artifact-publish fragment with no doctype &mdash; served raw it would render in quirks mode). <strong>Unauthenticated, no Claude sign-in</strong> &mdash; owner's explicit call (2026-09-02) to drop the artifact link's sign-in requirement, made with the sensitivity of this file's contents (GSTIN, business phone numbers, full schema, admin route inventory, RLS gap history) spelled out beforehand. Kept out of <code>sitemap.ts</code> and disallowed in <code>robots.ts</code>, plus its own <code>&lt;meta name="robots" content="noindex, nofollow"&gt;</code> &mdash; not surfaced by search, but reachable by anyone with the direct URL. The Claude artifact copy (republished after every batch per the working agreement) still exists as the primary authoring target; this route just mirrors its source file to the domain.</td></tr>
 <tr><td>404 / loading</td><td>app/not-found.tsx, app/loading.tsx</td><td>&mdash;</td><td><code>loading.tsx</code> (branded spinner) makes <em>every</em> route stream &mdash; which is why <code>proxy.ts</code> must emit real status codes before the page (&sect;10).</td></tr>
 </tbody></table></div>
 
 <h3>Metadata routes</h3>
 <ul class="tight">
   <li><code>app/sitemap.ts</code> &rarr; static pages + one URL per category + one per non-hidden product.</li>
-  <li><code>app/robots.ts</code> &rarr; allow <code>/</code>, disallow <code>/admin</code> and <code>/api/</code>; points at <code>/sitemap.xml</code>.</li>
+  <li><code>app/robots.ts</code> &rarr; allow <code>/</code>, disallow <code>/admin</code>, <code>/api/</code> and <code>/handbook</code>; points at <code>/sitemap.xml</code>.</li>
   <li><code>app/manifest.ts</code> &rarr; PWA manifest (standalone, <code>theme_color #3d1113</code>, gift-box icon set).</li>
   <li><code>app/icon.tsx</code>, <code>app/apple-icon.tsx</code>, <code>app/icon-192|512|512-maskable/route.tsx</code>, <code>app/apple-splash/[size]/route.tsx</code> &rarr; brand icon/splash PNGs via <code>next/og</code> (satori + resvg). All <code>force-static</code> &mdash; the output never varies by request, so they're rastered once at build, not per hit (the splash route uses <code>generateStaticParams</code> over <code>ALLOWED_SPLASH_SIZES</code>).</li>
 </ul>
@@ -1884,7 +1890,8 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/admin/products</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span></td><td>Product CRUD-ish. <code>insert/updateWithFallback</code> drops any optional column Postgres complains about and retries. Stamps <code>last_restocked_at</code> on inventory increases; fires back-in-stock WhatsApp on 0&rarr;&gt;0. Accepts <code>supplier_numbers</code> (array &mdash; normalised + validated + de-duped, empty &rarr; null). <code>revalidateTag("products","max")</code>.</td></tr>
 <tr><td><code>/api/admin/orders</code></td><td><span class="tag t-get">get</span></td><td>All orders, newest first.</td></tr>
 <tr><td><code>/api/admin/orders/update-status</code></td><td><span class="tag t-post">post</span></td><td>Persists status (+ optional <code>awb_number</code> / <code>courier_name</code> &mdash; each only written when the body includes it, so a status-only change keeps them). <strong>Does NOT notify the customer</strong> &mdash; that's the separate explicit <code>/api/admin/orders/notify</code> action, so editing tracking fields never re-spams. Cancel transition still backs units out of <code>product_sales</code>. <code>revalidateTag("orders","max")</code>.</td></tr>
-<tr><td><code>/api/admin/orders/notify</code></td><td><span class="tag t-post">post</span></td><td><code>{ id, comment? }</code> &mdash; sends a customer notification for the order's <em>current</em> status (any of the four), on an explicit admin click only (the "Notify customer" dialog). Best-effort <strong>WhatsApp + email</strong>, each its own try/catch; message text + email HTML from <code>app/utils/orderNotifications.ts</code>; shipped carries the courier + tracking line, delivered a review link, and the one-off <code>comment</code> (&le; 600 chars, not stored) is appended to both. Returns <code>{ ok, status, whatsapp, email }</code> with each channel <code>"sent"|"skipped"|"failed"</code>. Changes nothing on the order.</td></tr>
+<tr><td><code>/api/admin/orders/notify</code></td><td><span class="tag t-post">post</span></td><td><code>{ id, comment? }</code> &mdash; sends a customer notification for the order's <em>current</em> status (any of the four), on an explicit admin click only (the "Notify customer" dialog). Best-effort <strong>WhatsApp + email</strong>, each its own try/catch; message text + email HTML from <code>app/utils/orderNotifications.ts</code>; shipped carries the courier + tracking line, delivered a review link, and the one-off <code>comment</code> (&le; 600 chars, not stored) is appended to both. Also logs the send to <code>order_notification_log</code> (0048, best-effort) and returns the fresh per-order/per-status count. Returns <code>{ ok, status, whatsapp, email, suppliersNotified, notificationCount, logEntry }</code> with each channel <code>"sent"|"skipped"|"failed"</code>. Changes nothing on the order itself.</td></tr>
+<tr><td><code>/api/admin/orders/notification-log</code></td><td><span class="tag t-get">get</span></td><td>Full <code>order_notification_log</code> (0048), newest first &mdash; <code>{ id, order_id, status, sent_at }[]</code>. The Orders tab fetches it whole on load and derives both the per-order/per-status send counter and the date-range notification-analytics panel client-side; no server-side aggregation.</td></tr>
 <tr><td><code>/api/admin/coupons</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span> <span class="tag t-del">delete</span></td><td>Coupon CRUD. <code>revalidateTag("coupons","max")</code>.</td></tr>
 <tr><td><code>/api/admin/categories</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span> <span class="tag t-del">delete</span></td><td>Category CRUD incl. <code>show_on_home</code>, <code>gst_rate</code> (0&ndash;100), <code>discount_percent</code> (0&ndash;&lt;100), <code>default_page_size</code>. <code>revalidateTag("categories","max")</code>.</td></tr>
 <tr><td><code>/api/admin/reviews</code></td><td><span class="tag t-get">get</span> <span class="tag t-patch">patch</span> <span class="tag t-del">delete</span></td><td>List (joined with product name), approve, reject. <code>revalidateTag("reviews","max")</code>.</td></tr>
@@ -2108,7 +2115,7 @@ untyped <code>any</code> the JSX always had (a follow-up typing pass, <code>IMPR
 <tbody>
 <tr><td><code>overview</code></td><td>A <strong>Keepalive heartbeat</strong> card (last-run timestamp + amber <em>Check</em> badge if &gt; 90 min stale), then Business Overview (revenue, orders, AOV, repeat-rate, 6-month revenue chart), WhatsApp Enquiries analytics (14-day trend, by category/product/number/source), Leads list (follow-up / mark-contacted / delete), all with CSV export.</td></tr>
 <tr><td><code>products</code></td><td>Add-product form (name, price, description, images via <code>ImageUploadField</code>, category, inventory, weight/dimensions with selectable input unit + converter, material/color/label dropdowns, per-product WhatsApp number, photo filter, cost price). <strong>Live Storefront Catalog &amp; Stock Tracker:</strong> inline stock steppers, spec drafts, a &ldquo;Lightweight Brass&rdquo; price calculator (<code>weight &times; &#8377;/kg &times; 1.20</code> &rarr; <code>roundUpBrassPrice</code>), bulk label assign, hide/unhide.</td></tr>
-<tr><td><code>orders</code></td><td>Order table filtered by status (<code>ORDER_STATUS_TABS</code>), status updates + AWB entry, customer/address/items view.</td></tr>
+<tr><td><code>orders</code></td><td>A <strong>Notifications sent</strong> analytics card (per-status totals over an admin-chosen date range, blank = all time &mdash; client-side over the full <code>order_notification_log</code>, 0048) above the order table. Table filtered by status (<code>ORDER_STATUS_TABS</code>), status updates + AWB entry, customer/address/items view, and a per-order/per-status send counter (e.g. <code>Shipped (2)</code>) next to the &ldquo;Notify customer&rdquo; button and on the notify dialog's status pill, both fed by the same log.</td></tr>
 <tr><td><code>coupons</code></td><td>Coupon CRUD, public/private toggle, usage vs limit.</td></tr>
 <tr><td><code>settings</code></td><td>Storefront Settings (page size, reveal batch, photo filter, units, default WhatsApp number, brass &#8377;/kg, Ganesha popup tuning), Categories management (show-on-home, GST rate, discount %, page-size override), WhatsApp Numbers + bulk reassign, Chat Button Labels.</td></tr>
 <tr><td><code>reviews</code></td><td>Pending/approved review moderation (approve / reject).</td></tr>
@@ -2757,6 +2764,80 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-02<br>16:20</code></td>
+  <td><strong>Handbook served on the domain, unauthenticated</strong> <span class="pill warnp">security</span><br>(owner: publish the Handbook at tohfaonline.com instead of the Claude artifact link, because the artifact always requires a Claude sign-in)</td>
+  <td>
+    Flagged before implementing: this file (the one you&rsquo;re reading) has the GSTIN, business WhatsApp
+    numbers, the full DB schema, the exact admin route inventory, and the RLS gap history in it &mdash; the
+    reason <code>/engineering</code> (a redacted counterpart) was built in the first place instead of
+    publishing this one, per the 2026-09-01 batch below. Owner explicitly confirmed &ldquo;publish the full
+    Handbook, no gate&rdquo; after that trade-off was spelled out.
+    <br><br>
+    New <strong><code>app/handbook/route.ts</code></strong> &mdash; same <code>force-static</code> pattern as
+    <code>/story</code> / <code>/engineering</code>: reads <code>docs/HANDBOOK.html</code> at build time,
+    serves it verbatim. Unlike those two source files, <code>docs/HANDBOOK.html</code> is authored as a bare
+    Claude-artifact-publish fragment (its own <code>&lt;title&gt;</code>/<code>&lt;style&gt;</code>, no
+    <code>&lt;!doctype&gt;</code>/<code>&lt;html&gt;</code>/<code>&lt;head&gt;</code>/<code>&lt;body&gt;</code>)
+    &mdash; served raw as a top-level document it would render in quirks mode, so the route wraps it in an
+    explicit doctype + head/body shell rather than editing the source file (which needs to stay a bare
+    fragment for the artifact tool). <code>docs/HANDBOOK.html</code> itself is unchanged; the Claude artifact
+    republish stays the primary authoring step per the working agreement.
+    <br><br>
+    <strong>Not indexed:</strong> <code>/handbook</code> added to <code>app/robots.ts</code>'s disallow list
+    and the route's own response carries <code>&lt;meta name="robots" content="noindex, nofollow"&gt;</code>
+    &mdash; not in <code>sitemap.ts</code> either. None of this restricts <em>access</em> (anyone with the
+    exact URL can open it, no login), only discovery via search engines &mdash; a deliberate partial
+    mitigation on top of the owner's go-ahead, not a substitute for it.
+    <br><br>
+    Admin Overview's Documentation card: the Engineering Handbook link now points at <code>/handbook</code>
+    instead of the Claude artifact URL, with its description updated to flag the link as sensitive/unlisted
+    rather than &ldquo;Private (your Claude account)&rdquo;.
+  </td>
+  <td><em>new:</em> <code>app/handbook/route.ts</code><br>
+    <em>edited:</em> <code>app/robots.ts</code>, <code>app/admin/tabs/OverviewTab.tsx</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 167 passed (1 pre-existing skip),
+    unchanged &middot; <code>next build</code> exit 0, <code>/handbook</code> registered static (&cir;) same
+    as <code>/story</code>/<code>/engineering</code> &middot; local <code>next start</code> smoke test:
+    <code>GET /handbook</code> &rarr; 200, <code>content-type: text/html; charset=utf-8</code>, correct
+    doctype + noindex meta present in the served HTML; <code>/robots.txt</code> lists
+    <code>Disallow: /handbook</code>. No schema / payment-path change.</td>
+</tr>
+<tr>
+  <td><code>2026-09-02<br>15:45</code></td>
+  <td><strong>Notify-send counters + notification analytics</strong><br>(owner: show a per-status send count next to each order's status &mdash; e.g. <code>Shipped (2)</code> &mdash; and a date-range breakdown of how many of each notification type went out)</td>
+  <td>
+    New table <strong><code>order_notification_log</code></strong> (migration <strong>0048</strong>, RLS on / no
+    policies &mdash; same lockdown as <code>orders</code>/<code>coupons</code>): <code>order_id</code> FK&rarr;
+    <code>orders.id</code> ON DELETE CASCADE, <code>status</code>, <code>whatsapp</code>/<code>email</code>
+    channel results, <code>sent_at</code>. <code>POST /api/admin/orders/notify</code> now inserts one row per
+    send (best-effort &mdash; a log failure never fails the notify response) and returns the fresh
+    per-order/per-status count as <code>notificationCount</code> + the inserted <code>logEntry</code>. New
+    <strong><code>GET /api/admin/orders/notification-log</code></strong> returns the whole log, newest first
+    &mdash; small table (one row per explicit admin action, not per order/visitor), so no pagination or
+    server-side aggregation.
+    <br><br>
+    <strong>Admin (Orders tab):</strong> a new <em>Notifications sent</em> card above the order table &mdash;
+    per-status totals (Processing/Shipped/Delivered/Cancelled + a combined total) for an admin-chosen
+    <code>&lt;input type="date"&gt;</code> From/To range (blank = all time), computed purely client-side by
+    filtering the already-loaded log &mdash; no extra request per range change. Each order row now also shows a
+    small <code>Processing (0) Shipped (2) Delivered (0) Cancelled (0)</code> line under &ldquo;Notify
+    customer&rdquo;, and the notify dialog's status pill reads <code>shipped (2)</code> instead of just
+    <code>shipped</code>, updating immediately (from the response, not a refetch) the moment a send completes.
+    <code>AdminDataContext</code> gained <code>notificationLog</code>/<code>setNotificationLog</code>, fetched
+    once in <code>loadAll()</code> alongside <code>orders</code> and appended to locally on every successful
+    send. No change to what gets sent or when &mdash; purely additive logging + read-side display.
+  </td>
+  <td><em>new:</em> <code>supabase/migrations/0048_add_order_notification_log.sql</code>,
+    <code>app/api/admin/orders/notification-log/route.ts</code><br>
+    <em>edited:</em> <code>app/api/admin/orders/notify/route.ts</code>,
+    <code>app/admin/AdminDataContext.tsx</code>, <code>app/admin/page.tsx</code>,
+    <code>app/admin/tabs/OrdersTab.tsx</code>, <code>types/db.ts</code>, <code>docs/HANDBOOK.html</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 167 passed (1 pre-existing skip), unchanged
+    count &middot; <code>next build</code> exit 0 with <code>&fnof; /api/admin/orders/notification-log</code>
+    registered. Owner ran migration 0048 in the SQL editor ahead of this batch. No payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-03<br>03:15</code></td>
   <td><strong>Downloadable Excel reports (Orders + GST)</strong><br>(owner: monthly / weekly / consolidated orders report and a monthly GST report, both as real <code>.xlsx</code>)</td>

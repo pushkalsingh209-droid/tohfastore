@@ -19,6 +19,7 @@ import {
   type AdminAnalytics,
   type AdminEnquiryAnalytics,
   type AdminLoginAttempt,
+  type AdminNotificationLogEntry,
 } from "@/app/admin/AdminDataContext";
 
 // Per-tab components, lazy-loaded so only the active tab's code is parsed.
@@ -61,6 +62,7 @@ function AdminDashboard() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [notificationLog, setNotificationLog] = useState<AdminNotificationLogEntry[]>([]);
   const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [coupons, setCoupons] = useState<AdminCoupon[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
@@ -119,9 +121,10 @@ function AdminDashboard() {
   // them in parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [productsRes, ordersRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes, loginAttemptsRes, backupCodesRes, chatLabelsRes, orderNotificationNumbersRes] = await Promise.allSettled([
+    const [productsRes, ordersRes, notificationLogRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes, loginAttemptsRes, backupCodesRes, chatLabelsRes, orderNotificationNumbersRes] = await Promise.allSettled([
       apiRequest("/api/admin/products"),
       apiRequest("/api/admin/orders"),
+      apiRequest("/api/admin/orders/notification-log"),
       apiRequest("/api/admin/reviews"),
       apiRequest("/api/admin/coupons"),
       apiRequest("/api/admin/categories"),
@@ -140,6 +143,7 @@ function AdminDashboard() {
     ]);
     if (productsRes.status === "fulfilled") setProducts(productsRes.value.products);
     if (ordersRes.status === "fulfilled") setOrders(ordersRes.value.orders);
+    if (notificationLogRes.status === "fulfilled") setNotificationLog(notificationLogRes.value.log);
     if (reviewsRes.status === "fulfilled") setReviews(reviewsRes.value.reviews);
     if (couponsRes.status === "fulfilled") setCoupons(couponsRes.value.coupons);
     if (categoriesRes.status === "fulfilled") setCategories(categoriesRes.value.categories);
@@ -178,7 +182,7 @@ function AdminDashboard() {
   };
 
   return (
-    <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, coupons, setCoupons, orders, setOrders, loadingOrders, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, abandonedCheckoutStale, settings, setSettings, chatLabelPresets, setChatLabelPresets, products, setProducts, categories, setCategories, labels, setLabels, colors, setColors, materials, setMaterials, whatsappNumbers, setWhatsappNumbers, orderNotificationNumbers, setOrderNotificationNumbers, refetch: fetchData }}>
+    <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, coupons, setCoupons, orders, setOrders, loadingOrders, notificationLog, setNotificationLog, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, abandonedCheckoutStale, settings, setSettings, chatLabelPresets, setChatLabelPresets, products, setProducts, categories, setCategories, labels, setLabels, colors, setColors, materials, setMaterials, whatsappNumbers, setWhatsappNumbers, orderNotificationNumbers, setOrderNotificationNumbers, refetch: fetchData }}>
     <div className="bg-[var(--background)] min-h-screen py-12">
       <div className="max-w-5xl mx-auto px-6 space-y-12">
 
