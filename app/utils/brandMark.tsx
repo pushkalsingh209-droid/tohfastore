@@ -1,8 +1,10 @@
 // Shared brand-mark building blocks for every generated PWA image (favicon,
-// apple-icon, manifest icons, apple-touch-startup-image splash screens).
-// Kept as one source so the gift-box mark used in public/icon.svg and
-// public/logo-mark.png stays pixel-identical everywhere it's regenerated
-// via next/og's ImageResponse.
+// apple-icon, manifest icons, apple-touch-startup-image splash screens),
+// plus the public "Create Insta Post" tool's generated image
+// (app/api/instagram-post-image/route.tsx, which imports BrandGlyph
+// directly for its corner mark). Kept as one source so the gift-box mark
+// used in public/icon.svg and public/logo-mark.png stays pixel-identical
+// everywhere it's regenerated via next/og's ImageResponse.
 //
 // Note: satori (next/og's renderer) can't resolve a fill="url(#id)"
 // reference when the <linearGradient> is produced by a separate helper
@@ -16,7 +18,7 @@ export const BRAND_GOLD_DARK = "#a97d2b";
 // Gift box + ribbon + a small bow on the lid -- replaces an earlier
 // standalone bow glyph that, with nothing to anchor it, read as a bow tie
 // rather than gift wrap.
-function BrandGlyph({ gradientId }: { gradientId: string }) {
+export function BrandGlyph({ gradientId }: { gradientId: string }) {
   return (
     <svg width="100%" height="100%" viewBox="0 0 200 200">
       <defs>

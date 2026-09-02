@@ -1659,7 +1659,7 @@ RLS: anon <code>SELECT USING (hidden = false)</code>; service role bypasses.</p>
 <tr><td><code>admin_backup_codes</code></td><td><code>code_hash</code> UNIQUE (SHA-256), <code>used_at</code></td><td>8 single-use recovery codes (<code>XXXXX-XXXXX</code>, ambiguous chars removed). Regenerating replaces the whole set. Plaintext shown once. <em>(0027)</em></td></tr>
 <tr><td><code>admin_sessions</code></td><td><code>token_hash</code> UNIQUE (SHA-256), <code>expires_at</code>, <code>revoked_at</code></td><td>Server-side session records &rarr; individually + bulk revocable. 12h TTL. Raw token only in the httpOnly cookie. <em>(0028)</em></td></tr>
 <tr><td><code>whatsapp_otp_verifications</code></td><td><code>phone</code>, <code>ip</code>, <code>code_hash</code>, <code>attempts</code> int=0, <code>expires_at</code>, <code>verified_at</code>, <code>verified_expires_at</code>, <code>verification_token</code> UNIQUE (partial)</td><td>Checkout OTP. Code TTL 5 min; verified state TTL 60 min; &le; 5 verify attempts; 45s resend cooldown; &le; 5/hr per phone, &le; 10/hr per IP. <code>verification_token</code> proves <em>this</em> session did the verifying. Pruned (&gt;7d) on 2% of sends. <em>(0029, 0030)</em></td></tr>
-<tr><td><code>rate_limit_events</code></td><td><code>bucket</code>, <code>ip</code>, <code>created_at</code></td><td>Generic DB-backed IP limiter (serverless has no shared memory). Buckets: <code>coupon-validate</code> (20/10min), <code>track-view</code> (60/10min), <code>lead-submit</code> (10/60min), <code>stock-alert-subscribe</code> (15/60min). Self-pruned (&gt;24h) on 2% of writes. Fails <em>open</em> on read error. <em>(0031)</em></td></tr>
+<tr><td><code>rate_limit_events</code></td><td><code>bucket</code>, <code>ip</code>, <code>created_at</code></td><td>Generic DB-backed IP limiter (serverless has no shared memory). Buckets: <code>coupon-validate</code> (20/10min), <code>track-view</code> (60/10min), <code>lead-submit</code> (10/60min), <code>stock-alert-subscribe</code> (15/60min), <code>instagram-post-image</code> (20/10min, the secondary guard behind the primary CDN-cache defense &mdash; see &sect;11). Self-pruned (&gt;24h) on 2% of writes. Fails <em>open</em> on read error. <em>(0031)</em></td></tr>
 <tr><td><code>order_notification_log</code></td><td><code>order_id</code> FK&rarr;orders ON DELETE CASCADE, <code>status</code>, <code>whatsapp</code>, <code>email</code>, <code>sent_at</code></td><td>One row per explicit &ldquo;Notify customer&rdquo; send. Not pruned (small &mdash; one row per admin action, not per order/visitor). Feeds the Orders tab's per-order/per-status send counter and the notification-analytics date-range panel, both client-side over the whole log via <code>GET /api/admin/orders/notification-log</code>. <em>(0048)</em></td></tr>
 </tbody></table></div>
 
@@ -1876,6 +1876,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/recent-views/[id]</code></td><td><span class="tag t-get">get</span></td><td>Distinct viewers in the last 3h. <code>force-dynamic</code>. Used by <code>RecentViewersNoteLive</code>.</td></tr>
 <tr><td><code>/api/track-view</code></td><td><span class="tag t-post">post</span></td><td>Upsert a <code>product_views</code> row. Rate-limited <code>track-view</code> 60/10min. Prunes &gt;48h on 2%.</td></tr>
 <tr><td><code>/api/stock-alerts</code></td><td><span class="tag t-post">post</span></td><td>Subscribe to back-in-stock (no OTP &mdash; low stakes). Rate-limited 15/60min. <code>23505</code> &rarr; silent no-op.</td></tr>
+<tr><td><code>/api/instagram-post-image</code></td><td><span class="tag t-get">get</span></td><td><code>?id=&lt;productId&gt;</code> &mdash; a branded 1080&times;1080 PNG (<code>next/og</code>'s <code>ImageResponse</code>, same mechanism as the icon/splash routes) for the public &ldquo;Create Insta Post&rdquo; tool on the product page (<code>InstagramPostGenerator.tsx</code>), so anyone sharing a product can generate one, not just the admin. Hidden products 404. The product photo (always WebP &mdash; satori can't decode that) is re-fetched + re-encoded to JPEG with <code>sharp</code> first, same move <code>catalogueGenerator.ts</code>'s <code>fetchThumbnail()</code> already makes, then embedded as a <code>data:</code> URI. <strong>Cost control (explicit owner requirement):</strong> <code>Cache-Control: public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800</code> &mdash; only the first request for a given product's image in a day pays the Supabase-fetch + render cost; every other request for that product, from anyone, is served from Vercel's edge cache. Rate-limited <code>instagram-post-image</code> 20/10min as the secondary guard (the cache-miss path only &mdash; a repeat view of an already-cached product never reaches this route at all).</td></tr>
 <tr><td><code>/api/reviews</code></td><td><span class="tag t-post">post</span></td><td>Submit a review (<code>approved:false</code>). Name + 1&ndash;5 rating required; text &le; 2000 chars.</td></tr>
 <tr><td><code>/api/enquiries</code></td><td><span class="tag t-post">post</span></td><td>Log a WhatsApp enquiry click (<code>card_front|card_back|product_detail</code>). Best-effort beacon.</td></tr>
 <tr><td><code>/api/leads</code></td><td><span class="tag t-post">post</span></td><td>Lead capture. <code>source &isin; {catalogue_download, corporate_gifting, checkout_started}</code>. Auto WhatsApp follow-up (not for <code>checkout_started</code>). Rate-limited <code>lead-submit</code> 10/60min.</td></tr>
@@ -2344,6 +2345,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>LiveStock</code>, <code>StockStatusBadge</code>, <code>NotifyWhenInStockButton</code></li>
 <li><code>AddToCartButton</code>, <code>StickyAddToCartBar</code>, <code>WishlistButton</code>, <code>WhatsappEnquiryLink</code></li>
 <li><code>ShareButtons</code>, <code>TrustBadges</code>, <code>ReviewForm</code>, <code>BackToCollectionsLink</code></li>
+<li><code>InstagramPostGenerator</code> &mdash; the public &ldquo;Create Insta Post&rdquo; panel next to <code>ShareButtons</code>: a generated image (<code>/api/instagram-post-image</code>) + an editable, client-computed caption (<code>instagramCaption.ts</code>), copy/download actions, no login</li>
 </ul>
 <h4>Marketing / admin</h4>
 <ul class="tight">
@@ -2394,10 +2396,11 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>seo.ts</code>, <code>metaPixel.ts</code>, <code>googleTranslate.ts</code>, <code>trackWhatsappEnquiry.ts</code></td><td>OG default; Meta purchase event; translate cookie + voice-command parsing; enquiry beacon.</td></tr>
 <tr><td><code>recentlyViewed.ts</code>, <code>visitorId.ts</code></td><td>localStorage recently-viewed list (max 8); anonymous per-browser UUID.</td></tr>
 <tr><td><code>couriers.ts</code></td><td><code>COURIER_PRESETS</code> (dropdown list for the admin Orders tab) + <code>normalizeCourierName(raw)</code> (trim + clamp to 60, empty &rarr; null). The stored <code>orders.courier_name</code> is unconstrained free text; this list is convenience only. <em>(0045)</em></td></tr>
+<tr><td><code>instagramCaption.ts</code></td><td><code>buildInstagramCaption(product)</code> &mdash; the ready-to-paste caption for the public &ldquo;Create Insta Post&rdquo; tool. Unlike every other message-builder here, written in <strong>first person</strong>: the poster is a third party (a customer, a friend) sharing it as their own content, not the store talking to a customer. Pure, no I/O &mdash; computed client-side straight from data already on the product page. Name, price, a handcrafted-brass line, the real handle (<code>@tohfaforu</code>), <code>productHref</code> link, base hashtags + one derived from category. <strong>6 unit tests.</strong></td></tr>
 <tr><td><code>orderNotifications.ts</code></td><td>Customer status-update message text (<code>buildStatusWhatsappMessage</code>) + email HTML (<code>buildStatusEmailHtml</code>, <code>statusEmailSubject</code>) for all four statuses, plus <code>cleanNotifyComment</code> (trim + clamp 600). Pure &mdash; the text builder is imported client-side too for the Notify dialog's live preview. Used only by <code>/api/admin/orders/notify</code>. <strong>11 unit tests.</strong></td></tr>
 <tr><td><code>orderNotificationNumbers.ts</code></td><td>Supplier order-notification list (0046). <code>MAX_ORDER_NOTIFICATION_NUMBERS</code> (10), <code>isValidOrderNotificationNumber</code> (<code>/^91[6-9]\d{9}$/</code>), and the pure <code>resolveSupplierTargets(productSupplierArrays, liveNumbers, businessNumber)</code> &mdash; distinct in-list supplier numbers across an order's products, minus the business number, de-duped. DB reads live in the routes / webhook. <strong>7 unit tests.</strong></td></tr>
 <tr><td><code>reports.ts</code></td><td>Pure logic for the admin Excel report. <code>resolvePeriod(preset, now, from?, to?)</code> &rarr; an IST-bounded <code>[from, to)</code> (month / Mon&ndash;Sun week / Apr&ndash;Mar FY / all-time / custom), TZ-independent (Vercel is UTC). <code>buildReport(orders, period)</code> &rarr; flat order rows + a GSTR-style GST summary (<code>calculateOrderGstBreakdown</code> per order; CGST=SGST=tax/2 when the buyer state is Uttarakhand &mdash; <code>isIntraStateSupply</code> &mdash; else IGST) + a by-state table. Cancelled orders stay in the order rows but are dropped from every GST total. The <code>.xlsx</code> assembly (exceljs) lives in the route. <strong>12 unit tests.</strong></td></tr>
-<tr><td><code>chatLabels.ts</code>, <code>indianStates.ts</code>, <code>pagination.ts</code>, <code>loadingMessages.ts</code>, <code>downloadCsv.ts</code>, <code>brandMark.tsx</code>, <code>appleSplashScreens.ts</code></td><td>Small constants / helpers.</td></tr>
+<tr><td><code>chatLabels.ts</code>, <code>indianStates.ts</code>, <code>pagination.ts</code>, <code>loadingMessages.ts</code>, <code>downloadCsv.ts</code>, <code>brandMark.tsx</code>, <code>appleSplashScreens.ts</code></td><td>Small constants / helpers. <code>brandMark.tsx</code>'s <code>BrandGlyph</code> (exported for this) is now also reused directly by <code>/api/instagram-post-image</code> for its corner mark, on top of the icon/splash routes it already backed.</td></tr>
 </tbody></table></div>
 
 <h2 id="cron">Scheduled jobs</h2>
@@ -2787,6 +2790,58 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-03<br>01:10</code></td>
+  <td><strong>Public &ldquo;Create Insta Post&rdquo; tool</strong><br>(owner: help marketing products &mdash; specifically, a way for people/friends to post about products on Instagram themselves, without admin access; explicit requirement that it not escalate Supabase egress or Vercel CPU/cost)</td>
+  <td>
+    New button on every product page, next to <code>ShareButtons</code>: <strong>&ldquo;Create Insta Post&rdquo;</strong>
+    opens a panel with a generated 1080&times;1080 branded image (product photo + name + price + the TOHFA mark)
+    and an editable, first-person, ready-to-paste caption &mdash; &ldquo;Copy Caption&rdquo; and &ldquo;Download
+    Image&rdquo; actions. No login; public by design, so anyone sharing the site can generate one.
+    <br><br>
+    New <strong><code>GET /api/instagram-post-image?id=&lt;productId&gt;</code></strong> uses <code>next/og</code>'s
+    <code>ImageResponse</code> &mdash; the same mechanism already backing the icon/splash routes &mdash; composited
+    with the product photo, a gradient overlay, and <code>brandMark.tsx</code>'s existing <code>BrandGlyph</code>
+    (newly exported for this) + brand colors, so it looks like it belongs to the same brand system with no new
+    palette invented. <strong>Real bug hit and fixed during build:</strong> satori (the renderer behind
+    <code>ImageResponse</code>) can't decode WebP, and every product photo here <em>is</em> WebP
+    (<code>compressImage.ts</code>). Fixed by re-fetching the photo and re-encoding to JPEG with <code>sharp</code>
+    first (the exact move <code>catalogueGenerator.ts</code>'s <code>fetchThumbnail()</code> already makes for the
+    same reason), embedded as a <code>data:</code> URI so satori never has to fetch/decode anything itself. A
+    failed fetch/resize falls back to a photo-less card (name/price/brand mark still show) rather than 500ing.
+    <br><br>
+    <strong>Cost safety was the load-bearing design constraint, not an afterthought</strong> &mdash; each render
+    would otherwise cost Supabase egress (the photo fetch) and Vercel Active CPU (the raster) on <em>every</em>
+    request, which is the opposite of what a feature meant to go viral should do. Two layers, verified live
+    against the actual response (not just assumed from the code):
+    (1) <code>Cache-Control: public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800</code> on the
+    route's response &mdash; same lever <code>/api/offer</code>/<code>/api/coupons/public</code> already use for
+    cost control, much longer window here since a post image doesn't need to track a live price to the minute;
+    only the first request for a given product's image in a day pays the fetch+render cost, every other request
+    for that product from anyone is served from Vercel's edge cache; (2) the panel's <code>&lt;img&gt;</code> is
+    never in the product page's initial HTML &mdash; it only mounts once a visitor actually opens the panel, so
+    the overwhelming majority of page views cost nothing extra at all. Rate limiting (<code>instagram-post-image</code>,
+    20/10min/IP, new <code>rate_limit_events</code> bucket) is the secondary guard, only for the cache-miss path.
+    <br><br>
+    New pure <strong><code>app/utils/instagramCaption.ts</code></strong> (<code>buildInstagramCaption</code>) &mdash;
+    first-person voice (the poster is a third party, not the store), name/price/link/hashtags, computed
+    client-side with no extra request. <strong>6 unit tests.</strong> Never generates for a hidden product (matches
+    every other public product read); no sensitive fields exposed (name/price/photo, already public on the page).
+  </td>
+  <td><em>new:</em> <code>app/api/instagram-post-image/route.tsx</code>, <code>app/utils/instagramCaption.ts</code>,
+    <code>app/utils/instagramCaption.test.ts</code>, <code>app/components/InstagramPostGenerator.tsx</code><br>
+    <em>edited:</em> <code>app/utils/brandMark.tsx</code> (exported <code>BrandGlyph</code>),
+    <code>app/product/[id]/page.tsx</code>, <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 202 passed (1 pre-existing skip, +6 new)
+    &middot; <code>eslint</code> on all 6 changed/new files 0 errors (including a real
+    <code>react-hooks/error-boundaries</code> catch &mdash; JSX/<code>ImageResponse</code> construction had to
+    move outside the route's try/catch, since a rendering error wouldn't be caught by it anyway) &middot;
+    <code>next build</code> exit 0, <code>/api/instagram-post-image</code> registered. <strong>Live-verified against
+    a real product</strong> (dev server): the route returns a valid 1080&times;1080 PNG with the exact
+    <code>Cache-Control</code> header above actually present; the product page still renders correctly (name,
+    the new button) with the change in place. No schema/migration, no new paid dependency, not a payment-path
+    change.</td>
+</tr>
 <tr>
   <td><code>2026-09-02<br>23:55</code></td>
   <td><strong>Spotlight: an admin-curated, time-boxed featured-products page</strong><br>(owner: a page showcasing a changeable set of featured products &mdash; any count &mdash; for a chosen window, to build interest and drive traffic back to the catalog; free-form selection, any mix of categories, multiple picks from one category allowed)</td>
