@@ -12,6 +12,34 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Public "Create Insta Post" tool — 2026-09-03 01:10 IST
+- Owner: help marketing products — a way for people/friends to post about products on
+  Instagram themselves, without admin access; explicit requirement not to escalate
+  Supabase egress or Vercel CPU/cost.
+- New button on every product page ("Create Insta Post"): a generated 1080×1080 branded
+  image (product photo + name + price + TOHFA mark) + an editable, first-person caption,
+  with copy/download actions. No login — public by design.
+- New `GET /api/instagram-post-image?id=X` using `next/og`'s `ImageResponse` (same
+  mechanism as the icon/splash routes), branded via `brandMark.tsx`'s `BrandGlyph` (newly
+  exported). Real bug hit + fixed: satori can't decode WebP, and every product photo here
+  is WebP — fixed by re-encoding to JPEG with `sharp` first (same move
+  `catalogueGenerator.ts`'s `fetchThumbnail()` already makes), embedded as a `data:` URI.
+- Cost safety was the load-bearing constraint: (1) `Cache-Control: public, max-age=3600,
+  s-maxage=86400, stale-while-revalidate=604800` on the response — verified live, not just
+  assumed — so only the first request per product per day touches Supabase/Vercel compute,
+  every other request is edge-cached; (2) the panel's `<img>` never loads until a visitor
+  opens it, so most page views cost nothing extra. Rate limiting (20/10min/IP) is the
+  secondary guard for the cache-miss path only.
+- New pure `app/utils/instagramCaption.ts` (`buildInstagramCaption`) — first-person voice,
+  computed client-side, no extra request. 6 unit tests. Never generates for a hidden
+  product; no sensitive fields exposed.
+- Verified: `tsc --noEmit` clean; `npm test` 202 passed (1 pre-existing skip, +6 new);
+  `eslint` 0 errors on all 6 changed/new files; `next build` exit 0. Live-verified against a
+  real product on a dev server: valid PNG returned, exact Cache-Control header present,
+  product page renders correctly with the change. No migration, no new paid dependency, not
+  a payment-path change.
+- See `docs/HANDBOOK.html` Change log 2026-09-03 01:10.
+
 ### Batch: Spotlight — an admin-curated, time-boxed featured-products page — 2026-09-02 23:55 IST
 - Owner: a page showcasing a changeable set of featured products (any count) for a chosen
   window, to build interest and drive traffic back to the catalog — free-form selection,

@@ -10,6 +10,7 @@ import WishlistButton from "@/app/components/WishlistButton";
 import NotifyWhenInStockButton from "@/app/components/NotifyWhenInStockButton";
 import StickyAddToCartBar from "@/app/components/StickyAddToCartBar";
 import ShareButtons from "@/app/components/ShareButtons";
+import InstagramPostGenerator from "@/app/components/InstagramPostGenerator";
 import ReviewForm from "@/app/components/ReviewForm";
 import RecordProductView from "@/app/components/RecordProductView";
 import BackToCollectionsLink from "@/app/components/BackToCollectionsLink";
@@ -407,6 +408,7 @@ export default async function ProductDetailPage({
 
                 <WishlistButton product={product} />
                 <ShareButtons productName={product.name} />
+                <InstagramPostGenerator product={{ id: product.id, name: product.name, price: product.price, category: product.category }} />
               </div>
             </div>
             </LiveStockProvider>
