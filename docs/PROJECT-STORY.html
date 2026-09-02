@@ -13,12 +13,15 @@
 <meta property="og:url" content="https://tohfaonline.com/story">
 <meta name="twitter:card" content="summary">
 <!-- Public, no-login page: unlike docs/HANDBOOK.html (the internal engineering
-     reference, kept as a private Claude artifact), this one is meant to be
-     shared freely -- served straight from this repo via app/story/route.ts
-     (a force-static Route Handler that reads this exact file), so anyone
-     with the link can open it on tohfaonline.com/story without a Claude
-     account. Self-contained except for the two Google Fonts below, already
-     allow-listed in next.config.ts's CSP (style-src/font-src). -->
+     reference -- also served unauthenticated at tohfaonline.com/handbook
+     since 2026-09-02, but not linked publicly or in the sitemap since it
+     still carries the GSTIN, phone numbers, schema, and admin route
+     inventory), this one is meant to be shared freely -- served straight
+     from this repo via app/story/route.ts (a force-static Route Handler
+     that reads this exact file), so anyone with the link can open it on
+     tohfaonline.com/story without a Claude account. Self-contained except
+     for the two Google Fonts below, already allow-listed in next.config.ts's
+     CSP (style-src/font-src). -->
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,400..600&family=Manrope:wght@400;500;600;700;800&display=swap">
 <style>
