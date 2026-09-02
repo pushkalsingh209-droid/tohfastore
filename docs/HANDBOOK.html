@@ -2791,6 +2791,48 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-09-03<br>02:20</code></td>
+  <td><strong>Insta Post image: display font/frame/badge, and a category-inclusivity fix</strong><br>(owner: the generated image &ldquo;is not out of world to drive interest&rdquo; &mdash; a follow-up visual pass on the tool shipped in the row below, requesting a serif display font, a framed border, and a badge)</td>
+  <td>
+    <code>app/api/instagram-post-image/route.tsx</code>: (1) product name/price now render in <strong>Playfair
+    Display Bold</strong> (SIL OFL, bundled once as <code>public/fonts/PlayfairDisplay-Bold.woff</code>, ~55KB,
+    read via <code>fs</code> at request time &mdash; no per-request network fetch, so no new egress/CPU cost) via
+    <code>ImageResponse</code>'s <code>fonts</code> option, instead of satori's generic system-safe default;
+    (2) a framed treatment &mdash; a bold gold outer border plus a thin inset hairline; (3) a second badge, top-right,
+    distinct from the existing brand-mark chip.
+    <br><br>
+    <strong>Caught while choosing the badge copy:</strong> the catalogue isn't only brass &mdash; Board Games,
+    Polyresin, and UV Resin Earrings are separate categories (<code>categoryContent.ts</code>) &mdash; so a
+    &ldquo;handcrafted brass&rdquo; badge, and the caption builder's hardcoded &ldquo;Handcrafted brass, made to
+    last for generations&rdquo; line, would misrepresent a board game or a pair of resin earrings. Fixed in both
+    places: the badge now reads a category-neutral <strong>&ldquo;PREMIUM COLLECTION&rdquo;</strong>;
+    <code>instagramCaption.ts</code>'s craft line now pulls the product's own category tagline (already
+    hand-written to match what's actually stocked, per <code>categoryContent.ts</code>'s own header comment) when
+    one exists, falling back to a material-neutral line otherwise; and the <code>#HandmadeInIndia</code>/
+    <code>#BrassArt</code> hashtags are now omitted specifically for Board Games (imported, mass-manufactured
+    titles like Catan/Wingspan &mdash; not brass, not handmade here).
+    <br><br>
+    Also fixed in this pass (found only by <em>viewing</em> the rendered PNG, not just checking HTTP status/format):
+    the bottom text scrim previously used <code>position:"absolute", inset:0</code> to cover the full image, but
+    satori does not honor <code>inset</code> as a stretch-to-fill shorthand &mdash; it sized the div to its content
+    height and anchored it top-left, so the dark gradient + name/price rendered as a small band at the <em>top</em>
+    of the image (overlapping the brand mark) with no scrim or text near the bottom at all. Fixed by giving every
+    full-bleed layer explicit <code>top</code>/<code>left</code>/<code>right</code>/<code>bottom</code> instead of
+    <code>inset</code>, and the scrim a fixed <code>height</code> rather than depending on flex-fill.
+  </td>
+  <td><em>edited:</em> <code>app/api/instagram-post-image/route.tsx</code>, <code>app/utils/instagramCaption.ts</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code><br>
+    <em>new:</em> <code>public/fonts/PlayfairDisplay-Bold.woff</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 202 passed (1 pre-existing skip) &middot;
+    <code>eslint</code> on both changed files 0 errors &middot; <code>next build</code> exit 0,
+    <code>/api/instagram-post-image</code> still registered. <strong>Live-verified
+    against two real products</strong> (dev server): regenerated and visually inspected the PNG for product id 9
+    (clean photo &mdash; frame/badge/font all legible and correctly positioned) and id 131 (a Russian Chess Set
+    whose own source photo is a busy pre-made infographic with baked-in text &mdash; confirmed as a pre-existing,
+    unrelated cosmetic clash specific to that one photo, not a regression from this batch). Owner asked to hold
+    off on committing until testing locally first; this row documents the batch once that local review passed.</td>
+</tr>
+<tr>
   <td><code>2026-09-03<br>01:10</code></td>
   <td><strong>Public &ldquo;Create Insta Post&rdquo; tool</strong><br>(owner: help marketing products &mdash; specifically, a way for people/friends to post about products on Instagram themselves, without admin access; explicit requirement that it not escalate Supabase egress or Vercel CPU/cost)</td>
   <td>

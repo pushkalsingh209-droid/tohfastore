@@ -12,6 +12,33 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Insta Post image — display font/frame/badge + category-inclusivity fix — 2026-09-03 02:20 IST
+- Owner: follow-up visual pass on the tool below — generated image "not out of world to
+  drive interest"; asked for a serif display font, a framed border, and a badge (all 3).
+- `app/api/instagram-post-image/route.tsx`: product name/price now render in Playfair
+  Display Bold (SIL OFL, bundled once as `public/fonts/PlayfairDisplay-Bold.woff`, read via
+  `fs` at request time — no per-request network fetch, no new cost) via `ImageResponse`'s
+  `fonts` option; added a bold gold outer border + thin inset hairline frame; added a
+  second top-right badge distinct from the existing brand-mark chip.
+- Caught while writing the badge copy: the catalogue isn't only brass (Board Games,
+  Polyresin, UV Resin Earrings are separate categories) — a "handcrafted brass" badge, and
+  the caption builder's hardcoded "Handcrafted brass..." line, would misrepresent those.
+  Fixed: badge now reads category-neutral "PREMIUM COLLECTION"; `instagramCaption.ts`'s
+  craft line now pulls the product's own category tagline (`categoryContent.ts`) when one
+  exists, else a material-neutral fallback; `#HandmadeInIndia`/`#BrassArt` hashtags omitted
+  specifically for Board Games (imported, mass-manufactured titles, not brass/handmade).
+- Also fixed (found only by viewing the rendered PNG, not just checking HTTP status): the
+  bottom text scrim used `inset:0`, which satori doesn't honor as stretch-to-fill — it sized
+  to content and anchored top-left, so text rendered as a band at the top, overlapping the
+  brand mark, with nothing near the bottom. Fixed with explicit `top`/`left`/`right`/`bottom`
+  and a fixed scrim `height`.
+- Verified: `tsc --noEmit` clean; `npm test` 202 passed (1 pre-existing skip); `eslint` 0
+  errors on both changed files; `next build` exit 0. Live-verified against two real products
+  on a dev server (id 9: clean photo, frame/badge/font all correctly positioned; id 131: a
+  pre-existing, unrelated cosmetic clash from that product's own busy infographic-style
+  source photo, not a regression). Owner tested locally before this was documented/shipped.
+- See `docs/HANDBOOK.html` Change log 2026-09-03 02:20.
+
 ### Batch: Public "Create Insta Post" tool — 2026-09-03 01:10 IST
 - Owner: help marketing products — a way for people/friends to post about products on
   Instagram themselves, without admin access; explicit requirement not to escalate
