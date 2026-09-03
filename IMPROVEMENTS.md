@@ -12,6 +12,20 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Pinterest domain verification + profile link — 2026-09-04 00:15 IST
+- Owner shared the Pinterest business profile (`in.pinterest.com/tohfaonline`) while planning a Pinterest push
+  alongside the Reel tool above, and pasted the `p:domain_verify` meta tag Pinterest issues for domain claiming.
+- Added it via `metadata.other` in `app/layout.tsx` (Next renders it as a plain `<meta>` tag); added the Pinterest
+  profile to `organizationJsonLd.sameAs` alongside the existing Instagram/Facebook entries.
+- Checked, not assumed: every product page already emits `schema.org Product` JSON-LD with `offers.price` /
+  `offers.availability` (`app/product/[id]/page.tsx`) — confirmed by reading the actual markup — so once the
+  domain is claimed, Pinterest's Product Pins can read live price/stock directly with no separate feed to build.
+- Verified: `tsc --noEmit` clean; `eslint app/layout.tsx` 0 errors; `npm test` 202 passed (1 pre-existing skip,
+  unchanged); `next build` exit 0. Live-verified the exact meta tag renders in the served HTML on a dev server.
+  Static metadata only — no schema, no route, not a payment-path change. Owner still needs to click "Verify" in
+  Pinterest Business Hub once this is live.
+- See `docs/HANDBOOK.html` Change log 2026-09-04 00:15.
+
 ### Batch: Public "Create Insta Reel" tool — 2026-09-03 21:10 IST
 - Owner: video counterpart to the "Create Insta Post" tool below, "if it doesn't increase
   cost or any other costing or liability."

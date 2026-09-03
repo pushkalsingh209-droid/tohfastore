@@ -48,6 +48,13 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     startupImage: APPLE_SPLASH_SCREENS,
   },
+  // Proves domain ownership to Pinterest (Business Hub -> Claim) so Product
+  // Pins can pull live price/availability from this site's own Product
+  // JSON-LD below, and pin analytics attribute back to tohfaonline.com.
+  // Static, one-time value issued by Pinterest -- never rotates.
+  other: {
+    "p:domain_verify": "41b5277fa64086b477d9a6901631ccf1",
+  },
 };
 
 export const viewport: Viewport = {
@@ -67,7 +74,11 @@ const organizationJsonLd = {
   name: "TOHFA",
   url: SITE_URL,
   logo: `${SITE_URL}/logo-mark.png`,
-  sameAs: ["https://www.instagram.com/tohfaforu/", "https://www.facebook.com/profile.php?id=61574670900294"],
+  sameAs: [
+    "https://www.instagram.com/tohfaforu/",
+    "https://www.facebook.com/profile.php?id=61574670900294",
+    "https://in.pinterest.com/tohfaonline/",
+  ],
 };
 
 const websiteJsonLd = {
