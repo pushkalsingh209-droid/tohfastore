@@ -12,6 +12,39 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Public "Create Insta Reel" tool — 2026-09-03 21:10 IST
+- Owner: video counterpart to the "Create Insta Post" tool below, "if it doesn't increase
+  cost or any other costing or liability."
+- New button on every product page ("Create Insta Reel"), next to "Create Insta Post": a
+  6-second, silent, vertical (1080×1920) branded video — a Ken Burns push-in on the
+  product's already-generated Insta Post image, framed in the brand's maroon gradient with
+  the TOHFA wordmark and the product name — plus the same editable caption, with
+  copy/download actions. No login — public by design, same as the photo tool.
+- Zero new server cost, by construction, not just intent: rendering happens entirely in
+  the visitor's own browser (`<canvas>` + `canvas.captureStream()` + `MediaRecorder`) —
+  no new route, no server-side video encoding (real Vercel CPU this plan can't absorb).
+  The canvas source is the SAME already-cached `/api/instagram-post-image?id=` PNG the
+  photo tool already fetches — same-origin (no CORS/tainted-canvas issue), no new
+  Supabase egress, no new rate-limit surface (reuses that route's existing 20/10min/IP
+  limit). Reuses the same bundled Playfair Display WOFF client-side, no new font asset.
+- Zero new liability, by construction: the video ships **silent**, deliberately, not as an
+  oversight — baking a licensed music track into a video anyone can generate and repost is
+  a real rights exposure with no way to clear it per-video. The panel instead tells people
+  to add a trending audio track from Instagram's own picker after upload, which is also
+  what the Reels algorithm rewards more than a fixed soundtrack.
+- Feature-detected: if a browser has no `MediaRecorder`/`canvas.captureStream` (in
+  practice, none left), the button doesn't render rather than showing a broken tool.
+- Verified: `tsc --noEmit` clean; `npm test` 202 passed (1 pre-existing skip, unchanged —
+  no new test surface, it's pure browser rendering); `eslint` 0 new errors on both changed
+  files (2 pre-existing-pattern `set-state-in-effect` warnings, same class already
+  downgraded to `warn` repo-wide); `next build` exit 0. **Live-verified in a real headless
+  browser** (Playwright/Chromium against the dev server, not just curl): opened the panel,
+  confirmed the live Ken Burns preview renders, clicked Record, and got back a real, valid
+  ~550KB `video/webm` blob after 6s with zero console errors — the full user path, not
+  just the server plumbing it depends on. No migration, no new paid dependency, not a
+  payment-path change.
+- See `docs/HANDBOOK.html` Change log 2026-09-03 21:10.
+
 ### Batch: Insta Post image — display font/frame/badge + category-inclusivity fix — 2026-09-03 02:20 IST
 - Owner: follow-up visual pass on the tool below — generated image "not out of world to
   drive interest"; asked for a serif display font, a framed border, and a badge (all 3).
