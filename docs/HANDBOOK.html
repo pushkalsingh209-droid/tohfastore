@@ -2346,6 +2346,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>AddToCartButton</code>, <code>StickyAddToCartBar</code>, <code>WishlistButton</code>, <code>WhatsappEnquiryLink</code></li>
 <li><code>ShareButtons</code>, <code>TrustBadges</code>, <code>ReviewForm</code>, <code>BackToCollectionsLink</code></li>
 <li><code>InstagramPostGenerator</code> &mdash; the public &ldquo;Create Insta Post&rdquo; panel next to <code>ShareButtons</code>: a generated image (<code>/api/instagram-post-image</code>) + an editable, client-computed caption (<code>instagramCaption.ts</code>), copy/download actions, no login</li>
+<li><code>InstagramReelGenerator</code> &mdash; the public &ldquo;Create Insta Reel&rdquo; panel next to it: a 6s silent vertical video, rendered entirely client-side (<code>&lt;canvas&gt;</code> + <code>MediaRecorder</code>) as a Ken Burns push-in on the <em>same</em> cached <code>/api/instagram-post-image</code> PNG the photo tool uses &mdash; no new route, no server-side video rendering</li>
 </ul>
 <h4>Marketing / admin</h4>
 <ul class="tight">
@@ -2790,6 +2791,84 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-03<br>21:10</code></td>
+  <td><strong>Public &ldquo;Create Insta Reel&rdquo; tool</strong><br>(owner: the video counterpart to the Insta Post image tool below, &ldquo;if it doesn&rsquo;t increase cost or any other costing or liability&rdquo;)</td>
+  <td>
+    New button on every product page, next to <strong>&ldquo;Create Insta Post&rdquo;</strong>: <strong>&ldquo;Create
+    Insta Reel&rdquo;</strong> opens a panel with a 6-second, silent, vertical (1080&times;1920) branded video &mdash;
+    a Ken Burns push-in on the product's photo, framed in the brand's maroon gradient with the TOHFA wordmark and the
+    product name &mdash; plus the same editable, first-person caption, with copy/download actions. No login; public
+    by design, same as the photo tool.
+    <br><br>
+    <strong>Zero new server cost, by construction.</strong> The whole clip renders in the visitor's own browser
+    &mdash; a <code>&lt;canvas&gt;</code> driven by <code>requestAnimationFrame</code>, captured with
+    <code>canvas.captureStream()</code> into a <code>MediaRecorder</code> &mdash; no new route, and critically no
+    server-side video encoding (real Vercel CPU this plan has no room for). The canvas's source image is the
+    <strong>same already-cached <code>/api/instagram-post-image?id=</code> PNG</strong> the photo tool already
+    fetches: same origin as the page (so no CORS / tainted-canvas problem drawing it), no new Supabase egress beyond
+    what that already-cached route costs, and no new rate-limit surface (reuses its existing 20/10min/IP limit). The
+    bundled <code>PlayfairDisplay-Bold.woff</code> is loaded client-side via the <code>FontFace</code> API for the
+    on-canvas text, so the two tools' generated art shares one display face &mdash; no new font asset either.
+    <br><br>
+    <strong>Zero new liability, by construction.</strong> The video ships <strong>silent</strong>, deliberately, not
+    as an oversight &mdash; baking a licensed music track into a video anyone can generate and repost is a real
+    rights exposure with no way to clear it per-video, and there's no free/owned track on hand to use instead. The
+    panel tells people to add a trending audio track from Instagram's own picker after uploading instead, which
+    (genuinely) is also what the Reels algorithm rewards more than a fixed soundtrack would.
+    <br><br>
+    New <strong><code>app/components/InstagramReelGenerator.tsx</code></strong>: a <code>drawFrame()</code> pure
+    function drives both the looping idle preview (so a visitor sees the animation before committing to record) and
+    the one-shot recorded pass, so what's previewed is exactly what gets captured. Feature-detected at mount
+    (<code>MediaRecorder</code> + <code>HTMLCanvasElement.prototype.captureStream</code>) &mdash; on a browser
+    without either, the button doesn't render at all rather than showing a tool that can't work. <code>caption</code>
+    reuses <code>buildInstagramCaption</code> (<code>instagramCaption.ts</code>) unchanged, same as the photo tool.
+  </td>
+  <td><em>new:</em> <code>app/components/InstagramReelGenerator.tsx</code><br>
+    <em>edited:</em> <code>app/product/[id]/page.tsx</code>, <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 202 passed (1 pre-existing skip, unchanged &mdash;
+    no new test surface, it's pure browser rendering) &middot; <code>eslint</code> on both changed files: 0 errors (2
+    pre-existing-pattern <code>set-state-in-effect</code> warnings, the same class already downgraded to
+    <code>warn</code> repo-wide for this exact hydrate-on-mount shape) &middot; <code>next build</code> exit 0.
+    <strong>Live-verified in a real headless browser</strong> (Playwright/Chromium against a local dev server, not
+    just curl against the API): navigated to a real product page, confirmed both buttons render, opened the reel
+    panel, confirmed the live Ken Burns preview actually animates, clicked Record, and got back a real, valid
+    <code>video/webm</code> blob (~550KB) after the 6s window with <strong>zero console errors</strong> &mdash; the
+    full user path, not just the server plumbing (<code>/api/instagram-post-image</code>) it depends on. No
+    migration, no new paid dependency, not a payment-path change.</td>
+</tr>
+<tr>
+  <td><code>2026-09-03<br>19:45</code></td>
+  <td><strong>Incident: Razorpay auto-disabled the Dashboard webhook (24h of failed deliveries) &mdash; stale <code>RAZORPAY_WEBHOOK_SECRET</code></strong><br>(Razorpay emailed that <code>/api/razorpay-webhook</code> had been failing delivery for the prior 24h and was disabled as a precaution; owner asked for a diagnosis)</td>
+  <td>
+    Config-only fix, no code change. <code>route.ts</code> has two independent verification paths &mdash; the
+    Dashboard server-to-server webhook (HMAC'd with <code>RAZORPAY_WEBHOOK_SECRET</code>, via
+    <code>isValidWebhookSignature</code>) and the client fast-path fire-and-forget call from checkout (HMAC'd with
+    <code>RAZORPAY_KEY_SECRET</code> instead). Because the fast-path doesn't depend on the webhook secret, orders
+    kept confirming normally the whole time &mdash; nothing looked broken from the storefront, which is why this
+    surfaced only via Razorpay's own disable notice, not a customer report.
+    <br><br>
+    Root cause: <code>RAZORPAY_WEBHOOK_SECRET</code> in Vercel Production no longer matched the secret configured
+    on the Razorpay Dashboard webhook, so every real Dashboard delivery failed <code>isValidWebhookSignature</code>
+    and got a 401 &mdash; for 24h straight, which is what tripped Razorpay's auto-disable. (The live endpoint was
+    otherwise healthy throughout: confirmed 200s on both the site and the webhook route before touching anything.)
+    <br><br>
+    Fix: rotated the secret &mdash; generated a new random value, set it as the Secret on the Razorpay Dashboard
+    webhook, set the same value as <code>RAZORPAY_WEBHOOK_SECRET</code> in Vercel Production, redeployed, then
+    re-enabled the webhook (Razorpay disables rather than deletes on this failure path, so no need to recreate it
+    or reselect the <code>payment.captured</code> event).
+  </td>
+  <td><em>edited:</em> <code>docs/HANDBOOK.html</code> (no app code changed &mdash; Vercel env var + Razorpay
+    Dashboard secret only)</td>
+  <td>Live-verified against the production endpoint post-redeploy: sent a correctly HMAC-signed synthetic
+    <code>payment.captured</code> payload (fabricated order/payment ids) signed with the new secret. Got back
+    <code>{"error":"Payment verification failed."}</code> (401) &mdash; i.e. it passed <code>isValidWebhookSignature</code>
+    and failed later, at the Razorpay API lookup for the (deliberately fake) ids &mdash; rather than
+    <code>{"error":"Invalid webhook signature."}</code>, which is what a still-mismatched secret would return.
+    Confirms the deployed function has the correct secret. Not exercised: a real captured payment end-to-end
+    (would need an actual Razorpay charge) &mdash; watch the next live order to confirm the Dashboard delivery
+    itself now succeeds.</td>
+</tr>
 <tr>
   <td><code>2026-09-03<br>02:20</code></td>
   <td><strong>Insta Post image: display font/frame/badge, and a category-inclusivity fix</strong><br>(owner: the generated image &ldquo;is not out of world to drive interest&rdquo; &mdash; a follow-up visual pass on the tool shipped in the row below, requesting a serif display font, a framed border, and a badge)</td>
