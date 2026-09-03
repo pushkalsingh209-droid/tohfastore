@@ -2285,6 +2285,12 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       Metadata merges <em>shallowly</em>, so any page setting its own <code>openGraph</code> must re-supply an image.
       Product pages use the product photo; category pages use a representative in-stock product photo
       (<code>getCategoryImage</code>, deterministic by <code>display_order</code>).</li>
+  <li><strong>Pinterest domain verification</strong> &mdash; <code>metadata.other["p:domain_verify"]</code> in
+      <code>app/layout.tsx</code> (a static, one-time value from Pinterest Business Hub, never rotates). Once
+      claimed, Pinterest's Product Pins can read live price/availability straight from each product page's own
+      <code>Product</code> JSON-LD (&sect;overview &mdash; <code>offers.price</code> / <code>offers.availability</code>)
+      &mdash; no separate feed needed. The Pinterest profile is also listed in <code>organizationJsonLd.sameAs</code>
+      alongside Instagram/Facebook.</li>
   <li><strong>Per-category copy</strong> &mdash; <code>app/utils/categoryContent.ts</code> hand-written H1 / tagline /
       intro / meta for the categories that have it (Pocket Temples, Pan Stands, Board Games, Polyresin, UV Resin
       Earrings, Misc), keyed to the exact <code>categories.name</code>. Avoids duplicate-content issues.</li>
@@ -2791,6 +2797,31 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-04<br>00:15</code></td>
+  <td><strong>Pinterest domain verification + profile link</strong><br>(owner: shared the Pinterest business profile &mdash; <code>in.pinterest.com/tohfaonline</code> &mdash; while planning a Pinterest push alongside the Reel work above)</td>
+  <td>
+    Added the <code>p:domain_verify</code> meta tag Pinterest issues for Business Hub &rarr; Claim (a static,
+    one-time value, never rotates) via <code>metadata.other</code> in <code>app/layout.tsx</code> &mdash; Next
+    renders it as a plain <code>&lt;meta&gt;</code> tag in <code>&lt;head&gt;</code>. Also added the Pinterest
+    profile URL to <code>organizationJsonLd.sameAs</code>, alongside the existing Instagram/Facebook entries, so
+    Google associates it with the same brand entity.
+    <br><br>
+    No new work needed for Pinterest's Product Pins to show live price/availability once the domain is claimed:
+    every product page already emits <code>schema.org Product</code> JSON-LD with <code>offers.price</code>
+    (<code>priceCurrency: "INR"</code>) and <code>offers.availability</code>
+    (<code>InStock</code>/<code>OutOfStock</code>) &mdash; confirmed by reading the actual markup in
+    <code>app/product/[id]/page.tsx</code> before recommending this, not assumed. Pinterest reads that directly;
+    no separate product feed to build or maintain.
+  </td>
+  <td><em>edited:</em> <code>app/layout.tsx</code>, <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint app/layout.tsx</code> 0 errors &middot; <code>npm test</code>
+    202 passed (1 pre-existing skip, unchanged) &middot; <code>next build</code> exit 0. Live-verified against the
+    dev server: <code>curl</code> the homepage and confirmed the exact <code>&lt;meta name="p:domain_verify"
+    content="41b5277fa64086b477d9a6901631ccf1"&gt;</code> tag is present in the served HTML. Static metadata only
+    &mdash; no schema, no route, not a payment-path change. Owner still needs to click "Verify" in Pinterest
+    Business Hub once this is live on <code>tohfaonline.com</code>.</td>
+</tr>
 <tr>
   <td><code>2026-09-03<br>21:10</code></td>
   <td><strong>Public &ldquo;Create Insta Reel&rdquo; tool</strong><br>(owner: the video counterpart to the Insta Post image tool below, &ldquo;if it doesn&rsquo;t increase cost or any other costing or liability&rdquo;)</td>
