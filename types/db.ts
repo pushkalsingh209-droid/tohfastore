@@ -660,6 +660,7 @@ export type Database = {
         Row: {
           category: string | null
           created_at: string
+          enquiry_notified_count: number | null
           id: number
           out_of_stock: boolean
           price: number | null
@@ -671,6 +672,7 @@ export type Database = {
         Insert: {
           category?: string | null
           created_at?: string
+          enquiry_notified_count?: number | null
           id?: never
           out_of_stock?: boolean
           price?: number | null
@@ -682,6 +684,7 @@ export type Database = {
         Update: {
           category?: string | null
           created_at?: string
+          enquiry_notified_count?: number | null
           id?: never
           out_of_stock?: boolean
           price?: number | null

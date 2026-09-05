@@ -142,6 +142,12 @@ export interface AdminAnalytics {
 export interface AdminEnquiryAnalytics {
   totalEnquiries: number;
   outOfStockEnquiries: number;
+  // "Notify on enquiry" volume (0053/0054) -- enquiryNotifySends is the
+  // total successful WhatsApp sends across all clicks; enquiriesWithNotify
+  // is how many distinct clicks triggered at least one. Both near-zero
+  // until the owner opts a product in via the Products tab.
+  enquiryNotifySends: number;
+  enquiriesWithNotify: number;
   byCategory: { category: string; count: number }[];
   topProducts: { productId: string | number; productName: string; count: number }[];
   dailyTrend: { label: string; count: number }[];

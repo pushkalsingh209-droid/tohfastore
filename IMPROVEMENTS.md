@@ -12,6 +12,21 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Notify-on-enquiry send volume, Overview card — 2026-09-06 IST
+- Owner: the second recommended follow-up from the last batch.
+- New `whatsapp_enquiries.enquiry_notified_count` (migration 0054, nullable int) — NULL when no notify was
+  attempted for that click (most clicks, since the feature is opt-in per product), a number (successful sends,
+  0 if all failed) when one was. Extends the existing click-log table rather than a new one — unlike
+  `order_notification_log`/`review_reminders_sent` (kept separate to avoid inflating a displayed total),
+  `whatsapp_enquiries` derives every stat by counting/grouping rows, so one more column changes nothing about
+  what any existing figure means.
+- `/api/enquiries` selects the log row's id back, then UPDATEs it with the successful-send count right after a
+  notify attempt (best-effort). `/api/admin/whatsapp-enquiries` sums/counts it into `enquiryNotifySends` /
+  `enquiriesWithNotify`. Overview tab's WhatsApp Enquiries section gets a fifth stat card.
+- Verified: `tsc --noEmit` clean; `npm test` 229 passed (1 pre-existing skip, unchanged); `eslint` 0 errors;
+  `next build` exit 0. Not a payment-path change. **Owner: run migration 0054** (harmless before then).
+- See `docs/HANDBOOK.html` Change log 2026-09-06.
+
 ### Review-reminder Overview card, Notify-dialog supplier count, "Notify on enquiry" — 2026-09-05 IST
 - Owner: both recommended follow-ups from the last batch, plus a new per-product enquiry-notify option.
 - Overview tab: third cron heartbeat card for `last_review_reminder_run_at` (stale > 30h), same pattern as
