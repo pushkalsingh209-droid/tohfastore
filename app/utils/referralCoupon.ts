@@ -1,10 +1,16 @@
 // app/utils/referralCoupon.ts
-// One personal, shareable coupon per customer, minted the first time an
-// admin sends a "delivered" notification for one of their orders (see
-// /api/admin/orders/notify) -- deliberately NOT at payment time. Gating on
-// delivery, not payment, means a cancelled/refunded first order never earns
-// a code to abuse; gating on the admin's notify action (not the payment
-// webhook) keeps coupon minting off the payment path entirely.
+// Two halves of the same referral loop:
+//   1. getOrCreateReferralCoupon -- one personal, shareable "FRIEND..."
+//      coupon per customer, minted the first time an admin sends a
+//      "delivered" notification for one of their orders (see
+//      /api/admin/orders/notify) -- deliberately NOT at payment time. Gating
+//      on delivery, not payment, means a cancelled/refunded first order
+//      never earns a code to abuse; gating on the admin's notify action
+//      (not the payment webhook) keeps coupon minting off the payment path.
+//   2. mintReferralReward -- the moment a friend actually pays using that
+//      code (from /api/razorpay-webhook), a one-time "THANKS..." coupon
+//      rewards the ORIGINAL referrer, so both sides of a referral benefit,
+//      not just the friend.
 //
 // Discount % and validity window are admin-tunable (Settings tab ->
 // site_settings.referral_discount_percent / .referral_coupon_valid_days,
@@ -56,6 +62,13 @@ function randomSuffix(): string {
 // getOrCreateReferralCoupon.
 export function buildReferralCode(phone: string): string {
   return `FRIEND${phone.slice(-4)}${randomSuffix()}`;
+}
+
+// "THANKS..." rather than "FRIEND..." -- a different prefix so a reward
+// coupon reads as its own kind of thing in the admin Coupons list, not a
+// second share code.
+export function buildReferralRewardCode(phone: string): string {
+  return `THANKS${phone.slice(-4)}${randomSuffix()}`;
 }
 
 export interface ReferralCouponResult {
@@ -129,4 +142,62 @@ export async function getOrCreateReferralCoupon(
 async function findByPhone(supabase: SupabaseClient, phone: string): Promise<ReferralCouponResult | null> {
   const { data } = await supabase.from("coupons").select("code, discount_value").eq("referral_phone", phone).maybeSingle();
   return data?.code ? { code: data.code, discountPercent: Number(data.discount_value) } : null;
+}
+
+export interface ReferralRewardResult {
+  code: string;
+  discountPercent: number;
+}
+
+// Two-sided referral reward: called from /api/razorpay-webhook the moment a
+// friend's order using someone's referral code is actually captured --
+// rewards the ORIGINAL referrer with a one-time coupon of their own.
+// Deliberately NOT built on getOrCreateReferralCoupon's one-per-phone
+// findByPhone lookup: `referral_phone` carries a UNIQUE partial index
+// (migration 0051), so it can only ever mark ONE row per phone -- and that
+// slot is already taken by the referrer's own "FRIEND..." share code. A
+// reward is instead a plain, unmarked coupon (no referral_phone) capped at
+// `max_uses: 1` -- a one-time thank-you gift, not another shareable code --
+// so a referrer who brings many friends earns many separate rewards rather
+// than being capped at the single row the unique index would otherwise
+// allow. Best-effort: never throws, since a mint failure must never affect
+// the order/webhook it's called from.
+export async function mintReferralReward(
+  supabase: SupabaseClient,
+  rawReferrerPhone: string | null | undefined,
+  options?: ReferralCouponOptions
+): Promise<ReferralRewardResult | null> {
+  if (!rawReferrerPhone) return null;
+  const phone = normalizeIndianPhone(String(rawReferrerPhone));
+  if (!phone) return null;
+
+  const discountPercent = options?.discountPercent ?? REFERRAL_DISCOUNT_PERCENT;
+  const validDays = options?.validDays ?? REFERRAL_COUPON_VALID_DAYS;
+  const expiresAt = new Date(Date.now() + validDays * 24 * 60 * 60 * 1000).toISOString();
+
+  try {
+    for (let attempt = 0; attempt < MAX_INSERT_ATTEMPTS; attempt++) {
+      const { data: inserted, error } = await supabase
+        .from("coupons")
+        .insert({
+          code: buildReferralRewardCode(phone),
+          discount_type: "percent",
+          discount_value: discountPercent,
+          active: true,
+          max_uses: 1,
+          expires_at: expiresAt,
+        })
+        .select("code, discount_value")
+        .single();
+
+      if (!error && inserted) return { code: inserted.code, discountPercent: Number(inserted.discount_value) };
+      // Only the `code` unique constraint can 23505 here (no referral_phone
+      // set) -- retry with a fresh code; anything else, give up.
+      if ((error as { code?: string } | null)?.code === UNIQUE_VIOLATION) continue;
+      break;
+    }
+  } catch (err) {
+    console.error("mintReferralReward error:", err);
+  }
+  return null;
 }

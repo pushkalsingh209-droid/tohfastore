@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildReferralCode,
+  buildReferralRewardCode,
   parseReferralDiscountPercent,
   parseReferralValidDays,
   REFERRAL_DISCOUNT_PERCENT,
@@ -25,6 +26,22 @@ describe("buildReferralCode", () => {
     // astronomically unlikely for a 4-char base36 suffix over 2 samples).
     expect(a).toMatch(/^FRIEND1111[0-9A-Z]{4}$/);
     expect(b).toMatch(/^FRIEND1111[0-9A-Z]{4}$/);
+  });
+});
+
+describe("buildReferralRewardCode", () => {
+  it("uses a distinct THANKS prefix so a reward never reads as a share code", () => {
+    const code = buildReferralRewardCode("919876543210");
+    expect(code.startsWith("THANKS3210")).toBe(true);
+    expect(code).not.toMatch(/^FRIEND/);
+  });
+
+  it("carries the phone's last 4 digits, uppercase, varies between calls", () => {
+    const a = buildReferralRewardCode("911111111111");
+    const b = buildReferralRewardCode("911111111111");
+    expect(a).toBe(a.toUpperCase());
+    expect(a).toMatch(/^THANKS1111[0-9A-Z]{4}$/);
+    expect(b).toMatch(/^THANKS1111[0-9A-Z]{4}$/);
   });
 });
 

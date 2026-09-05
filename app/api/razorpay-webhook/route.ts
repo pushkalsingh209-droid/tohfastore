@@ -12,6 +12,7 @@ import { sendWhatsappMessage } from "@/app/utils/greenApi";
 import { productHref } from "@/app/utils/slug";
 import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
 import { resolveSupplierTargets } from "@/app/utils/orderNotificationNumbers";
+import { mintReferralReward, parseReferralDiscountPercent, parseReferralValidDays } from "@/app/utils/referralCoupon";
 import { normalizeOrderItems } from "./normalizeOrderItems";
 import type { PricedItem } from "@/app/utils/repricing";
 import type { Json } from "@/types/db";
@@ -209,12 +210,15 @@ export async function POST(req: Request) {
 
       // 1a. If a coupon was applied, count this verified, paid order against
       // its usage limit now (not at order-creation time, so abandoned/failed
-      // checkouts never consume a redemption).
+      // checkouts never consume a redemption). Also captures whether it was
+      // a referral share code (referral_phone set, migration 0051) so the
+      // two-sided-reward step just below can run without a second lookup.
+      let referralOwnerPhone: string | null = null;
       if (couponCode) {
         try {
           const { data: coupon } = await supabase
             .from("coupons")
-            .select("id, used_count")
+            .select("id, used_count, referral_phone")
             .eq("code", couponCode)
             .maybeSingle();
           if (coupon) {
@@ -225,9 +229,44 @@ export async function POST(req: Request) {
             // right here could keep showing as available until the safety
             // net window elapses.
             revalidateTag("coupons", "max");
+            referralOwnerPhone = coupon.referral_phone;
           }
         } catch (couponErr) {
           console.error("Coupon usage increment failed:", couponErr);
+        }
+      }
+
+      // 1a2. Two-sided referral reward (app/utils/referralCoupon.ts): the
+      // coupon just redeemed was one customer's personal referral share
+      // code -- a friend used it and just paid for a real, captured order --
+      // so reward the ORIGINAL referrer with a one-time coupon of their own
+      // and let them know on WhatsApp. Isolated in its own try/catch so a
+      // failure here can never affect the usage-count bump above (which
+      // already succeeded) or anything else in this webhook. WhatsApp only,
+      // deliberately not email like the original grant in
+      // /api/admin/orders/notify -- this webhook only has the referrer's
+      // phone on hand (from the coupon row), not an email address, and
+      // looking one up from some past order isn't worth the fragility for a
+      // nice-to-have notification.
+      if (referralOwnerPhone) {
+        try {
+          const { data: referralSettingRows } = await supabase
+            .from("site_settings")
+            .select("key, value")
+            .in("key", ["referral_discount_percent", "referral_coupon_valid_days"]);
+          const settingsMap = Object.fromEntries((referralSettingRows ?? []).map((r) => [r.key, r.value]));
+          const reward = await mintReferralReward(supabase, referralOwnerPhone, {
+            discountPercent: parseReferralDiscountPercent(settingsMap.referral_discount_percent),
+            validDays: parseReferralValidDays(settingsMap.referral_coupon_valid_days),
+          });
+          if (reward) {
+            await sendWhatsappMessage(
+              referralOwnerPhone,
+              `🎉 Great news! A friend just used your TOHFA referral code. As a thank-you, here's ${reward.discountPercent}% off your next order: ${reward.code}`
+            );
+          }
+        } catch (referralRewardErr) {
+          console.error("Referral reward mint/notify failed:", referralRewardErr);
         }
       }
 
