@@ -192,6 +192,7 @@ export interface AdminData {
   setLeads: (value: AdminLead[]) => void;
   keepaliveStale: boolean;
   abandonedCheckoutStale: boolean;
+  reviewReminderStale: boolean;
   // --- settings tab (#16) ---
   settings: Record<string, string>;
   setSettings: Dispatch<SetStateAction<Record<string, string>>>;

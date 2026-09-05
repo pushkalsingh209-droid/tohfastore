@@ -12,6 +12,26 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Review-reminder Overview card, Notify-dialog supplier count, "Notify on enquiry" — 2026-09-05 IST
+- Owner: both recommended follow-ups from the last batch, plus a new per-product enquiry-notify option.
+- Overview tab: third cron heartbeat card for `last_review_reminder_run_at` (stale > 30h), same pattern as
+  keepalive/abandoned-checkout.
+- Notify dialog: `suppliersNotified` (already returned by the API, never displayed) now shown as a result line
+  when > 0.
+- New "Notify on enquiry" — a second, separate per-product WhatsApp attachment next to "Notify suppliers", same
+  managed `order_notification_numbers` pool, new column `products.enquiry_notify_numbers` (migration 0053, own
+  column not folded into `supplier_numbers` — an enquiry click is much higher-frequency/lower-signal than an
+  order status change). `/api/enquiries` best-effort sends to it: re-fetches the product server-side (never
+  trusts the client body for what goes in the outbound message), rate-limited `enquiry-notify` 10/60min per IP
+  (new — that route previously had none), only fires if numbers are actually attached. New pure
+  `app/utils/enquiryNotify.ts`. Delete-a-managed-number route now strips both `supplier_numbers` and
+  `enquiry_notify_numbers`.
+- Verified: `tsc --noEmit` clean; `npm test` 229 passed (1 pre-existing skip, +3 new); `eslint` 0 errors; `next
+  build` exit 0. Not a payment-path change. Not live-tested against a real WhatsApp send; message
+  builder/rate-limit have full unit coverage instead. **Owner: run migration 0053** before ticking any "Notify
+  on enquiry" checkboxes (harmless before then, same optional-column fallback as everywhere else).
+- See `docs/HANDBOOK.html` Change log 2026-09-05.
+
 ### "Notify customer" — optional extra WhatsApp numbers — 2026-09-05 IST
 - Owner: add a way to CC someone else on a status notification, without changing default behaviour.
 - New optional "Also WhatsApp to" field in the Notify dialog — free text, comma/newline-separated, blank

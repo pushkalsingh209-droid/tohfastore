@@ -85,6 +85,10 @@ function AdminDashboard() {
   // also not on Vercel cron -- see #14). Stale = the timestamp it stamps
   // hasn't advanced in > 3h.
   const [abandonedCheckoutStale, setAbandonedCheckoutStale] = useState(false);
+  // Same idea for the review-reminder cron (daily external schedule, no
+  // Vercel cron). Stale = last_review_reminder_run_at hasn't advanced in
+  // > 30h -- a day's cadence plus slack for a slightly late scheduler tick.
+  const [reviewReminderStale, setReviewReminderStale] = useState(false);
   const [leads, setLeads] = useState<AdminLead[]>([]);
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [enquiryAnalytics, setEnquiryAnalytics] = useState<AdminEnquiryAnalytics | null>(null);
@@ -157,6 +161,10 @@ function AdminDashboard() {
       setAbandonedCheckoutStale(
         Boolean(lastAbandoned) && Date.now() - new Date(lastAbandoned).getTime() > 3 * 60 * 60 * 1000
       );
+      const lastReviewReminder = settingsRes.value.settings?.last_review_reminder_run_at;
+      setReviewReminderStale(
+        Boolean(lastReviewReminder) && Date.now() - new Date(lastReviewReminder).getTime() > 30 * 60 * 60 * 1000
+      );
     }
     if (leadsRes.status === "fulfilled") setLeads(leadsRes.value.leads);
     if (analyticsRes.status === "fulfilled") setAnalytics(analyticsRes.value);
@@ -182,7 +190,7 @@ function AdminDashboard() {
   };
 
   return (
-    <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, coupons, setCoupons, orders, setOrders, loadingOrders, notificationLog, setNotificationLog, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, abandonedCheckoutStale, settings, setSettings, chatLabelPresets, setChatLabelPresets, products, setProducts, categories, setCategories, labels, setLabels, colors, setColors, materials, setMaterials, whatsappNumbers, setWhatsappNumbers, orderNotificationNumbers, setOrderNotificationNumbers, refetch: fetchData }}>
+    <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, coupons, setCoupons, orders, setOrders, loadingOrders, notificationLog, setNotificationLog, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, abandonedCheckoutStale, reviewReminderStale, settings, setSettings, chatLabelPresets, setChatLabelPresets, products, setProducts, categories, setCategories, labels, setLabels, colors, setColors, materials, setMaterials, whatsappNumbers, setWhatsappNumbers, orderNotificationNumbers, setOrderNotificationNumbers, refetch: fetchData }}>
     <div className="bg-[var(--background)] min-h-screen py-12">
       <div className="max-w-5xl mx-auto px-6 space-y-12">
 

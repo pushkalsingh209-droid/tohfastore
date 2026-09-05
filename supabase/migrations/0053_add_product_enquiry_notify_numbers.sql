@@ -1,0 +1,15 @@
+-- Run this in the Supabase SQL editor.
+-- A SECOND, separate per-product WhatsApp attachment -- "Notify on enquiry"
+-- alongside the existing "Notify suppliers" (products.supplier_numbers,
+-- 0046). Same managed pool (order_notification_numbers), same shape
+-- (normalized phone strings, text[]), same validation -- but a DIFFERENT
+-- trigger: supplier_numbers fires on order-status notifications; this one
+-- fires on a WhatsApp "Chat" click (POST /api/enquiries) for that product.
+--
+-- Deliberately its OWN column, not folded into supplier_numbers: an
+-- enquiry click is a much higher-frequency, lower-signal event than an
+-- order status change (every storefront visitor who clicks Chat, not just
+-- paying customers), so a supplier who wants order updates may not want
+-- every window-shopper's click too. Starts empty (opt-in) on every
+-- product, including ones that already have supplier_numbers set.
+alter table products add column if not exists enquiry_notify_numbers text[];
