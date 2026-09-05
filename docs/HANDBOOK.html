@@ -1079,7 +1079,9 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
     that row: a dialog shows a preview of the message for the order's current status, lets you add an optional
     one-off note, and sends it by <strong>WhatsApp + email</strong>. Works for every status (a "your order was
     cancelled" note, a "running a day late" heads-up, etc.). Courier + tracking also show on the public
-    <code>/track</code> page and the invoice.</p>
+    <code>/track</code> page and the invoice. The first time you send a <strong>Delivered</strong> notification
+    for a customer, it also mints (or reuses) their personal referral coupon and appends it to the message &mdash;
+    see the Coupons card below.</p>
     <div class="note"><b>After refunding a test order</b>
     Set its status to <strong>Cancelled</strong>. A cancelled order is excluded from analytics, bestsellers,
     and the units-sold tally &mdash; so your real numbers stay clean.</div>
@@ -1093,6 +1095,12 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
     redemption. <b>While the Spend &amp; Save offer (Settings tab) is switched on</b>, the checkout shows the
     shopper a choice &mdash; use the offer <em>or</em> a coupon, one or the other, never both on the same
     order.</p>
+    <p><b>Referral coupons</b> appear in this same list, auto-created (10% off, 90-day expiry, one per
+    customer) the first time an order's <strong>Delivered</strong> notification goes out &mdash; not at
+    payment time, so a cancelled/refunded first order never earns one. Nothing to configure; they're
+    ordinary coupon rows (a <code>referral_phone</code> column marks them) and show up here like any other.
+    The owning customer can't redeem their own code &mdash; <code>/api/razorpay</code> checks the checkout's
+    OTP-verified phone against it and rejects a self-redemption.</p>
   </div>
 
   <div class="card">
@@ -1639,7 +1647,7 @@ RLS: anon <code>SELECT USING (hidden = false)</code>; service role bypasses.</p>
 <tbody>
 <tr><td><code>categories</code></td><td><code>name</code> UNIQUE, <code>show_on_home</code> bool=true, <code>gst_rate</code> numeric(5,2)=5.00, <code>default_page_size</code> int, <code>discount_percent</code> numeric=25, <code>whatsapp_number</code> text</td><td>Managed category list. <code>show_on_home=false</code> drops products from the unfiltered homepage but keeps the category reachable. <code>discount_percent</code> is display-only (fake struck-through MRP). <code>whatsapp_number</code> (nullable, one of the managed <code>whatsapp_numbers</code> pool) is a per-category override for the customer enquiry link, applying regardless of stock state -- sits between a product's own override and the site-wide default. <em>(0004&ndash;07, 0011, 0013, 0049)</em></td></tr>
 <tr><td><code>reviews</code></td><td><code>product_id</code> FK&rarr;products ON DELETE CASCADE, <code>rating</code> smallint 1&ndash;5, <code>approved</code> bool=false</td><td>Admin-moderated. RLS anon <code>SELECT USING (approved = true)</code>. <em>(0001)</em></td></tr>
-<tr><td><code>coupons</code></td><td><code>code</code> UNIQUE, <code>discount_type</code> flat|percent, <code>discount_value</code> &gt; 0, <code>active</code> bool=true, <code>max_uses</code> int, <code>used_count</code> int=0, <code>expires_at</code>, <code>is_public</code> bool=false</td><td><code>is_public</code> coupons are advertised in the promo banner; private ones still redeem. <code>used_count</code> incremented only on a captured, paid order. RLS: no policies. <em>(0001&ndash;02)</em></td></tr>
+<tr><td><code>coupons</code></td><td><code>code</code> UNIQUE, <code>discount_type</code> flat|percent, <code>discount_value</code> &gt; 0, <code>active</code> bool=true, <code>max_uses</code> int, <code>used_count</code> int=0, <code>expires_at</code>, <code>is_public</code> bool=false, <code>referral_phone</code> text (UNIQUE partial, nullable)</td><td><code>is_public</code> coupons are advertised in the promo banner; private ones still redeem. <code>used_count</code> incremented only on a captured, paid order. <code>referral_phone</code> (normalized <code>91&hellip;</code>) marks a coupon as one customer's personal referral code &mdash; auto-minted by <code>app/utils/referralCoupon.ts</code> the first time their order gets a "delivered" notify send (never at payment time, so a cancelled/refunded first order earns nothing); <code>/api/razorpay</code> rejects redeeming a coupon whose <code>referral_phone</code> matches the checkout's own OTP-verified phone. RLS: no policies. <em>(0001&ndash;02, 0051)</em></td></tr>
 <tr><td><code>site_settings</code></td><td><code>key</code> text PK, <code>value</code> text</td><td>KV store. Keys: <code>default_page_size</code>, <code>brass_price_per_kg</code>, <code>catalog_reveal_batch_size</code>, <code>weight_unit</code>, <code>dimension_unit</code>, <code>default_whatsapp_number</code>, <code>default_photo_filter</code>, <code>ganesha_cooldown_minutes</code>, <code>ganesha_max_auto_shows</code>, <code>ganesha_collapse_delay_seconds</code>, <code>chat_label_in_stock</code>, <code>chat_label_out_of_stock</code>, <code>last_keepalive_at</code> / <code>last_greenapi_state</code> / <code>last_greenapi_error</code> (all stamped by <code>/api/keepalive</code>, read by the admin Overview), <code>last_abandoned_checkout_run_at</code> (stamped by that cron, #14), <code>stock_reservations_enabled</code> (<code>'0'</code>/<code>'1'</code> kill switch for the 0043 reservation feature), <code>spend_tier_offer</code> (JSON blob &mdash; the Spend &amp; Save tier offer; <code>app/utils/spendTierOffer.ts</code>; ships disabled, 0044). Public subset via <code>/api/settings</code>; the Spend &amp; Save offer is exposed (only while live) via <code>/api/offer</code>. <em>(0011, 0022, 0025, 0043, 0044)</em></td></tr>
 <tr><td><code>product_colors</code>, <code>product_materials</code>, <code>labels</code></td><td><code>name</code> UNIQUE (+ <code>labels.photo_filter</code>)</td><td>Managed dropdown lists for the admin product form. Storefront reads distinct in-use labels off <code>products</code> via <code>/api/labels</code> instead. <em>(0017, 0018, 0021, 0023)</em></td></tr>
 <tr><td><code>whatsapp_numbers</code></td><td><code>phone_number</code> UNIQUE (<code>91&hellip;</code>), <code>label</code></td><td>Additional per-product enquiry numbers. The active site-wide default lives in <code>site_settings.default_whatsapp_number</code>. <em>(0019)</em></td></tr>
@@ -1737,6 +1745,7 @@ policy). The lesson: <strong>every <code>create table</code> migration must incl
 <tr><td>0048</td><td>add_order_notification_log</td><td>New <code>order_notification_log</code> table (RLS on, no policies &mdash; same lockdown as <code>orders</code>/<code>coupons</code>): <code>order_id</code> (FK &rarr; <code>orders.id</code>, cascade delete), <code>status</code>, <code>whatsapp</code>/<code>email</code> channel results, <code>sent_at</code>. One row per explicit &ldquo;Notify customer&rdquo; send from <code>/api/admin/orders/notify</code>. Feeds the Orders tab's per-order/per-status send counter (e.g. <code>Shipped (2)</code>) and a client-side notification-analytics panel (date-range totals by status) &mdash; both read the whole log via <code>GET /api/admin/orders/notification-log</code>, no aggregation query needed at this scale. Applied to the live DB by the owner ahead of the merge.</td></tr>
 <tr><td>0049</td><td>add_category_whatsapp_number</td><td><code>categories.whatsapp_number text</code> (nullable, one of the managed <code>whatsapp_numbers</code> pool). Generalizes the old Misc-only, out-of-stock-only hardcode (<code>MISC_OUT_OF_STOCK_WHATSAPP_NUMBER</code> in <code>app/utils/whatsapp.ts</code>) into an admin-configurable per-category override for the customer enquiry link, applying regardless of stock state. Priority: product's own number &gt; category's number &gt; the legacy Misc hardcode (untouched, still fires when a category has no number set) &gt; site-wide default. Owner's explicit call to keep the hardcode as a separate, unmodified fallback rather than migrating it into the new field.</td></tr>
 <tr><td>0050</td><td>add_product_spotlight</td><td><code>products.is_spotlight boolean = false</code> + <code>products.spotlight_order int</code> (nullable, unused until a future manual-reorder UI &mdash; <code>NULLS LAST</code>) + a partial index on <code>is_spotlight</code>. Backs the <code>/spotlight</code> marketing page (<code>app/utils/featuredSpotlight.ts</code>). <strong>Deliberately a per-product column, not a product-id array in <code>site_settings</code></strong> &mdash; the admin toggles membership from a single button per row in the Products tab's existing catalog table (a single-row <code>UPDATE</code>); a shared JSON array would instead need read-full-array&rarr;splice&rarr;write-full-array on every toggle, silently dropping a concurrent edit from a second open admin tab. Exposed under the existing anon <code>hidden = false</code> SELECT policy like every other product column &mdash; not sensitive. The campaign window itself (title/description/start/end) is a separate, small <code>site_settings</code> row (key <code>featured_spotlight</code>) using the same lenient-parse/strict-sanitize split as <code>spend_tier_offer</code>, safe as a whole-object write since only the Settings tab's one form ever writes it.</td></tr>
+<tr><td>0051</td><td>add_coupon_referral_phone</td><td><code>coupons.referral_phone text</code> (nullable) + a <code>UNIQUE</code> partial index <code>WHERE referral_phone IS NOT NULL</code> (so ordinary hand-created coupons, all with <code>referral_phone = null</code>, never collide with each other). Backs the referral-coupon feature (<code>app/utils/referralCoupon.ts</code>) &mdash; one auto-minted 10%-off code per customer, normalized <code>91&hellip;</code>. Applied to the live DB by the owner ahead of the merge.</td></tr>
 </tbody></table></div>
 
 <p><strong><code>product_sales</code> drift check</strong> &mdash; the tally is only self-correcting for cancellations
@@ -2350,7 +2359,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>RecentlyViewedStrip</code>, <code>RecentViewersNote(Live)</code>, <code>RecordProductView</code></li>
 <li><code>LiveStock</code>, <code>StockStatusBadge</code>, <code>NotifyWhenInStockButton</code></li>
 <li><code>AddToCartButton</code>, <code>StickyAddToCartBar</code>, <code>WishlistButton</code>, <code>WhatsappEnquiryLink</code></li>
-<li><code>ShareButtons</code>, <code>TrustBadges</code>, <code>ReviewForm</code>, <code>BackToCollectionsLink</code></li>
+<li><code>ShareButtons</code> (native share sheet, falls back to a <code>wa.me</code> link; pre-filled text includes the price when there is one), <code>TrustBadges</code>, <code>ReviewForm</code>, <code>BackToCollectionsLink</code></li>
 <li><code>InstagramPostGenerator</code> &mdash; the public &ldquo;Create Insta Post&rdquo; panel next to <code>ShareButtons</code>: a generated image (<code>/api/instagram-post-image</code>) + an editable, client-computed caption (<code>instagramCaption.ts</code>), copy/download actions, no login</li>
 <li><code>InstagramReelGenerator</code> &mdash; the public &ldquo;Create Insta Reel&rdquo; panel next to it: a 6s silent vertical video, rendered entirely client-side (<code>&lt;canvas&gt;</code> + <code>MediaRecorder</code>) as a Ken Burns push-in on the <em>same</em> cached <code>/api/instagram-post-image</code> PNG the photo tool uses &mdash; no new route, no server-side video rendering</li>
 </ul>
@@ -2797,6 +2806,53 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-05<br>&mdash;</code></td>
+  <td><strong>Referral coupons + price-aware Share button</strong><br>(owner: went ahead with two marketing-feature recommendations &mdash; a WhatsApp share button and a referral coupon)</td>
+  <td>
+    <strong>Referral coupons.</strong> New <code>app/utils/referralCoupon.ts</code> &mdash; one personal,
+    shareable 10%-off coupon per customer (90-day expiry), minted (or looked up, if one already exists) the
+    first time an admin sends a &ldquo;Delivered&rdquo; notification for one of their orders
+    (<code>/api/admin/orders/notify</code>). Deliberately gated on <strong>delivery, not payment</strong> &mdash;
+    a cancelled/refunded first order never earns a code &mdash; and on the admin's <strong>explicit notify
+    action, not the payment webhook</strong>, so minting a coupon never touches the payment path. The code
+    appends as a line in both the WhatsApp message and the email (<code>orderNotifications.ts</code>'s
+    builders gained an optional <code>referralCode</code> field, delivered-only, HTML-escaped in the email).
+    <br><br>
+    Migration <code>0051</code>: <code>coupons.referral_phone text</code> + a <code>UNIQUE</code> partial
+    index (<code>WHERE referral_phone IS NOT NULL</code>, so ordinary coupons with a null value never
+    collide with each other). Insert races (two concurrent Delivered sends for the same customer) are handled
+    by catching the unique-violation and re-selecting the row the other request just created, rather than
+    erroring. <code>types/db.ts</code> hand-edited for the new column, same pattern as every prior migration.
+    <br><br>
+    <strong>Self-redemption blocked at the one authoritative point.</strong> <code>/api/razorpay</code> now
+    rejects a coupon whose <code>referral_phone</code> matches the checkout's own OTP-verified phone
+    (&ldquo;This is your own referral code &mdash; share it with a friend instead!&rdquo;) &mdash; the
+    preview endpoint (<code>/api/coupons/validate</code>) is deliberately left unchanged, since it doesn't
+    have a verified phone to check against and was never the source of truth for what gets charged anyway.
+    <br><br>
+    <strong>Price-aware Share button.</strong> Found <code>ShareButtons.tsx</code> already existed (native
+    share sheet, <code>wa.me</code> fallback) &mdash; rather than bolt on a near-duplicate dedicated WhatsApp
+    button next to an already-dense stack of product-page CTAs, extended its message text to include the
+    price when there is one (<code>&ldquo;Check out X for &#8377;Y on TOHFA&rdquo;</code>), used for both the
+    native share sheet's <code>text</code> field and the <code>wa.me</code> fallback.
+  </td>
+  <td><em>new:</em> <code>supabase/migrations/0051_add_coupon_referral_phone.sql</code>,
+    <code>app/utils/referralCoupon.ts</code>, <code>app/utils/referralCoupon.test.ts</code><br>
+    <em>edited:</em> <code>app/utils/orderNotifications.ts</code>, <code>app/utils/orderNotifications.test.ts</code>,
+    <code>app/api/admin/orders/notify/route.ts</code>, <code>app/api/razorpay/route.ts</code>,
+    <code>app/components/ShareButtons.tsx</code>, <code>app/product/[id]/page.tsx</code>, <code>types/db.ts</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 214 passed (1 pre-existing skip, +6 new:
+    3 in <code>referralCoupon.test.ts</code>, 3 in <code>orderNotifications.test.ts</code>) &middot;
+    <code>eslint</code> 0 errors on every changed file &middot; <code>next build</code> exit 0. Owner applied
+    migration <code>0051</code> to the live DB. <strong>Live-verified against production</strong> with a
+    throwaway scratch script (never committed): inserted a test referral coupon row, confirmed the
+    idempotent lookup returns the same code on a second call, confirmed a second insert for the same phone
+    is correctly rejected by the partial unique index (<code>23505</code>), then deleted the row. Not
+    exercised end-to-end through a real order's Delivered notification or a real checkout redemption &mdash;
+    owner to confirm live on the next order that reaches Delivered.</td>
+</tr>
 <tr>
   <td><code>2026-09-04<br>00:15</code></td>
   <td><strong>Pinterest domain verification + profile link</strong><br>(owner: shared the Pinterest business profile &mdash; <code>in.pinterest.com/tohfaonline</code> &mdash; while planning a Pinterest push alongside the Reel work above)</td>

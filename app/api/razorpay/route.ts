@@ -171,6 +171,17 @@ export async function POST(req: Request) {
         .eq("code", String(couponCode).trim().toUpperCase())
         .maybeSingle();
 
+      // A referral coupon (app/utils/referralCoupon.ts) is meant for the
+      // owner's friends, not the owner themselves -- block it here, the one
+      // authoritative pricing point, rather than in the /api/coupons/validate
+      // preview (which doesn't have the OTP-verified phone to check against).
+      if (coupon?.referral_phone && coupon.referral_phone === normalizePhoneForRecord(phone)) {
+        return NextResponse.json(
+          { error: "This is your own referral code -- share it with a friend instead!" },
+          { status: 400 }
+        );
+      }
+
       const result = validateAndCalculateDiscount(coupon, subtotal);
       if (!coupon || !result.valid) {
         return NextResponse.json({ error: result.error }, { status: 400 });

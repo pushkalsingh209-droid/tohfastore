@@ -2,7 +2,7 @@
 "use client";
 import { useState } from "react";
 
-export default function ShareButtons({ productName }: { productName: string }) {
+export default function ShareButtons({ productName, price }: { productName: string; price?: number | string | null }) {
   const [copied, setCopied] = useState(false);
 
   function getUrl() {
@@ -16,13 +16,22 @@ export default function ShareButtons({ productName }: { productName: string }) {
     });
   }
 
+  // Same wording either way (native share sheet's `text` field or the wa.me
+  // fallback) -- price included when we have one, since "what's it cost" is
+  // the first thing whoever receives this asks anyway.
+  function getMessage() {
+    const priceNum = Number(price);
+    const priceText = Number.isFinite(priceNum) && priceNum > 0 ? ` for ₹${priceNum.toLocaleString("en-IN")}` : "";
+    return `Check out ${productName}${priceText} on TOHFA`;
+  }
+
   function handleShare() {
     const url = getUrl();
+    const text = getMessage();
     if (navigator.share) {
-      navigator.share({ title: productName, url }).catch(() => {});
+      navigator.share({ title: productName, text, url }).catch(() => {});
     } else {
-      const text = encodeURIComponent(`Check out ${productName} on TOHFA: ${url}`);
-      window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
+      window.open(`https://wa.me/?text=${encodeURIComponent(`${text}: ${url}`)}`, "_blank", "noopener,noreferrer");
     }
   }
 

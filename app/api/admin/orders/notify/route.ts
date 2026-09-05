@@ -14,6 +14,7 @@ import { productHref } from "@/app/utils/slug";
 import { normalizeIndianPhone } from "@/app/utils/phone";
 import { normalizeCourierName } from "@/app/utils/couriers";
 import { resolveSupplierTargets } from "@/app/utils/orderNotificationNumbers";
+import { getOrCreateReferralCoupon } from "@/app/utils/referralCoupon";
 import { asCustomerDetails, asOrderItems } from "@/app/utils/orderTypes";
 import {
   buildStatusWhatsappMessage,
@@ -59,7 +60,21 @@ export async function POST(req: Request) {
         ? `${SITE_URL}${productHref({ id: firstItem.id, name: firstItem.name })}`
         : undefined;
 
-    const input = { status, orderId, courierName, awbNumber, comment: cleanComment, reviewUrl };
+    // Referral coupon (best-effort, delivered only -- app/utils/referralCoupon.ts).
+    // Minted here, not at payment time, so a cancelled/refunded first order
+    // never earns a code, and never touches the payment/webhook path.
+    const referralCoupon =
+      status === "delivered" && customerPhone ? await getOrCreateReferralCoupon(supabase, String(customerPhone)) : null;
+
+    const input = {
+      status,
+      orderId,
+      courierName,
+      awbNumber,
+      comment: cleanComment,
+      reviewUrl,
+      referralCode: referralCoupon?.code,
+    };
 
     let whatsapp: ChannelResult = "skipped";
     let email: ChannelResult = "skipped";

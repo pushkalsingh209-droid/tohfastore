@@ -408,7 +408,7 @@ export default async function ProductDetailPage({
                 <TrustBadges />
 
                 <WishlistButton product={product} />
-                <ShareButtons productName={product.name} />
+                <ShareButtons productName={product.name} price={product.price} />
                 <InstagramPostGenerator product={{ id: product.id, name: product.name, price: product.price, category: product.category }} />
                 <InstagramReelGenerator product={{ id: product.id, name: product.name, price: product.price, category: product.category }} />
               </div>

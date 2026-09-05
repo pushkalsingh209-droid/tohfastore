@@ -43,6 +43,21 @@ describe("buildStatusWhatsappMessage", () => {
     expect(withReview).toContain("Leave a review here: https://tohfaonline.com/product/5-idol");
   });
 
+  it("delivered: includes the referral line only when a referralCode is given", () => {
+    expect(buildStatusWhatsappMessage({ status: "delivered", orderId: "o1" })).not.toContain("Share TOHFA");
+    const withReferral = buildStatusWhatsappMessage({
+      status: "delivered",
+      orderId: "o1",
+      referralCode: "FRIEND321099AB",
+    });
+    expect(withReferral).toContain("Share TOHFA with a friend!");
+    expect(withReferral).toContain("FRIEND321099AB");
+  });
+
+  it("referral line is delivered-only (never on shipped/processing/cancelled)", () => {
+    expect(buildStatusWhatsappMessage({ ...BASE, referralCode: "FRIENDX" })).not.toContain("Share TOHFA");
+  });
+
   it("processing / cancelled have their own lead line and no tracking", () => {
     expect(buildStatusWhatsappMessage({ status: "processing", orderId: "o1" })).toContain("being prepared for dispatch");
     const cancelled = buildStatusWhatsappMessage({ status: "cancelled", orderId: "o1", courierName: "Delhivery" });
@@ -76,6 +91,18 @@ describe("buildStatusEmailHtml", () => {
     expect(html).toContain("Your order is being prepared");
     expect(html).not.toContain("Delivery partner");
     expect(html).not.toContain("border-left:3px solid #b45309");
+  });
+
+  it("delivered: includes the referral coupon block only when referralCode is given", () => {
+    const withoutReferral = buildStatusEmailHtml({ status: "delivered", orderId: "o1" });
+    expect(withoutReferral).not.toContain("Share TOHFA");
+
+    const withReferral = buildStatusEmailHtml({ status: "delivered", orderId: "o1", referralCode: "FRIEND<b>" });
+    expect(withReferral).toContain("Share TOHFA with a friend!");
+    // Escaped, not rendered as markup -- the code is stored free-form-ish
+    // and, however unlikely, should never inject HTML into the email.
+    expect(withReferral).toContain("FRIEND&lt;b&gt;");
+    expect(withReferral).not.toContain("FRIEND<b>");
   });
 });
 

@@ -148,6 +148,7 @@ export type Database = {
           id: number
           is_public: boolean
           max_uses: number | null
+          referral_phone: string | null
           used_count: number
         }
         Insert: {
@@ -160,6 +161,7 @@ export type Database = {
           id?: never
           is_public?: boolean
           max_uses?: number | null
+          referral_phone?: string | null
           used_count?: number
         }
         Update: {
@@ -172,6 +174,7 @@ export type Database = {
           id?: never
           is_public?: boolean
           max_uses?: number | null
+          referral_phone?: string | null
           used_count?: number
         }
         Relationships: []
