@@ -550,6 +550,32 @@ export type Database = {
           },
         ]
       }
+      review_reminders_sent: {
+        Row: {
+          id: number
+          order_id: number
+          sent_at: string
+        }
+        Insert: {
+          id?: never
+          order_id: number
+          sent_at?: string
+        }
+        Update: {
+          id?: never
+          order_id?: number
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_reminders_sent_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           key: string

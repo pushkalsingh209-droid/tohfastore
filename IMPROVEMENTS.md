@@ -12,6 +12,37 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Review-reminder cron + "Often Viewed Together" strip — 2026-09-05 IST
+- Owner: two more marketing ideas from the recommendation list, picked together.
+- **Review reminder** — new `GET /api/cron/review-reminder`, daily external schedule, WhatsApps a customer to
+  leave a review 7-30 days after their order's Delivered notify went out (anchored on
+  `order_notification_log`'s earliest `status="delivered"` row, since `orders` has no `delivered_at`). New
+  migration 0052: `review_reminders_sent` (order_id FK, UNIQUE, sent_at) — deliberately its own table, not
+  another status value in `order_notification_log` (that table's analytics panel sums every row into one
+  Total regardless of status, which would silently inflate against the displayed per-status boxes).
+- **Caught before shipping:** the first draft claimed the order (inserted into `review_reminders_sent`) *after*
+  sending the WhatsApp. Since migration 0052 isn't applied yet, that ordering would have sent successfully,
+  failed to log it, and resent on every future run forever. Flipped to claim-then-send so a missing table (or
+  an overlapping run, via the UNIQUE index) makes the route skip the send entirely rather than risk sending
+  with no record. Doesn't check whether a review was already left (not linked to orders/phone) — a harmless
+  possible redundant nudge, fires at most once per order regardless. No admin heartbeat card yet (stamps
+  `last_review_reminder_run_at`, ready for one later).
+- **"Often Viewed Together"** — new `getViewedTogether(productId)` in `storeQueries.ts`: tallies what else
+  the anchor product's recent viewers (`product_views`) also viewed, via new pure `viewedTogether.ts`. Reuses
+  the existing `getProductsByIds` (from the shareable-wishlist batch) for live data, and reuses
+  `<BestsellersStrip>` as-is for display (exported `isRenderableProduct` + a synthetic `unitsSold: 0`) — no
+  new component. Distinct signal from "Customers Also Bought" (order history) — genuinely short-window since
+  `product_views` itself is pruned to ~48h; renders nothing on a lower-traffic product rather than a
+  half-empty row.
+- Verified: `tsc --noEmit` clean; `npm test` 219 passed (1 pre-existing skip, +3 new); `eslint` 0 errors; `next
+  build` exit 0. **Live-verified**: for review-reminder, read-only queries only — deliberately never invoked
+  the route itself (an actual run sends a real WhatsApp, not a reversible smoke-test action) — confirmed the
+  table doesn't exist yet and the candidate query currently finds zero matching orders. For viewed-together,
+  found a genuine real co-view pair in production's own data and confirmed both products correctly surface
+  each other in the strip, in both directions. Not a payment-path change. **Owner: run migration 0052** before
+  wiring the review-reminder cron into the external scheduler.
+- See `docs/HANDBOOK.html` Change log 2026-09-05.
+
 ### Batch: Spend & Save banner + New Arrival badge + shareable wishlist — 2026-09-05 IST
 - Owner: three more marketing ideas from the recommendation list, built together.
 - **Site-wide Spend & Save banner** — new `SpendOfferBanner`, rendered in `app/layout.tsx` above the sticky

@@ -1182,8 +1182,13 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
       <tr><td>Keepalive</td><td><code>https://tohfaonline.com/api/keepalive</code></td><td>every 15 min</td></tr>
       <tr><td>RLS perimeter check</td><td><code>https://tohfaonline.com/api/cron/rls-check</code></td><td>daily</td></tr>
       <tr><td>product_sales reconcile</td><td><code>https://tohfaonline.com/api/cron/product-sales-reconcile</code></td><td>daily</td></tr>
+      <tr><td>Review reminder</td><td><code>https://tohfaonline.com/api/cron/review-reminder</code></td><td>daily</td></tr>
     </tbody>
   </table></div>
+  <p><strong>Owner: run migration 0052 before pointing a schedule at the review-reminder job.</strong> The
+  route fails safe without it (skips every candidate rather than risk sending a WhatsApp with no record of
+  it), so it's harmless to deploy first and wire up the schedule after &mdash; but it won't actually remind
+  anyone until <code>review_reminders_sent</code> exists.</p>
   <p>Opening any of these in a browser returns <code>{"error":"Unauthorized"}</code> &mdash; that's correct
   (no bearer header). Use each job's "Run now" + History to see the real JSON body: <code>rls-check</code>
   should read <code>{"ok":true, &hellip;}</code>.</p>
@@ -1691,6 +1696,7 @@ referrer who brings many friends can earn many separate reward rows. RLS: no pol
 <tr><td><code>whatsapp_otp_verifications</code></td><td><code>phone</code>, <code>ip</code>, <code>code_hash</code>, <code>attempts</code> int=0, <code>expires_at</code>, <code>verified_at</code>, <code>verified_expires_at</code>, <code>verification_token</code> UNIQUE (partial)</td><td>Checkout OTP. Code TTL 5 min; verified state TTL 60 min; &le; 5 verify attempts; 45s resend cooldown; &le; 5/hr per phone, &le; 10/hr per IP. <code>verification_token</code> proves <em>this</em> session did the verifying. Pruned (&gt;7d) on 2% of sends. <em>(0029, 0030)</em></td></tr>
 <tr><td><code>rate_limit_events</code></td><td><code>bucket</code>, <code>ip</code>, <code>created_at</code></td><td>Generic DB-backed IP limiter (serverless has no shared memory). Buckets: <code>coupon-validate</code> (20/10min), <code>track-view</code> (60/10min), <code>lead-submit</code> (10/60min), <code>stock-alert-subscribe</code> (15/60min), <code>instagram-post-image</code> (20/10min, the secondary guard behind the primary CDN-cache defense &mdash; see &sect;11). Self-pruned (&gt;24h) on 2% of writes. Fails <em>open</em> on read error. <em>(0031)</em></td></tr>
 <tr><td><code>order_notification_log</code></td><td><code>order_id</code> FK&rarr;orders ON DELETE CASCADE, <code>status</code>, <code>whatsapp</code>, <code>email</code>, <code>sent_at</code></td><td>One row per explicit &ldquo;Notify customer&rdquo; send. Not pruned (small &mdash; one row per admin action, not per order/visitor). Feeds the Orders tab's per-order/per-status send counter and the notification-analytics date-range panel, both client-side over the whole log via <code>GET /api/admin/orders/notification-log</code>. <em>(0048)</em></td></tr>
+<tr><td><code>review_reminders_sent</code></td><td><code>order_id</code> FK&rarr;orders ON DELETE CASCADE, UNIQUE, <code>sent_at</code></td><td>One row per order, ever, the moment <code>/api/cron/review-reminder</code> claims it (inserted <em>before</em> the WhatsApp send, not after &mdash; see the route's own comment on why). Deliberately a separate table from <code>order_notification_log</code>, not another status value in it: that table's own header comment scopes it to admin-triggered &ldquo;Notify customer&rdquo; sends, and its Orders-tab analytics panel sums every row into one Total figure regardless of status &mdash; a cron-triggered send mixed in would silently inflate that total. <em>(0052)</em></td></tr>
 </tbody></table></div>
 
 <h2 id="rls">Row Level Security model</h2>
@@ -1768,6 +1774,7 @@ policy). The lesson: <strong>every <code>create table</code> migration must incl
 <tr><td>0049</td><td>add_category_whatsapp_number</td><td><code>categories.whatsapp_number text</code> (nullable, one of the managed <code>whatsapp_numbers</code> pool). Generalizes the old Misc-only, out-of-stock-only hardcode (<code>MISC_OUT_OF_STOCK_WHATSAPP_NUMBER</code> in <code>app/utils/whatsapp.ts</code>) into an admin-configurable per-category override for the customer enquiry link, applying regardless of stock state. Priority: product's own number &gt; category's number &gt; the legacy Misc hardcode (untouched, still fires when a category has no number set) &gt; site-wide default. Owner's explicit call to keep the hardcode as a separate, unmodified fallback rather than migrating it into the new field.</td></tr>
 <tr><td>0050</td><td>add_product_spotlight</td><td><code>products.is_spotlight boolean = false</code> + <code>products.spotlight_order int</code> (nullable, unused until a future manual-reorder UI &mdash; <code>NULLS LAST</code>) + a partial index on <code>is_spotlight</code>. Backs the <code>/spotlight</code> marketing page (<code>app/utils/featuredSpotlight.ts</code>). <strong>Deliberately a per-product column, not a product-id array in <code>site_settings</code></strong> &mdash; the admin toggles membership from a single button per row in the Products tab's existing catalog table (a single-row <code>UPDATE</code>); a shared JSON array would instead need read-full-array&rarr;splice&rarr;write-full-array on every toggle, silently dropping a concurrent edit from a second open admin tab. Exposed under the existing anon <code>hidden = false</code> SELECT policy like every other product column &mdash; not sensitive. The campaign window itself (title/description/start/end) is a separate, small <code>site_settings</code> row (key <code>featured_spotlight</code>) using the same lenient-parse/strict-sanitize split as <code>spend_tier_offer</code>, safe as a whole-object write since only the Settings tab's one form ever writes it.</td></tr>
 <tr><td>0051</td><td>add_coupon_referral_phone</td><td><code>coupons.referral_phone text</code> (nullable) + a <code>UNIQUE</code> partial index <code>WHERE referral_phone IS NOT NULL</code> (so ordinary hand-created coupons, all with <code>referral_phone = null</code>, never collide with each other). Backs the referral-coupon feature (<code>app/utils/referralCoupon.ts</code>) &mdash; one auto-minted 10%-off code per customer, normalized <code>91&hellip;</code>. Applied to the live DB by the owner ahead of the merge.</td></tr>
+<tr><td>0052</td><td>add_review_reminders_sent</td><td><code>review_reminders_sent</code> table (RLS on, no policies &mdash; same lockdown as <code>orders</code>/<code>coupons</code>/<code>order_notification_log</code>): <code>order_id</code> FK&rarr;<code>orders.id</code> cascade delete, UNIQUE (one reminder per order, ever), <code>sent_at</code>. Backs <code>/api/cron/review-reminder</code>. <strong>Owner to apply before pointing an external schedule at that route</strong> &mdash; the route fails safe without it (skips every candidate) rather than risk sending with no record of it, so deploying the route first and migrating after is harmless, just inert until then.</td></tr>
 </tbody></table></div>
 
 <p><strong><code>product_sales</code> drift check</strong> &mdash; the tally is only self-correcting for cancellations
@@ -1923,6 +1930,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/keepalive</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Pings Supabase (7-day auto-pause) + Green API <code>getStateInstance</code>. External scheduler every 15&ndash;30 min. Stamps <code>last_keepalive_at</code> + <code>last_greenapi_state</code> / <code>last_greenapi_error</code> into <code>site_settings</code> (best-effort) &rarr; admin Overview health cards.</td></tr>
 <tr><td><code>/api/cron/abandoned-checkout</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Nudges <code>checkout_started</code> leads 2h&ndash;7d old, not yet <code>contacted</code>, with no matching order since. Every 30&ndash;60 min. Also trims <code>stock_reservations</code> rows &gt; 1 day past <code>expires_at</code> (hygiene), and stamps <code>site_settings.last_abandoned_checkout_run_at</code> so the admin Overview can flag a dead scheduler (#14).</td></tr>
 <tr><td><code>/api/cron/product-sales-reconcile</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Recomputes the units-sold tally from every non-cancelled order and diffs it against <code>product_sales</code> (0042). Drift &rarr; best-effort business WhatsApp; <code>?heal=1</code> also writes the recomputed values back. Alert-only by default. Daily external schedule.</td></tr>
+<tr><td><code>/api/cron/review-reminder</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>WhatsApps a customer to leave a review, ~7&ndash;30 days after their order's Delivered notify went out (anchored on <code>order_notification_log</code>'s earliest <code>status="delivered"</code> row for that order &mdash; <code>orders</code> itself has no <code>delivered_at</code>). Claims the order in <code>review_reminders_sent</code> (0052) <em>before</em> sending, so a missing table or a race never resends. Capped at 50 reminders/run. Doesn't check whether a review was already left (reviews aren't linked to orders/phone) &mdash; a harmless occasional redundant nudge, not a bug. Daily external schedule; no admin heartbeat card yet (stamps <code>last_review_reminder_run_at</code>, ready for one).</td></tr>
 <tr><td><code>/api/cron/rls-check</code></td><td><span class="tag t-get">get</span> <span class="tag t-cron">cron</span></td><td>Runs <code>checkRlsPerimeter</code> (<code>app/utils/rlsProbes.ts</code>, shared with <code>rls.test.ts</code>) against LIVE Supabase with the <em>anon</em> key: orders/coupons/leads/admin_sessions unreadable, hidden products &amp; unapproved reviews unreadable, visible products still readable, no anon writes. Any violation &rarr; best-effort business WhatsApp + 500. Alert-only; nothing changed. Daily external schedule (not in <code>vercel.json</code> &mdash; Hobby 2-cron cap).</td></tr>
 </tbody></table></div>
 
@@ -2198,6 +2206,7 @@ normalisation goes through <code>app/utils/phone.ts</code> (#18).</p>
 <tr><td>Referral reward</td><td><code>/api/razorpay-webhook</code> &mdash; a friend's order used someone's referral share code and was just captured</td><td>&rarr; the <em>original referrer</em> (not the friend who just paid), a one-time &ldquo;<code>THANKS&hellip;</code>&rdquo; reward coupon (<code>mintReferralReward</code>, <code>app/utils/referralCoupon.ts</code>). WhatsApp only, no email (this webhook has the referrer's phone from the coupon row but no email on file for them).</td></tr>
 <tr><td>Lead follow-up</td><td><code>/api/leads</code> (auto) or <code>/api/admin/leads/follow-up</code> (manual)</td><td>&rarr; lead</td></tr>
 <tr><td>Abandoned checkout</td><td><code>/api/cron/abandoned-checkout</code></td><td>&rarr; lead (once, 2h&ndash;7d old)</td></tr>
+<tr><td>Review reminder</td><td><code>/api/cron/review-reminder</code></td><td>&rarr; customer (once per order, 7&ndash;30 days after their Delivered notify)</td></tr>
 <tr><td>Session keepalive</td><td><code>/api/keepalive</code></td><td><code>getStateInstance</code> ping (no message)</td></tr>
 </tbody></table></div>
 <div class="note warn"><p>The free Green API &ldquo;Developer&rdquo; instance caps distinct chats per month &mdash;
@@ -2280,7 +2289,12 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       <code>getProductsByIds(ids)</code> (backs <code>/wishlist/shared</code> -- live data for an arbitrary id list,
       same card column list as <code>getCatalogPage</code>, ids de-duped/sorted/capped at 60 before the cached
       call so the cache key is stable regardless of URL order and a malformed <code>?ids=</code> can't turn into
-      an unbounded query; excludes hidden products).
+      an unbounded query; excludes hidden products), <code>getViewedTogether(productId, limit?)</code>
+      (product page's &ldquo;Often Viewed Together&rdquo; strip &mdash; who else recently viewed <em>this</em>
+      product, from <code>product_views</code>; ranks by <code>viewedTogether.ts</code>'s pure tally, re-fetches
+      live data via <code>getProductsByIds</code>, then re-narrows with the exported <code>isRenderableProduct</code>
+      and stamps <code>unitsSold: 0</code> so it can reuse <code>&lt;BestsellersStrip&gt;</code> as-is; tag
+      <code>products</code>).
       <strong>Storefront bootstrap (#11):</strong> <code>getPublicSettingsMap</code> (tag <code>site-settings</code>)
       + <code>getCategoryDiscountMap</code> + <code>getCategoryWhatsappNumberMap</code> (both tag <code>categories</code>,
       the latter new in 0049), composed with the existing
@@ -2403,7 +2417,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>CatalogSection</code> &mdash; grid + progressive reveal + batch live-stock fetch</li>
 <li><code>CatalogFilters</code>, <code>CatalogPagination</code></li>
 <li><code>ProductCard</code> (shows a &ldquo;New&rdquo; badge, bottom-left of the image, for a product created within the last 14 days -- <code>created_at</code> is only selected by the two queries that feed cards, <code>getCatalogPage</code>/<code>getSpotlightProducts</code>/<code>getProductsByIds</code>; resolved on mount, not during render, since <code>Date.now()</code> can't run in a render body), <code>ProductGallery</code>, <code>PriceDisplay</code>, <code>TempleCardFrame</code></li>
-<li><code>HeroProductRotator</code>, <code>CategorySlider</code>, <code>BestsellersStrip</code></li>
+<li><code>HeroProductRotator</code>, <code>CategorySlider</code>, <code>BestsellersStrip</code> (reused as-is, just a different <code>title</code>, for the product page's &ldquo;Often Viewed Together&rdquo; strip &mdash; fed by <code>getViewedTogether</code>, a <code>product_views</code> session-affinity signal distinct from &ldquo;Customers Also Bought&rdquo;'s order-history one)</li>
 <li><code>RecentlyViewedStrip</code>, <code>RecentViewersNote(Live)</code>, <code>RecordProductView</code></li>
 <li><code>LiveStock</code>, <code>StockStatusBadge</code>, <code>NotifyWhenInStockButton</code></li>
 <li><code>AddToCartButton</code>, <code>StickyAddToCartBar</code>, <code>WishlistButton</code>, <code>WhatsappEnquiryLink</code> -- the <code>/wishlist</code> page itself also has &ldquo;Share Wishlist&rdquo;/&ldquo;Copy Link&rdquo; buttons (native share sheet + <code>wa.me</code> fallback, same pattern as <code>ShareButtons</code>) building a <code>/wishlist/shared?ids=&hellip;</code> link, since the wishlist itself is localStorage-only with nothing server-side to share a real link to otherwise</li>
@@ -2467,6 +2481,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>orderNotificationNumbers.ts</code></td><td>Supplier order-notification list (0046). <code>MAX_ORDER_NOTIFICATION_NUMBERS</code> (10), <code>isValidOrderNotificationNumber</code> (<code>/^91[6-9]\d{9}$/</code>), and the pure <code>resolveSupplierTargets(productSupplierArrays, liveNumbers, businessNumber)</code> &mdash; distinct in-list supplier numbers across an order's products, minus the business number, de-duped. DB reads live in the routes / webhook. <strong>7 unit tests.</strong></td></tr>
 <tr><td><code>referralCoupon.ts</code></td><td>Both halves of the referral loop (0051). <code>getOrCreateReferralCoupon(supabase, phone, options?)</code> mints/looks up one personal &ldquo;<code>FRIEND&hellip;</code>&rdquo; share coupon per customer on a Delivered notify send; an existing customer's coupon always reports its own stored <code>discount_value</code>, never today's setting, so a later admin edit can't misrepresent an older coupon. <code>mintReferralReward(supabase, referrerPhone, options?)</code> &mdash; called from <code>/api/razorpay-webhook</code> the moment a friend's order using that share code is captured &mdash; mints a one-time &ldquo;<code>THANKS&hellip;</code>&rdquo; reward coupon (<code>max_uses</code>=1, <code>referral_phone</code> deliberately left <code>null</code> so the UNIQUE partial index on that column, already claimed by the referrer's own share code, never blocks a second reward). Both take <code>options.discountPercent</code>/<code>.validDays</code>, defaulting to the module's <code>REFERRAL_DISCOUNT_PERCENT</code> (10) / <code>REFERRAL_COUPON_VALID_DAYS</code> (90) constants; both callers instead pass whatever <code>parseReferralDiscountPercent</code>/<code>parseReferralValidDays</code> lenient-read out of <code>site_settings</code> (admin-editable, Settings tab). DB reads/writes live in this module; pure helpers (<code>buildReferralCode</code>, <code>buildReferralRewardCode</code>, the two parsers) unit-tested. <strong>10 unit tests.</strong></td></tr>
 <tr><td><code>reports.ts</code></td><td>Pure logic for the admin Excel report. <code>resolvePeriod(preset, now, from?, to?)</code> &rarr; an IST-bounded <code>[from, to)</code> (month / Mon&ndash;Sun week / Apr&ndash;Mar FY / all-time / custom), TZ-independent (Vercel is UTC). <code>buildReport(orders, period)</code> &rarr; flat order rows + a GSTR-style GST summary (<code>calculateOrderGstBreakdown</code> per order; CGST=SGST=tax/2 when the buyer state is Uttarakhand &mdash; <code>isIntraStateSupply</code> &mdash; else IGST) + a by-state table. Cancelled orders stay in the order rows but are dropped from every GST total. The <code>.xlsx</code> assembly (exceljs) lives in the route. <strong>12 unit tests.</strong></td></tr>
+<tr><td><code>viewedTogether.ts</code></td><td><code>tallyViewedTogether(rows, excludeProductId)</code> &mdash; pure co-occurrence tally behind <code>getViewedTogether</code> (<code>storeQueries.ts</code>): given every <code>product_views</code> row for the visitors who recently viewed an anchor product, counts how many of them also viewed each other product. Relies on <code>product_views</code>' own <code>UNIQUE(product_id, visitor_token)</code> constraint &mdash; a raw row is already exactly one distinct visitor for that product, no extra dedup needed. <strong>3 unit tests.</strong></td></tr>
 <tr><td><code>chatLabels.ts</code>, <code>indianStates.ts</code>, <code>pagination.ts</code>, <code>loadingMessages.ts</code>, <code>downloadCsv.ts</code>, <code>brandMark.tsx</code>, <code>appleSplashScreens.ts</code></td><td>Small constants / helpers. <code>brandMark.tsx</code>'s <code>BrandGlyph</code> (exported for this) is now also reused directly by <code>/api/instagram-post-image</code> for its corner mark, on top of the icon/splash routes it already backed.</td></tr>
 </tbody></table></div>
 
@@ -2486,6 +2501,12 @@ scheduler</strong> (e.g. cron-job.org) at the same URLs &mdash; <code>/api/keepa
 <code>vercel.json</code> (Hobby caps the list at two). Point the external scheduler at it <strong>once a day</strong>,
 same bearer auth. It recomputes the units-sold tally from every non-cancelled order, WhatsApps the business on any
 drift from <code>product_sales</code>, and (with <code>?heal=1</code>) writes the corrected values back.</p>
+<p><code>/api/cron/review-reminder</code> is a <strong>fourth</strong> external-only route, same reasoning &mdash;
+once a day. WhatsApps a customer whose order's Delivered notify went out 7&ndash;30 days ago and hasn't been
+reminded before (migration 0052's <code>review_reminders_sent</code>, one row per order ever). <strong>Ships with
+no admin-visible heartbeat card</strong> (unlike the three above) &mdash; it does stamp
+<code>site_settings.last_review_reminder_run_at</code>, so wiring up a fourth Overview card later is cheap, just not
+done in the same batch as the route itself.</p>
 </div>
 <p><code>/api/keepalive</code> stamps <code>site_settings.last_keepalive_at</code> on each run; the admin
 <strong>Overview</strong> tab reads it back and shows an amber &ldquo;Check&rdquo; badge once it is &gt; 90 min
@@ -2857,6 +2878,71 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-05<br>&mdash;</code></td>
+  <td><strong>Review-reminder cron + &ldquo;Often Viewed Together&rdquo; strip</strong><br>(owner: two more marketing ideas from the recommendation list, picked together)</td>
+  <td>
+    <strong>Review reminder.</strong> New <strong><code>GET /api/cron/review-reminder</code></strong> &mdash; a
+    daily, external-scheduled WhatsApp nudge to leave a review, sent once per order, 7&ndash;30 days after
+    that order's <strong>Delivered</strong> notify went out. Anchored on <code>order_notification_log</code>'s
+    earliest <code>status="delivered"</code> row for the order (its <code>sent_at</code>) since
+    <code>orders</code> has no <code>delivered_at</code> column &mdash; an order marked Delivered but never
+    explicitly notified has no anchor and is silently never reminded, rather than inventing a timestamp.
+    New migration <strong>0052</strong>: <code>review_reminders_sent</code> (order_id FK, UNIQUE, sent_at) &mdash;
+    deliberately its <em>own</em> table, not another status value inserted into
+    <code>order_notification_log</code>: that table's header comment scopes it to admin-triggered "Notify
+    customer" sends, and its Orders-tab analytics panel sums every row into one Total figure regardless of
+    status, which a cron-triggered send mixed in would silently inflate against the four status boxes shown
+    alongside it.
+    <br><br>
+    <strong>Caught before shipping, not after:</strong> the first draft inserted the
+    <code>review_reminders_sent</code> claim <em>after</em> the WhatsApp send. Since migration 0052 isn't
+    applied to the live DB yet, that ordering would have sent the reminder successfully, then failed to
+    record it (table doesn't exist) &mdash; meaning the very next run would resend to the same customer,
+    forever, until the migration exists. Flipped the order: claim first (insert into
+    <code>review_reminders_sent</code>, whose UNIQUE index also makes this a real idempotency guard against
+    overlapping runs), only send if that succeeds. Now the route fails safe &mdash; inert until the migration
+    exists, never a resend loop. Doesn't check whether a review was already left (reviews aren't linked to
+    orders or a phone number) &mdash; a customer who reviewed voluntarily may still get one nudge; harmless,
+    and it only ever fires once per order regardless. No admin heartbeat card in this batch (unlike keepalive
+    /RLS-check/abandoned-checkout's three) &mdash; it does stamp <code>last_review_reminder_run_at</code>, so a
+    fourth card is cheap to add later, just not bundled into this one.
+    <br><br>
+    <strong>&ldquo;Often Viewed Together.&rdquo;</strong> New <code>getViewedTogether(productId, limit?)</code>
+    in <code>storeQueries.ts</code>: finds visitors who recently viewed the anchor product
+    (<code>product_views</code>), then tallies what else those same visitors viewed, via new pure
+    <code>app/utils/viewedTogether.ts</code> (<code>tallyViewedTogether</code> &mdash; relies on
+    <code>product_views</code>' own <code>UNIQUE(product_id, visitor_token)</code> constraint, so a raw row is
+    already one distinct visitor, no extra dedup). Re-fetches live data for the ranked ids via the existing
+    <code>getProductsByIds</code> (from the shareable-wishlist batch), then re-narrows with the now-exported
+    <code>isRenderableProduct</code> and stamps <code>unitsSold: 0</code> so it can reuse
+    <code>&lt;BestsellersStrip&gt;</code> as-is (that badge only shows when <code>unitsSold &gt; 0</code>) &mdash;
+    no new strip component needed. Genuinely session-level, not purchase-history &mdash; distinct signal from
+    the existing &ldquo;Customers Also Bought&rdquo; (order-based) strip right above it on the product page.
+    <strong>Honestly short-window by construction</strong>, not just by choice: <code>product_views</code> is
+    itself pruned to roughly the last 48h, so there usually isn't more than a day or two of signal regardless
+    of the 7-day defensive cap in the query &mdash; a lower-traffic product can come back with nothing, and the
+    strip simply doesn't render rather than showing a half-empty row.
+  </td>
+  <td><em>new:</em> <code>supabase/migrations/0052_add_review_reminders_sent.sql</code>,
+    <code>app/api/cron/review-reminder/route.ts</code>, <code>app/utils/viewedTogether.ts</code>,
+    <code>app/utils/viewedTogether.test.ts</code><br>
+    <em>edited:</em> <code>types/db.ts</code>, <code>app/utils/storeQueries.ts</code>,
+    <code>app/product/[id]/page.tsx</code>, <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 219 passed (1 pre-existing skip, +3 new)
+    &middot; <code>eslint</code> 0 errors on every changed file &middot; <code>next build</code> exit 0, new
+    route registered. <strong>Live-verified against production</strong> two different ways for the two halves:
+    (1) review-reminder &mdash; read-only queries only, deliberately <strong>never invoked the route itself</strong>
+    (unlike prior DB-only smoke tests this session, an actual run would send a real WhatsApp message to a real
+    customer, not a reversible action) &mdash; confirmed <code>review_reminders_sent</code> doesn't exist yet
+    (owner still needs to run 0052) and confirmed the candidate query itself runs clean and currently finds
+    zero matching orders (no immediate burst once deployed); (2) viewed-together &mdash; found a genuine real
+    co-view pair in production's own <code>product_views</code> data (one visitor viewed products 5 and 167
+    minutes apart) and confirmed, via the dev server against that same live data, that each product's page
+    correctly surfaces the <em>other</em> one by name in its &ldquo;Often Viewed Together&rdquo; strip, in
+    both directions. Not a payment-path change. <strong>Owner: run migration 0052</strong>, then optionally
+    add the review-reminder cron to the external scheduler once ready.</td>
+</tr>
 <tr>
   <td><code>2026-09-05<br>&mdash;</code></td>
   <td><strong>Spend &amp; Save banner + New Arrival badge + shareable wishlist</strong><br>(owner: three more marketing ideas from the recommendation list, built together)</td>

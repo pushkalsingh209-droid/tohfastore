@@ -27,7 +27,7 @@ import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink, resolveProductWhatsappNumber } from "@/app/utils/whatsapp";
 import WhatsappEnquiryLink from "@/app/components/WhatsappEnquiryLink";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
-import { getRelatedProducts, getProductUnitSettings, getDefaultWhatsappNumber, getCategoryWhatsappNumberMap, getSoldCounts } from "@/app/utils/storeQueries";
+import { getRelatedProducts, getViewedTogether, getProductUnitSettings, getDefaultWhatsappNumber, getCategoryWhatsappNumberMap, getSoldCounts } from "@/app/utils/storeQueries";
 import { getThumbUrl } from "@/app/utils/imageThumb";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
@@ -182,11 +182,12 @@ export default async function ProductDetailPage({
   // (The recent-viewers count is no longer fetched here -- its 60s refresh
   // window used to drag this whole static route down to a 60s ISR
   // revalidate. It's read client-side now: see RecentViewersNoteLive.)
-  const [reviews, categorySliderItems, relatedProducts, unitSettings, defaultWhatsappNumber, categoryWhatsappNumbers] =
+  const [reviews, categorySliderItems, relatedProducts, viewedTogether, unitSettings, defaultWhatsappNumber, categoryWhatsappNumbers] =
     await Promise.all([
       product ? getApprovedReviews(product.id) : Promise.resolve([]),
       getCategorySliderItems(),
       product ? getRelatedProducts(product.category ?? "", product.id) : Promise.resolve([]),
+      product ? getViewedTogether(product.id) : Promise.resolve([]),
       getProductUnitSettings(),
       getDefaultWhatsappNumber(),
       getCategoryWhatsappNumberMap(),
@@ -454,6 +455,14 @@ export default async function ProductDetailPage({
           <BestsellersStrip items={relatedProducts} title="Customers Also Bought" />
         </div>
       )}
+
+      {/* Session-level "who else looked at this" signal (product_views),
+          distinct from the purchase-history one above -- see
+          getViewedTogether in storeQueries.ts. Genuinely short-window by
+          construction (product_views is pruned to ~48h), so this can come
+          back empty on a lower-traffic product; renders nothing rather
+          than a half-empty row. */}
+      {viewedTogether.length > 0 && <BestsellersStrip items={viewedTogether} title="Often Viewed Together" />}
 
       {product && <RecentlyViewedStrip excludeId={product.id} />}
 

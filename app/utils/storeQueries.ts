@@ -27,6 +27,7 @@ import { unstable_cache } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { attachThumbUrls } from "@/app/utils/imageThumb";
 import { tallyUnitsSold } from "@/app/utils/orderTally";
+import { tallyViewedTogether } from "@/app/utils/viewedTogether";
 import {
   DEFAULT_WEIGHT_UNIT,
   DEFAULT_DIMENSION_UNIT,
@@ -599,6 +600,72 @@ const getProductsByIdsCached = unstable_cache(
   { tags: ["products"], revalidate: 86400 }
 );
 
+// "Often Viewed Together" (product page) -- distinct from "Customers Also
+// Bought" (getRelatedProducts, order history): this is a session-level
+// affinity signal from product_views ("visitors who looked at THIS product
+// recently also looked at these") rather than a purchase-history one.
+// Genuinely short-window by construction, not just by choice -- product_views
+// itself is pruned to roughly the last 48h (see its own table comment), so
+// there usually isn't more than a couple of days of signal to draw on
+// regardless of the window below; VIEWED_TOGETHER_WINDOW_DAYS is a
+// defensive cap for the (rare) case the opportunistic prune has fallen
+// behind, not the real limiting factor. On a lower-traffic store this can
+// come back sparse or empty for a given product -- the strip (see
+// product/[id]/page.tsx) simply doesn't render rather than showing a
+// half-empty row.
+const VIEWED_TOGETHER_WINDOW_DAYS = 7;
+// Caps how many of the anchor product's own recent viewers get pulled in,
+// so a single viral product's view log can't turn this into an unbounded
+// scan.
+const VIEWED_TOGETHER_VISITOR_SAMPLE = 200;
+
+export const getViewedTogether = unstable_cache(
+  async (productId: number, limit = 8): Promise<BestsellerItem[]> => {
+    try {
+      const cutoff = new Date(Date.now() - VIEWED_TOGETHER_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+      const { data: viewers } = await supabase
+        .from("product_views")
+        .select("visitor_token")
+        .eq("product_id", productId)
+        .gte("viewed_at", cutoff)
+        .limit(VIEWED_TOGETHER_VISITOR_SAMPLE);
+      const tokens = Array.from(new Set((viewers || []).map((v) => v.visitor_token)));
+      if (tokens.length === 0) return [];
+
+      const { data: coViews } = await supabase
+        .from("product_views")
+        .select("product_id, visitor_token")
+        .in("visitor_token", tokens)
+        .neq("product_id", productId)
+        .gte("viewed_at", cutoff);
+
+      const counts = tallyViewedTogether(coViews || [], productId);
+      const rankedIds = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([id]) => Number(id));
+      if (rankedIds.length === 0) return [];
+
+      // getProductsByIds returns its rows sorted ascending by id (a stable
+      // cache key, not a popularity order) -- re-apply the actual
+      // popularity ranking here, since that's what should determine display
+      // order in the strip.
+      const products = await getProductsByIds(rankedIds);
+      const byId = new Map(products.map((p) => [p.id, p]));
+      return rankedIds
+        .map((id) => byId.get(id))
+        .filter((p): p is NonNullable<typeof p> => Boolean(p))
+        .filter(isRenderableProduct)
+        .map((p) => ({ ...p, unitsSold: 0 })); // reuses <BestsellersStrip> as-is; that badge only shows when unitsSold > 0
+    } catch {
+      return [];
+    }
+  },
+  ["viewed-together"],
+  { tags: ["products"], revalidate: 86400 }
+);
+
 export interface TestimonialItem {
   id: number;
   customerName: string;
@@ -720,8 +787,10 @@ export const getSoldCounts = unstable_cache(
 // /api/recent-views/[id]; see app/components/RecentViewersNoteLive.tsx.
 
 // A product row is renderable in a strip only if it has the fields those
-// cards actually read. The DB doesn't enforce NOT NULL on them.
-function isRenderableProduct<T extends { name: string | null; price: number | null; image_url: string | null; inventory: number | null }>(
+// cards actually read. The DB doesn't enforce NOT NULL on them. Exported
+// for getViewedTogether below, which needs the same narrowing to satisfy
+// BestsellerItem so it can reuse <BestsellersStrip> as-is.
+export function isRenderableProduct<T extends { name: string | null; price: number | null; image_url: string | null; inventory: number | null }>(
   p: T
 ): p is T & { name: string; price: number; image_url: string; inventory: number } {
   return p.name != null && p.price != null && p.image_url != null && p.inventory != null;
