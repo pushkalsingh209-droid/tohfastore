@@ -12,6 +12,32 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Spend & Save banner + New Arrival badge + shareable wishlist — 2026-09-05 IST
+- Owner: three more marketing ideas from the recommendation list, built together.
+- **Site-wide Spend & Save banner** — new `SpendOfferBanner`, rendered in `app/layout.tsx` above the sticky
+  header (every page, not sticky itself). Until now the offer only surfaced at the checkout Review step; this
+  reuses the exact same `useSpendTierOffer`/`GET /api/offer` call. Shows label + entry tier + ceiling tier +
+  a days-left note only inside a 14-day window. Dismissible per browser tab.
+- **New Arrival badge** — `ProductCard` shows a bottom-left "New" badge for products created within 14 days.
+  Needed `created_at` added back to `getCatalogPage`/`getSpotlightProducts`'s narrowed SELECT (dropped as a
+  cost optimisation previously — this is the first genuine need for it since) and to the new
+  `getProductsByIds`. Caught and fixed two genuine new `react-hooks/purity` errors (`Date.now()` called
+  directly in render) before calling this done — resolved via a mount effect instead, same tradeoff this
+  file's own `showFlipHint`/`isDesktop` already make.
+- **Shareable wishlist** — wishlist is localStorage-only, so "sharing" it means encoding ids in a URL. New
+  "Share Wishlist"/"Copy Link" buttons on `/wishlist` (same native-share-sheet pattern as `ShareButtons.tsx`)
+  build a `/wishlist/shared?ids=...` link. New `/wishlist/shared` page re-fetches *live* product data for
+  those ids via new `getProductsByIds(ids)` rather than trusting anything client-supplied; reuses
+  `<ProductCard>` verbatim (same pattern as `/spotlight`).
+- Verified: `tsc --noEmit` clean; `npm test` 216 passed (1 pre-existing skip, unchanged); `eslint` 0 new errors
+  (caught the two purity errors above before shipping); `next build` exit 0, both routes registered.
+  **Live-verified with a real headless browser** (Edge `--headless=new --dump-dom` against the dev server
+  reading production data, not just curl — both features render via post-mount client effects a plain HTTP
+  fetch wouldn't show): confirmed the live production offer (real tiers) renders in the homepage's actual DOM;
+  confirmed `/wishlist/shared?ids=167,9,65` renders all three real products with the "New" badge appearing
+  exactly once, on the one genuinely created within 14 days. Not a payment-path or schema change.
+- See `docs/HANDBOOK.html` Change log 2026-09-05.
+
 ### Batch: FAQ page + FAQPage JSON-LD — 2026-09-05 IST
 - Owner: one more marketing idea from the recommendation list — SEO rich snippets.
 - New `/faq` (`app/faq/page.tsx`) — a visible accordion of 12 Q&As, each answer a fact already true elsewhere
