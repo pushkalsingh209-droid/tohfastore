@@ -12,6 +12,29 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Two-sided referral reward — 2026-09-05 IST — ⚠️ webhook
+- Owner: next marketing idea after the Merchant feed — today only the referred friend benefits from a
+  referral code; reward the referrer too.
+- New `mintReferralReward(supabase, referrerPhone, options?)` in `app/utils/referralCoupon.ts`, called from
+  `/api/razorpay-webhook` block 1a2 right after the existing coupon `used_count` bump, the moment a friend's
+  order using someone's referral code is captured — mints the original referrer a one-time "THANKS..." coupon
+  and WhatsApps them the code. Uses the same admin-editable discount %/validity settings as the share code.
+- Design constraint: `coupons.referral_phone` carries a UNIQUE partial index (0051) — only one row per phone,
+  already claimed by the referrer's own share code — so the reward deliberately leaves `referral_phone` null
+  (a plain coupon, `THANKS...` prefix, `max_uses`=1) rather than reusing that column, so a referrer bringing
+  multiple friends can earn multiple rewards instead of hitting the unique constraint.
+- Isolated in its own try/catch, reuses the coupon row already fetched for the `used_count` bump (no second
+  query) — a failure here can't affect order recording, stock, pricing, or that bump. WhatsApp only, not email
+  (no email address on hand for the referrer in this webhook). No cap on rewards per referrer — each one still
+  requires a friend's genuine real payment, so there's no free-money loop.
+- Verified: `tsc --noEmit` clean; `npm test` 216 passed (1 pre-existing skip, +2 new); `eslint` 0 errors; `next
+  build` exit 0. **Live-verified against production** with a throwaway scratch script (not committed): gave a
+  test phone an existing share coupon, then minted two separate reward coupons for it — both succeeded with
+  `referral_phone` correctly null and distinct codes. Cleaned up everything created. ⚠️ webhook — a real
+  end-to-end referral hasn't been exercised (Razorpay is live-only, no test keys) — owner to confirm on the
+  next real referral redemption. Not a change to pricing, stock, or order idempotency.
+- See `docs/HANDBOOK.html` Change log 2026-09-05.
+
 ### Batch: Google Merchant Center product feed — 2026-09-05 IST
 - Owner: last item on the marketing-feature recommendation list — free Google Shopping listings.
 - New `GET /api/google-merchant-feed` — an RSS 2.0 + Google's `g:` namespace feed, one `<item>` per non-hidden
