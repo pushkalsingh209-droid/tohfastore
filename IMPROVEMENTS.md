@@ -12,6 +12,29 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: FAQ page + FAQPage JSON-LD — 2026-09-05 IST
+- Owner: one more marketing idea from the recommendation list — SEO rich snippets.
+- New `/faq` (`app/faq/page.tsx`) — a visible accordion of 12 Q&As, each answer a fact already true elsewhere
+  in the codebase (refund/cancellation policy, checkout WhatsApp-OTP gate, GST invoice, India-only delivery —
+  confirmed by checking `DeliveryStep`'s state dropdown, not assumed — the referral program, corporate
+  gifting, the catalogue PDF). Nothing invented. A matching `schema.org FAQPage` script is built from the same
+  `FAQS` array that renders the accordion, so the two can't drift apart (Google requires structured data to
+  match visible content).
+- Honest caveat, documented not oversold: Google curtailed FAQPage rich results in search back in Aug 2023
+  (mostly limited to government/health sites since) — this may not show as a visible rich snippet today, but
+  the structured data still helps general content understanding (including AI answer engines) and costs
+  nothing to have either way.
+- Added to `sitemap.ts`. Linked from the footer of all 12 pages carrying the site's existing (pre-existing,
+  duplicated-per-page, not refactored here) compliance-link footer — a mechanical one-line addition to each,
+  matching how every other policy page is already linked everywhere.
+- Verified: `tsc --noEmit` clean; `npm test` 216 passed (1 pre-existing skip, unchanged); `eslint` 0 new errors
+  (1 pre-existing unrelated warning in `success/page.tsx`); `next build` exit 0, `/faq` static. **Live-verified**
+  against a dev server: confirmed the accordion renders all 12 questions, parsed the page's `FAQPage` JSON-LD
+  (distinguishing it from the layout's `Organization`/`WebSite` scripts by `@type`) and confirmed exactly 12
+  matching Q&As, confirmed the new footer link renders on the homepage and `/refunds`, and confirmed
+  `/sitemap.xml` lists `/faq`. Not a payment-path or schema change.
+- See `docs/HANDBOOK.html` Change log 2026-09-05.
+
 ### Batch: Cart cross-sell strip + Top Referrers leaderboard — 2026-09-05 IST
 - Owner: two more marketing ideas from the recommendation list, picked together.
 - **Cart cross-sell.** New `GET /api/cart-suggestions?ids=...` — a thin filter over the already-cached

@@ -199,6 +199,7 @@ export default function CorporateGiftingPage() {
             <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
             <a href="/refunds" className="hover:text-amber-400 transition">Refund &amp; Cancellation</a>
             <a href="/contact" className="hover:text-amber-400 transition">Contact Us</a>
+            <a href="/faq" className="hover:text-amber-400 transition">FAQ</a>
           </div>
         </div>
       </footer>
