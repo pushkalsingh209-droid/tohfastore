@@ -556,6 +556,64 @@ export const getFeaturedSpotlightCampaign = unstable_cache(
   { tags: ["site-settings"], revalidate: 86400 }
 );
 
+export interface TestimonialItem {
+  id: number;
+  customerName: string;
+  rating: number;
+  reviewText: string;
+  productId: number;
+  productName: string;
+}
+
+// A homepage "What customers are saying" strip. Every review here already
+// passed the admin's Reviews-tab moderation (`approved = true`) -- the
+// `rating >= 4` filter on top of that is pure marketing curation (a
+// highlight reel, not a second trust gate), same spirit as the Bestsellers
+// strip only showing genuine top sellers rather than every product.
+// `review_text` required (not just a bare star rating, which the submit
+// form allows -- ReviewForm.tsx's textarea is optional) since a testimonial
+// wall's whole point is an actual quote, not just stars. Joins the product
+// name via the reviews -> products FK (same embed PostgREST uses for the
+// admin Reviews tab's `select("*, products(name)")`) so the card can say
+// "on <Product>" and link back to it.
+export const getTestimonials = unstable_cache(
+  async (limit = 12): Promise<TestimonialItem[]> => {
+    try {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("id, customer_name, rating, review_text, product_id, products(name)")
+        .eq("approved", true)
+        .gte("rating", 4)
+        .not("review_text", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (error || !data) return [];
+
+      return (data as unknown as Array<{
+        id: number;
+        customer_name: string;
+        rating: number;
+        review_text: string | null;
+        product_id: number;
+        products?: { name?: string | null } | null;
+      }>)
+        .filter((r) => r.product_id != null && r.products?.name && r.review_text)
+        .map((r) => ({
+          id: r.id,
+          customerName: r.customer_name,
+          rating: r.rating,
+          reviewText: r.review_text as string,
+          productId: r.product_id,
+          productName: r.products!.name as string,
+        }));
+    } catch {
+      return [];
+    }
+  },
+  ["testimonials"],
+  { tags: ["reviews"], revalidate: 86400 }
+);
+
 // Whole-catalog product count for the hero's trust strip -- doesn't need to
 // be second-accurate, just roughly right, so it's cached longer than the
 // listing queries.

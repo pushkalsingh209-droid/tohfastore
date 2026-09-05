@@ -12,6 +12,24 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Testimonials strip ("What Customers Are Saying") — 2026-09-05 IST
+- Owner: next marketing-content feature after the referral coupon — went with the UGC/testimonial wall (the
+  cheaper of the two remaining options on the recommendation list).
+- New homepage-only rail, same horizontal-scroll card pattern as `BestsellersStrip`, right below it. Zero new
+  schema — reuses the existing `reviews` table and the admin's existing Reviews-tab moderation queue.
+- New `getTestimonials(limit)` in `app/utils/storeQueries.ts` (cached, tag `reviews`): admin-`approved`
+  reviews, `rating >= 4`, and non-null `review_text` — a bare star rating isn't a testimonial, so those are
+  excluded rather than padded with filler copy. Joins the product name via the same
+  `reviews` → `products` embed the admin Reviews tab already uses.
+- New `app/components/TestimonialsStrip.tsx`; wired into `StorefrontPage.tsx` the same way `BestsellersStrip`
+  is — homepage-only, renders nothing when there are no qualifying reviews yet.
+- Verified: `tsc --noEmit` clean; `npm test` 214 passed (1 pre-existing skip, unchanged — no new pure logic to
+  unit test); `eslint` 0 errors on every changed file; `next build` exit 0. **Live-verified**: confirmed the
+  exact query returns real data against production (one genuine 5-star written review), then ran the dev
+  server against production data and fetched the rendered homepage HTML — confirmed the heading, the actual
+  quote, and the product name all appear. Not a payment-path or schema change.
+- See `docs/HANDBOOK.html` Change log 2026-09-05.
+
 ### Batch: Referral coupon discount %/validity admin-configurable — 2026-09-05 IST
 - Owner: link the referral coupon's value (10% / 90 days) to the admin panel so it can be changed without a
   code edit.
