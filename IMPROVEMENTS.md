@@ -35,7 +35,7 @@ care, land behind tests, never "blind".
   rather than add a near-duplicate dedicated WhatsApp button to an already-dense product-page CTA stack,
   extended its message text to include the price when there is one, for both the native share sheet's
   `text` field and the `wa.me` fallback.
-- Verified: `tsc --noEmit` clean; `npm test` 214 passed (1 pre-existing skip, +6 new); `eslint` 0 errors on
+- Verified: `tsc --noEmit` clean; `npm test` 208 passed (1 pre-existing skip, +6 new); `eslint` 0 errors on
   every changed file; `next build` exit 0. **Live-verified against production** with a throwaway scratch
   script (not committed): inserted a test referral coupon, confirmed idempotent lookup, confirmed the
   partial unique index correctly rejects a second insert for the same phone (`23505`), then deleted the
