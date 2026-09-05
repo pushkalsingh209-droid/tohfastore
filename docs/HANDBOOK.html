@@ -1894,6 +1894,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/leads</code></td><td><span class="tag t-post">post</span></td><td>Lead capture. <code>source &isin; {catalogue_download, corporate_gifting, checkout_started}</code>. Auto WhatsApp follow-up (not for <code>checkout_started</code>). Rate-limited <code>lead-submit</code> 10/60min.</td></tr>
 <tr><td><code>/api/contact</code></td><td><span class="tag t-post">post</span></td><td>Contact form &rarr; Resend email. Honeypot field <code>company</code>.</td></tr>
 <tr><td><code>/api/catalogue</code></td><td><span class="tag t-get">get</span></td><td>Public catalogue PDF (cached base64, 1h). <code>maxDuration = 60</code>.</td></tr>
+<tr><td><code>/api/google-merchant-feed</code></td><td><span class="tag t-get">get</span></td><td>An RSS 2.0 + Google's <code>g:</code> namespace product feed for Google Merchant Center &mdash; every non-hidden product with a name/price/image, id/title/description/link/image_link/availability(live inventory)/price(the real GST-inclusive amount)/condition=new/brand=TOHFA/identifier_exists=no (handmade goods, no GTIN/MPN)/product_type=category. Same brand/price/availability facts each product page's own <code>Product</code> JSON-LD already states &mdash; re-shaped, not re-sourced. <code>Cache-Control: public, max-age=1800, s-maxage=3600, stale-while-revalidate=86400</code> (Merchant Center re-fetches on its own schedule, not per-visitor traffic). Not linked from <code>sitemap.ts</code> or exempted in <code>robots.ts</code>'s <code>/api/</code> disallow &mdash; a feed URL you submit directly in Merchant Center, not a page meant for organic crawl/discovery.</td></tr>
 <tr><td><code>/api/categories</code></td><td><span class="tag t-get">get</span></td><td><code>{name, show_on_home, discount_percent}[]</code> for the header menu / contexts.</td></tr>
 <tr><td><code>/api/labels</code></td><td><span class="tag t-get">get</span></td><td>Distinct in-use label names + per-label photo-filter map.</td></tr>
 <tr><td><code>/api/settings</code></td><td><span class="tag t-get">get</span></td><td>Public-safe subset of <code>site_settings</code> (photo filter, units, WA number, Ganesha popup, chat labels).</td></tr>
@@ -2306,6 +2307,10 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       <code>Product</code> JSON-LD (&sect;overview &mdash; <code>offers.price</code> / <code>offers.availability</code>)
       &mdash; no separate feed needed. The Pinterest profile is also listed in <code>organizationJsonLd.sameAs</code>
       alongside Instagram/Facebook.</li>
+  <li><strong>Google Merchant Center feed</strong> &mdash; <code>GET /api/google-merchant-feed</code> (&sect;11), an
+      RSS 2.0 + <code>g:</code> product feed of every non-hidden product, for free Google Shopping listings. Same
+      brand/price/availability facts as the product-page JSON-LD, just in the XML shape Merchant Center ingests.
+      The owner still has to submit the feed URL in Merchant Center once (not done by this codebase).</li>
   <li><strong>Per-category copy</strong> &mdash; <code>app/utils/categoryContent.ts</code> hand-written H1 / tagline /
       intro / meta for the categories that have it (Pocket Temples, Pan Stands, Board Games, Polyresin, UV Resin
       Earrings, Misc), keyed to the exact <code>categories.name</code>. Avoids duplicate-content issues.</li>
@@ -2814,6 +2819,47 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-05<br>&mdash;</code></td>
+  <td><strong>Google Merchant Center product feed</strong><br>(owner: last item on the marketing-feature list &mdash; free Google Shopping listings)</td>
+  <td>
+    New <strong><code>GET /api/google-merchant-feed</code></strong> &mdash; an RSS&nbsp;2.0 feed with Google's
+    <code>g:</code> namespace, one <code>&lt;item&gt;</code> per non-hidden product with a
+    name/price/image (a row missing any of those is skipped rather than emitted malformed). Per item:
+    <code>g:id</code> (the product id), CDATA-wrapped <code>title</code>/<code>description</code>,
+    <code>link</code> (canonical <code>productHref</code> URL), <code>g:image_link</code>,
+    <code>g:availability</code> (from live <code>inventory</code>, same in-stock/out-of-stock logic as the
+    product page's own JSON-LD), <code>g:price</code> (the real GST-inclusive amount actually charged, not a
+    separately-computed figure), <code>g:condition</code> = <code>new</code>, <code>g:brand</code> =
+    <code>TOHFA</code> (the same brand name every product page's JSON-LD already declares),
+    <code>g:identifier_exists</code> = <code>no</code> (these are handmade goods with no manufacturer
+    GTIN/MPN &mdash; the correct field for that case per Google's spec, not an omission), and
+    <code>g:product_type</code> = the product's own category when it has one.
+    <br><br>
+    <strong>Deliberately not a second source of truth</strong> &mdash; every fact above is the same one each
+    product page's own <code>schema.org Product</code> JSON-LD already states (&sect;overview); this route
+    just re-shapes it into the XML Merchant Center's ingestion wants. <code>Cache-Control: public,
+    max-age=1800, s-maxage=3600, stale-while-revalidate=86400</code> &mdash; Merchant Center re-fetches on its
+    own schedule (typically daily), so this only needs to be fresh within roughly an hour, not per-request
+    live, same cost-control lever <code>/api/instagram-post-image</code> already uses for a public GET.
+    <br><br>
+    Not added to <code>sitemap.ts</code> or exempted from <code>robots.ts</code>'s <code>/api/</code>
+    disallow &mdash; a feed is a URL submitted directly in Merchant Center, not a page meant for organic
+    crawl/discovery (mirrors why <code>/handbook</code> is excluded from both for the opposite reason).
+    <strong>Deliberately left out:</strong> <code>g:google_product_category</code> (Google's own taxonomy) &mdash;
+    guessing a mapping without being sure it's right would be worse than omitting an optional field.
+  </td>
+  <td><em>new:</em> <code>app/api/google-merchant-feed/route.ts</code><br>
+    <em>edited:</em> <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 214 passed (1 pre-existing skip, unchanged
+    &mdash; a read-only feed route with no new pure logic) &middot; <code>eslint</code> 0 errors &middot;
+    <code>next build</code> exit 0, route registered. <strong>Live-verified</strong> against a dev server
+    reading production data: fetched the feed, confirmed the exact <code>Content-Type</code>/<code>Cache-Control</code>
+    headers, parsed the response as XML (well-formed), counted <strong>158 items</strong> matching the live
+    non-hidden product count, and confirmed the in-stock/out-of-stock split (123/35) sums to the item count
+    and matches real inventory. Not a payment-path or schema change. <strong>Owner still needs to submit this
+    feed URL in Google Merchant Center once</strong> &mdash; nothing here does that automatically.</td>
+</tr>
 <tr>
   <td><code>2026-09-05<br>&mdash;</code></td>
   <td><strong>Testimonials strip &mdash; &ldquo;What Customers Are Saying&rdquo;</strong><br>(owner: next marketing-content feature after the referral coupon &mdash; a UGC/testimonial wall, the cheaper of the two remaining options on the recommendation list)</td>
