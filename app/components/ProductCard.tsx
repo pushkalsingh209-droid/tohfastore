@@ -22,6 +22,11 @@ import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
 import type { StoreProduct, CartItem } from "@/app/types/product";
 
 const DOUBLE_TAP_WINDOW_MS = 350;
+// How recently a product must have been added to still show the "New"
+// badge. `created_at` is only selected by the two queries that feed cards
+// (getCatalogPage, getSpotlightProducts) -- absent elsewhere just means the
+// badge never shows there, not an error.
+const NEW_ARRIVAL_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 const FLIP_HINT_SEEN_KEY = "tohfa_card_flip_seen";
 const CARD_FLIP_DURATION_MS = 1200; // matches .card-flip-inner's transition duration in globals.css
 
@@ -77,6 +82,16 @@ export default function ProductCard({
       localStorage.setItem(FLIP_HINT_SEEN_KEY, "1");
     } catch {}
   }
+
+  // Date.now() can't run during render (react-hooks/purity) -- resolved
+  // once on mount instead, same hydrate-on-mount tradeoff as showFlipHint /
+  // isDesktop above (a decorative badge popping in a frame late is fine).
+  const [isNewArrival, setIsNewArrival] = useState(false);
+  useEffect(() => {
+    if (product.created_at && Date.now() - new Date(product.created_at).getTime() < NEW_ARRIVAL_WINDOW_MS) {
+      setIsNewArrival(true);
+    }
+  }, [product.created_at]);
 
   const stock = typeof liveInventory === "number" ? liveInventory : Number(product.inventory) || 0;
   const cartQty = cart?.find((item: CartItem) => item.id === product.id)?.quantity || 0;
@@ -163,6 +178,14 @@ export default function ProductCard({
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-7.5-4.6-10-9.1C.3 8.4 2 5 5.5 5c2 0 3.5 1.2 4.5 2.7C11 6.2 12.5 5 14.5 5 18 5 19.7 8.4 22 11.9 19.5 16.4 12 21 12 21z" />
           </svg>
         </button>
+
+        {/* Opposite corner from the label badge (top-left) and the
+            wishlist heart (top-right) so neither ever collides with this. */}
+        {isNewArrival && (
+          <span className="absolute bottom-2 left-2 z-10 bg-emerald-600/90 text-white text-[9px] uppercase tracking-wider font-bold px-2 py-1 rounded shadow-sm pointer-events-none">
+            New
+          </span>
+        )}
 
         {!isDesktop && active && (
           <span className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-stone-900/80 text-white text-[10px] uppercase tracking-wider px-3 py-1 rounded-full pointer-events-none">

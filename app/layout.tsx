@@ -11,6 +11,7 @@ import { BootstrapProvider } from "@/app/context/BootstrapContext";
 import { getBootstrapData } from "@/app/utils/storeQueries";
 import LazyCartDrawer from "@/app/components/LazyCartDrawer";
 import HeaderNavbar from "@/app/components/headerNavbar";
+import SpendOfferBanner from "@/app/components/SpendOfferBanner";
 import CatalogLoadingOverlay from "@/app/components/CatalogLoadingOverlay";
 import FloatingContactButtons from "@/app/components/FloatingContactButtons";
 import DeferredWidgets from "@/app/components/DeferredWidgets";
@@ -144,6 +145,13 @@ export default async function RootLayout({
           >
             Skip to main content
           </a>
+
+          {/* Site-wide "Spend & Save" awareness -- until now the offer only
+              showed up once a shopper reached the checkout Review step, so
+              anyone just browsing had no idea a sale was running. Not
+              sticky itself, so it scrolls away and the header (which IS
+              sticky) takes over at the top. */}
+          <SpendOfferBanner />
 
           {/* Universal Premium Branding Banner & Navigation */}
           <HeaderNavbar />

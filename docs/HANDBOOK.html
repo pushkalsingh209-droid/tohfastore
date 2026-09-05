@@ -1837,7 +1837,8 @@ resets and verify steady-state usage stays under cap.</p>
 <tr><td><code>/catalogue</code></td><td>app/catalogue/page.tsx</td><td>client</td><td>Lead-capture form &rarr; <code>POST /api/leads {source:"catalogue_download"}</code> &rarr; opens <code>/api/catalogue</code> PDF.</td></tr>
 <tr><td><code>/success</code></td><td>app/success/page.tsx</td><td>client</td><td>Reads <code>sessionStorage.tohfa_last_order</code>; clears cart; fires deduped GA4/Meta purchase events; printable invoice. If sessionStorage is gone but <code>?order_id=</code> is present, offers a phone-gated re-fetch via <code>/api/orders/receipt</code> (no analytics on that path).</td></tr>
 <tr><td><code>/track</code></td><td>app/track/page.tsx</td><td>client</td><td>Reference (order id or AWB) + phone &rarr; <code>POST /api/orders/track</code>.</td></tr>
-<tr><td><code>/wishlist</code></td><td>app/wishlist/page.tsx</td><td>client</td><td>localStorage-backed wishlist grid.</td></tr>
+<tr><td><code>/wishlist</code></td><td>app/wishlist/page.tsx</td><td>client</td><td>localStorage-backed wishlist grid. &ldquo;Share Wishlist&rdquo;/&ldquo;Copy Link&rdquo; build a <code>/wishlist/shared?ids=&hellip;</code> link.</td></tr>
+<tr><td><code>/wishlist/shared</code></td><td>app/wishlist/shared/page.tsx</td><td><code>force-dynamic</code> over <code>unstable_cache</code>'d reads, same reasoning as <code>/spotlight</code></td><td>A read-only view of someone else's wishlist -- re-fetches live product data for the <code>?ids=</code> in the URL via <code>getProductsByIds</code> rather than trusting anything client-supplied; reuses <code>&lt;ProductCard&gt;</code> so Add to Cart / add to the viewer's own wishlist work right from here. <code>noindex</code> (one-off shared links, not meant for search discovery). Empty/all-hidden id list &rarr; a &ldquo;this link isn't showing anything&rdquo; panel, still 200.</td></tr>
 <tr><td><code>/spotlight</code></td><td>app/spotlight/page.tsx (added 2026-09-02)</td><td><code>force-dynamic</code> over <code>unstable_cache</code>'d reads, same reasoning as <code>/product/[id]</code></td><td>The admin-curated, time-boxed featured-products marketing page (see &sect;5 <code>products.is_spotlight</code> / 0050 and <code>app/utils/featuredSpotlight.ts</code>). No active campaign, or an active one with zero eligible (unhidden) products &rarr; a &ldquo;check back soon&rdquo; panel, still <strong>200</strong> (never a redirect, so a shared link keeps working between campaigns). Otherwise: title/description, a ticking <code>&lt;SpotlightCountdown&gt;</code> to <code>endsAt</code>, and a grid of real <code>&lt;ProductCard&gt;</code>s (Add to Cart / wishlist work right from this page). In <code>sitemap.ts</code> (unlike <code>/handbook</code>, this is meant to be found).</td></tr>
 <tr><td><code>/about</code>, <code>/contact</code>, <code>/corporate</code>, <code>/privacy</code>, <code>/terms</code>, <code>/refunds</code>, <code>/faq</code></td><td>app/&lt;name&gt;/page.tsx</td><td>static</td><td><code>/contact</code> + <code>/corporate</code> have forms &rarr; <code>/api/contact</code> / <code>/api/leads</code>. <code>/faq</code> also emits <code>FAQPage</code> JSON-LD (&sect;17).</td></tr>
 <tr><td><code>/admin</code></td><td>app/admin/page.tsx (client SPA shell, 231 lines) + all 7 tab bodies as lazy components in <code>app/admin/tabs/</code> (#16 done)</td><td>client SPA behind proxy auth</td><td>Tabs via <code>?tab=</code>. See &sect;14.</td></tr>
@@ -1896,7 +1897,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/checkout/release</code></td><td><span class="tag t-post">post</span></td><td>Public, best-effort. <code>{checkoutToken}</code> (v4 UUID) &rarr; marks that token&rsquo;s <code>held</code> rows <code>released</code>. Always 200 (incl. 0 rows / bad token). Fired by <code>CheckoutSheet</code> on Razorpay <code>ondismiss</code> / <code>payment.failed</code> so an abandoned checkout frees stock in seconds instead of at TTL. Correctness never depends on it &mdash; the 15-min TTL is the backstop.</td></tr>
 <tr><td><code>/api/coupons/validate</code></td><td><span class="tag t-post">post</span></td><td>UI-preview discount only (not authoritative) &mdash; runs regardless of whether the Spend &amp; Save offer is live (the shopper can compare a coupon against it). Rate-limited <code>coupon-validate</code> 20/10min.</td></tr>
 <tr><td><code>/api/coupons/public</code></td><td><span class="tag t-get">get</span></td><td>Live public coupons (<code>getPublicCoupons</code> + <code>filterLivePublicCoupons</code>, display-safe fields only) for the checkout Review step&rsquo;s tap-to-apply list. <code>Cache-Control</code> 60s / s-maxage 300. Same set the on-site <code>PromoBanner</code> shows.</td></tr>
-<tr><td><code>/api/offer</code></td><td><span class="tag t-get">get</span></td><td>Preview of the live <strong>Spend &amp; Save</strong> tier offer for the checkout Review step (<code>useSpendTierOffer</code>). <code>{active:false}</code> unless running; otherwise <code>{active:true, offer:{label, tiers, startsAt, endsAt}}</code>. <strong>Not authoritative</strong> &mdash; <code>/api/razorpay</code> re-reads the setting and recomputes at order creation. <code>Cache-Control</code> 60s / s-maxage 300.</td></tr>
+<tr><td><code>/api/offer</code></td><td><span class="tag t-get">get</span></td><td>Preview of the live <strong>Spend &amp; Save</strong> tier offer, consumed by two callers sharing one hook (<code>useSpendTierOffer</code>): the checkout Review step, and site-wide <code>SpendOfferBanner</code> (&sect;19) above the header on every page. <code>{active:false}</code> unless running; otherwise <code>{active:true, offer:{label, tiers, startsAt, endsAt}}</code>. <strong>Not authoritative</strong> &mdash; <code>/api/razorpay</code> re-reads the setting and recomputes at order creation. <code>Cache-Control</code> 60s / s-maxage 300.</td></tr>
 <tr><td><code>/api/whatsapp-otp/send</code></td><td><span class="tag t-post">post</span></td><td><code>sendOtp(phone, ip)</code>. All abuse limits live in the util; also prunes aged verification rows.</td></tr>
 <tr><td><code>/api/whatsapp-otp/verify</code></td><td><span class="tag t-post">post</span></td><td><code>verifyOtp(phone, code)</code> &rarr; <code>{ok, token}</code>.</td></tr>
 <tr><td><code>/api/check-whatsapp-number</code></td><td><span class="tag t-post">post</span></td><td>Green API <code>checkWhatsapp</code> &mdash; is the number registered? <code>{exists: true|false|null}</code> (null = check unavailable &rarr; client fails open).</td></tr>
@@ -2275,7 +2276,11 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       + <code>getFeaturedSpotlightCampaign</code> (its campaign window, tag <code>site-settings</code>),
       <code>getTestimonials</code> (homepage-only &ldquo;What Customers Are Saying&rdquo; strip &mdash; approved,
       4-5&nbsp;star, <em>written</em> reviews only, joined to their product's name via the same
-      <code>reviews</code>&rarr;<code>products</code> embed the admin Reviews tab uses; tag <code>reviews</code>).
+      <code>reviews</code>&rarr;<code>products</code> embed the admin Reviews tab uses; tag <code>reviews</code>),
+      <code>getProductsByIds(ids)</code> (backs <code>/wishlist/shared</code> -- live data for an arbitrary id list,
+      same card column list as <code>getCatalogPage</code>, ids de-duped/sorted/capped at 60 before the cached
+      call so the cache key is stable regardless of URL order and a malformed <code>?ids=</code> can't turn into
+      an unbounded query; excludes hidden products).
       <strong>Storefront bootstrap (#11):</strong> <code>getPublicSettingsMap</code> (tag <code>site-settings</code>)
       + <code>getCategoryDiscountMap</code> + <code>getCategoryWhatsappNumberMap</code> (both tag <code>categories</code>,
       the latter new in 0049), composed with the existing
@@ -2397,11 +2402,11 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>StorefrontPage</code> &mdash; shared home/category shell (RSC)</li>
 <li><code>CatalogSection</code> &mdash; grid + progressive reveal + batch live-stock fetch</li>
 <li><code>CatalogFilters</code>, <code>CatalogPagination</code></li>
-<li><code>ProductCard</code>, <code>ProductGallery</code>, <code>PriceDisplay</code>, <code>TempleCardFrame</code></li>
+<li><code>ProductCard</code> (shows a &ldquo;New&rdquo; badge, bottom-left of the image, for a product created within the last 14 days -- <code>created_at</code> is only selected by the two queries that feed cards, <code>getCatalogPage</code>/<code>getSpotlightProducts</code>/<code>getProductsByIds</code>; resolved on mount, not during render, since <code>Date.now()</code> can't run in a render body), <code>ProductGallery</code>, <code>PriceDisplay</code>, <code>TempleCardFrame</code></li>
 <li><code>HeroProductRotator</code>, <code>CategorySlider</code>, <code>BestsellersStrip</code></li>
 <li><code>RecentlyViewedStrip</code>, <code>RecentViewersNote(Live)</code>, <code>RecordProductView</code></li>
 <li><code>LiveStock</code>, <code>StockStatusBadge</code>, <code>NotifyWhenInStockButton</code></li>
-<li><code>AddToCartButton</code>, <code>StickyAddToCartBar</code>, <code>WishlistButton</code>, <code>WhatsappEnquiryLink</code></li>
+<li><code>AddToCartButton</code>, <code>StickyAddToCartBar</code>, <code>WishlistButton</code>, <code>WhatsappEnquiryLink</code> -- the <code>/wishlist</code> page itself also has &ldquo;Share Wishlist&rdquo;/&ldquo;Copy Link&rdquo; buttons (native share sheet + <code>wa.me</code> fallback, same pattern as <code>ShareButtons</code>) building a <code>/wishlist/shared?ids=&hellip;</code> link, since the wishlist itself is localStorage-only with nothing server-side to share a real link to otherwise</li>
 <li><code>ShareButtons</code> (native share sheet, falls back to a <code>wa.me</code> link; pre-filled text includes the price when there is one), <code>TrustBadges</code>, <code>ReviewForm</code>, <code>BackToCollectionsLink</code></li>
 <li><code>InstagramPostGenerator</code> &mdash; the public &ldquo;Create Insta Post&rdquo; panel next to <code>ShareButtons</code>: a generated image (<code>/api/instagram-post-image</code>) + an editable, client-computed caption (<code>instagramCaption.ts</code>), copy/download actions, no login</li>
 <li><code>InstagramReelGenerator</code> &mdash; the public &ldquo;Create Insta Reel&rdquo; panel next to it: a 6s silent vertical video, rendered entirely client-side (<code>&lt;canvas&gt;</code> + <code>MediaRecorder</code>) as a Ken Burns push-in on the <em>same</em> cached <code>/api/instagram-post-image</code> PNG the photo tool uses &mdash; no new route, no server-side video rendering</li>
@@ -2409,6 +2414,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 </ul>
 <h4>Marketing / admin</h4>
 <ul class="tight">
+<li><code>SpendOfferBanner</code> &mdash; site-wide (rendered in <code>app/layout.tsx</code>, above the sticky header) awareness for the storewide &ldquo;Spend &amp; Save&rdquo; offer, which previously only surfaced once a shopper reached the checkout Review step. Reuses the exact same <code>useSpendTierOffer</code> hook/<code>GET /api/offer</code> the Review step already calls -- a preview only, <code>/api/razorpay</code> still prices the order. Dismissible per browser tab (<code>sessionStorage</code>); renders nothing while the offer isn't active or before the dismiss-check effect resolves.</li>
 <li><code>WelcomeGaneshaPopup</code> &mdash; audio (<code>/public/audio/welcome.mp3</code>) + configurable auto-show</li>
 <li><code>SpotlightCountdown</code> &mdash; the <code>/spotlight</code> page's ticking &ldquo;ends in&hellip;&rdquo; banner (0050); client-only, computed inside <code>useEffect</code> to dodge a hydration mismatch, <code>aria-live="off"</code> on the digits</li>
 <li><code>AbandonedCartNudge</code>, <code>CookieConsent</code>, <code>InstallPrompt</code></li>
@@ -2851,6 +2857,62 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-05<br>&mdash;</code></td>
+  <td><strong>Spend &amp; Save banner + New Arrival badge + shareable wishlist</strong><br>(owner: three more marketing ideas from the recommendation list, built together)</td>
+  <td>
+    <strong>Site-wide Spend &amp; Save banner.</strong> New <code>SpendOfferBanner</code>, rendered in
+    <code>app/layout.tsx</code> above the sticky header (so it's on every page, not sticky itself, scrolls
+    away under the header). Until now the storewide offer only surfaced once a shopper reached the checkout
+    Review step; this reuses that exact same <code>useSpendTierOffer</code> hook/<code>GET /api/offer</code>
+    call, a preview only (<code>/api/razorpay</code> still prices the order). Shows the label, the lowest
+    tier's entry point, the top tier's ceiling if different, and a days-left note only inside a 14-day window
+    (matches <code>PromoBanner</code>'s own urgency-only-when-urgent rule). Dismissible per browser tab
+    (<code>sessionStorage</code>).
+    <br><br>
+    <strong>New Arrival badge.</strong> <code>ProductCard</code> now shows a bottom-left &ldquo;New&rdquo;
+    badge (opposite corner from the label badge and the wishlist heart) for a product created within the last
+    14 days. Needed <code>created_at</code> added back to <code>getCatalogPage</code>'s and
+    <code>getSpotlightProducts</code>'s narrowed <code>SELECT</code> (both had deliberately dropped it as a
+    cost optimisation, per the 2026-08-30 Active-CPU pass -- this is the first genuine need for it since,
+    not a regression of that work) and to the new <code>getProductsByIds</code> (below) and
+    <code>StoreProduct</code>. Both this and the banner's day-countdown initially called <code>Date.now()</code>
+    directly in a component's render body, which <code>react-hooks/purity</code> correctly flagged as a real
+    new lint <strong>error</strong> (not one of this repo's already-downgraded-to-warn classes) &mdash; fixed
+    by resolving both once in a mount/dependency effect instead, the same hydrate-on-mount tradeoff
+    <code>ProductCard</code>'s own <code>showFlipHint</code>/<code>isDesktop</code> already make.
+    <br><br>
+    <strong>Shareable wishlist.</strong> Wishlist is localStorage-only (no account, no server sync), so
+    &ldquo;sharing&rdquo; it can only mean encoding product ids in a URL. New &ldquo;Share Wishlist&rdquo;/
+    &ldquo;Copy Link&rdquo; buttons on <code>/wishlist</code> (same native-share-sheet-with-<code>wa.me</code>-
+    fallback pattern as <code>ShareButtons.tsx</code>) build a <code>/wishlist/shared?ids=&hellip;</code> link.
+    New <strong><code>/wishlist/shared</code></strong> page (<code>force-dynamic</code>, same reasoning as
+    <code>/spotlight</code>) re-fetches <em>live</em> product data for those ids via new
+    <code>getProductsByIds(ids)</code> in <code>storeQueries.ts</code>, rather than trusting anything else
+    client-supplied -- ids de-duped, sorted (stable cache key regardless of URL order), and capped at 60;
+    hidden products excluded. Reuses <code>&lt;ProductCard&gt;</code> verbatim (same pattern as
+    <code>/spotlight</code>) so Add to Cart / add-to-the-viewer's-own-wishlist work right from the shared page.
+    <code>noindex</code> (a one-off shared link, not meant for search discovery); an empty or all-hidden id
+    list shows a &ldquo;this link isn't showing anything&rdquo; panel, still 200, not a redirect.
+  </td>
+  <td><em>new:</em> <code>app/components/SpendOfferBanner.tsx</code>, <code>app/wishlist/shared/page.tsx</code><br>
+    <em>edited:</em> <code>app/layout.tsx</code>, <code>app/components/ProductCard.tsx</code>,
+    <code>app/types/product.ts</code>, <code>app/utils/storeQueries.ts</code>, <code>app/wishlist/page.tsx</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 216 passed (1 pre-existing skip, unchanged
+    &mdash; UI + thin cached reads, no new pure logic to unit test) &middot; <code>eslint</code> 0 new errors
+    on every changed file (caught and fixed the two genuine new <code>react-hooks/purity</code> errors before
+    calling this done; remaining warnings are the pre-existing/newly-matching <code>set-state-in-effect</code>
+    class already downgraded repo-wide) &middot; <code>next build</code> exit 0, both new routes registered.
+    <strong>Live-verified with a real headless browser</strong> (Edge, <code>--headless=new --dump-dom</code>
+    against the dev server reading production data -- not just curl, since both the banner and the badge
+    render via post-mount client effects that a plain HTTP fetch's pre-hydration HTML wouldn't show):
+    confirmed the live production &ldquo;Spend &amp; Save&rdquo; offer (real tiers, ₹1,500&rarr;₹180 lowest
+    rung) renders correctly in the homepage's actual DOM after JS execution; confirmed
+    <code>/wishlist/shared?ids=167,9,65</code> renders all three real products by name, with the &ldquo;New&rdquo;
+    badge appearing exactly once, on product 167 (created 2026-09-04, genuinely within the 14-day window) and
+    not the other two. Not a payment-path or schema change.</td>
+</tr>
 <tr>
   <td><code>2026-09-05<br>&mdash;</code></td>
   <td><strong>FAQ page + FAQPage JSON-LD</strong><br>(owner: one more marketing idea from the recommendation list &mdash; SEO rich snippets)</td>

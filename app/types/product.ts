@@ -13,8 +13,12 @@ export interface StoreProduct {
   thumb_url?: string | null;
   category?: string | null;
   inventory?: number | string | null;
-  hidden?: boolean;
+   hidden?: boolean;
   description?: string | null;
+  // Only present where the query bothers to select it (catalog grid,
+  // spotlight) -- powers the ProductCard "New" badge. Absent elsewhere just
+  // means that badge never shows, not an error.
+  created_at?: string | null;
   images?: string[] | null;
   whatsapp_number?: string | null;
   label?: string | null;

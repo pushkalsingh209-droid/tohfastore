@@ -462,12 +462,14 @@ export const getCatalogPage = unstable_cache(
       // render -- not `select("*")`. Deliberately omitted: cost_price,
       // cost_price_per_kg, price_per_kg, last_restocked_at (admin margin/
       // restock stats only, and no reason to ship cost data to the browser),
-      // plus created_at / display_order / hidden (used by the .eq/.order
-      // clauses below, which don't need the column in the select list).
+      // plus display_order / hidden (used by the .eq/.order clauses below,
+      // which don't need the column in the select list). created_at IS
+      // selected despite also being an .order() column -- ProductCard reads
+      // it for the "New" badge.
       let query = supabase
         .from("products")
         .select(
-          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm"
+          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at"
         )
         .eq("hidden", false);
       if (category) query = query.eq("category", category);
@@ -519,7 +521,7 @@ export const getSpotlightProducts = unstable_cache(
       const { data, error } = await supabase
         .from("products")
         .select(
-          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm"
+          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at"
         )
         .eq("is_spotlight", true)
         .eq("hidden", false)
@@ -554,6 +556,47 @@ export const getFeaturedSpotlightCampaign = unstable_cache(
   },
   ["featured-spotlight-campaign"],
   { tags: ["site-settings"], revalidate: 86400 }
+);
+
+// Live product data for a set of ids -- backs the /wishlist/shared page
+// (wishlist itself is localStorage-only with no server sync, so a "share my
+// wishlist" link can only encode ids in the URL; this re-fetches fresh data
+// for them rather than trusting a client-supplied name/price/stock
+// snapshot). Same card column list as getCatalogPage/getSpotlightProducts
+// so <ProductCard> renders identically; excludes hidden products (someone
+// sharing an old link to a since-hidden item just sees fewer cards, not an
+// error) and de-dupes/caps the id list so a malformed or huge ?ids= can't
+// turn into an unbounded query.
+const MAX_SHARED_PRODUCT_IDS = 60;
+
+export async function getProductsByIds(ids: number[]) {
+  // Sorted so the same set of ids in a different URL order still hits the
+  // same cache entry.
+  const uniqueIds = Array.from(new Set(ids.filter((id) => Number.isFinite(id) && id > 0)))
+    .sort((a, b) => a - b)
+    .slice(0, MAX_SHARED_PRODUCT_IDS);
+  return getProductsByIdsCached(uniqueIds);
+}
+
+const getProductsByIdsCached = unstable_cache(
+  async (ids: number[]) => {
+    if (ids.length === 0) return [];
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select(
+          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at"
+        )
+        .in("id", ids)
+        .eq("hidden", false);
+      if (error || !data) return [];
+      return attachThumbUrls(data);
+    } catch {
+      return [];
+    }
+  },
+  ["products-by-ids"],
+  { tags: ["products"], revalidate: 86400 }
 );
 
 export interface TestimonialItem {
