@@ -12,6 +12,27 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Google Merchant Center product feed — 2026-09-05 IST
+- Owner: last item on the marketing-feature recommendation list — free Google Shopping listings.
+- New `GET /api/google-merchant-feed` — an RSS 2.0 + Google's `g:` namespace feed, one `<item>` per non-hidden
+  product with a name/price/image. Per item: id, CDATA title/description, canonical link, image_link,
+  availability (from live inventory), price (the real GST-inclusive amount charged), condition=new,
+  brand=TOHFA, identifier_exists=no (handmade goods, no GTIN/MPN — the correct field for that case), and
+  product_type from the product's own category.
+- Not a second source of truth — every fact is the same one each product page's own `Product` JSON-LD already
+  states; this just re-shapes it into Merchant Center's XML. `Cache-Control` mirrors
+  `/api/instagram-post-image`'s cost-control pattern (Merchant Center re-fetches on its own schedule, not per
+  visitor). Not added to `sitemap.ts` or exempted from `robots.ts`'s `/api/` disallow — a feed submitted
+  directly to Merchant Center, not a page meant for organic crawl.
+- Deliberately omitted `g:google_product_category` (Google's own taxonomy) rather than guess a mapping.
+- Verified: `tsc --noEmit` clean; `npm test` 214 passed (1 pre-existing skip, unchanged); `eslint` 0 errors;
+  `next build` exit 0, route registered. **Live-verified** against a dev server reading production data:
+  fetched the feed, confirmed headers, parsed as well-formed XML, counted 158 items matching the live
+  non-hidden product count with a correct 123/35 in-stock/out-of-stock split. **Owner still needs to submit
+  this feed URL in Google Merchant Center once** — nothing here does that automatically. Not a payment-path
+  or schema change.
+- See `docs/HANDBOOK.html` Change log 2026-09-05.
+
 ### Batch: Testimonials strip ("What Customers Are Saying") — 2026-09-05 IST
 - Owner: next marketing-content feature after the referral coupon — went with the UGC/testimonial wall (the
   cheaper of the two remaining options on the recommendation list).
