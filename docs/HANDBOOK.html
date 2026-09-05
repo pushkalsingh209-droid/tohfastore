@@ -1185,10 +1185,10 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
       <tr><td>Review reminder</td><td><code>https://tohfaonline.com/api/cron/review-reminder</code></td><td>daily</td></tr>
     </tbody>
   </table></div>
-  <p><strong>Owner: run migration 0052 before pointing a schedule at the review-reminder job.</strong> The
-  route fails safe without it (skips every candidate rather than risk sending a WhatsApp with no record of
-  it), so it's harmless to deploy first and wire up the schedule after &mdash; but it won't actually remind
-  anyone until <code>review_reminders_sent</code> exists.</p>
+  <p>Migration 0052 is applied and the review-reminder job above is created and enabled on cron-job.org
+  (2026-09-05). It fails safe if <code>review_reminders_sent</code> is ever missing (skips every candidate
+  rather than risk sending a WhatsApp with no record of it) &mdash; that guard stays in the route even though
+  it's no longer needed for this rollout.</p>
   <p>Opening any of these in a browser returns <code>{"error":"Unauthorized"}</code> &mdash; that's correct
   (no bearer header). Use each job's "Run now" + History to see the real JSON body: <code>rls-check</code>
   should read <code>{"ok":true, &hellip;}</code>.</p>
@@ -2878,6 +2878,19 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-05<br>&mdash;</code></td>
+  <td><strong>Migration 0052 applied; review-reminder cron scheduled</strong><br>(owner: operational follow-up to the batch below, no code change)</td>
+  <td>
+    Owner ran <code>0052_add_review_reminders_sent.sql</code> in the Supabase SQL editor, then created and
+    enabled the <code>review-reminder</code> job on cron-job.org (daily, <code>Authorization: Bearer
+    CRON_SECRET</code> header, same pattern as the other three external jobs). The review-reminder cron below
+    is now live end-to-end, not just deployed-but-inert.
+  </td>
+  <td><em>edited:</em> <code>docs/HANDBOOK.html</code> (Operational runbook note only)</td>
+  <td>No code changed &mdash; nothing to rebuild or retest. Owner confirmed the cron-job.org Test Run returned
+    <code>{"status":"ok", &hellip;}</code> before enabling.</td>
+</tr>
 <tr>
   <td><code>2026-09-05<br>&mdash;</code></td>
   <td><strong>Review-reminder cron + &ldquo;Often Viewed Together&rdquo; strip</strong><br>(owner: two more marketing ideas from the recommendation list, picked together)</td>
