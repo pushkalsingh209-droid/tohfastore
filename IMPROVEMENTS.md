@@ -12,6 +12,38 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Referral coupons + price-aware Share button — 2026-09-05 IST
+- Owner went ahead with two marketing-feature recommendations: a WhatsApp share button, and a referral
+  coupon customers can hand to friends.
+- **Referral coupons.** New `app/utils/referralCoupon.ts` — one personal, shareable 10%-off coupon per
+  customer (90-day expiry), minted (or reused, if one already exists) the first time an admin sends a
+  "Delivered" notification for one of their orders (`/api/admin/orders/notify`). Deliberately gated on
+  **delivery, not payment** (a cancelled/refunded first order never earns a code) and on the admin's
+  **explicit notify action, not the payment webhook** (coupon minting never touches the payment path). The
+  code is appended to both the WhatsApp message and email for that send (`orderNotifications.ts` builders
+  gained an optional `referralCode` field, delivered-only, HTML-escaped in the email).
+- Migration `0051`: `coupons.referral_phone text` + a `UNIQUE` partial index (`WHERE referral_phone IS NOT
+  NULL`, so ordinary hand-created coupons with a null value never collide with each other). A concurrent
+  insert race (two Delivered sends for the same customer) is caught as a unique-violation and re-resolved
+  to the row the other request just created, rather than erroring. `types/db.ts` hand-edited for the column.
+  **Applied to the live DB by the owner.**
+- **Self-redemption blocked at the one authoritative point:** `/api/razorpay` rejects a coupon whose
+  `referral_phone` matches the checkout's own OTP-verified phone. `/api/coupons/validate` (preview only,
+  no verified phone available there, never the source of truth for what's charged) is deliberately left
+  unchanged.
+- **Price-aware Share button.** `ShareButtons.tsx` already existed (native share sheet, `wa.me` fallback) —
+  rather than add a near-duplicate dedicated WhatsApp button to an already-dense product-page CTA stack,
+  extended its message text to include the price when there is one, for both the native share sheet's
+  `text` field and the `wa.me` fallback.
+- Verified: `tsc --noEmit` clean; `npm test` 214 passed (1 pre-existing skip, +6 new); `eslint` 0 errors on
+  every changed file; `next build` exit 0. **Live-verified against production** with a throwaway scratch
+  script (not committed): inserted a test referral coupon, confirmed idempotent lookup, confirmed the
+  partial unique index correctly rejects a second insert for the same phone (`23505`), then deleted the
+  row. Not yet exercised through a real order's Delivered notification or a real checkout redemption —
+  owner to confirm live on the next order that reaches Delivered. Not a payment-path change to pricing,
+  stock, or idempotency — additive only.
+- See `docs/HANDBOOK.html` Change log 2026-09-05.
+
 ### Batch: Pinterest domain verification + profile link — 2026-09-04 00:15 IST
 - Owner shared the Pinterest business profile (`in.pinterest.com/tohfaonline`) while planning a Pinterest push
   alongside the Reel tool above, and pasted the `p:domain_verify` meta tag Pinterest issues for domain claiming.
