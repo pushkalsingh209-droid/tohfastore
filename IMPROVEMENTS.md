@@ -12,6 +12,12 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Migration 0052 applied; review-reminder cron scheduled — 2026-09-05 IST
+- Operational follow-up to the batch below, no code change. Owner ran `0052_add_review_reminders_sent.sql` in
+  Supabase, then created + enabled the `review-reminder` job on cron-job.org (daily, `Authorization: Bearer
+  CRON_SECRET`). The cron is now live end-to-end, not just deployed-but-inert.
+- See `docs/HANDBOOK.html` Change log 2026-09-05.
+
 ### Batch: Review-reminder cron + "Often Viewed Together" strip — 2026-09-05 IST
 - Owner: two more marketing ideas from the recommendation list, picked together.
 - **Review reminder** — new `GET /api/cron/review-reminder`, daily external schedule, WhatsApps a customer to
