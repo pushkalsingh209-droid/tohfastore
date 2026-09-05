@@ -412,6 +412,7 @@ export type Database = {
           depth_cm: number | null
           description: string | null
           display_order: number | null
+          enquiry_notify_numbers: string[] | null
           height_cm: number | null
           hidden: boolean
           id: number
@@ -441,6 +442,7 @@ export type Database = {
           depth_cm?: number | null
           description?: string | null
           display_order?: number | null
+          enquiry_notify_numbers?: string[] | null
           height_cm?: number | null
           hidden?: boolean
           id?: number
@@ -470,6 +472,7 @@ export type Database = {
           depth_cm?: number | null
           description?: string | null
           display_order?: number | null
+          enquiry_notify_numbers?: string[] | null
           height_cm?: number | null
           hidden?: boolean
           id?: number

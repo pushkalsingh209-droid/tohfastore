@@ -193,6 +193,7 @@ export default function OrdersTab() {
     notificationCount: number;
     extra: { number: string; result: ChannelResult }[];
     extraInvalid: string[];
+    suppliersNotified: number;
   } | null>(null);
 
   const openNotify = (order: AdminOrder) => {
@@ -235,6 +236,7 @@ export default function OrdersTab() {
         notificationCount: data.notificationCount ?? 0,
         extra: Array.isArray(data.extra) ? data.extra : [],
         extraInvalid: Array.isArray(data.extraInvalid) ? data.extraInvalid : [],
+        suppliersNotified: data.suppliersNotified ?? 0,
       });
       if (data.logEntry) setNotificationLog([...notificationLog, data.logEntry]);
     } catch (err: unknown) {
@@ -701,6 +703,11 @@ export default function OrdersTab() {
                 ))}
                 {notifyResult.extraInvalid.length > 0 && (
                   <p className="text-rose-600">Skipped, not a valid number: {notifyResult.extraInvalid.join(", ")}</p>
+                )}
+                {notifyResult.suppliersNotified > 0 && (
+                  <p className="text-emerald-700">
+                    ✓ Also copied to {notifyResult.suppliersNotified} supplier number{notifyResult.suppliersNotified === 1 ? "" : "s"}
+                  </p>
                 )}
               </div>
             )}

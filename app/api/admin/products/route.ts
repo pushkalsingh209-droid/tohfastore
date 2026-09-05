@@ -15,7 +15,7 @@ import type { Insert, Update } from "@/types/tables";
 // migration the admin hasn't run) -- these routes degrade gracefully by
 // dropping whichever optional column Postgres complains about and retrying,
 // instead of failing the whole save.
-const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg", "hidden", "supplier_numbers", "is_spotlight", "spotlight_order"];
+const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg", "hidden", "supplier_numbers", "is_spotlight", "spotlight_order", "enquiry_notify_numbers"];
 
 function isMissingColumn(error: unknown, columnHint: string) {
   const e = (error ?? {}) as { message?: string; code?: string };
@@ -80,7 +80,10 @@ function parseOptionalText(value: unknown): string | null {
 // An array of normalised, valid Indian numbers; blanks/invalids dropped;
 // empty => null so the column reads clean. The webhook still cross-checks
 // each against the live order_notification_numbers list before sending.
-function parseSupplierNumbers(value: unknown): string[] | null {
+// Shared by both products.supplier_numbers ("Notify suppliers", order
+// notifications) and products.enquiry_notify_numbers ("Notify on enquiry",
+// 0053) -- same managed pool (order_notification_numbers), same validation.
+function parseManagedNumberList(value: unknown): string[] | null {
   if (!Array.isArray(value)) return null;
   const clean = Array.from(
     new Set(
@@ -140,7 +143,8 @@ export async function POST(req: Request) {
       photo_filter: parseOptionalPhotoFilter(body.photo_filter),
       cost_price: parseOptionalPositiveNumber(body.cost_price),
       cost_price_per_kg: parseOptionalPositiveNumber(body.cost_price_per_kg),
-      supplier_numbers: parseSupplierNumbers(body.supplier_numbers),
+      supplier_numbers: parseManagedNumberList(body.supplier_numbers),
+      enquiry_notify_numbers: parseManagedNumberList(body.enquiry_notify_numbers),
       // A brand-new product published with stock already on hand counts as
       // restocked right now -- that's when this capital actually got tied up.
       last_restocked_at: Number(body.inventory) > 0 ? new Date().toISOString() : null,
@@ -207,7 +211,8 @@ export async function PATCH(req: Request) {
     if (fields.photo_filter !== undefined) payload.photo_filter = parseOptionalPhotoFilter(fields.photo_filter);
     if (fields.cost_price !== undefined) payload.cost_price = parseOptionalPositiveNumber(fields.cost_price);
     if (fields.cost_price_per_kg !== undefined) payload.cost_price_per_kg = parseOptionalPositiveNumber(fields.cost_price_per_kg);
-    if (fields.supplier_numbers !== undefined) payload.supplier_numbers = parseSupplierNumbers(fields.supplier_numbers);
+    if (fields.supplier_numbers !== undefined) payload.supplier_numbers = parseManagedNumberList(fields.supplier_numbers);
+    if (fields.enquiry_notify_numbers !== undefined) payload.enquiry_notify_numbers = parseManagedNumberList(fields.enquiry_notify_numbers);
     if (fields.hidden !== undefined) payload.hidden = Boolean(fields.hidden);
     // Spotlight marketing page membership (0050) -- the Products tab's
     // per-row "Feature" toggle. spotlight_order isn't wired to any UI yet

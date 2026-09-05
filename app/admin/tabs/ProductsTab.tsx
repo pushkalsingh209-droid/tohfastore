@@ -168,6 +168,7 @@ export default function ProductsTab() {
     label: "",
     cost_price: "",
     supplier_numbers: [] as string[],
+    enquiry_notify_numbers: [] as string[],
   });
 
   // Which unit formData.weight_g/height_cm/depth_cm/breadth_cm are
@@ -325,6 +326,7 @@ export default function ProductsTab() {
       label: formData.label,
       cost_price: formData.cost_price,
       supplier_numbers: formData.supplier_numbers,
+      enquiry_notify_numbers: formData.enquiry_notify_numbers,
     };
 
     try {
@@ -348,7 +350,7 @@ export default function ProductsTab() {
       );
       if (editingProductId) setEditingProductId(null);
 
-      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "", cost_price: "", supplier_numbers: [] as string[] });
+      setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "", cost_price: "", supplier_numbers: [] as string[], enquiry_notify_numbers: [] as string[] });
       refetch(); // Sync live view structures
     } catch (err: unknown) {
       setStatus(`Database Exception: ${err instanceof Error ? err.message : "Pipeline connection failed."}`);
@@ -381,6 +383,7 @@ export default function ProductsTab() {
       label: product.label || "",
       cost_price: product.cost_price != null ? String(product.cost_price) : "",
       supplier_numbers: Array.isArray(product.supplier_numbers) ? product.supplier_numbers : [],
+      enquiry_notify_numbers: Array.isArray(product.enquiry_notify_numbers) ? product.enquiry_notify_numbers : [],
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -477,6 +480,22 @@ export default function ProductsTab() {
       setProducts(products.map((p) => (p.id === productId ? result.product : p)));
     } catch (err: unknown) {
       alert(`Could not update supplier numbers: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Same idea, separate field (0053) -- "Notify on enquiry": which of the
+  // same managed numbers get a WhatsApp ping when a visitor clicks Chat for
+  // this product (POST /api/enquiries), independent of the supplier list
+  // above which only fires on order-status notifications.
+  const handleInlineEnquiryNotifyUpdate = async (productId: string | number, enquiryNotifyNumbers: string[]) => {
+    try {
+      const result = await apiRequest("/api/admin/products", {
+        method: "PATCH",
+        body: JSON.stringify({ id: productId, enquiry_notify_numbers: enquiryNotifyNumbers }),
+      });
+      setProducts(products.map((p) => (p.id === productId ? result.product : p)));
+    } catch (err: unknown) {
+      alert(`Could not update enquiry-notify numbers: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -782,7 +801,7 @@ export default function ProductsTab() {
 
   const handleCancelEdit = () => {
     setEditingProductId(null);
-    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "", cost_price: "", supplier_numbers: [] as string[] });
+    setFormData({ name: "", price: "", description: "", imageUrl: "", inventory: "5", category: "", additionalImages: [], weight_g: "", height_cm: "", depth_cm: "", breadth_cm: "", material: "", color: "", whatsapp_number: "", label: "", cost_price: "", supplier_numbers: [] as string[], enquiry_notify_numbers: [] as string[] });
     setStatus("");
   };
 
@@ -1135,6 +1154,55 @@ export default function ProductsTab() {
           )}
         </div>
 
+        <div>
+          <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+            Also notify on enquiry for this product{" "}
+            <span className="text-stone-400 font-normal normal-case">
+              (optional — a WhatsApp &ldquo;Chat&rdquo; click for this product also pings the ticked numbers.
+              Separate from the supplier list above; a number can be in one, both, or neither. Same managed
+              list — Settings → Order Notification Numbers.)
+            </span>
+          </label>
+          {orderNotificationNumbers.length === 0 ? (
+            <p className="text-[11px] text-stone-400">
+              No order-notification numbers yet — add some in Settings → Order Notification Numbers.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {orderNotificationNumbers.map((n) => {
+                const checked = formData.enquiry_notify_numbers.includes(n.phone_number);
+                return (
+                  <label
+                    key={n.id}
+                    className={`flex items-center gap-2 px-3 py-2 rounded border text-xs cursor-pointer transition ${
+                      checked ? "border-sky-400 bg-sky-50" : "border-stone-200 bg-stone-50 hover:bg-stone-100"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      disabled={isSubmitting}
+                      checked={checked}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          enquiry_notify_numbers: e.target.checked
+                            ? [...formData.enquiry_notify_numbers, n.phone_number]
+                            : formData.enquiry_notify_numbers.filter((p) => p !== n.phone_number),
+                        })
+                      }
+                      className="accent-sky-600 flex-shrink-0"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-stone-800 truncate">{n.label || "—"}</span>
+                      <span className="block font-mono text-[10px] text-stone-500">+{n.phone_number}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div className="flex justify-end pt-4 border-t border-stone-100">
           <button type="submit" disabled={isSubmitting} className={`font-medium text-xs uppercase tracking-widest px-8 py-3.5 rounded shadow text-white transition duration-150 ${editingProductId ? "bg-amber-600 hover:bg-amber-700" : "bg-stone-950 hover:bg-amber-800"}`}>
             {isSubmitting ? "Processing..." : editingProductId ? "Update Brass Artifact" : "Publish Brass Artifact"}
@@ -1462,6 +1530,61 @@ export default function ProductsTab() {
                                 )
                               }
                               className="accent-amber-600 flex-shrink-0"
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-stone-800 truncate">{n.label || "—"}</span>
+                              <span className="block font-mono text-[10px] text-stone-500">+{n.phone_number}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </details>
+                );
+              })()}
+
+              {/* Same pattern, separate field (0053) -- which numbers get a
+                  WhatsApp ping on a "Chat" click for THIS product, not just
+                  order-status changes. Independent list; a number can be in
+                  one, both, or neither. */}
+              {orderNotificationNumbers.length > 0 && (() => {
+                const attached: string[] = Array.isArray(product.enquiry_notify_numbers) ? product.enquiry_notify_numbers : [];
+                return (
+                  <details className="text-xs">
+                    <summary
+                      className={`cursor-pointer select-none inline-flex items-center gap-1.5 px-3 py-2 rounded border font-semibold uppercase tracking-wide list-none [&::-webkit-details-marker]:hidden transition ${
+                        attached.length > 0
+                          ? "border-sky-300 bg-sky-50 text-sky-800"
+                          : "border-stone-300 text-stone-600 hover:bg-stone-100"
+                      }`}
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                      </svg>
+                      Notify on enquiry{attached.length > 0 ? ` (${attached.length})` : ""}
+                    </summary>
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {orderNotificationNumbers.map((n) => {
+                        const checked = attached.includes(n.phone_number);
+                        return (
+                          <label
+                            key={n.id}
+                            className={`flex items-center gap-2.5 px-3 py-2.5 rounded border cursor-pointer transition ${
+                              checked ? "border-sky-400 bg-sky-50" : "border-stone-200 bg-stone-50 hover:bg-stone-100"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) =>
+                                handleInlineEnquiryNotifyUpdate(
+                                  product.id,
+                                  e.target.checked
+                                    ? [...attached, n.phone_number]
+                                    : attached.filter((p) => p !== n.phone_number)
+                                )
+                              }
+                              className="accent-sky-600 flex-shrink-0"
                             />
                             <span className="min-w-0">
                               <span className="block text-stone-800 truncate">{n.label || "—"}</span>

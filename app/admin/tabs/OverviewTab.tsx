@@ -30,6 +30,7 @@ export default function OverviewTab() {
     setLeads,
     keepaliveStale,
     abandonedCheckoutStale,
+    reviewReminderStale,
     settings,
     orders,
     products,
@@ -222,6 +223,40 @@ export default function OverviewTab() {
           }`}
         >
           {abandonedCheckoutStale ? "Check" : "OK"}
+        </span>
+      </div>
+    )}
+
+    {/* SYSTEM HEALTH: review-reminder cron heartbeat. Same story as the two
+        above -- external schedule (cron-job.org), daily. Stamps
+        site_settings.last_review_reminder_run_at each run; if that stops
+        advancing, delivered customers stop getting the post-delivery review
+        nudge. `reviewReminderStale` is derived in loadAll() (> 30h). */}
+    {settings.last_review_reminder_run_at && (
+      <div
+        className={`rounded-lg border p-4 mb-6 flex items-center justify-between gap-4 ${
+          reviewReminderStale ? "bg-amber-50 border-amber-300" : "bg-stone-50 border-stone-200"
+        }`}
+      >
+        <div>
+          <p className="text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-stone-500">Review-reminder cron</p>
+          <p className={`text-sm font-mono ${reviewReminderStale ? "text-amber-800 font-semibold" : "text-stone-700"}`}>
+            Last ran {new Date(settings.last_review_reminder_run_at).toLocaleString("en-IN")}
+          </p>
+          <p className="text-[10px] text-stone-400 mt-0.5">
+            {reviewReminderStale
+              ? "Over 30h ago — the external scheduler may be down; review nudges aren't going out."
+              : "The external scheduler should hit /api/cron/review-reminder daily."}
+          </p>
+        </div>
+        <span
+          className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full border ${
+            reviewReminderStale
+              ? "bg-amber-100 text-amber-800 border-amber-300"
+              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+          }`}
+        >
+          {reviewReminderStale ? "Check" : "OK"}
         </span>
       </div>
     )}

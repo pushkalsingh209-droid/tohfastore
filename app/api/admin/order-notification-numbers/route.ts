@@ -5,7 +5,10 @@
 // still gets every notification untouched; numbers here are extra
 // recipients, attached per-product via products.supplier_numbers, and
 // every notification for that product also goes to them (see the razorpay
-// webhook + /api/admin/orders/notify).
+// webhook + /api/admin/orders/notify). Also the pool for
+// products.enquiry_notify_numbers (0053, "Notify on enquiry") -- a second,
+// separately-attached use of this same list, fired by /api/enquiries
+// instead of order events.
 import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
@@ -62,7 +65,9 @@ export async function DELETE(req: Request) {
 
     // Read the number first so we can strip it from any product that lists
     // it -- the webhook already ignores stored numbers not in this table,
-    // so this is tidy-up, not correctness.
+    // so this is tidy-up, not correctness. Two columns to check now
+    // (supplier_numbers, enquiry_notify_numbers/0053) since both draw from
+    // this same pool.
     const { data: row } = await supabase
       .from("order_notification_numbers")
       .select("phone_number")
@@ -73,13 +78,24 @@ export async function DELETE(req: Request) {
     if (error) return serverErrorResponse("admin order-notification-numbers", error);
 
     if (row?.phone_number) {
-      const { data: attached } = await supabase
+      const phoneNumber = row.phone_number;
+
+      const { data: withSuppliers } = await supabase
         .from("products")
         .select("id, supplier_numbers")
-        .contains("supplier_numbers", [row.phone_number]);
-      for (const p of attached || []) {
-        const next = (p.supplier_numbers || []).filter((n: string) => n !== row.phone_number);
+        .contains("supplier_numbers", [phoneNumber]);
+      for (const p of withSuppliers || []) {
+        const next = (p.supplier_numbers || []).filter((n) => n !== phoneNumber);
         await supabase.from("products").update({ supplier_numbers: next.length ? next : null }).eq("id", p.id);
+      }
+
+      const { data: withEnquiryNotify } = await supabase
+        .from("products")
+        .select("id, enquiry_notify_numbers")
+        .contains("enquiry_notify_numbers", [phoneNumber]);
+      for (const p of withEnquiryNotify || []) {
+        const next = (p.enquiry_notify_numbers || []).filter((n) => n !== phoneNumber);
+        await supabase.from("products").update({ enquiry_notify_numbers: next.length ? next : null }).eq("id", p.id);
       }
     }
 
