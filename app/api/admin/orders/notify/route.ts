@@ -5,7 +5,11 @@
 // silently by /api/admin/orders/update-status; this route is the separate
 // "now tell the customer" step, so editing tracking fields never re-fires a
 // message. Works for every status. An optional one-off `comment` is
-// appended to both channels and is not stored.
+// appended to both channels and is not stored. An optional one-off
+// `extraNumbers` (free text, parsed by app/utils/extraNotifyNumbers.ts) gets
+// the same WhatsApp text as a courtesy copy -- e.g. the customer's family
+// member or a store staffer who wants the update too. Also not stored;
+// re-typed every time, same treatment as `comment`.
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { serverErrorResponse } from "@/app/utils/apiError";
@@ -14,6 +18,7 @@ import { productHref } from "@/app/utils/slug";
 import { normalizeIndianPhone } from "@/app/utils/phone";
 import { normalizeCourierName } from "@/app/utils/couriers";
 import { resolveSupplierTargets } from "@/app/utils/orderNotificationNumbers";
+import { parseExtraNotifyNumbers } from "@/app/utils/extraNotifyNumbers";
 import { getOrCreateReferralCoupon, parseReferralDiscountPercent, parseReferralValidDays } from "@/app/utils/referralCoupon";
 import { asCustomerDetails, asOrderItems } from "@/app/utils/orderTypes";
 import {
@@ -29,7 +34,7 @@ type ChannelResult = "sent" | "skipped" | "failed";
 
 export async function POST(req: Request) {
   try {
-    const { id, comment } = await req.json();
+    const { id, comment, extraNumbers: extraNumbersRaw } = await req.json();
     if (!id) return NextResponse.json({ error: "Missing order id." }, { status: 400 });
 
     const { data: order, error } = await supabase
@@ -50,6 +55,14 @@ export async function POST(req: Request) {
     const courierName = normalizeCourierName(order.courier_name);
     const awbNumber = order.awb_number ? String(order.awb_number).trim() : "";
     const cleanComment = cleanNotifyComment(comment);
+
+    // Optional ad-hoc courtesy copies (never stored -- see file header).
+    // Re-validated server-side with the same rule the dialog previewed with;
+    // never trust the client's own parse.
+    const { valid: extraNumbers, invalid: extraInvalid } = parseExtraNotifyNumbers(
+      typeof extraNumbersRaw === "string" ? extraNumbersRaw : "",
+      customerPhone ? normalizeIndianPhone(String(customerPhone)) : undefined
+    );
 
     // Delivered messages carry a review link to the first item's product
     // page (where the review form lives). One item even for a multi-item
@@ -89,6 +102,9 @@ export async function POST(req: Request) {
       referralCode: referralCoupon?.code,
       referralDiscountPercent: referralCoupon?.discountPercent,
     };
+    // Same wording to every channel below (customer, extra numbers, supplier
+    // copies) -- one build, not three.
+    const messageText = buildStatusWhatsappMessage(input);
 
     let whatsapp: ChannelResult = "skipped";
     let email: ChannelResult = "skipped";
@@ -105,7 +121,7 @@ export async function POST(req: Request) {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chatId, message: buildStatusWhatsappMessage(input) }),
+            body: JSON.stringify({ chatId, message: messageText }),
           }
         );
         whatsapp = res.ok ? "sent" : "failed";
@@ -114,6 +130,39 @@ export async function POST(req: Request) {
     } catch (waError) {
       whatsapp = "failed";
       console.error("Notify WhatsApp error:", waError);
+    }
+
+    // --- Extra numbers (best-effort) --- optional, ad-hoc, admin-typed
+    // courtesy copies of this one send (see file header + extraNotifyNumbers.ts).
+    // Independent of the customer WhatsApp outcome above: still attempted even
+    // if that one failed, since these are different recipients on the same
+    // Green API instance.
+    const extraResults: { number: string; result: ChannelResult }[] = [];
+    if (extraNumbers.length > 0) {
+      try {
+        const greenApiUrl = process.env.GREEN_API_URL;
+        const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
+        const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
+        if (greenApiUrl && greenApiIdInstance && greenApiTokenInstance) {
+          const settled = await Promise.allSettled(
+            extraNumbers.map((n) =>
+              fetch(`${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chatId: `${n}@c.us`, message: messageText }),
+              })
+            )
+          );
+          settled.forEach((r, i) =>
+            extraResults.push({ number: extraNumbers[i], result: r.status === "fulfilled" && r.value.ok ? "sent" : "failed" })
+          );
+        } else {
+          extraNumbers.forEach((n) => extraResults.push({ number: n, result: "skipped" }));
+        }
+      } catch (extraError) {
+        console.error("Notify extra numbers error:", extraError);
+        extraNumbers.forEach((n) => extraResults.push({ number: n, result: "failed" }));
+      }
     }
 
     // --- Email (best-effort) --- no-ops without RESEND_API_KEY or a real
@@ -161,13 +210,12 @@ export async function POST(req: Request) {
           liveNumbers,
           businessNumber
         );
-        const message = buildStatusWhatsappMessage(input);
         const results = await Promise.allSettled(
           targets.map((n) =>
             fetch(`${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chatId: `${normalizeIndianPhone(n)}@c.us`, message }),
+              body: JSON.stringify({ chatId: `${normalizeIndianPhone(n)}@c.us`, message: messageText }),
             })
           )
         );
@@ -202,7 +250,17 @@ export async function POST(req: Request) {
       console.error("Notify log error (is migration 0048 applied?):", logErr);
     }
 
-    return NextResponse.json({ ok: true, status, whatsapp, email, suppliersNotified, notificationCount, logEntry });
+    return NextResponse.json({
+      ok: true,
+      status,
+      whatsapp,
+      email,
+      suppliersNotified,
+      notificationCount,
+      logEntry,
+      extra: extraResults,
+      extraInvalid,
+    });
   } catch (err) {
     return serverErrorResponse("admin orders notify", err);
   }

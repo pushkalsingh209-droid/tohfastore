@@ -13,6 +13,8 @@ import { useAdminData, type AdminOrder } from "@/app/admin/AdminDataContext";
 import { COURIER_PRESETS } from "@/app/utils/couriers";
 import { productHref } from "@/app/utils/slug";
 import { buildStatusWhatsappMessage, MAX_NOTIFY_COMMENT_LENGTH } from "@/app/utils/orderNotifications";
+import { parseExtraNotifyNumbers, MAX_EXTRA_NOTIFY_NUMBERS } from "@/app/utils/extraNotifyNumbers";
+import { normalizeIndianPhone } from "@/app/utils/phone";
 
 const OTHER_COURIER = "__other__";
 
@@ -183,18 +185,34 @@ export default function OrdersTab() {
   // --- Notify customer (separate from any status/tracking save) ---
   const [notifyOrder, setNotifyOrder] = useState<AdminOrder | null>(null);
   const [notifyComment, setNotifyComment] = useState("");
+  const [notifyExtraNumbers, setNotifyExtraNumbers] = useState("");
   const [notifySending, setNotifySending] = useState(false);
-  const [notifyResult, setNotifyResult] = useState<{ whatsapp: ChannelResult; email: ChannelResult; notificationCount: number } | null>(null);
+  const [notifyResult, setNotifyResult] = useState<{
+    whatsapp: ChannelResult;
+    email: ChannelResult;
+    notificationCount: number;
+    extra: { number: string; result: ChannelResult }[];
+    extraInvalid: string[];
+  } | null>(null);
 
   const openNotify = (order: AdminOrder) => {
     setNotifyOrder(order);
     setNotifyComment("");
+    setNotifyExtraNumbers("");
     setNotifyResult(null);
   };
   const closeNotify = () => {
     if (notifySending) return;
     setNotifyOrder(null);
   };
+
+  // Live client-side parse of the extra-numbers box -- same rule the server
+  // enforces (parseExtraNotifyNumbers is pure, shared), so the admin sees
+  // what will actually be sent to before hitting Send rather than after.
+  const notifyExtraParsed = useMemo(() => {
+    const customerContact = notifyOrder?.customer_details?.contact;
+    return parseExtraNotifyNumbers(notifyExtraNumbers, customerContact ? normalizeIndianPhone(String(customerContact)) : undefined);
+  }, [notifyExtraNumbers, notifyOrder]);
 
   const sendNotify = async () => {
     if (!notifyOrder) return;
@@ -204,14 +222,20 @@ export default function OrdersTab() {
       const res = await fetch("/api/admin/orders/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: notifyOrder.id, comment: notifyComment }),
+        body: JSON.stringify({ id: notifyOrder.id, comment: notifyComment, extraNumbers: notifyExtraNumbers }),
       });
       const data = await res.json();
       if (!res.ok) {
         alert(`Could not send the notification: ${data.error || "Unknown error"}`);
         return;
       }
-      setNotifyResult({ whatsapp: data.whatsapp, email: data.email, notificationCount: data.notificationCount ?? 0 });
+      setNotifyResult({
+        whatsapp: data.whatsapp,
+        email: data.email,
+        notificationCount: data.notificationCount ?? 0,
+        extra: Array.isArray(data.extra) ? data.extra : [],
+        extraInvalid: Array.isArray(data.extraInvalid) ? data.extraInvalid : [],
+      });
       if (data.logEntry) setNotificationLog([...notificationLog, data.logEntry]);
     } catch (err: unknown) {
       alert(`Could not send the notification: ${err instanceof Error ? err.message : String(err)}`);
@@ -626,6 +650,36 @@ export default function OrdersTab() {
             </div>
 
             <div>
+              <label className="block text-[11px] uppercase tracking-wider font-semibold text-stone-500 mb-1">
+                Also WhatsApp to (optional)
+              </label>
+              <input
+                type="text"
+                value={notifyExtraNumbers}
+                onChange={(e) => setNotifyExtraNumbers(e.target.value)}
+                placeholder="e.g. 98765 43210, 91234 56789"
+                className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+              />
+              <p className="text-[10px] text-stone-400 mt-0.5">
+                Comma-separated, up to {MAX_EXTRA_NOTIFY_NUMBERS}. Same update still goes to the customer&rsquo;s
+                own number regardless -- this is for anyone else who should also see it, not a replacement.
+              </p>
+              {notifyExtraNumbers.trim() && (
+                <p className="text-[10px] mt-1 space-y-0.5">
+                  {notifyExtraParsed.valid.length > 0 && (
+                    <span className="block text-emerald-700">Will send to: {notifyExtraParsed.valid.join(", ")}</span>
+                  )}
+                  {notifyExtraParsed.invalid.length > 0 && (
+                    <span className="block text-rose-600">Not a valid number, skipped: {notifyExtraParsed.invalid.join(", ")}</span>
+                  )}
+                  {notifyExtraParsed.truncated && (
+                    <span className="block text-amber-700">Only the first {MAX_EXTRA_NOTIFY_NUMBERS} are sent to.</span>
+                  )}
+                </p>
+              )}
+            </div>
+
+            <div>
               <p className="text-[11px] uppercase tracking-wider font-semibold text-stone-500 mb-1">Preview</p>
               <pre className="whitespace-pre-wrap break-words text-xs text-stone-700 bg-stone-50 border border-stone-200 rounded p-3 font-sans">
                 {notifyPreview}
@@ -640,6 +694,14 @@ export default function OrdersTab() {
                 <p className={notifyResult.email === "sent" ? "text-emerald-700" : notifyResult.email === "failed" ? "text-rose-600" : "text-stone-500"}>
                   {channelText(notifyResult.email, "Email", "no email on file")}
                 </p>
+                {notifyResult.extra.map((r) => (
+                  <p key={r.number} className={r.result === "sent" ? "text-emerald-700" : r.result === "failed" ? "text-rose-600" : "text-stone-500"}>
+                    {channelText(r.result, `WhatsApp to ${r.number}`, "WhatsApp not configured")}
+                  </p>
+                ))}
+                {notifyResult.extraInvalid.length > 0 && (
+                  <p className="text-rose-600">Skipped, not a valid number: {notifyResult.extraInvalid.join(", ")}</p>
+                )}
               </div>
             )}
           </div>
