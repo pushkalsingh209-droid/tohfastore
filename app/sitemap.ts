@@ -6,7 +6,7 @@ import { productHref, categoryHref } from "@/app/utils/slug";
 
 const SITE_URL = "https://tohfaonline.com";
 
-const STATIC_PAGES = ["", "/about", "/contact", "/privacy", "/terms", "/refunds", "/wishlist", "/spotlight"];
+const STATIC_PAGES = ["", "/about", "/contact", "/privacy", "/terms", "/refunds", "/faq", "/wishlist", "/spotlight"];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = STATIC_PAGES.map((path) => ({

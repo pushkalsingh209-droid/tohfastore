@@ -414,6 +414,7 @@ export default function CheckoutSuccessPage() {
             <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
             <a href="/refunds" className="hover:text-amber-400 transition">Refund & Cancellation</a>
             <a href="/contact" className="hover:text-amber-400 transition">Contact Us</a>
+            <a href="/faq" className="hover:text-amber-400 transition">FAQ</a>
             <a href="/track" className="hover:text-amber-400 transition">Track Your Order</a>
           </div>
         </div>

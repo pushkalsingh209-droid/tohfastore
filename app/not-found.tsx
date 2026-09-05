@@ -36,6 +36,7 @@ export default function NotFound() {
             <Link href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</Link>
             <Link href="/refunds" className="hover:text-amber-400 transition">Refund &amp; Cancellation</Link>
             <Link href="/contact" className="hover:text-amber-400 transition">Contact Us</Link>
+            <Link href="/faq" className="hover:text-amber-400 transition">FAQ</Link>
           </div>
         </div>
       </footer>

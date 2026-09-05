@@ -1839,7 +1839,7 @@ resets and verify steady-state usage stays under cap.</p>
 <tr><td><code>/track</code></td><td>app/track/page.tsx</td><td>client</td><td>Reference (order id or AWB) + phone &rarr; <code>POST /api/orders/track</code>.</td></tr>
 <tr><td><code>/wishlist</code></td><td>app/wishlist/page.tsx</td><td>client</td><td>localStorage-backed wishlist grid.</td></tr>
 <tr><td><code>/spotlight</code></td><td>app/spotlight/page.tsx (added 2026-09-02)</td><td><code>force-dynamic</code> over <code>unstable_cache</code>'d reads, same reasoning as <code>/product/[id]</code></td><td>The admin-curated, time-boxed featured-products marketing page (see &sect;5 <code>products.is_spotlight</code> / 0050 and <code>app/utils/featuredSpotlight.ts</code>). No active campaign, or an active one with zero eligible (unhidden) products &rarr; a &ldquo;check back soon&rdquo; panel, still <strong>200</strong> (never a redirect, so a shared link keeps working between campaigns). Otherwise: title/description, a ticking <code>&lt;SpotlightCountdown&gt;</code> to <code>endsAt</code>, and a grid of real <code>&lt;ProductCard&gt;</code>s (Add to Cart / wishlist work right from this page). In <code>sitemap.ts</code> (unlike <code>/handbook</code>, this is meant to be found).</td></tr>
-<tr><td><code>/about</code>, <code>/contact</code>, <code>/corporate</code>, <code>/privacy</code>, <code>/terms</code>, <code>/refunds</code></td><td>app/&lt;name&gt;/page.tsx</td><td>static</td><td><code>/contact</code> + <code>/corporate</code> have forms &rarr; <code>/api/contact</code> / <code>/api/leads</code>.</td></tr>
+<tr><td><code>/about</code>, <code>/contact</code>, <code>/corporate</code>, <code>/privacy</code>, <code>/terms</code>, <code>/refunds</code>, <code>/faq</code></td><td>app/&lt;name&gt;/page.tsx</td><td>static</td><td><code>/contact</code> + <code>/corporate</code> have forms &rarr; <code>/api/contact</code> / <code>/api/leads</code>. <code>/faq</code> also emits <code>FAQPage</code> JSON-LD (&sect;17).</td></tr>
 <tr><td><code>/admin</code></td><td>app/admin/page.tsx (client SPA shell, 231 lines) + all 7 tab bodies as lazy components in <code>app/admin/tabs/</code> (#16 done)</td><td>client SPA behind proxy auth</td><td>Tabs via <code>?tab=</code>. See &sect;14.</td></tr>
 <tr><td><code>/admin/login</code></td><td>app/admin/login/page.tsx</td><td>client</td><td>Password + TOTP/backup code &rarr; <code>POST /api/admin/login</code>.</td></tr>
 <tr><td><code>/story</code></td><td>app/story/route.ts (added 2026-09-01)</td><td><code>force-static</code> Route Handler, not a page</td><td>Serves <code>docs/PROJECT-STORY.html</code> verbatim (read at build time, cached like the icon/splash routes) &mdash; a public, no-login &ldquo;behind the shop&rdquo; page: product highlights + engineering notes, no business-sensitive data. Linked from the admin Overview tab's Documentation card.</td></tr>
@@ -2332,6 +2332,16 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       RSS 2.0 + <code>g:</code> product feed of every non-hidden product, for free Google Shopping listings. Same
       brand/price/availability facts as the product-page JSON-LD, just in the XML shape Merchant Center ingests.
       The owner still has to submit the feed URL in Merchant Center once (not done by this codebase).</li>
+  <li><strong>FAQ page + FAQPage JSON-LD</strong> &mdash; <code>/faq</code> (a visible accordion, <code>app/faq/page.tsx</code>)
+      with a matching <code>schema.org FAQPage</code> script built from the exact same <code>FAQS</code> array that
+      renders the accordion, so the two can't drift apart (Google's guidelines require the structured data to
+      describe content actually shown on the page, not hidden-only text). Every answer is a fact already true
+      elsewhere in the codebase (refund/cancellation policy, checkout OTP gate, GST invoice, India-only delivery,
+      the referral program, &hellip;) &mdash; nothing invented for this page. <strong>Honest caveat:</strong> Google
+      curtailed how often FAQPage rich results actually render in search (Aug 2023, since mostly limited to
+      authoritative government/health sites) &mdash; this may or may not show as a visible rich snippet today, but
+      the structured data still helps general content understanding (including by AI answer engines) and costs
+      nothing to have either way.</li>
   <li><strong>Per-category copy</strong> &mdash; <code>app/utils/categoryContent.ts</code> hand-written H1 / tagline /
       intro / meta for the categories that have it (Pocket Temples, Pan Stands, Board Games, Polyresin, UV Resin
       Earrings, Misc), keyed to the exact <code>categories.name</code>. Avoids duplicate-content issues.</li>
@@ -2841,6 +2851,54 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-05<br>&mdash;</code></td>
+  <td><strong>FAQ page + FAQPage JSON-LD</strong><br>(owner: one more marketing idea from the recommendation list &mdash; SEO rich snippets)</td>
+  <td>
+    New <strong><code>/faq</code></strong> (<code>app/faq/page.tsx</code>) &mdash; a visible accordion of 12
+    Q&amp;As, each answer a fact already true elsewhere in the codebase (the refund/cancellation policy, the
+    checkout WhatsApp-OTP gate, the GST invoice, the India-only delivery address form &mdash; confirmed by
+    checking the actual <code>DeliveryStep</code> state dropdown, not assumed &mdash; the referral program,
+    bulk/corporate gifting, the catalogue PDF); nothing invented for this page. A matching
+    <code>schema.org FAQPage</code> script is built from the exact same <code>FAQS</code> array that renders
+    the accordion (one source of truth, can't drift), since Google's own guidelines require structured data to
+    describe content actually shown, not hidden-only text.
+    <br><br>
+    <strong>Honest caveat, documented rather than oversold:</strong> Google curtailed how often FAQPage rich
+    results actually render in search back in August 2023, mostly limiting them to authoritative government
+    and health sites since. This may or may not show as a visible rich snippet today &mdash; but the
+    structured data still helps general content understanding (including by AI answer engines increasingly
+    parsing schema.org markup) and costs nothing to have either way, and picks back up for free if that policy
+    ever loosens.
+    <br><br>
+    Added to <code>sitemap.ts</code>. Linked from the footer of all 12 pages that already carry the
+    site&rsquo;s (pre-existing, duplicated-per-page, not refactored here) compliance-link footer &mdash;
+    <code>StorefrontPage</code>, <code>product/[id]</code>, <code>success</code>, <code>terms</code>,
+    <code>privacy</code>, <code>refunds</code>, <code>about</code>, <code>contact</code>, <code>catalogue</code>,
+    <code>corporate</code>, <code>track</code>, <code>not-found</code> &mdash; a mechanical, identical one-line
+    addition to each, matching how every other policy page (<code>/terms</code>, <code>/refunds</code>,
+    <code>/track</code>) is already linked everywhere, so the new page isn&rsquo;t only reachable via
+    <code>sitemap.xml</code>.
+  </td>
+  <td><em>new:</em> <code>app/faq/page.tsx</code><br>
+    <em>edited:</em> <code>app/sitemap.ts</code>, <code>app/components/StorefrontPage.tsx</code>,
+    <code>app/product/[id]/page.tsx</code>, <code>app/success/page.tsx</code>, <code>app/terms/page.tsx</code>,
+    <code>app/privacy/page.tsx</code>, <code>app/refunds/page.tsx</code>, <code>app/about/page.tsx</code>,
+    <code>app/contact/page.tsx</code>, <code>app/catalogue/page.tsx</code>, <code>app/corporate/page.tsx</code>,
+    <code>app/track/page.tsx</code>, <code>app/not-found.tsx</code>, <code>docs/HANDBOOK.html</code>,
+    <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 216 passed (1 pre-existing skip,
+    unchanged &mdash; static content + JSON-LD, no new pure logic) &middot; <code>eslint</code> 0 new errors
+    on every changed file (1 pre-existing <code>set-state-in-effect</code> warning in
+    <code>success/page.tsx</code>, unrelated to this one-line footer edit &mdash; predates this batch) &middot;
+    <code>next build</code> exit 0, <code>/faq</code> registered static (&cir;). <strong>Live-verified</strong>
+    against a dev server: fetched <code>/faq</code>, confirmed the heading and all 12 questions render;
+    extracted and parsed the page's <code>FAQPage</code> JSON-LD script (there are 3 JSON-LD scripts on the
+    page &mdash; <code>Organization</code>/<code>WebSite</code> from the root layout plus this one &mdash;
+    picked out by <code>@type</code>) and confirmed exactly 12 matching questions/answers; confirmed the new
+    footer link renders on both the homepage and <code>/refunds</code>, and that <code>/sitemap.xml</code>
+    lists <code>/faq</code>. Not a payment-path or schema change.</td>
+</tr>
 <tr>
   <td><code>2026-09-05<br>&mdash;</code></td>
   <td><strong>Cart cross-sell strip + Top Referrers leaderboard</strong><br>(owner: two more marketing ideas from the recommendation list, picked together)</td>
