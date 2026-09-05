@@ -16,7 +16,10 @@
 // at all if that product actually has numbers attached. Rate-limited
 // per-IP (this route has none otherwise, being a public unauthenticated
 // beacon) so a single visitor can't repeatedly click Chat to spam a
-// supplier's phone.
+// supplier's phone. When an attempt is made, the successful-send count is
+// written back onto the just-inserted log row (enquiry_notified_count,
+// migration 0054) so the admin Overview can show real send volume, not
+// just "opted in or not".
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { serverErrorResponse } from "@/app/utils/apiError";
@@ -45,17 +48,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid enquiry source." }, { status: 400 });
     }
 
-    const { error } = await supabase.from("whatsapp_enquiries").insert([
-      {
-        product_id: body.productId ?? null,
-        product_name: body.productName ? String(body.productName).slice(0, 300) : null,
-        category: body.category ? String(body.category).slice(0, 100) : null,
-        price: typeof body.price === "number" ? body.price : null,
-        out_of_stock: Boolean(body.outOfStock),
-        whatsapp_number: body.whatsappNumber ? String(body.whatsappNumber).slice(0, 20) : null,
-        source,
-      },
-    ]);
+    const { data: inserted, error } = await supabase
+      .from("whatsapp_enquiries")
+      .insert([
+        {
+          product_id: body.productId ?? null,
+          product_name: body.productName ? String(body.productName).slice(0, 300) : null,
+          category: body.category ? String(body.category).slice(0, 100) : null,
+          price: typeof body.price === "number" ? body.price : null,
+          out_of_stock: Boolean(body.outOfStock),
+          whatsapp_number: body.whatsappNumber ? String(body.whatsappNumber).slice(0, 20) : null,
+          source,
+        },
+      ])
+      .select("id")
+      .single();
     if (error) return serverErrorResponse("Enquiry log insert failed", error);
 
     // --- Notify on enquiry (best-effort, opt-in per product) ---
@@ -87,7 +94,16 @@ export async function POST(req: Request) {
                 outOfStock: Boolean(body.outOfStock),
                 productUrl: `${SITE_URL}${productHref({ id: product.id, name: product.name })}`,
               });
-              await Promise.allSettled(targets.map((n) => sendWhatsappMessage(n, message)));
+              const results = await Promise.allSettled(targets.map((n) => sendWhatsappMessage(n, message)));
+              const sentCount = results.filter((r) => r.status === "fulfilled").length;
+              // Best-effort visibility only (0054) -- an UPDATE failure here
+              // never undoes the WhatsApp sends already made above.
+              if (inserted?.id) {
+                await supabase
+                  .from("whatsapp_enquiries")
+                  .update({ enquiry_notified_count: sentCount })
+                  .eq("id", inserted.id);
+              }
             }
           }
         }

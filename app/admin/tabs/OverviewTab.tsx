@@ -415,7 +415,7 @@ export default function OverviewTab() {
         <p className="text-stone-400 text-sm text-center py-6">No WhatsApp enquiries logged yet.</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
             <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
               <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Total Enquiries</p>
               <p className="text-xl font-mono font-bold text-stone-900">{enquiryAnalytics.totalEnquiries}</p>
@@ -436,6 +436,11 @@ export default function OverviewTab() {
               <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Top Product</p>
               <p className="text-base font-serif font-bold text-stone-900 truncate">{enquiryAnalytics.topProducts[0]?.productName || "--"}</p>
               <p className="text-[10px] text-stone-400 mt-0.5">{enquiryAnalytics.topProducts[0]?.count || 0} enquiries</p>
+            </div>
+            <div className="bg-sky-50 border border-sky-200 rounded-lg p-4">
+              <p className="text-[10px] uppercase tracking-wider text-sky-700 font-semibold mb-1">Notify-on-Enquiry Sends</p>
+              <p className="text-xl font-mono font-bold text-sky-800">{enquiryAnalytics.enquiryNotifySends}</p>
+              <p className="text-[10px] text-sky-600 mt-0.5">across {enquiryAnalytics.enquiriesWithNotify} enquiries</p>
             </div>
           </div>
 

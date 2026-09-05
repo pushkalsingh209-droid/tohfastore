@@ -1,7 +1,10 @@
 // app/api/admin/whatsapp-enquiries/route.ts
 // Aggregates the whatsapp_enquiries click-log into dashboard-ready stats --
 // same style as app/api/admin/analytics/route.ts: one full-table fetch,
-// grouping done in plain JS, no external analytics service.
+// grouping done in plain JS, no external analytics service. Also surfaces
+// "Notify on enquiry" volume (enquiry_notified_count, 0054) -- how many of
+// these clicks actually triggered a supplier WhatsApp, since that's opt-in
+// per product and otherwise invisible.
 import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
@@ -12,13 +15,18 @@ export async function GET() {
   try {
     const { data: enquiries, error } = await supabase
       .from("whatsapp_enquiries")
-      .select("product_id, product_name, category, out_of_stock, whatsapp_number, source, created_at")
+      .select("product_id, product_name, category, out_of_stock, whatsapp_number, source, created_at, enquiry_notified_count")
       .order("created_at", { ascending: true });
     if (error) return serverErrorResponse("admin whatsapp-enquiries", error);
 
     const all = enquiries || [];
     const totalEnquiries = all.length;
     const outOfStockEnquiries = all.filter((e) => e.out_of_stock).length;
+    // "Notify on enquiry" (0053/0054) -- most rows have this null (feature
+    // is opt-in per product, most products aren't opted in), so this stays
+    // near-zero until the owner actually ticks some boxes.
+    const enquiryNotifySends = all.reduce((sum, e) => sum + (e.enquiry_notified_count || 0), 0);
+    const enquiriesWithNotify = all.filter((e) => (e.enquiry_notified_count || 0) > 0).length;
 
     const byCategoryMap = new Map<string, number>();
     const byProductMap = new Map<string, { productId: string | number | null; productName: string; count: number }>();
@@ -80,6 +88,8 @@ export async function GET() {
     return NextResponse.json({
       totalEnquiries,
       outOfStockEnquiries,
+      enquiryNotifySends,
+      enquiriesWithNotify,
       byCategory,
       topProducts,
       byNumber,

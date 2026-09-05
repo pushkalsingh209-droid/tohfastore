@@ -1,0 +1,17 @@
+-- Run this in the Supabase SQL editor.
+-- Visibility into how much "Notify on enquiry" (products.enquiry_notify_numbers,
+-- 0053) actually fires -- extends the existing whatsapp_enquiries click-log
+-- table rather than a new one: unlike order_notification_log (kept separate
+-- from review_reminders_sent in 0052 specifically to avoid inflating its one
+-- displayed "Total" figure), whatsapp_enquiries' own admin analytics
+-- (/api/admin/whatsapp-enquiries) derives every stat by counting/grouping
+-- rows, not from a value stored per row -- adding a column here doesn't
+-- change what "Total Enquiries" or any existing breakdown already means.
+--
+-- NULL = no notify was even attempted for this click (product had no
+-- enquiry_notify_numbers attached, or was hidden) -- the overwhelming
+-- majority of rows, since the feature is opt-in per product. A non-null
+-- value is the count of numbers the WhatsApp actually went out to
+-- successfully (0 if attempted but every send failed) -- set via an UPDATE
+-- right after the insert, once /api/enquiries knows the outcome.
+alter table whatsapp_enquiries add column if not exists enquiry_notified_count int;
