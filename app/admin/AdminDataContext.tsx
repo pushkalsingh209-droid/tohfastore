@@ -36,6 +36,11 @@ export interface AdminCoupon {
   expires_at?: string | null;
   active: boolean;
   is_public: boolean;
+  // Set only on a customer's own referral share coupon (migration 0051) --
+  // that row's used_count is exactly their lifetime successful-referral
+  // count, since each redemption bumps it. Absent on every other coupon,
+  // including reward ("THANKS...") coupons.
+  referral_phone?: string | null;
 }
 
 export interface AdminOrderItem {
