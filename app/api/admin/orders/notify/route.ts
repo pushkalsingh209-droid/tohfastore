@@ -14,7 +14,7 @@ import { productHref } from "@/app/utils/slug";
 import { normalizeIndianPhone } from "@/app/utils/phone";
 import { normalizeCourierName } from "@/app/utils/couriers";
 import { resolveSupplierTargets } from "@/app/utils/orderNotificationNumbers";
-import { getOrCreateReferralCoupon } from "@/app/utils/referralCoupon";
+import { getOrCreateReferralCoupon, parseReferralDiscountPercent, parseReferralValidDays } from "@/app/utils/referralCoupon";
 import { asCustomerDetails, asOrderItems } from "@/app/utils/orderTypes";
 import {
   buildStatusWhatsappMessage,
@@ -63,8 +63,21 @@ export async function POST(req: Request) {
     // Referral coupon (best-effort, delivered only -- app/utils/referralCoupon.ts).
     // Minted here, not at payment time, so a cancelled/refunded first order
     // never earns a code, and never touches the payment/webhook path.
-    const referralCoupon =
-      status === "delivered" && customerPhone ? await getOrCreateReferralCoupon(supabase, String(customerPhone)) : null;
+    // Discount %/validity are admin-tunable (Settings tab); read here so a
+    // newly-minted coupon uses today's values, fail-closed to the module's
+    // defaults if either setting is unset or invalid.
+    let referralCoupon: Awaited<ReturnType<typeof getOrCreateReferralCoupon>> = null;
+    if (status === "delivered" && customerPhone) {
+      const { data: referralSettingRows } = await supabase
+        .from("site_settings")
+        .select("key, value")
+        .in("key", ["referral_discount_percent", "referral_coupon_valid_days"]);
+      const settingsMap = Object.fromEntries((referralSettingRows ?? []).map((r) => [r.key, r.value]));
+      referralCoupon = await getOrCreateReferralCoupon(supabase, String(customerPhone), {
+        discountPercent: parseReferralDiscountPercent(settingsMap.referral_discount_percent),
+        validDays: parseReferralValidDays(settingsMap.referral_coupon_valid_days),
+      });
+    }
 
     const input = {
       status,
@@ -74,6 +87,7 @@ export async function POST(req: Request) {
       comment: cleanComment,
       reviewUrl,
       referralCode: referralCoupon?.code,
+      referralDiscountPercent: referralCoupon?.discountPercent,
     };
 
     let whatsapp: ChannelResult = "skipped";

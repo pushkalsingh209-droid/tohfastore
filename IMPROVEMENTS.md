@@ -12,6 +12,32 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Referral coupon discount %/validity admin-configurable — 2026-09-05 IST
+- Owner: link the referral coupon's value (10% / 90 days) to the admin panel so it can be changed without a
+  code edit.
+- Two new plain `site_settings` rows — `referral_discount_percent` (1-50, default 10) and
+  `referral_coupon_valid_days` (1-365, default 90) — PATCHed via the existing `/api/admin/settings` route
+  (same inline-validation pattern as `brass_price_per_kg`) and edited from two new Settings-tab fields next to
+  Default Brass Rate. New bounds constants + two lenient parsers (`parseReferralDiscountPercent`,
+  `parseReferralValidDays`) live in `app/utils/referralCoupon.ts` — an unset/blank/out-of-range value falls
+  back to the code default rather than minting a 0%-off or multi-year coupon. No migration needed.
+- `getOrCreateReferralCoupon` now takes an optional `{ discountPercent, validDays }`; `/api/admin/orders/notify`
+  reads both settings right before minting and passes them through. Only affects coupons minted *after* a
+  settings change — an existing customer's coupon is never retroactively touched.
+- **Correctness fix caught while wiring this up:** the delivered notification message always said the
+  hardcoded `REFERRAL_DISCOUNT_PERCENT` regardless of a coupon's actual `discount_value` — harmless while the
+  value never changed, but would have lied the moment an admin edited the setting after some customers already
+  had a coupon. Fixed at the root: `findByPhone` now returns the coupon's own stored `discount_value`, and
+  `orderNotifications.ts`'s `StatusMessageInput` gained `referralDiscountPercent` (replacing the direct
+  constant import) so every message reflects the specific coupon being shared.
+- Verified: `tsc --noEmit` clean; `npm test` 214 passed (1 pre-existing skip, +6 new); `eslint` 0 errors on
+  every changed file; `next build` exit 0. **Live-verified against production** with a throwaway scratch
+  script (not committed): confirmed neither setting pre-existed, upserted test values, read them back exactly
+  as the notify route does, minted a test coupon confirming its stored values matched, then deleted everything
+  — production left exactly as found. Not yet exercised through the actual admin UI or a real Delivered send
+  with a non-default value — owner to confirm live.
+- See `docs/HANDBOOK.html` Change log 2026-09-05.
+
 ### Batch: Referral coupons + price-aware Share button — 2026-09-05 IST
 - Owner went ahead with two marketing-feature recommendations: a WhatsApp share button, and a referral
   coupon customers can hand to friends.
