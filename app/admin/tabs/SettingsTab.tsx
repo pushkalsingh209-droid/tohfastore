@@ -344,6 +344,33 @@ export default function SettingsTab() {
     }
   };
 
+  // The referral coupon's discount % (1-50) and validity window in days
+  // (1-365) -- app/utils/referralCoupon.ts. Only changes what NEW coupons
+  // are minted with; an already-minted customer's coupon is unaffected.
+  const handleUpdateReferralDiscountPercent = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ referral_discount_percent: Number(value) }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: unknown) {
+      alert(`Could not update referral discount: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const handleUpdateReferralValidDays = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ referral_coupon_valid_days: Number(value) }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: unknown) {
+      alert(`Could not update referral coupon validity: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   // Site-wide default for new/unset products' WhatsApp enquiry link --
   // reuses the existing settings PATCH endpoint. Clearing it (passing "")
   // falls back to the hardcoded +91 6302672351 in app/utils/whatsapp.ts.
@@ -776,6 +803,39 @@ export default function SettingsTab() {
         />
         <span className="text-stone-400 text-xs w-full">
           Used by the &ldquo;Lightweight Brass&rdquo; price calculator in the stock tracker (weight × rate × 1.20 margin). Raising this only changes the default offered to a product that doesn&rsquo;t have its own rate saved yet -- it never rewrites a product&rsquo;s already-saved rate or price.
+        </span>
+      </div>
+      <div className="flex items-center gap-3 flex-wrap mt-4">
+        <label className="text-sm text-stone-700 font-medium">Referral discount (%)</label>
+        <input
+          type="number"
+          min={1}
+          max={50}
+          step={1}
+          key={settings.referral_discount_percent ?? "10"}
+          defaultValue={settings.referral_discount_percent ?? "10"}
+          onBlur={(e) => {
+            const next = e.target.value.trim();
+            if (next && next !== settings.referral_discount_percent) handleUpdateReferralDiscountPercent(next);
+          }}
+          className="w-20 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+        />
+        <label className="text-sm text-stone-700 font-medium ml-2">Valid for (days)</label>
+        <input
+          type="number"
+          min={1}
+          max={365}
+          step={1}
+          key={settings.referral_coupon_valid_days ?? "90"}
+          defaultValue={settings.referral_coupon_valid_days ?? "90"}
+          onBlur={(e) => {
+            const next = e.target.value.trim();
+            if (next && next !== settings.referral_coupon_valid_days) handleUpdateReferralValidDays(next);
+          }}
+          className="w-20 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+        />
+        <span className="text-stone-400 text-xs w-full">
+          A customer&rsquo;s personal referral coupon (minted automatically the first time their order is marked Delivered, see the Orders tab) uses whatever these two values are at that moment. Changing them here only affects coupons minted afterwards -- a customer who already has one keeps their original discount and expiry.
         </span>
       </div>
       <div className="flex items-center gap-3 flex-wrap mt-4">

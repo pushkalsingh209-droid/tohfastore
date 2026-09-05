@@ -8,6 +8,12 @@ import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
 import { MAX_CHAT_LABEL_LENGTH } from "@/app/utils/chatLabels";
 import { sanitizeSpendTierOffer } from "@/app/utils/spendTierOffer";
 import { sanitizeFeaturedSpotlight } from "@/app/utils/featuredSpotlight";
+import {
+  MIN_REFERRAL_DISCOUNT_PERCENT,
+  MAX_REFERRAL_DISCOUNT_PERCENT,
+  MIN_REFERRAL_VALID_DAYS,
+  MAX_REFERRAL_VALID_DAYS,
+} from "@/app/utils/referralCoupon";
 
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 500;
@@ -227,6 +233,32 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: errors.join(" ") }, { status: 400 });
       }
       updates.push({ key: "featured_spotlight", value: JSON.stringify(campaign) });
+    }
+
+    // The referral coupon's discount % and validity window (0051 +
+    // app/utils/referralCoupon.ts). Only affects coupons minted AFTER this
+    // save -- an already-minted customer's coupon keeps whatever it was
+    // given at insert time, never retroactively re-priced.
+    if (body.referral_discount_percent !== undefined) {
+      const pct = Number(body.referral_discount_percent);
+      if (!Number.isFinite(pct) || !Number.isInteger(pct) || pct < MIN_REFERRAL_DISCOUNT_PERCENT || pct > MAX_REFERRAL_DISCOUNT_PERCENT) {
+        return NextResponse.json(
+          { error: `Referral discount must be a whole number between ${MIN_REFERRAL_DISCOUNT_PERCENT} and ${MAX_REFERRAL_DISCOUNT_PERCENT}.` },
+          { status: 400 }
+        );
+      }
+      updates.push({ key: "referral_discount_percent", value: String(pct) });
+    }
+
+    if (body.referral_coupon_valid_days !== undefined) {
+      const days = Number(body.referral_coupon_valid_days);
+      if (!Number.isFinite(days) || !Number.isInteger(days) || days < MIN_REFERRAL_VALID_DAYS || days > MAX_REFERRAL_VALID_DAYS) {
+        return NextResponse.json(
+          { error: `Referral coupon validity must be a whole number of days between ${MIN_REFERRAL_VALID_DAYS} and ${MAX_REFERRAL_VALID_DAYS}.` },
+          { status: 400 }
+        );
+      }
+      updates.push({ key: "referral_coupon_valid_days", value: String(days) });
     }
 
     if (updates.length === 0) {

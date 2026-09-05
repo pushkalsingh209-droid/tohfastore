@@ -43,19 +43,40 @@ describe("buildStatusWhatsappMessage", () => {
     expect(withReview).toContain("Leave a review here: https://tohfaonline.com/product/5-idol");
   });
 
-  it("delivered: includes the referral line only when a referralCode is given", () => {
+  it("delivered: includes the referral line only when both referralCode and referralDiscountPercent are given", () => {
     expect(buildStatusWhatsappMessage({ status: "delivered", orderId: "o1" })).not.toContain("Share TOHFA");
+    // A code with no percent (shouldn't happen from the real caller, but
+    // guards against a partially-built input) also omits the line.
+    expect(
+      buildStatusWhatsappMessage({ status: "delivered", orderId: "o1", referralCode: "FRIEND321099AB" })
+    ).not.toContain("Share TOHFA");
+
     const withReferral = buildStatusWhatsappMessage({
       status: "delivered",
       orderId: "o1",
       referralCode: "FRIEND321099AB",
+      referralDiscountPercent: 10,
     });
     expect(withReferral).toContain("Share TOHFA with a friend!");
+    expect(withReferral).toContain("10% off");
     expect(withReferral).toContain("FRIEND321099AB");
   });
 
+  it("uses the coupon's own discount percent, not a hardcoded one -- an admin-changed setting doesn't relabel an older coupon", () => {
+    const msg = buildStatusWhatsappMessage({
+      status: "delivered",
+      orderId: "o1",
+      referralCode: "FRIENDOLD1",
+      referralDiscountPercent: 15,
+    });
+    expect(msg).toContain("15% off");
+    expect(msg).not.toContain("10% off");
+  });
+
   it("referral line is delivered-only (never on shipped/processing/cancelled)", () => {
-    expect(buildStatusWhatsappMessage({ ...BASE, referralCode: "FRIENDX" })).not.toContain("Share TOHFA");
+    expect(
+      buildStatusWhatsappMessage({ ...BASE, referralCode: "FRIENDX", referralDiscountPercent: 10 })
+    ).not.toContain("Share TOHFA");
   });
 
   it("processing / cancelled have their own lead line and no tracking", () => {
@@ -93,12 +114,18 @@ describe("buildStatusEmailHtml", () => {
     expect(html).not.toContain("border-left:3px solid #b45309");
   });
 
-  it("delivered: includes the referral coupon block only when referralCode is given", () => {
+  it("delivered: includes the referral coupon block only when both referralCode and referralDiscountPercent are given", () => {
     const withoutReferral = buildStatusEmailHtml({ status: "delivered", orderId: "o1" });
     expect(withoutReferral).not.toContain("Share TOHFA");
 
-    const withReferral = buildStatusEmailHtml({ status: "delivered", orderId: "o1", referralCode: "FRIEND<b>" });
+    const withReferral = buildStatusEmailHtml({
+      status: "delivered",
+      orderId: "o1",
+      referralCode: "FRIEND<b>",
+      referralDiscountPercent: 10,
+    });
     expect(withReferral).toContain("Share TOHFA with a friend!");
+    expect(withReferral).toContain("10% off");
     // Escaped, not rendered as markup -- the code is stored free-form-ish
     // and, however unlikely, should never inject HTML into the email.
     expect(withReferral).toContain("FRIEND&lt;b&gt;");

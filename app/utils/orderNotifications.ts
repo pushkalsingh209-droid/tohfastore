@@ -9,8 +9,6 @@
 // The plain-text builder is pure and imported client-side too, so the
 // Notify dialog can show a live preview of exactly what will be sent.
 
-import { REFERRAL_DISCOUNT_PERCENT } from "@/app/utils/referralCoupon";
-
 export const SITE_URL = "https://tohfaonline.com";
 export const CONTACT_INBOX = "contact@tohfaonline.com";
 export const MAX_NOTIFY_COMMENT_LENGTH = 600;
@@ -31,10 +29,13 @@ export interface StatusMessageInput {
   // Only used for a "delivered" message; the caller builds it (needs a
   // product id) and passes it in.
   reviewUrl?: string;
-  // Only used for a "delivered" message; the caller mints/looks it up
-  // (app/utils/referralCoupon.ts) and passes it in. Omitted entirely if
-  // minting failed -- never blocks the notification itself.
+  // Both only used for a "delivered" message; the caller mints/looks up the
+  // coupon (app/utils/referralCoupon.ts) and passes both in together --
+  // referralDiscountPercent is that specific coupon's own stored discount,
+  // not necessarily today's site_settings.referral_discount_percent value.
+  // Omitted entirely if minting failed -- never blocks the notification.
   referralCode?: string;
+  referralDiscountPercent?: number;
 }
 
 function invoiceUrl(orderId: string): string {
@@ -90,9 +91,9 @@ export function buildStatusWhatsappMessage(p: StatusMessageInput): string {
     blocks.push(`We'd love your feedback! Leave a review here: ${p.reviewUrl}`);
   }
 
-  if (p.status === "delivered" && p.referralCode) {
+  if (p.status === "delivered" && p.referralCode && p.referralDiscountPercent) {
     blocks.push(
-      `🎁 Share TOHFA with a friend! Give them ${REFERRAL_DISCOUNT_PERCENT}% off their first order with your code: ${p.referralCode}`
+      `🎁 Share TOHFA with a friend! Give them ${p.referralDiscountPercent}% off their first order with your code: ${p.referralCode}`
     );
   }
 
@@ -181,8 +182,8 @@ export function buildStatusEmailHtml(p: StatusMessageInput & { customerName?: st
         : ""
     }
     ${
-      p.status === "delivered" && p.referralCode
-        ? `<div style="border-left:3px solid #b45309;background:#fffbeb;padding:10px 14px;margin:12px 0 0;font-size:13px;color:#78350f;">🎁 Share TOHFA with a friend! Give them ${REFERRAL_DISCOUNT_PERCENT}% off their first order with your code: <strong style="font-family:monospace;">${escapeHtml(
+      p.status === "delivered" && p.referralCode && p.referralDiscountPercent
+        ? `<div style="border-left:3px solid #b45309;background:#fffbeb;padding:10px 14px;margin:12px 0 0;font-size:13px;color:#78350f;">🎁 Share TOHFA with a friend! Give them ${p.referralDiscountPercent}% off their first order with your code: <strong style="font-family:monospace;">${escapeHtml(
             p.referralCode
           )}</strong></div>`
         : ""
