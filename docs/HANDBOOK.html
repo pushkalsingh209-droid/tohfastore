@@ -614,7 +614,8 @@
     <code>{token, phone}</code> &mdash; never typed field values (those live in <code>CheckoutSheet</code>).</figcaption>
   </figure>
   <ol class="steps">
-    <li><b>Cart.</b> <code>CartContext</code> (localStorage-backed) &rarr; <code>CartDrawer</code> shows the bag;
+    <li><b>Cart.</b> <code>CartContext</code> (localStorage-backed) &rarr; <code>CartDrawer</code> shows the bag,
+    plus a <code>CartSuggestions</code> cross-sell strip (bestsellers not already in the bag);
     "Proceed to Checkout" mounts <code>CheckoutSheet</code>, which takes over the drawer.</li>
     <li><b>Contact step.</b> Name / email / phone, then WhatsApp OTP: <code>POST /api/whatsapp-otp/send</code>
     &rarr; <code>POST /api/whatsapp-otp/verify</code> returns a short-lived token. A one-time
@@ -1110,6 +1111,10 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
     paid for (<code>/api/razorpay-webhook</code>), sent to the referrer on WhatsApp. Two-sided by design: the
     friend already gets the discount on that order; this is what the referrer gets back for bringing them.
     Uses the same admin-editable discount %/validity as the share code (below).</p>
+    <p>A <b>Top Referrers</b> card sits above the coupon list once anyone has a successful referral &mdash;
+    ranked all-time by their share coupon's own <code>used_count</code> (each redemption bumps it, so it's
+    already an exact lifetime count, no new tracking needed). Hidden entirely until the first real referral
+    lands. Not bucketed by month &mdash; that would need a per-redemption timestamp log this doesn't have.</p>
   </div>
 
   <div class="card">
@@ -1899,6 +1904,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/orders/receipt</code></td><td><span class="tag t-post">post</span></td><td>Phone-gated invoice rebuild for <code>/success</code> when the client stash is gone. Same guard as <code>/api/orders/track</code> (Order ID + last-10-digits phone). Recomputes subtotal/discount/GST from the stored order; also returns <code>courierName</code> / <code>awbNumber</code> if the order has shipped. Fires no analytics.</td></tr>
 <tr><td><code>/api/stock</code></td><td><span class="tag t-get">get</span></td><td><code>?ids=1,2,3</code> (&le; 200) &rarr; <code>{id: {inventory, outOfStock, lowStock}}</code>. <code>force-dynamic</code> + <code>no-store</code>. Hidden &rarr; inventory 0. Used by <code>CatalogSection</code>.</td></tr>
 <tr><td><code>/api/stock/[id]</code></td><td><span class="tag t-get">get</span></td><td>Single-product live stock. Used by <code>LiveStockProvider</code> on the detail page.</td></tr>
+<tr><td><code>/api/cart-suggestions</code></td><td><span class="tag t-get">get</span></td><td><code>?ids=1,2,3</code> (the cart's current product ids) &rarr; <code>{ suggestions: BestsellerItem[] }</code>, up to 6. A thin filter over the already-cached <code>getBestsellers()</code> excluding whatever's passed in &mdash; no new query logic or cache layer. Feeds <code>CartSuggestions.tsx</code>'s &ldquo;Complete Your Gifting&rdquo; strip in the cart drawer (a Client Component with no server-side data of its own).</td></tr>
 <tr><td><code>/api/recent-views/[id]</code></td><td><span class="tag t-get">get</span></td><td>Distinct viewers in the last 3h. <code>force-dynamic</code>. Used by <code>RecentViewersNoteLive</code>.</td></tr>
 <tr><td><code>/api/track-view</code></td><td><span class="tag t-post">post</span></td><td>Upsert a <code>product_views</code> row. Rate-limited <code>track-view</code> 60/10min. Prunes &gt;48h on 2%.</td></tr>
 <tr><td><code>/api/stock-alerts</code></td><td><span class="tag t-post">post</span></td><td>Subscribe to back-in-stock (no OTP &mdash; low stakes). Rate-limited 15/60min. <code>23505</code> &rarr; silent no-op.</td></tr>
@@ -2162,7 +2168,7 @@ untyped <code>any</code> the JSX always had (a follow-up typing pass, <code>IMPR
 <tr><td><code>overview</code></td><td>A <strong>Keepalive heartbeat</strong> card (last-run timestamp + amber <em>Check</em> badge if &gt; 90 min stale), then Business Overview (revenue, orders, AOV, repeat-rate, 6-month revenue chart), WhatsApp Enquiries analytics (14-day trend, by category/product/number/source), Leads list (follow-up / mark-contacted / delete), all with CSV export.</td></tr>
 <tr><td><code>products</code></td><td>Add-product form (name, price, description, images via <code>ImageUploadField</code>, category, inventory, weight/dimensions with selectable input unit + converter, material/color/label dropdowns, per-product WhatsApp number, photo filter, cost price). <strong>Live Storefront Catalog &amp; Stock Tracker:</strong> inline stock steppers, spec drafts, a &ldquo;Lightweight Brass&rdquo; price calculator (<code>weight &times; &#8377;/kg &times; 1.20</code> &rarr; <code>roundUpBrassPrice</code>), bulk label assign, hide/unhide, and a per-row &ldquo;★ Featured&rdquo;/&ldquo;☆ Feature&rdquo; toggle (0050) for the <code>/spotlight</code> marketing page &mdash; any product, any category, any count.</td></tr>
 <tr><td><code>orders</code></td><td>A <strong>Notifications sent</strong> analytics card (per-status totals over an admin-chosen date range, blank = all time &mdash; client-side over the full <code>order_notification_log</code>, 0048) above the order table. Table filtered by status (<code>ORDER_STATUS_TABS</code>), status updates + AWB entry, customer/address/items view (an amber &ldquo;Gift &mdash; receiver: &lt;number&gt;&rdquo; pill when <code>shipping_address.recipientPhone</code> is set, post-0049 &mdash; also in the search box), and a per-order/per-status send counter (e.g. <code>Shipped (2)</code>) next to the &ldquo;Notify customer&rdquo; button and on the notify dialog's status pill, both fed by the same log.</td></tr>
-<tr><td><code>coupons</code></td><td>Coupon CRUD, public/private toggle, usage vs limit.</td></tr>
+<tr><td><code>coupons</code></td><td>Coupon CRUD, public/private toggle, usage vs limit. A Top Referrers card (all-time, by each referral share coupon's own <code>used_count</code>) sits above the list once there's at least one successful referral.</td></tr>
 <tr><td><code>settings</code></td><td>Storefront Settings (page size, reveal batch, photo filter, units, default WhatsApp number, brass &#8377;/kg, Ganesha popup tuning), Spend &amp; Save Offer, <strong>Featured Spotlight</strong> (0050 &mdash; enable/title/description/start/end for the <code>/spotlight</code> page, a live count of currently-featured products with a &ldquo;Clear all&rdquo;; which products is set from the Products tab), WhatsApp Numbers + bulk reassign, Order Notification Numbers, Chat Button Labels, Categories management (show-on-home, GST rate, discount %, page-size override, per-category WhatsApp number).</td></tr>
 <tr><td><code>reviews</code></td><td>Pending/approved review moderation (approve / reject).</td></tr>
 <tr><td><code>security</code></td><td>Recent login attempts, backup-codes remaining + regenerate, TOTP QR re-provision, &ldquo;Log Out Everywhere&rdquo;.</td></tr>
@@ -2371,6 +2377,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <h4>Checkout / forms</h4>
 <ul class="tight">
 <li><code>CartDrawer</code> / <code>LazyCartDrawer</code> &mdash; the whole checkout flow</li>
+<li><code>CartSuggestions</code> &mdash; the &ldquo;Complete Your Gifting&rdquo; cross-sell strip inside the cart drawer, fetched client-side from <code>/api/cart-suggestions</code> (a thin filter over the already-cached <code>getBestsellers()</code>, excluding whatever's already in the cart); renders nothing while loading or once there's nothing left to suggest</li>
 <li><code>ContactForm</code>, <code>SearchBar</code></li>
 </ul>
 </div>
@@ -2834,6 +2841,45 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-05<br>&mdash;</code></td>
+  <td><strong>Cart cross-sell strip + Top Referrers leaderboard</strong><br>(owner: two more marketing ideas from the recommendation list, picked together)</td>
+  <td>
+    <strong>Cart cross-sell.</strong> New <code>GET /api/cart-suggestions?ids=&hellip;</code> &mdash; a thin
+    filter over the already-cached <code>getBestsellers()</code>, excluding whatever product ids the caller
+    passes (the cart's own contents), capped at 6. New <code>app/components/CartSuggestions.tsx</code>, a
+    &ldquo;Complete Your Gifting&rdquo; strip wired into <code>CartDrawer.tsx</code> below the bag list &mdash;
+    fetches client-side (the drawer is a Client Component with no server-side data of its own), renders
+    nothing while loading or once there's nothing left to suggest. Deliberately site-wide bestsellers rather
+    than true per-item &ldquo;frequently bought together&rdquo; &mdash; a cart can span any mix of categories,
+    and blending co-purchase data across all of them for a good-enough cross-sell wasn't worth a bespoke query
+    when the existing bestsellers ranking already does the job. &ldquo;Add&rdquo; reuses the existing
+    <code>useCart().addToCart</code> (same stock-cap check every other add-to-cart path gets).
+    <br><br>
+    <strong>Top Referrers.</strong> A new card in the admin <strong>Coupons</strong> tab, above the coupon
+    list, ranking every customer with at least one successful referral all-time by their share coupon's own
+    <code>used_count</code> &mdash; no new query or tracking needed, since each redemption already bumps that
+    exact column and <code>referral_phone</code> uniquely marks which rows are share coupons (migration 0051).
+    <code>AdminCoupon</code> gained an optional <code>referral_phone</code> field (the existing
+    <code>GET /api/admin/coupons</code> already <code>select("*")</code>s it &mdash; no backend change).
+    Hidden entirely until the first real referral lands. <strong>Deliberately all-time, not
+    &ldquo;this month&rdquo;</strong> &mdash; <code>used_count</code> is a lifetime counter with no
+    per-redemption timestamp log to bucket by month, and framing lifetime data as monthly would misrepresent
+    it; a genuine monthly view would need new tracking, not attempted here.
+  </td>
+  <td><em>new:</em> <code>app/api/cart-suggestions/route.ts</code>, <code>app/components/CartSuggestions.tsx</code><br>
+    <em>edited:</em> <code>app/components/CartDrawer.tsx</code>, <code>app/admin/AdminDataContext.tsx</code>,
+    <code>app/admin/tabs/CouponsTab.tsx</code>, <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 216 passed (1 pre-existing skip, unchanged
+    &mdash; UI + a thin route with no new pure logic to unit test) &middot; <code>eslint</code> 0 errors on
+    every changed file &middot; <code>next build</code> exit 0, both routes registered.
+    <strong>Live-verified</strong> against a dev server reading production data: fetched
+    <code>/api/cart-suggestions</code> with and without exclusions, confirmed excluded ids never appear in the
+    results and the real bestseller pool comes back correctly; queried production's <code>coupons</code> table
+    directly for <code>referral_phone IS NOT NULL</code> rows and confirmed it's currently empty (no referrals
+    redeemed yet), matching the leaderboard's designed empty state (card hidden, not an empty section). Not a
+    payment-path or schema change.</td>
+</tr>
 <tr>
   <td><code>2026-09-05<br>&mdash;</code></td>
   <td><strong>Two-sided referral reward</strong> <span class="pill warnp">webhook</span><br>(owner: next marketing idea after the feed &mdash; today only the referred friend benefits; reward the referrer too)</td>

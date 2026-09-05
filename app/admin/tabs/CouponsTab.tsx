@@ -13,6 +13,18 @@ import { useAdminData } from "@/app/admin/AdminDataContext";
 export default function CouponsTab() {
   const { coupons, setCoupons } = useAdminData();
 
+  // All-time (not "this month" -- used_count is a lifetime counter on the
+  // coupon row, and there's no per-redemption timestamp log to bucket by
+  // month without new tracking) top referrers: each customer's own
+  // referral share coupon (referral_phone set, migration 0051) has exactly
+  // one row, and its used_count is their lifetime successful-referral
+  // count -- so this needs no new query, just a sort over data already
+  // loaded for the list below.
+  const topReferrers = coupons
+    .filter((c) => c.referral_phone && c.used_count > 0)
+    .sort((a, b) => b.used_count - a.used_count)
+    .slice(0, 10);
+
   const [couponForm, setCouponForm] = useState({
     code: "",
     discountType: "flat",
@@ -80,6 +92,33 @@ export default function CouponsTab() {
 
   return (
     <>
+    {topReferrers.length > 0 && (
+      <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8 mb-6">
+        <div className="border-b border-stone-200 pb-4 mb-4">
+          <h2 className="text-xl font-serif text-stone-900">Top Referrers</h2>
+          <p className="text-stone-500 text-xs mt-1">
+            All-time, by successful referrals (a friend&rsquo;s order actually paid for using their code). Each
+            referral also auto-rewards them a one-time &ldquo;THANKS&hellip;&rdquo; coupon &mdash; see the list
+            below.
+          </p>
+        </div>
+        <div className="divide-y divide-stone-100">
+          {topReferrers.map((c, i) => (
+            <div key={c.id} className="py-2.5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-mono text-stone-400 w-5 text-right">{i + 1}</span>
+                <span className="font-mono text-sm text-stone-900">{c.referral_phone}</span>
+                <span className="text-[11px] text-stone-400 font-mono">{c.code}</span>
+              </div>
+              <span className="text-xs font-semibold text-amber-700">
+                {c.used_count} referral{c.used_count === 1 ? "" : "s"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
     {/* SECTION D: COUPON / DISCOUNT CODES */}
     <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
       <div className="border-b border-stone-200 pb-4 mb-6">

@@ -12,6 +12,27 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Batch: Cart cross-sell strip + Top Referrers leaderboard — 2026-09-05 IST
+- Owner: two more marketing ideas from the recommendation list, picked together.
+- **Cart cross-sell.** New `GET /api/cart-suggestions?ids=...` — a thin filter over the already-cached
+  `getBestsellers()`, excluding the cart's own product ids, capped at 6. New `CartSuggestions.tsx`, a
+  "Complete Your Gifting" strip wired into `CartDrawer.tsx` below the bag list. Site-wide bestsellers rather
+  than true per-item "frequently bought together" — a cart can span any category mix, and the existing
+  bestsellers ranking is a good-enough cross-sell without a bespoke co-purchase query. Reuses
+  `useCart().addToCart` for the same stock-cap check every other add-to-cart path gets.
+- **Top Referrers.** A new card in the admin Coupons tab, above the coupon list, ranking every customer with
+  at least one successful referral all-time by their share coupon's own `used_count` — no new query or
+  tracking needed (each redemption already bumps that column; `referral_phone` already marks which rows are
+  share coupons). Hidden until the first real referral lands. Deliberately all-time, not "this month" —
+  `used_count` has no per-redemption timestamp to bucket by month, and a genuine monthly view would need new
+  tracking not attempted here.
+- Verified: `tsc --noEmit` clean; `npm test` 216 passed (1 pre-existing skip, unchanged); `eslint` 0 errors;
+  `next build` exit 0. **Live-verified** against a dev server reading production data: confirmed
+  `/api/cart-suggestions` correctly excludes cart items and returns the real bestseller pool; confirmed
+  production's `coupons` table currently has zero referral redemptions, matching the leaderboard's designed
+  empty state. Not a payment-path or schema change.
+- See `docs/HANDBOOK.html` Change log 2026-09-05.
+
 ### Batch: Two-sided referral reward — 2026-09-05 IST — ⚠️ webhook
 - Owner: next marketing idea after the Merchant feed — today only the referred friend benefits from a
   referral code; reward the referrer too.

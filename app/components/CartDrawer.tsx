@@ -6,6 +6,7 @@ import { useCart } from "@/app/context/CartContext";
 import { useDefaultWhatsappNumber } from "@/app/context/DefaultWhatsappNumberContext";
 import PriceDisplay from "@/app/components/PriceDisplay";
 import CheckoutSheet from "@/app/components/checkout/CheckoutSheet";
+import CartSuggestions from "@/app/components/CartSuggestions";
 
 // The cart drawer is now just the bag list + a "Proceed to Checkout" button.
 // That button opens the 3-step <CheckoutSheet> (#17b), which takes over the
@@ -118,6 +119,8 @@ export default function CartDrawer() {
                   </svg>
                   Have a question? Chat with us
                 </a>
+
+                <CartSuggestions excludeIds={cart.map((item) => item.id)} />
               </>
             )}
           </div>
