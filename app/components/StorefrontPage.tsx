@@ -8,6 +8,7 @@ import type { Metadata } from "next";
 import CatalogSection from "@/app/components/CatalogSection";
 import CategorySlider from "@/app/components/CategorySlider";
 import BestsellersStrip from "@/app/components/BestsellersStrip";
+import TestimonialsStrip from "@/app/components/TestimonialsStrip";
 import HeroProductRotator from "@/app/components/HeroProductRotator";
 import PromoBanner from "@/app/components/PromoBanner";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
@@ -22,6 +23,7 @@ import {
   filterLivePublicCoupons,
   getTotalProductCount,
   getBestsellers,
+  getTestimonials,
   getSiteSettings,
   getCategoryDefaultPageSize,
   getActiveLabelNames,
@@ -100,12 +102,13 @@ export default async function StorefrontPage({
   const inStockOnly = filters.stock === "in";
   const categoryContent = category ? getCategoryContent(category) : null;
 
-  const [hiddenCategories, rawPublicCoupons, categorySliderItems, totalProductCount, bestsellers, siteSettings, categoryPageSize, activeLabels] = await Promise.all([
+  const [hiddenCategories, rawPublicCoupons, categorySliderItems, totalProductCount, bestsellers, testimonials, siteSettings, categoryPageSize, activeLabels] = await Promise.all([
     getHiddenCategoryNames(),
     getPublicCoupons(),
     getCategorySliderItems(),
     getTotalProductCount(),
     category ? Promise.resolve([]) : getBestsellers(8),
+    category ? Promise.resolve([]) : getTestimonials(10),
     getSiteSettings(),
     category ? getCategoryDefaultPageSize(category) : Promise.resolve(null),
     getActiveLabelNames(),
@@ -303,6 +306,8 @@ export default async function StorefrontPage({
         </div>
 
         {bestsellers.length > 0 && <BestsellersStrip items={bestsellers} />}
+
+        {testimonials.length > 0 && <TestimonialsStrip items={testimonials} />}
 
         <RecentlyViewedStrip />
       </div>

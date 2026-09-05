@@ -2250,7 +2250,10 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       <code>getBestsellers</code> + <code>getRelatedProducts</code>; tally is the pure
       <code>orderTally.ts</code>), <code>getCategoryImage</code>, <code>getSpotlightProducts</code> (0050 &mdash;
       <code>/spotlight</code>'s product grid, tagged both <code>products</code> and <code>site-settings</code>)
-      + <code>getFeaturedSpotlightCampaign</code> (its campaign window, tag <code>site-settings</code>).
+      + <code>getFeaturedSpotlightCampaign</code> (its campaign window, tag <code>site-settings</code>),
+      <code>getTestimonials</code> (homepage-only &ldquo;What Customers Are Saying&rdquo; strip &mdash; approved,
+      4-5&nbsp;star, <em>written</em> reviews only, joined to their product's name via the same
+      <code>reviews</code>&rarr;<code>products</code> embed the admin Reviews tab uses; tag <code>reviews</code>).
       <strong>Storefront bootstrap (#11):</strong> <code>getPublicSettingsMap</code> (tag <code>site-settings</code>)
       + <code>getCategoryDiscountMap</code> + <code>getCategoryWhatsappNumberMap</code> (both tag <code>categories</code>,
       the latter new in 0049), composed with the existing
@@ -2365,6 +2368,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>ShareButtons</code> (native share sheet, falls back to a <code>wa.me</code> link; pre-filled text includes the price when there is one), <code>TrustBadges</code>, <code>ReviewForm</code>, <code>BackToCollectionsLink</code></li>
 <li><code>InstagramPostGenerator</code> &mdash; the public &ldquo;Create Insta Post&rdquo; panel next to <code>ShareButtons</code>: a generated image (<code>/api/instagram-post-image</code>) + an editable, client-computed caption (<code>instagramCaption.ts</code>), copy/download actions, no login</li>
 <li><code>InstagramReelGenerator</code> &mdash; the public &ldquo;Create Insta Reel&rdquo; panel next to it: a 6s silent vertical video, rendered entirely client-side (<code>&lt;canvas&gt;</code> + <code>MediaRecorder</code>) as a Ken Burns push-in on the <em>same</em> cached <code>/api/instagram-post-image</code> PNG the photo tool uses &mdash; no new route, no server-side video rendering</li>
+<li><code>TestimonialsStrip</code> &mdash; the homepage-only &ldquo;What Customers Are Saying&rdquo; rail (same horizontal-scroll card pattern as <code>BestsellersStrip</code>, quote cards instead of product photos), fed by <code>getTestimonials</code>; renders nothing when there are no qualifying reviews yet</li>
 </ul>
 <h4>Marketing / admin</h4>
 <ul class="tight">
@@ -2810,6 +2814,45 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-05<br>&mdash;</code></td>
+  <td><strong>Testimonials strip &mdash; &ldquo;What Customers Are Saying&rdquo;</strong><br>(owner: next marketing-content feature after the referral coupon &mdash; a UGC/testimonial wall, the cheaper of the two remaining options on the recommendation list)</td>
+  <td>
+    New homepage-only rail, same horizontal-scroll card pattern as the existing <code>BestsellersStrip</code>
+    (quote cards instead of product photos), sitting right below it. Zero new schema &mdash; reuses the
+    existing <code>reviews</code> table and the admin's existing Reviews-tab moderation queue; this is purely
+    a new read + presentation layer.
+    <br><br>
+    New <code>getTestimonials(limit)</code> in <code>app/utils/storeQueries.ts</code> (cached, tag
+    <code>reviews</code>): admin-<code>approved</code> reviews, <code>rating &ge; 4</code>, and
+    <strong>non-null <code>review_text</code></strong> &mdash; a bare star rating with no written quote isn't a
+    testimonial, so those are excluded rather than padded with filler copy. The 4-5&nbsp;star filter on top of
+    the existing moderation gate is pure marketing curation (a highlight reel), the same spirit as
+    <code>BestsellersStrip</code> only showing genuine top sellers. Joins the product name via the
+    <code>reviews</code>&nbsp;&rarr;&nbsp;<code>products</code> embed (<code>select("id, customer_name, rating,
+    review_text, product_id, products(name)")</code>) &mdash; the exact same embed the admin Reviews tab
+    already uses &mdash; so each card can say &ldquo;on &lt;Product&gt;&rdquo; and link back to it.
+    <br><br>
+    New <code>app/components/TestimonialsStrip.tsx</code>; wired into <code>StorefrontPage.tsx</code>
+    (shared by <code>/</code> and <code>/collections/[category]</code>) the same way
+    <code>BestsellersStrip</code> already is &mdash; fetched in the page's existing <code>Promise.all</code>,
+    homepage-only (<code>category ? Promise.resolve([]) : getTestimonials(10)</code>, matching
+    <code>bestsellers</code>'s own conditional immediately above it), renders nothing when there are no
+    qualifying reviews yet rather than showing an empty section.
+  </td>
+  <td><em>new:</em> <code>app/components/TestimonialsStrip.tsx</code><br>
+    <em>edited:</em> <code>app/utils/storeQueries.ts</code>, <code>app/components/StorefrontPage.tsx</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 214 passed (1 pre-existing skip,
+    unchanged &mdash; a DB-backed cached read + a presentational component, no new pure logic to unit test,
+    consistent with how <code>getBestsellers</code>/<code>getSpotlightProducts</code> are handled) &middot;
+    <code>eslint</code> 0 errors on every changed file &middot; <code>next build</code> exit 0.
+    <strong>Live-verified</strong>: queried production directly and confirmed the exact query returns real
+    data (one genuine 5-star, written review, on a real product); ran the dev server against production data
+    and fetched the rendered homepage HTML, confirming the &ldquo;What Customers Are Saying&rdquo; heading,
+    the actual review quote, and the product name all appear in the served markup. Not a payment-path or
+    schema change.</td>
+</tr>
 <tr>
   <td><code>2026-09-05<br>&mdash;</code></td>
   <td><strong>Referral coupon discount % / validity admin-configurable</strong><br>(owner: link the referral coupon's value to the admin panel to allow changing it)</td>
