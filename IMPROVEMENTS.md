@@ -12,6 +12,24 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### "Notify customer" — optional extra WhatsApp numbers — 2026-09-05 IST
+- Owner: add a way to CC someone else on a status notification, without changing default behaviour.
+- New optional "Also WhatsApp to" field in the Notify dialog — free text, comma/newline-separated, blank
+  changes nothing. New pure `app/utils/extraNotifyNumbers.ts` (`parseExtraNotifyNumbers`): normalizes with
+  `phone.ts`, validates with the same `/^91[6-9]\d{9}$/` rule `orderNotificationNumbers.ts` uses, drops the
+  customer's own number if re-typed, de-dupes, caps at `MAX_EXTRA_NOTIFY_NUMBERS` = 5. Used both server-side
+  (source of truth) and client-side (live preview before Send).
+- Deliberately ad-hoc, not a managed list — re-typed every send, never stored, same treatment as the existing
+  one-off `comment` field. No new table, no migration. Distinct from the persistent per-product supplier-copy
+  list (0046).
+- `/api/admin/orders/notify` now sends the same WhatsApp text to each valid extra number, best-effort,
+  independent of the customer send's own outcome; returns `{ extra: {number, result}[], extraInvalid }`. Not
+  counted in `order_notification_log`'s per-status total (scoped to the customer channel).
+- Verified: `tsc --noEmit` clean; `npm test` 226 passed (1 pre-existing skip, +7 new); `eslint` 0 errors; `next
+  build` exit 0. Not a payment-path change. Not live-tested against a real WhatsApp send; parse/validate rule
+  has full unit coverage instead.
+- See `docs/HANDBOOK.html` Change log 2026-09-05.
+
 ### Migration 0052 applied; review-reminder cron scheduled — 2026-09-05 IST
 - Operational follow-up to the batch below, no code change. Owner ran `0052_add_review_reminders_sent.sql` in
   Supabase, then created + enabled the `review-reminder` job on cron-job.org (daily, `Authorization: Bearer
