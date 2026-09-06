@@ -163,6 +163,29 @@ async function findByPhone(supabase: SupabaseClient, phone: string): Promise<Ref
   return data?.code ? { code: data.code, discountPercent: Number(data.discount_value) } : null;
 }
 
+// LOOK-UP ONLY (no create) -- for the public /refer page. A shopper OTP-
+// verifies their phone and gets shown their existing "FRIEND..." share
+// code + the discount it carries. Deliberately never mints one here: the
+// code is earned on an order's first Delivered notify (getOrCreateReferralCoupon
+// above), not just by owning a phone number -- otherwise anyone could
+// generate a shareable 10%-off code without ordering. Best-effort: a bad
+// phone / lookup failure just yields null (the page shows "you'll get your
+// code once your first order is delivered").
+export async function findReferralCouponByPhone(
+  supabase: SupabaseClient,
+  rawPhone: string | null | undefined
+): Promise<ReferralCouponResult | null> {
+  if (!rawPhone) return null;
+  const phone = normalizeIndianPhone(String(rawPhone));
+  if (!phone) return null;
+  try {
+    return await findByPhone(supabase, phone);
+  } catch (err) {
+    console.error("findReferralCouponByPhone error:", err);
+    return null;
+  }
+}
+
 export interface ReferralRewardResult {
   code: string;
   discountPercent: number;

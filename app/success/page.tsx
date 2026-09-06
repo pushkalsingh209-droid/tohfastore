@@ -161,6 +161,13 @@ export default function CheckoutSuccessPage() {
             >
               Return To Collections
             </Link>
+
+            {/* Referral nudge -- the personal FRIEND... code is only minted
+                once the order is Delivered, so this points at /refer where
+                the customer can pull it up (phone-verified) any time after. */}
+            <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-4">
+              Love it? <Link href="/refer" className="underline hover:text-amber-600 dark:hover:text-amber-500">Share TOHFA with a friend</Link> — they save on their first order, you earn a reward.
+            </p>
           </div>
 
           {/* CANCELLATION & REFUND POLICY REMINDER -- bilingual, mirrors the

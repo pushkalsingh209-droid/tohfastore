@@ -12,6 +12,25 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Public `/refer` page — 2026-09-06 IST
+- Owner (marketing): the referral loop was dormant — one `FRIEND…` code ever minted, 0 redemptions —
+  because the code only appeared once, in the Delivered WhatsApp/email.
+- New `/refer` page + `POST /api/refer`. Phone → WhatsApp OTP (same send/verify routes as checkout) →
+  shows the customer's own `FRIEND…` share code + Copy / "Share on WhatsApp" (`wa.me/?text=`).
+- **Look-up only** — never mints. New `findReferralCouponByPhone(supabase, phone)` in `referralCoupon.ts`;
+  `getOrCreateReferralCoupon` stays the only mint path (on first Delivered notify), so a phone-verify
+  alone can't farm a 10%-off code. Returns `{enabled, code, discountPercent}`: `code:null` when not
+  earned yet, `{enabled:false}` when `referral_program_enabled='0'`. OTP token check blocks enumerating
+  other people's codes by phone number.
+- `/refer` in `sitemap.ts`; one-line link from `/success`.
+- Verified: `tsc` clean; `npm test` 253/254 (DB fn tested at route level, like `getOrCreateReferralCoupon`);
+  `eslint` 0 on new files; `next build` exit 0, `/refer` static + `/api/refer` registered. Live-verified
+  against a dev server + prod DB with a service-role scratch script (uncommitted, all test rows deleted):
+  GET /refer 200; POST /api/refer → 400 (no body) / 401 (bad token) / `{enabled:true,code:null}` (verified
+  phone, no coupon) / `{enabled:true,code:"FRIEND…",discountPercent:10}` (seeded coupon). No live WhatsApp.
+  Not a schema / payment-path change.
+- See `docs/HANDBOOK.html` Change log 2026-09-06.
+
 ### Offer banners as marquees + referral program master switch — 2026-09-06 IST
 - Owner, over three rounds: (1) "spend & save should be a running text… run slowly, even slow readers";
   (2) "all 8 slabs, ascending" + "put marquee speed & other details in the admin settings";
