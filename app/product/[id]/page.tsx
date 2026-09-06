@@ -148,6 +148,11 @@ export async function generateMetadata({
     openGraph: {
       title: product.name,
       description,
+      // Absolute canonical URL. Without it a link-preview crawler (Pinterest
+      // especially, when you "save from website") has no per-page canonical
+      // in the OG block and can fall back to the domain root -- so every Pin
+      // ends up pointing at the homepage instead of the product.
+      url: `https://tohfaonline.com${productHref(product)}`,
       // Falls back to the site's default (see DEFAULT_OG_IMAGE) rather than
       // omitting images -- a page-level "openGraph" fully replaces the root
       // layout's, it doesn't merge into it, so leaving this undefined would
@@ -281,6 +286,25 @@ export default async function ProductDetailPage({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd).replace(/</g, "\\u003c") }}
         />
+      )}
+      {/* Open Graph "product" tags. Next's Metadata `openGraph` union has no
+          "product" type and no price fields, and its `other` renders
+          <meta name=...> which OG parsers ignore -- so these are emitted as
+          raw <meta property=...> here (React 19 hoists them into <head>).
+          Pinterest reads og:price:* / og:availability to put the price + an
+          in-stock badge on every Pin; Facebook / WhatsApp use product:price:*
+          for the same in their link previews. Kept in sync with the
+          schema.org Offer above (same price, same in/out-of-stock). */}
+      {product && (
+        <>
+          <meta property="og:type" content="product" />
+          <meta property="og:price:amount" content={String(Number(product.price))} />
+          <meta property="og:price:currency" content="INR" />
+          <meta property="og:availability" content={outOfStock ? "outofstock" : "instock"} />
+          <meta property="product:price:amount" content={String(Number(product.price))} />
+          <meta property="product:price:currency" content="INR" />
+          <meta property="product:availability" content={outOfStock ? "out of stock" : "in stock"} />
+        </>
       )}
       {breadcrumbJsonLd && (
         <script
