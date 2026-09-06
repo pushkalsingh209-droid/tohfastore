@@ -12,7 +12,13 @@ import { sendWhatsappMessage } from "@/app/utils/greenApi";
 import { productHref } from "@/app/utils/slug";
 import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
 import { resolveSupplierTargets } from "@/app/utils/orderNotificationNumbers";
-import { mintReferralReward, parseReferralDiscountPercent, parseReferralValidDays } from "@/app/utils/referralCoupon";
+import {
+  mintReferralReward,
+  parseReferralDiscountPercent,
+  parseReferralValidDays,
+  parseReferralProgramEnabled,
+  REFERRAL_PROGRAM_ENABLED_KEY,
+} from "@/app/utils/referralCoupon";
 import { normalizeOrderItems } from "./normalizeOrderItems";
 import type { PricedItem } from "@/app/utils/repricing";
 import type { Json } from "@/types/db";
@@ -253,17 +259,22 @@ export async function POST(req: Request) {
           const { data: referralSettingRows } = await supabase
             .from("site_settings")
             .select("key, value")
-            .in("key", ["referral_discount_percent", "referral_coupon_valid_days"]);
+            .in("key", [REFERRAL_PROGRAM_ENABLED_KEY, "referral_discount_percent", "referral_coupon_valid_days"]);
           const settingsMap = Object.fromEntries((referralSettingRows ?? []).map((r) => [r.key, r.value]));
-          const reward = await mintReferralReward(supabase, referralOwnerPhone, {
-            discountPercent: parseReferralDiscountPercent(settingsMap.referral_discount_percent),
-            validDays: parseReferralValidDays(settingsMap.referral_coupon_valid_days),
-          });
-          if (reward) {
-            await sendWhatsappMessage(
-              referralOwnerPhone,
-              `🎉 Great news! A friend just used your TOHFA referral code. As a thank-you, here's ${reward.discountPercent}% off your next order: ${reward.code}`
-            );
+          // Master switch off -> the friend's discount still applied to
+          // their order (that coupon is a real row), but the referrer
+          // earns no new THANKS... reward and gets no message.
+          if (parseReferralProgramEnabled(settingsMap[REFERRAL_PROGRAM_ENABLED_KEY])) {
+            const reward = await mintReferralReward(supabase, referralOwnerPhone, {
+              discountPercent: parseReferralDiscountPercent(settingsMap.referral_discount_percent),
+              validDays: parseReferralValidDays(settingsMap.referral_coupon_valid_days),
+            });
+            if (reward) {
+              await sendWhatsappMessage(
+                referralOwnerPhone,
+                `🎉 Great news! A friend just used your TOHFA referral code. As a thank-you, here's ${reward.discountPercent}% off your next order: ${reward.code}`
+              );
+            }
           }
         } catch (referralRewardErr) {
           console.error("Referral reward mint/notify failed:", referralRewardErr);

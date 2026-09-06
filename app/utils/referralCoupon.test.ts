@@ -4,6 +4,7 @@ import {
   buildReferralRewardCode,
   parseReferralDiscountPercent,
   parseReferralValidDays,
+  parseReferralProgramEnabled,
   REFERRAL_DISCOUNT_PERCENT,
   REFERRAL_COUPON_VALID_DAYS,
   MIN_REFERRAL_DISCOUNT_PERCENT,
@@ -94,5 +95,22 @@ describe("parseReferralValidDays", () => {
     expect(parseReferralValidDays("soon")).toBe(REFERRAL_COUPON_VALID_DAYS);
     expect(parseReferralValidDays(MIN_REFERRAL_VALID_DAYS - 1)).toBe(REFERRAL_COUPON_VALID_DAYS);
     expect(parseReferralValidDays(MAX_REFERRAL_VALID_DAYS + 1)).toBe(REFERRAL_COUPON_VALID_DAYS);
+  });
+});
+
+describe("parseReferralProgramEnabled", () => {
+  it("defaults ON for an unset / blank / unknown value (the loop predates the switch)", () => {
+    expect(parseReferralProgramEnabled(undefined)).toBe(true);
+    expect(parseReferralProgramEnabled(null)).toBe(true);
+    expect(parseReferralProgramEnabled("")).toBe(true);
+    expect(parseReferralProgramEnabled("1")).toBe(true);
+    expect(parseReferralProgramEnabled("true")).toBe(true);
+    expect(parseReferralProgramEnabled("yes")).toBe(true);
+  });
+
+  it("is OFF only for an explicit falsey stored value", () => {
+    expect(parseReferralProgramEnabled("0")).toBe(false);
+    expect(parseReferralProgramEnabled("false")).toBe(false);
+    expect(parseReferralProgramEnabled(false)).toBe(false);
   });
 });

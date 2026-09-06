@@ -7,12 +7,19 @@ import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
 import { MAX_CHAT_LABEL_LENGTH } from "@/app/utils/chatLabels";
 import { sanitizeSpendTierOffer } from "@/app/utils/spendTierOffer";
+import {
+  SPEND_MARQUEE_SECONDS_PER_TIER_KEY,
+  SPEND_MARQUEE_PAUSE_ON_HOVER_KEY,
+  SPEND_MARQUEE_SHOW_COUNTDOWN_KEY,
+  validateSecondsPerTier,
+} from "@/app/utils/spendMarquee";
 import { sanitizeFeaturedSpotlight } from "@/app/utils/featuredSpotlight";
 import {
   MIN_REFERRAL_DISCOUNT_PERCENT,
   MAX_REFERRAL_DISCOUNT_PERCENT,
   MIN_REFERRAL_VALID_DAYS,
   MAX_REFERRAL_VALID_DAYS,
+  REFERRAL_PROGRAM_ENABLED_KEY,
 } from "@/app/utils/referralCoupon";
 
 const MIN_PAGE_SIZE = 1;
@@ -224,6 +231,27 @@ export async function PATCH(req: Request) {
       updates.push({ key: "spend_tier_offer", value: JSON.stringify(offer) });
     }
 
+    // Presentation-only knobs for the scrolling "Spend & Save" banner
+    // (SpendOfferBanner.tsx) -- deliberately separate scalar keys, NOT
+    // part of the spend_tier_offer blob, because they never touch
+    // pricing. Stored as text ("1"/"0" for the toggles). See
+    // app/utils/spendMarquee.ts.
+    if (body.spend_marquee_seconds_per_tier !== undefined) {
+      const res = validateSecondsPerTier(body.spend_marquee_seconds_per_tier);
+      if ("error" in res) {
+        return NextResponse.json({ error: res.error }, { status: 400 });
+      }
+      updates.push({ key: SPEND_MARQUEE_SECONDS_PER_TIER_KEY, value: String(res.value) });
+    }
+
+    if (body.spend_marquee_pause_on_hover !== undefined) {
+      updates.push({ key: SPEND_MARQUEE_PAUSE_ON_HOVER_KEY, value: body.spend_marquee_pause_on_hover ? "1" : "0" });
+    }
+
+    if (body.spend_marquee_show_countdown !== undefined) {
+      updates.push({ key: SPEND_MARQUEE_SHOW_COUNTDOWN_KEY, value: body.spend_marquee_show_countdown ? "1" : "0" });
+    }
+
     // Same strict-write / lenient-read split as spend_tier_offer above --
     // see app/utils/featuredSpotlight.ts. The read paths use
     // parseFeaturedSpotlight() instead.
@@ -248,6 +276,14 @@ export async function PATCH(req: Request) {
         );
       }
       updates.push({ key: "referral_discount_percent", value: String(pct) });
+    }
+
+    // Master on/off switch for the whole auto-referral loop (both the
+    // FRIEND... share code minted on delivery and the THANKS... reward
+    // minted when a friend pays). Stored "1"/"0"; an unset row reads as
+    // ON. See app/utils/referralCoupon.ts.
+    if (body.referral_program_enabled !== undefined) {
+      updates.push({ key: REFERRAL_PROGRAM_ENABLED_KEY, value: body.referral_program_enabled ? "1" : "0" });
     }
 
     if (body.referral_coupon_valid_days !== undefined) {

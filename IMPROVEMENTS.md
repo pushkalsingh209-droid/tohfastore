@@ -12,6 +12,41 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Offer banners as marquees + referral program master switch — 2026-09-06 IST
+- Owner, over three rounds: (1) "spend & save should be a running text… run slowly, even slow readers";
+  (2) "all 8 slabs, ascending" + "put marquee speed & other details in the admin settings";
+  (3) "public coupons run marquee in reverse" + "add referral program enabled toggle" + "update the docs".
+- **`SpendOfferBanner` → scrolling ladder.** Was one condensed "spend X, save Y (up to Z)" line hiding every
+  middle rung. Now the whole configured ladder — every tier, ascending (the sanitiser already guarantees
+  order, cap `MAX_SPEND_TIERS = 8`) — scrolls as a slow seamless CSS marquee. New shared `.offer-ticker*`
+  primitive in `globals.css` (two identical sequences, track shifts −50% linear-infinite → no seam;
+  edge-fade mask; `--pause-on-hover`; `prefers-reduced-motion` drops the scroll and wraps sequence 1;
+  `[aria-hidden]` twin hidden, `.sr-only` summary for AT).
+- **Marquee knobs in the admin.** New `app/utils/spendMarquee.ts` + three scalar `site_settings` rows
+  (migration 0055): `spend_marquee_seconds_per_tier` (3–20, default 9 — total duration = ×tier count, so
+  px/sec is constant), `spend_marquee_pause_on_hover`, `spend_marquee_show_countdown`. Deliberately NOT in
+  the `spend_tier_offer` JSON blob — that's the pricing path with a unit-tested sanitiser shape; pace never
+  touches money. New "Scrolling banner" sub-section in the Settings tab's Spend & Save card, saved on change.
+  `GET /api/offer` reads the blob + the three knobs in one `.in([…])` round-trip → `offer.marquee`.
+- **`PromoBanner` → reverse marquee.** Storefront public-coupon strip (was a static wrapped pill row) now
+  uses the same `.offer-ticker` with `--reverse` so it drifts left→right against Spend & Save's right→left.
+  Pause-on-hover always on (pills stay tappable; `:focus-within` covers mobile tap); loop twin is
+  `aria-hidden` + non-interactive so keyboard/AT get each copy button once; reduced-motion → old static row.
+- **Referral program master switch.** New `referral_program_enabled` (`parseReferralProgramEnabled` in
+  `app/utils/referralCoupon.ts`; migration 0056; `'1'`/`'0'`, unset reads as ON since the loop predates it).
+  Gates both mint sites — `/api/admin/orders/notify` (`FRIEND…` share code) and `/api/razorpay-webhook`
+  block 1a2 (`THANKS…` reward) — each reads it in its existing settings round-trip and skips the mint when
+  off. Issued codes stay valid (deactivate individually in Coupons tab). New "Referral program is running"
+  checkbox in Settings, above the %/validity inputs. (Also answered: no `THANKS…` coupon exists until a
+  friend actually redeems a `FRIEND…` code and pays — that's the webhook trigger, working as designed.)
+- Verified: `tsc --noEmit` clean; `npm test` 242 passed / 1 skip (new `spendMarquee` suite 11, `referralCoupon`
+  +2); `eslint` on every changed file — 0 errors, only the 2 pre-existing `set-state-in-effect` warnings in
+  `SpendOfferBanner` (untouched lines); `next build` exit 0, 136/136 static. Not verifiable here: the two
+  marquees in a real browser; the disabled-referral path suppressing a live mint (no running app / Supabase).
+  Not a pricing/stock/idempotency change. **Owner: run migrations 0055 + 0056** (both optional — reads fall
+  back to defaults — and idempotent).
+- See `docs/HANDBOOK.html` Change log 2026-09-06.
+
 ### Notify-on-enquiry send volume, Overview card — 2026-09-06 IST
 - Owner: the second recommended follow-up from the last batch.
 - New `whatsapp_enquiries.enquiry_notified_count` (migration 0054, nullable int) — NULL when no notify was

@@ -19,7 +19,13 @@ import { normalizeIndianPhone } from "@/app/utils/phone";
 import { normalizeCourierName } from "@/app/utils/couriers";
 import { resolveSupplierTargets } from "@/app/utils/orderNotificationNumbers";
 import { parseExtraNotifyNumbers } from "@/app/utils/extraNotifyNumbers";
-import { getOrCreateReferralCoupon, parseReferralDiscountPercent, parseReferralValidDays } from "@/app/utils/referralCoupon";
+import {
+  getOrCreateReferralCoupon,
+  parseReferralDiscountPercent,
+  parseReferralValidDays,
+  parseReferralProgramEnabled,
+  REFERRAL_PROGRAM_ENABLED_KEY,
+} from "@/app/utils/referralCoupon";
 import { asCustomerDetails, asOrderItems } from "@/app/utils/orderTypes";
 import {
   buildStatusWhatsappMessage,
@@ -84,12 +90,16 @@ export async function POST(req: Request) {
       const { data: referralSettingRows } = await supabase
         .from("site_settings")
         .select("key, value")
-        .in("key", ["referral_discount_percent", "referral_coupon_valid_days"]);
+        .in("key", [REFERRAL_PROGRAM_ENABLED_KEY, "referral_discount_percent", "referral_coupon_valid_days"]);
       const settingsMap = Object.fromEntries((referralSettingRows ?? []).map((r) => [r.key, r.value]));
-      referralCoupon = await getOrCreateReferralCoupon(supabase, String(customerPhone), {
-        discountPercent: parseReferralDiscountPercent(settingsMap.referral_discount_percent),
-        validDays: parseReferralValidDays(settingsMap.referral_coupon_valid_days),
-      });
+      // Master switch off -> no new share code minted, and no referral
+      // line added to this notification. An existing one is left alone.
+      if (parseReferralProgramEnabled(settingsMap[REFERRAL_PROGRAM_ENABLED_KEY])) {
+        referralCoupon = await getOrCreateReferralCoupon(supabase, String(customerPhone), {
+          discountPercent: parseReferralDiscountPercent(settingsMap.referral_discount_percent),
+          validDays: parseReferralValidDays(settingsMap.referral_coupon_valid_days),
+        });
+      }
     }
 
     const input = {
