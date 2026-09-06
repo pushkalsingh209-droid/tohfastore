@@ -2349,8 +2349,16 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
 <ul class="tight">
   <li><strong>JSON-LD</strong> (all with <code>&lt;</code> escaped to its unicode form per Next&rsquo;s guide):
       <code>Organization</code> + <code>WebSite</code> in the root layout; <code>Product</code> +
-      <code>BreadcrumbList</code> on detail pages (incl. <code>aggregateRating</code>, <code>offers</code> with
-      <code>InStock</code>/<code>OutOfStock</code>); <code>ItemList</code> + <code>BreadcrumbList</code> on storefront listings.</li>
+      <code>BreadcrumbList</code> on detail pages (incl. <code>aggregateRating</code>, and an <code>offers</code>
+      block with <code>InStock</code>/<code>OutOfStock</code>, <code>shippingDetails</code> = free
+      (<code>&#8377;0</code>) across India, and <code>hasMerchantReturnPolicy</code> =
+      <code>MerchantReturnNotPermitted</code> for <code>IN</code> &mdash; the last two are store-wide consts
+      <code>PRODUCT_SHIPPING_DETAILS</code> / <code>PRODUCT_RETURN_POLICY</code> in
+      <code>product/[id]/page.tsx</code>, added to clear Google's &ldquo;missing field&rdquo; warnings and let
+      the free Shopping listing show delivery + return terms; a defective-item claim is a separate statutory
+      matter handled via the <code>/refunds</code> unboxing-video process, not what schema.org's return-policy
+      field models); <code>ItemList</code> + <code>BreadcrumbList</code> on storefront listings; the OG
+      <em>product</em> price tags (below) alongside.</li>
   <li><strong>Canonical + redirects</strong> &mdash; one indexable URL per product/category (&sect;9, &sect;10).</li>
   <li><strong>Open Graph</strong> &mdash; layout sets a default (<code>/logo-mark.png</code>, <code>DEFAULT_OG_IMAGE</code>).
       Metadata merges <em>shallowly</em>, so any page setting its own <code>openGraph</code> must re-supply an image.
@@ -2928,6 +2936,38 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-06<br>&mdash;</code></td>
+  <td><strong>Product JSON-LD: <code>shippingDetails</code> + <code>hasMerchantReturnPolicy</code></strong><br>(owner: GSC / Rich Results flagged both as missing on the <code>Product</code> &rarr; <code>offers</code>; owner supplied the terms &mdash; free shipping across India, no returns after dispatch except a defective item with an uncut unboxing video)</td>
+  <td>
+    Both were <em>optional</em> (yellow) warnings, not errors &mdash; nothing was broken &mdash; but they're the
+    fields Google's free Shopping listing uses to show &ldquo;Free delivery&rdquo; and the return terms, so
+    worth clearing now that Merchant Center free listings are live. Two store-wide consts in
+    <code>app/product/[id]/page.tsx</code>, spread into the <code>offers</code> object:
+    <br><br>
+    <code>PRODUCT_SHIPPING_DETAILS</code> = <code>OfferShippingDetails</code> with <code>shippingRate</code>
+    <code>&#8377;0 INR</code> + <code>shippingDestination</code> <code>addressCountry: IN</code> (delivery-time
+    sub-fields left off rather than invented &mdash; not required, and there's no published SLA).
+    <code>PRODUCT_RETURN_POLICY</code> = <code>MerchantReturnPolicy</code> with
+    <code>applicableCountry: IN</code> + <code>returnPolicyCategory:
+    https://schema.org/MerchantReturnNotPermitted</code> &mdash; the honest mapping: there is no
+    change-of-mind return, and a defective-item replacement (the <code>/refunds</code> uncut-unboxing-video
+    claim) is a separate statutory matter, not what schema.org's return-policy field models. Kept consistent
+    with the Merchant Center account's own Shipping &amp; Returns settings (owner-configured there too).
+    <br><br>
+    Also folded a note into the SEO section's JSON-LD bullet.
+  </td>
+  <td><em>edited:</em> <code>app/product/[id]/page.tsx</code>, <code>docs/HANDBOOK.html</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 253 passed / 1 skip (unchanged &mdash;
+    static JSON-LD, no logic) &middot; <code>eslint</code> 0 on the file &middot; <code>next build</code> exit
+    0, 143/143 static. <strong>Live-verified on a dev server</strong>: the rendered
+    <code>&lt;script type="application/ld+json"&gt;</code> for a real product now contains
+    <code>offers.shippingDetails</code> (<code>OfferShippingDetails</code>, <code>shippingRate</code>
+    <code>0</code>/<code>INR</code>, <code>shippingDestination</code> <code>IN</code>) and
+    <code>offers.hasMerchantReturnPolicy</code> (<code>MerchantReturnPolicy</code>, <code>IN</code>,
+    <code>MerchantReturnNotPermitted</code>). Not a schema / payment-path change &mdash; product-page markup
+    only.</td>
+</tr>
 <tr>
   <td><code>2026-09-06<br>&mdash;</code></td>
   <td><strong>Google Search Console verification file</strong><br>(owner: setting up GSC, which handed a file-upload verification token)</td>
