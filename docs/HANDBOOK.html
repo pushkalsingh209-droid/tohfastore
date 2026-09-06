@@ -2349,13 +2349,24 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
   <li><strong>Open Graph</strong> &mdash; layout sets a default (<code>/logo-mark.png</code>, <code>DEFAULT_OG_IMAGE</code>).
       Metadata merges <em>shallowly</em>, so any page setting its own <code>openGraph</code> must re-supply an image.
       Product pages use the product photo; category pages use a representative in-stock product photo
-      (<code>getCategoryImage</code>, deterministic by <code>display_order</code>).</li>
+      (<code>getCategoryImage</code>, deterministic by <code>display_order</code>).
+      <br>Product pages also carry <strong>OG <em>product</em> tags</strong> so link-preview crawlers show the price:
+      <code>og:url</code> (absolute canonical &mdash; via <code>generateMetadata</code>'s <code>openGraph.url</code>;
+      without it Pinterest's &ldquo;save from website&rdquo; pointed every Pin at the domain root), plus
+      <code>og:type=product</code> / <code>og:price:amount</code> / <code>og:price:currency</code> /
+      <code>og:availability</code> (<code>instock</code>|<code>outofstock</code>) and the
+      <code>product:price:*</code> / <code>product:availability</code> variants for Facebook/WhatsApp. Next's
+      Metadata <code>openGraph</code> union has no <code>product</code> type or price fields, and its
+      <code>other</code> renders <code>&lt;meta name=&hellip;&gt;</code> which OG parsers ignore &mdash; so those
+      are emitted as raw <code>&lt;meta property=&hellip;&gt;</code> in the product page body (React 19 hoists
+      them into <code>&lt;head&gt;</code>). Kept in sync with the schema.org <code>Offer</code> (same price, same
+      in/out-of-stock).</li>
   <li><strong>Pinterest domain verification</strong> &mdash; <code>metadata.other["p:domain_verify"]</code> in
       <code>app/layout.tsx</code> (a static, one-time value from Pinterest Business Hub, never rotates). Once
-      claimed, Pinterest's Product Pins can read live price/availability straight from each product page's own
-      <code>Product</code> JSON-LD (&sect;overview &mdash; <code>offers.price</code> / <code>offers.availability</code>)
-      &mdash; no separate feed needed. The Pinterest profile is also listed in <code>organizationJsonLd.sameAs</code>
-      alongside Instagram/Facebook.</li>
+      claimed, Pinterest's Product Pins read live price/availability from each product page's OG <code>product</code>
+      tags (above) &mdash; and the <code>Product</code> JSON-LD as a fallback (&sect;overview &mdash;
+      <code>offers.price</code> / <code>offers.availability</code>) &mdash; no separate feed needed. The Pinterest
+      profile is also listed in <code>organizationJsonLd.sameAs</code> alongside Instagram/Facebook.</li>
   <li><strong>Google Merchant Center feed</strong> &mdash; <code>GET /api/google-merchant-feed</code> (&sect;11), an
       RSS 2.0 + <code>g:</code> product feed of every non-hidden product, for free Google Shopping listings. Same
       brand/price/availability facts as the product-page JSON-LD, just in the XML shape Merchant Center ingests.
@@ -2898,6 +2909,35 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-06<br>&mdash;</code></td>
+  <td><strong>Open Graph <em>product</em> tags on product pages</strong><br>(owner: setting up Pinterest &mdash; Pins showed no price, and &ldquo;save from website&rdquo; linked to the homepage not the product)</td>
+  <td>
+    Product pages had schema.org <code>Product</code> JSON-LD but no Open Graph <em>product</em> metadata, so
+    link-preview crawlers (Pinterest, Facebook, WhatsApp) showed <strong>no price</strong>, and Pinterest's
+    &ldquo;save from website&rdquo; pointed every Pin at the <strong>domain root</strong> because the OG block had
+    no per-page <code>og:url</code>.
+    <br><br>
+    <code>generateMetadata</code> gains <code>openGraph.url</code> (absolute canonical product URL). The page body
+    emits raw <code>&lt;meta property="og:type|og:price:amount|og:price:currency|og:availability"&gt;</code>
+    (<code>instock</code>/<code>outofstock</code>) plus the <code>product:price:*</code> /
+    <code>product:availability</code> variants for Facebook/WhatsApp. Raw property tags rather than
+    <code>generateMetadata</code> because Next's Metadata <code>openGraph</code> union has no <code>product</code>
+    type or price fields and its <code>other</code> renders <code>&lt;meta name=&hellip;&gt;</code> which OG
+    parsers ignore &mdash; React 19 hoists the raw <code>&lt;meta property&gt;</code> tags into
+    <code>&lt;head&gt;</code>. Kept in sync with the existing schema.org <code>Offer</code> (same price, same
+    in/out-of-stock). Docs merged one commit late (owner merged the code PR first).
+  </td>
+  <td><em>edited:</em> <code>app/product/[id]/page.tsx</code>, <code>docs/HANDBOOK.html</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 253 passed / 1 skip (unchanged &mdash; no new
+    pure logic) &middot; <code>eslint</code> 0 on the file &middot; <code>next build</code> exit 0, 136/136 static.
+    <strong>Live-verified against production</strong> after the merge deploy: <code>curl</code>'d
+    <code>/product/3-lord-krishna</code> and confirmed <code>og:url</code> = the product URL, plus
+    <code>og:type=product</code>, <code>og:price:amount=2400</code>, <code>og:price:currency=INR</code>,
+    <code>og:availability=instock</code> and the <code>product:*</code> variants all present in
+    <code>&lt;head&gt;</code> with <code>property=</code>. Not a schema / payment-path change; existing pages
+    unaffected apart from the added tags.</td>
+</tr>
 <tr>
   <td><code>2026-09-06<br>&mdash;</code></td>
   <td><strong>Offer banners as marquees + referral program switch</strong><br>(owner: &ldquo;spend &amp; save should be a running text&hellip; run slowly, even slow readers&rdquo;; then &ldquo;all 8 slabs ascending&rdquo; + &ldquo;marquee speed &amp; other details in the admin settings&rdquo;; then &ldquo;public coupons run marquee in reverse&rdquo; + &ldquo;add referral program enabled toggle&rdquo;)</td>
