@@ -5,6 +5,7 @@ import {
   parseReferralDiscountPercent,
   parseReferralValidDays,
   parseReferralProgramEnabled,
+  REFERRAL_PROGRAM_ENABLED_KEY,
   REFERRAL_DISCOUNT_PERCENT,
   REFERRAL_COUPON_VALID_DAYS,
   MIN_REFERRAL_DISCOUNT_PERCENT,
@@ -99,6 +100,10 @@ describe("parseReferralValidDays", () => {
 });
 
 describe("parseReferralProgramEnabled", () => {
+  it("uses the exact key string migration 0056 and /api/admin/settings write", () => {
+    expect(REFERRAL_PROGRAM_ENABLED_KEY).toBe("referral_program_enabled");
+  });
+
   it("defaults ON for an unset / blank / unknown value (the loop predates the switch)", () => {
     expect(parseReferralProgramEnabled(undefined)).toBe(true);
     expect(parseReferralProgramEnabled(null)).toBe(true);
@@ -106,11 +111,21 @@ describe("parseReferralProgramEnabled", () => {
     expect(parseReferralProgramEnabled("1")).toBe(true);
     expect(parseReferralProgramEnabled("true")).toBe(true);
     expect(parseReferralProgramEnabled("yes")).toBe(true);
+    expect(parseReferralProgramEnabled("enabled")).toBe(true);
+    // A stray non-string value never silently disables the program.
+    expect(parseReferralProgramEnabled(0)).toBe(true);
+    expect(parseReferralProgramEnabled(1)).toBe(true);
+    expect(parseReferralProgramEnabled({})).toBe(true);
   });
 
   it("is OFF only for an explicit falsey stored value", () => {
     expect(parseReferralProgramEnabled("0")).toBe(false);
     expect(parseReferralProgramEnabled("false")).toBe(false);
     expect(parseReferralProgramEnabled(false)).toBe(false);
+  });
+
+  it("round-trips the value /api/admin/settings persists (`body.x ? '1' : '0'`)", () => {
+    expect(parseReferralProgramEnabled(true ? "1" : "0")).toBe(true);
+    expect(parseReferralProgramEnabled(false ? "1" : "0")).toBe(false);
   });
 });
