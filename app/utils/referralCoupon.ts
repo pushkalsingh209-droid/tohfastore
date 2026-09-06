@@ -12,7 +12,17 @@
 //      rewards the ORIGINAL referrer, so both sides of a referral benefit,
 //      not just the friend.
 //
-// Discount % and validity window are admin-tunable (Settings tab ->
+// A master on/off switch (site_settings.referral_program_enabled) gates
+// BOTH halves -- the two call sites (/api/admin/orders/notify and
+// /api/razorpay-webhook) skip minting entirely when it's off.
+// parseReferralProgramEnabled does the lenient read: the loop ran
+// unconditionally before this switch existed, so an unset / blank row
+// means ON -- only an explicit "0" turns it off. Already-minted
+// FRIEND.../THANKS... coupons stay valid and redeemable while it's off;
+// they just stop being created and stop being re-surfaced in delivered
+// notifications.
+//
+// Discount % and validity window are admin-tunable too (Settings tab ->
 // site_settings.referral_discount_percent / .referral_coupon_valid_days,
 // PATCHed via /api/admin/settings). The constants below are only the
 // fallback when a setting is missing or invalid -- parseReferralDiscountPercent
@@ -32,6 +42,15 @@ export const MIN_REFERRAL_VALID_DAYS = 1;
 export const MAX_REFERRAL_VALID_DAYS = 365;
 const MAX_INSERT_ATTEMPTS = 3;
 const UNIQUE_VIOLATION = "23505";
+
+// Master on/off switch. Stored "1"/"0" (matches stock_reservations_enabled),
+// but UNSET defaults to ON -- the referral loop predates this switch, so a
+// site that hasn't run the seed migration must keep minting as before.
+export const REFERRAL_PROGRAM_ENABLED_KEY = "referral_program_enabled";
+
+export function parseReferralProgramEnabled(raw: unknown): boolean {
+  return !(raw === "0" || raw === "false" || raw === false);
+}
 
 // Lenient reads of the two site_settings values -- an unset, blank, or
 // out-of-range value (someone editing the row by hand, a bad migration

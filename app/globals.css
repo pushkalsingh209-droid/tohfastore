@@ -415,3 +415,80 @@ textarea:focus-visible,
 body {
   top: 0 !important;
 }
+
+/* .offer-ticker -- shared slow, seamless horizontal marquee for the two
+   top-of-page offer strips: SpendOfferBanner (the "Spend & Save" ladder,
+   every rung scrolling by so even a slow reader catches each slab) and
+   PromoBanner (the live public coupon codes, run in --reverse so the two
+   strips visibly move opposite ways and don't read as one element).
+
+   Two identical sequences sit side by side in one track; the track
+   translates by exactly one sequence width (-50%) on a linear infinite
+   loop, so copy #2 is already in position when copy #1 scrolls off -- no
+   visible seam or jump, in either direction. Duration is set per-render
+   inline (scaled by item count) so the pixels/second pace stays constant
+   and gentle regardless of how many items there are. --pause-on-hover
+   freezes it on hover / keyboard-focus so anyone can stop on an item;
+   prefers-reduced-motion drops the scroll entirely and just wraps the
+   first sequence (the [aria-hidden] duplicate is hidden). */
+@keyframes offer-ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.offer-ticker {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  /* fade the two edges so content doesn't hard-clip as it enters/leaves */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent);
+}
+.offer-ticker-track {
+  display: flex;
+  width: max-content;
+  flex-wrap: nowrap;
+  animation: offer-ticker-scroll linear infinite;
+}
+/* PromoBanner: scroll the other way (content drifts left-to-right) so it
+   contrasts with SpendOfferBanner's default right-to-left travel. */
+.offer-ticker--reverse .offer-ticker-track {
+  animation-direction: reverse;
+}
+/* Opt-in (SpendOfferBanner's admin toggle "Pause on hover",
+   spend_marquee_pause_on_hover; always on for PromoBanner so its
+   tap-to-copy pills can be hit): freeze while the pointer is over the
+   strip or a child has keyboard focus. */
+.offer-ticker--pause-on-hover:hover .offer-ticker-track,
+.offer-ticker--pause-on-hover:focus-within .offer-ticker-track {
+  animation-play-state: paused;
+}
+.offer-ticker-seq {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .offer-ticker {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .offer-ticker-track {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    animation: none;
+  }
+  .offer-ticker-seq {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .offer-ticker-seq[aria-hidden="true"] {
+    display: none;
+  }
+}

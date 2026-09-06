@@ -1,6 +1,7 @@
 // app/api/offer/route.ts
 // Public, read-only preview of the live "Spend & Save" tier offer, for the
-// checkout Review step (mirrors /api/coupons/public). NOT a source of truth:
+// checkout Review step (mirrors /api/coupons/public) and the site-wide
+// scrolling banner (SpendOfferBanner.tsx). NOT a source of truth:
 // /api/razorpay re-reads the same site_settings row and recomputes the
 // discount authoritatively when the real order is created, so a briefly
 // stale CDN copy here can only ever misinform the Review screen for a few
@@ -10,22 +11,28 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { SPEND_TIER_OFFER_KEY, parseSpendTierOffer, isSpendTierOfferActive } from "@/app/utils/spendTierOffer";
+import { SPEND_MARQUEE_SETTING_KEYS, parseSpendMarqueeSettings } from "@/app/utils/spendMarquee";
 
 export async function GET() {
   try {
+    // One round-trip for the offer blob + the (scalar) marquee display
+    // knobs -- the banner needs both and this is CDN-cached for 5 min.
     const { data } = await supabase
       .from("site_settings")
-      .select("value")
-      .eq("key", SPEND_TIER_OFFER_KEY)
-      .maybeSingle();
+      .select("key, value")
+      .in("key", [SPEND_TIER_OFFER_KEY, ...SPEND_MARQUEE_SETTING_KEYS]);
 
-    const offer = parseSpendTierOffer(data?.value ?? null);
+    const rows: Record<string, string> = {};
+    for (const r of data || []) rows[r.key] = r.value;
+
+    const offer = parseSpendTierOffer(rows[SPEND_TIER_OFFER_KEY] ?? null);
+    const marquee = parseSpendMarqueeSettings(rows);
 
     // Only the display-safe shape, and only while it's actually running.
     const body = isSpendTierOfferActive(offer)
       ? {
           active: true as const,
-          offer: { label: offer.label, tiers: offer.tiers, startsAt: offer.startsAt, endsAt: offer.endsAt },
+          offer: { label: offer.label, tiers: offer.tiers, startsAt: offer.startsAt, endsAt: offer.endsAt, marquee },
         }
       : { active: false as const };
 

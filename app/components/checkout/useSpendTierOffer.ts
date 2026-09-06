@@ -10,12 +10,16 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { SpendTier } from "@/app/utils/spendTierOffer";
+import { DEFAULT_SPEND_MARQUEE_SETTINGS, type SpendMarqueeSettings } from "@/app/utils/spendMarquee";
 
 export interface ActiveSpendTierOffer {
   label: string;
   tiers: SpendTier[];
   startsAt: string | null;
   endsAt: string | null;
+  // Present on the /api/offer payload; the checkout Review step ignores
+  // it, SpendOfferBanner uses it to size/pace the scroll.
+  marquee: SpendMarqueeSettings;
 }
 
 export function useSpendTierOffer(active: boolean): ActiveSpendTierOffer | null {
@@ -27,7 +31,13 @@ export function useSpendTierOffer(active: boolean): ActiveSpendTierOffer | null 
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;
-        setOffer(d?.active && d.offer && Array.isArray(d.offer.tiers) ? (d.offer as ActiveSpendTierOffer) : null);
+        if (!d?.active || !d.offer || !Array.isArray(d.offer.tiers)) {
+          setOffer(null);
+          return;
+        }
+        // `marquee` is only added by a deployed /api/offer -- default it so
+        // a stale CDN copy (offer shape without it) still renders.
+        setOffer({ ...(d.offer as ActiveSpendTierOffer), marquee: d.offer.marquee ?? DEFAULT_SPEND_MARQUEE_SETTINGS });
       })
       .catch(() => {
         /* silent -- checkout just shows the normal coupon flow */

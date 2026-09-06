@@ -16,8 +16,16 @@ import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
 import { CHAT_LABEL_KINDS, DEFAULT_CHAT_LABELS, MAX_CHAT_LABEL_LENGTH, type ChatLabelKind } from "@/app/utils/chatLabels";
 import { parseSpendTierOffer, SAMPLE_SPEND_TIER_OFFER, MAX_SPEND_TIERS } from "@/app/utils/spendTierOffer";
+import {
+  MIN_SPEND_MARQUEE_SECONDS_PER_TIER,
+  MAX_SPEND_MARQUEE_SECONDS_PER_TIER,
+  DEFAULT_SPEND_MARQUEE_SECONDS_PER_TIER,
+  DEFAULT_SPEND_MARQUEE_SETTINGS,
+  parseBoolSetting,
+} from "@/app/utils/spendMarquee";
 import { parseFeaturedSpotlight } from "@/app/utils/featuredSpotlight";
 import { MAX_ORDER_NOTIFICATION_NUMBERS } from "@/app/utils/orderNotificationNumbers";
+import { parseReferralProgramEnabled } from "@/app/utils/referralCoupon";
 
 // --- "Spend & Save" offer editor (Storefront Settings) -------------------
 // The offer lives as one JSON row in site_settings; the strict validation
@@ -181,6 +189,22 @@ export default function SettingsTab() {
       setOfferStatus("Saved.");
     } catch (err: unknown) {
       setOfferStatus(err instanceof Error ? err.message : "Could not save the offer.");
+    }
+  };
+
+  // --- Scrolling "Spend & Save" banner (SpendOfferBanner.tsx) display
+  // knobs. Presentation-only, so they're plain scalar site_settings keys
+  // saved on blur/toggle (like the Ganesha timing row) -- NOT part of the
+  // offer JSON blob's "Save offer" button above. See app/utils/spendMarquee.ts.
+  const handleUpdateMarqueeSetting = async (key: string, value: number | boolean, label: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ [key]: value }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: unknown) {
+      alert(`Could not update ${label}: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -368,6 +392,22 @@ export default function SettingsTab() {
       setSettings((prev) => ({ ...prev, ...result.settings }));
     } catch (err: unknown) {
       alert(`Could not update referral coupon validity: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Master on/off for the whole auto-referral loop (both the FRIEND...
+  // share code minted on delivery and the THANKS... reward when a friend
+  // pays). Off = neither is minted from now on; codes already issued stay
+  // valid. Unset reads as ON. See app/utils/referralCoupon.ts.
+  const handleUpdateReferralProgramEnabled = async (enabled: boolean) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ referral_program_enabled: enabled }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: unknown) {
+      alert(`Could not update referral program: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -805,6 +845,22 @@ export default function SettingsTab() {
           Used by the &ldquo;Lightweight Brass&rdquo; price calculator in the stock tracker (weight × rate × 1.20 margin). Raising this only changes the default offered to a product that doesn&rsquo;t have its own rate saved yet -- it never rewrites a product&rsquo;s already-saved rate or price.
         </span>
       </div>
+      <label className="flex items-center gap-2 text-sm text-stone-700 font-medium mt-4">
+        <input
+          type="checkbox"
+          checked={parseReferralProgramEnabled(settings.referral_program_enabled)}
+          onChange={(e) => handleUpdateReferralProgramEnabled(e.target.checked)}
+          className="accent-amber-700"
+        />
+        Referral program is running
+      </label>
+      <p className="text-stone-400 text-xs mt-1">
+        Off: no new <code className="font-mono">FRIEND…</code> share code is minted when an order is
+        marked Delivered, and no <code className="font-mono">THANKS…</code> reward when a friend pays with
+        one. Codes already issued stay valid and redeemable &mdash; deactivate those individually from the
+        Coupons tab.
+      </p>
+
       <div className="flex items-center gap-3 flex-wrap mt-4">
         <label className="text-sm text-stone-700 font-medium">Referral discount (%)</label>
         <input
@@ -993,6 +1049,58 @@ export default function SettingsTab() {
           Save offer
         </button>
         {offerStatus && <span className="text-xs text-stone-500">{offerStatus}</span>}
+      </div>
+
+      {/* Scrolling banner (SpendOfferBanner.tsx) display knobs -- these
+          save on their own the moment you change them, separately from
+          "Save offer" above (they don't touch pricing). */}
+      <div className="mt-8 pt-6 border-t border-stone-200">
+        <h3 className="text-sm font-semibold text-stone-800">Scrolling banner</h3>
+        <p className="text-stone-400 text-xs mt-1 mb-3">
+          While the offer is running, every tier above scrolls across a slim banner at the top of every
+          page, lowest threshold first, so shoppers see the whole ladder &mdash; not just the first rung.
+        </p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="text-sm text-stone-700 font-medium">Scroll speed &mdash; seconds per tier</label>
+          <input
+            type="number"
+            min={MIN_SPEND_MARQUEE_SECONDS_PER_TIER}
+            max={MAX_SPEND_MARQUEE_SECONDS_PER_TIER}
+            step={1}
+            key={settings.spend_marquee_seconds_per_tier ?? String(DEFAULT_SPEND_MARQUEE_SECONDS_PER_TIER)}
+            defaultValue={settings.spend_marquee_seconds_per_tier ?? String(DEFAULT_SPEND_MARQUEE_SECONDS_PER_TIER)}
+            onBlur={(e) => {
+              const next = e.target.value.trim();
+              if (next && next !== settings.spend_marquee_seconds_per_tier)
+                handleUpdateMarqueeSetting("spend_marquee_seconds_per_tier", Number(next), "marquee scroll speed");
+            }}
+            className="w-20 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+          />
+          <label className="flex items-center gap-2 text-sm text-stone-700 font-medium ml-2">
+            <input
+              type="checkbox"
+              defaultChecked={parseBoolSetting(settings.spend_marquee_pause_on_hover, DEFAULT_SPEND_MARQUEE_SETTINGS.pauseOnHover)}
+              onChange={(e) => handleUpdateMarqueeSetting("spend_marquee_pause_on_hover", e.target.checked, "marquee pause-on-hover")}
+              className="accent-amber-700"
+            />
+            Pause when the shopper hovers
+          </label>
+          <label className="flex items-center gap-2 text-sm text-stone-700 font-medium ml-2">
+            <input
+              type="checkbox"
+              defaultChecked={parseBoolSetting(settings.spend_marquee_show_countdown, DEFAULT_SPEND_MARQUEE_SETTINGS.showCountdown)}
+              onChange={(e) => handleUpdateMarqueeSetting("spend_marquee_show_countdown", e.target.checked, "marquee countdown chip")}
+              className="accent-amber-700"
+            />
+            Show &ldquo;days left&rdquo; when an end date is near
+          </label>
+          <span className="text-stone-400 text-xs w-full">
+            Speed is {MIN_SPEND_MARQUEE_SECONDS_PER_TIER}&ndash;{MAX_SPEND_MARQUEE_SECONDS_PER_TIER} seconds each tier&rsquo;s
+            slab takes to cross the banner (higher = slower; default {DEFAULT_SPEND_MARQUEE_SECONDS_PER_TIER}, easy for slow
+            readers). The pace stays even however many tiers you add. Shoppers with &ldquo;reduce motion&rdquo; on see the
+            ladder stacked and still instead.
+          </span>
+        </div>
       </div>
     </div>
 
