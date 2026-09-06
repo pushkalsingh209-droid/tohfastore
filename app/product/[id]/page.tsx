@@ -35,6 +35,25 @@ import { productHref, productIdFromParam, categoryHref } from "@/app/utils/slug"
 import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 import { permanentRedirect } from "next/navigation";
 
+// Store-wide, same on every product -- spread into the Product > Offer
+// JSON-LD so Google Search / Merchant stop flagging them as missing and
+// the Shopping free listing can show "Free delivery" + the return terms.
+// Free shipping across India; no change-of-mind returns once dispatched
+// (a defective item is a separate statutory matter, handled via the
+// unboxing-video claim on /refunds -- not what schema.org's return-policy
+// field models, so the honest category here is "not permitted").
+const PRODUCT_SHIPPING_DETAILS = {
+  "@type": "OfferShippingDetails",
+  shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "INR" },
+  shippingDestination: { "@type": "DefinedRegion", addressCountry: "IN" },
+} as const;
+
+const PRODUCT_RETURN_POLICY = {
+  "@type": "MerchantReturnPolicy",
+  applicableCountry: "IN",
+  returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+} as const;
+
 // Rendered dynamically (SSR) per request, NOT statically generated.
 //
 // This route used to be SSG (generateStaticParams for every product +
@@ -240,6 +259,8 @@ export default async function ProductDetailPage({
           priceCurrency: "INR",
           price: Number(product.price),
           availability: outOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+          shippingDetails: PRODUCT_SHIPPING_DETAILS,
+          hasMerchantReturnPolicy: PRODUCT_RETURN_POLICY,
         },
       }
     : null;
