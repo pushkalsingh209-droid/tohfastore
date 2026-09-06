@@ -12,6 +12,25 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Editorial gift guides (`/guides`) — 2026-09-06 IST
+- Owner (marketing): gifting-guide content pages for organic search, from the recommendation list.
+- New `/guides` index + 4 `/guides/<slug>` pages — `diwali-gifts`, `housewarming-gifts`,
+  `wedding-return-gifts`, `puja-room-essentials` — for gifting-intent search.
+- Copy in `app/utils/giftGuides.ts` (hand-written, matched to what's actually stocked — devotional brass:
+  idols, diyas, lamps, lotas, pocket temples, pan-leaf deity frames). Each guide = intro + editorial
+  paragraphs + sections; a section names an exact `products.category`. Product grids are **live**
+  (`getCatalogPage` per section, top in-stock), not hand-picked ids — a guide never lists a sold-out/hidden
+  product; empty sections drop off. Reuses `<ProductCard>`; cross-links to `/collections/<slug>` +
+  `/corporate`. `Article` + `BreadcrumbList` JSON-LD.
+- `/guides/[slug]` is `force-dynamic` over cached reads (same as `/spotlight` — no ISR write per edit).
+  Unknown slug = soft-404 (200 + noindex; the `loading.tsx` streaming constraint, nothing links to bad
+  slugs). `/guides` static. Linked from the desktop header nav; `/guides` + 4 slugs in `sitemap.ts`.
+- Verified: `tsc` clean; `npm test` 253/254 (data-only module); `eslint` 0 on new files; `next build` exit
+  0, 143/143 static. Live-verified on a dev server: `/guides` 200, `/guides/diwali-gifts` 200 with H1 + 5
+  section grids (25 real products) + Article/BreadcrumbList JSON-LD; unknown slug → noindex soft-404;
+  sitemap + header link present. Not a schema / payment-path change.
+- See `docs/HANDBOOK.html` Change log 2026-09-06.
+
 ### Public `/refer` page — 2026-09-06 IST
 - Owner (marketing): the referral loop was dormant — one `FRIEND…` code ever minted, 0 redemptions —
   because the code only appeared once, in the Delivered WhatsApp/email.

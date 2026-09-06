@@ -130,6 +130,7 @@ export default function HeaderNavbar() {
         {/* Desktop-only right side controls */}
         <nav className="hidden md:flex items-center gap-6 sm:gap-8 font-medium text-sm tracking-wide text-stone-600 dark:text-stone-300 md:ml-auto">
           <Link href="/" className="hover:text-amber-700 dark:hover:text-amber-500 transition">Collections</Link>
+          <Link href="/guides" className="hover:text-amber-700 dark:hover:text-amber-500 transition">Gift Guides</Link>
 
           <ThemeToggle />
 

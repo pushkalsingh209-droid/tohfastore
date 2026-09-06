@@ -1855,6 +1855,8 @@ resets and verify steady-state usage stays under cap.</p>
 <tr><td><code>/success</code></td><td>app/success/page.tsx</td><td>client</td><td>Reads <code>sessionStorage.tohfa_last_order</code>; clears cart; fires deduped GA4/Meta purchase events; printable invoice. If sessionStorage is gone but <code>?order_id=</code> is present, offers a phone-gated re-fetch via <code>/api/orders/receipt</code> (no analytics on that path).</td></tr>
 <tr><td><code>/track</code></td><td>app/track/page.tsx</td><td>client</td><td>Reference (order id or AWB) + phone &rarr; <code>POST /api/orders/track</code>.</td></tr>
 <tr><td><code>/refer</code></td><td>app/refer/page.tsx</td><td>client</td><td>Public &ldquo;get my referral code&rdquo; page. Phone &rarr; WhatsApp OTP (the <em>same</em> send/verify routes checkout uses) &rarr; <code>POST /api/refer</code> looks up the customer's <code>FRIEND&hellip;</code> share code (never mints one &mdash; the earn-on-Delivered gate stands) + Copy / &ldquo;Share on WhatsApp&rdquo; (<code>wa.me/?text=</code>). No code yet &rarr; &ldquo;unlocks once your first order is delivered&rdquo;; referral programme off (<code>referral_program_enabled='0'</code>) &rarr; &ldquo;paused&rdquo;. In <code>sitemap.ts</code>; linked from <code>/success</code>. Bare utility page (own footer, no header nav), same as <code>/track</code>.</td></tr>
+<tr><td><code>/guides</code></td><td>app/guides/page.tsx</td><td>static</td><td>Index of the editorial gift guides (<code>app/utils/giftGuides.ts</code>) as cards. Hand-written copy, no DB &mdash; static. <code>ItemList</code> JSON-LD. Linked from the desktop header nav (next to &ldquo;Collections&rdquo;) and in <code>sitemap.ts</code>.</td></tr>
+<tr><td><code>/guides/[slug]</code></td><td>app/guides/[slug]/page.tsx</td><td><code>force-dynamic</code> over <code>unstable_cache</code>'d reads, same reasoning as <code>/spotlight</code></td><td>One editorial gift-guide page (<code>diwali-gifts</code>, <code>housewarming-gifts</code>, <code>wedding-return-gifts</code>, <code>puja-room-essentials</code>). Copy from <code>giftGuides.ts</code>; each section shows <strong>live</strong> products via <code>getCatalogPage(1, N, category, "", [], true)</code> (top in-stock, admin display order) &mdash; not hand-picked ids, so a guide never lists something sold out / hidden; empty sections are dropped. Reuses <code>&lt;ProductCard&gt;</code>. <code>Article</code> + <code>BreadcrumbList</code> JSON-LD, per-guide OG/canonical. <code>generateStaticParams</code> lists the 4 slugs; an unknown slug is a <em>soft</em>-404 (200 + <code>noindex</code> + the not-found body &mdash; the site-wide <code>loading.tsx</code> streaming constraint, same as any unhandled path), and nothing links to bad slugs. All 4 in <code>sitemap.ts</code>.</td></tr>
 <tr><td><code>/wishlist</code></td><td>app/wishlist/page.tsx</td><td>client</td><td>localStorage-backed wishlist grid. &ldquo;Share Wishlist&rdquo;/&ldquo;Copy Link&rdquo; build a <code>/wishlist/shared?ids=&hellip;</code> link.</td></tr>
 <tr><td><code>/wishlist/shared</code></td><td>app/wishlist/shared/page.tsx</td><td><code>force-dynamic</code> over <code>unstable_cache</code>'d reads, same reasoning as <code>/spotlight</code></td><td>A read-only view of someone else's wishlist -- re-fetches live product data for the <code>?ids=</code> in the URL via <code>getProductsByIds</code> rather than trusting anything client-supplied; reuses <code>&lt;ProductCard&gt;</code> so Add to Cart / add to the viewer's own wishlist work right from here. <code>noindex</code> (one-off shared links, not meant for search discovery). Empty/all-hidden id list &rarr; a &ldquo;this link isn't showing anything&rdquo; panel, still 200.</td></tr>
 <tr><td><code>/spotlight</code></td><td>app/spotlight/page.tsx (added 2026-09-02)</td><td><code>force-dynamic</code> over <code>unstable_cache</code>'d reads, same reasoning as <code>/product/[id]</code></td><td>The admin-curated, time-boxed featured-products marketing page (see &sect;5 <code>products.is_spotlight</code> / 0050 and <code>app/utils/featuredSpotlight.ts</code>). No active campaign, or an active one with zero eligible (unhidden) products &rarr; a &ldquo;check back soon&rdquo; panel, still <strong>200</strong> (never a redirect, so a shared link keeps working between campaigns). Otherwise: title/description, a ticking <code>&lt;SpotlightCountdown&gt;</code> to <code>endsAt</code>, and a grid of real <code>&lt;ProductCard&gt;</code>s (Add to Cart / wishlist work right from this page). In <code>sitemap.ts</code> (unlike <code>/handbook</code>, this is meant to be found).</td></tr>
@@ -2388,6 +2390,13 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
   <li><strong>Per-category copy</strong> &mdash; <code>app/utils/categoryContent.ts</code> hand-written H1 / tagline /
       intro / meta for the categories that have it (Pocket Temples, Pan Stands, Board Games, Polyresin, UV Resin
       Earrings, Misc), keyed to the exact <code>categories.name</code>. Avoids duplicate-content issues.</li>
+  <li><strong>Gift guides</strong> &mdash; <code>/guides</code> + <code>/guides/&lt;slug&gt;</code> (&sect;9),
+      hand-written occasion pages (<code>app/utils/giftGuides.ts</code>: Diwali / housewarming / wedding-return
+      / puja-room) for gifting-intent search. Editorial framing + <em>live</em> product grids pulled by
+      category (never hand-picked ids), <code>Article</code> + <code>BreadcrumbList</code> JSON-LD, internal
+      links into <code>/collections/&lt;slug&gt;</code> and <code>/corporate</code>. Copy is written to the
+      catalogue as it actually is (devotional brass &mdash; idols, diyas, lamps, lotas, pocket temples, pan-leaf
+      deity frames), same discipline as <code>categoryContent.ts</code>.</li>
   <li><strong>i18n</strong> &mdash; Google Translate widget driven via the <code>googtrans</code> cookie; 13 Indian
       languages; voice &ldquo;switch to &lt;language&gt;&rdquo; command support in <code>SearchBar</code>.</li>
   <li><strong>PWA</strong> &mdash; <code>manifest.ts</code>, generated icons, Apple splash screens
@@ -2497,6 +2506,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>photoFilters.ts</code></td><td>6 CSS-<code>filter</code> presets (Normal, Bright [default], Warm, Vivid, Golden, Antique).</td></tr>
 <tr><td><code>catalogueGenerator.ts</code></td><td><code>@react-pdf/renderer</code> catalogue (cover + category pages), <code>sharp</code> thumbnails, 1h base64 cache for the public route.</td></tr>
 <tr><td><code>categoryContent.ts</code>, <code>categorySliderItems.ts</code></td><td>Hand-written category SEO copy; one random in-stock product photo per category (re-rolled per request).</td></tr>
+<tr><td><code>giftGuides.ts</code></td><td><code>GIFT_GUIDES</code> + <code>findGiftGuide(slug)</code> &mdash; the hand-written occasion gift-guide pages (<code>/guides</code>, <code>/guides/&lt;slug&gt;</code>). Each guide is <code>{slug, title, meta*, intro, body[], sections[]}</code> where a section names an exact <code>products.category</code> + a heading + one line of &ldquo;why this fits&rdquo;. Product grids are resolved live at request time (<code>getCatalogPage</code> per section), so the module is pure copy &mdash; no ids, no DB. Pure; no test (data only).</td></tr>
 <tr><td><code>searchProducts.ts</code></td><td>Substring autocomplete + Levenshtein &ldquo;did you mean&rdquo;.</td></tr>
 <tr><td><code>seo.ts</code>, <code>metaPixel.ts</code>, <code>googleTranslate.ts</code>, <code>trackWhatsappEnquiry.ts</code></td><td>OG default; Meta purchase event; translate cookie + voice-command parsing; enquiry beacon.</td></tr>
 <tr><td><code>recentlyViewed.ts</code>, <code>visitorId.ts</code></td><td>localStorage recently-viewed list (max 8); anonymous per-browser UUID.</td></tr>
@@ -2913,6 +2923,49 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-06<br>&mdash;</code></td>
+  <td><strong>Editorial gift guides (<code>/guides</code>)</strong><br>(owner: marketing &mdash; gifting-guide content pages for organic search, from the recommendation list)</td>
+  <td>
+    New <strong><code>/guides</code></strong> index + four <strong><code>/guides/&lt;slug&gt;</code></strong>
+    pages &mdash; <code>diwali-gifts</code>, <code>housewarming-gifts</code>, <code>wedding-return-gifts</code>,
+    <code>puja-room-essentials</code> &mdash; targeting gifting-intent search
+    (&ldquo;diwali gift ideas&rdquo;, &ldquo;housewarming gift&rdquo;, &ldquo;wedding return gifts&rdquo;,
+    &ldquo;puja room essentials&rdquo;).
+    <br><br>
+    Copy lives in <strong><code>app/utils/giftGuides.ts</code></strong> (hand-written, same
+    write-to-what's-actually-stocked discipline as <code>categoryContent.ts</code> &mdash; the catalogue is
+    devotional brass: idols, diyas, lamps, lotas, foldable pocket temples, pan-leaf deity photo frames). Each
+    guide is an intro + 1&ndash;2 editorial paragraphs + <em>sections</em>, where a section names an exact
+    <code>products.category</code>. The product grids are <strong>live</strong> &mdash;
+    <code>getCatalogPage(1, 6, category, "", [], true)</code> per section (top in-stock, admin display order),
+    <strong>not hand-picked ids</strong>, so a guide never lists a sold-out / hidden product and an emptied
+    section just drops off. Reuses <code>&lt;ProductCard&gt;</code> so Add to Cart / wishlist work from the
+    guide; cross-links each section to its <code>/collections/&lt;slug&gt;</code> and the page to
+    <code>/corporate</code>. <code>Article</code> + <code>BreadcrumbList</code> JSON-LD; per-guide
+    OG/canonical.
+    <br><br>
+    <code>/guides/[slug]</code> is <code>force-dynamic</code> over the cached reads (same call as
+    <code>/spotlight</code> &mdash; no ISR write per product edit). <code>generateStaticParams</code> lists the
+    4 slugs; an unknown slug is a <em>soft</em>-404 (200 + <code>noindex</code> + the not-found body &mdash; the
+    site-wide <code>loading.tsx</code> streaming constraint, &sect;10; nothing links to bad slugs and the
+    sitemap only lists the 4). <code>/guides</code> itself is static. Linked from the desktop header nav (next
+    to &ldquo;Collections&rdquo;); <code>/guides</code> + the 4 slugs added to <code>sitemap.ts</code>.
+  </td>
+  <td><em>new:</em> <code>app/utils/giftGuides.ts</code>, <code>app/guides/page.tsx</code>,
+    <code>app/guides/[slug]/page.tsx</code><br>
+    <em>edited:</em> <code>app/sitemap.ts</code>, <code>app/components/headerNavbar.tsx</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 253 passed / 1 skip (unchanged &mdash;
+    <code>giftGuides.ts</code> is data only) &middot; <code>eslint</code> 0 on the new files &middot;
+    <code>next build</code> exit 0, 143/143 static, <code>/guides</code> static + <code>/guides/[slug]</code>
+    registered. <strong>Live-verified against a dev server</strong> (real DB): <code>GET /guides</code> 200
+    (4 guide cards); <code>GET /guides/diwali-gifts</code> 200 &mdash; H1, 5 section headings, each with a
+    <code>/collections/&lt;slug&gt;</code> &ldquo;Shop all&rdquo; link and a live grid (<strong>25 real
+    products</strong> total), <code>Article</code> + <code>BreadcrumbList</code> JSON-LD present; unknown slug
+    &rarr; soft-404 with <code>noindex</code>; <code>/guides</code> + all 4 slugs in <code>/sitemap.xml</code>;
+    <code>href="/guides"</code> in the homepage header. Not a schema / payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-06<br>&mdash;</code></td>
   <td><strong>Public <code>/refer</code> page</strong><br>(owner: only one <code>FRIEND&hellip;</code> code ever minted, 0 redemptions &mdash; the referral loop was dormant because the code only ever appeared once, in the Delivered notification)</td>
