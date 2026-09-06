@@ -2373,6 +2373,11 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       tags (above) &mdash; and the <code>Product</code> JSON-LD as a fallback (&sect;overview &mdash;
       <code>offers.price</code> / <code>offers.availability</code>) &mdash; no separate feed needed. The Pinterest
       profile is also listed in <code>organizationJsonLd.sameAs</code> alongside Instagram/Facebook.</li>
+  <li><strong>Google Search Console verification</strong> &mdash; <code>public/google6134d6a1f559c3f3.html</code>
+      (the exact one-line file GSC issued; served at the domain root, never rotates). Verifies the
+      <code>https://tohfaonline.com</code> URL-prefix property so the sitemap can be submitted and indexing
+      requested. Not the same as the Merchant Center / Pinterest claims &mdash; each service verifies
+      separately.</li>
   <li><strong>Google Merchant Center feed</strong> &mdash; <code>GET /api/google-merchant-feed</code> (&sect;11), an
       RSS 2.0 + <code>g:</code> product feed of every non-hidden product, for free Google Shopping listings. Same
       brand/price/availability facts as the product-page JSON-LD, just in the XML shape Merchant Center ingests.
@@ -2923,6 +2928,24 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-06<br>&mdash;</code></td>
+  <td><strong>Google Search Console verification file</strong><br>(owner: setting up GSC, which handed a file-upload verification token)</td>
+  <td>
+    <code>public/google6134d6a1f559c3f3.html</code> &mdash; the exact one-line file
+    (<code>google-site-verification: google6134d6a1f559c3f3.html</code>, no trailing newline) GSC issued for
+    the HTML-file method. In <code>public/</code> it serves at
+    <code>https://tohfaonline.com/google6134d6a1f559c3f3.html</code> as a static asset (outside
+    <code>proxy.ts</code>'s matcher, not in <code>robots.ts</code>'s disallow), which is all GSC checks.
+    Verifies the <code>https://tohfaonline.com</code> URL-prefix property &rarr; sitemap submit + request
+    indexing. Separate from the Merchant Center and Pinterest claims.
+  </td>
+  <td><em>new:</em> <code>public/google6134d6a1f559c3f3.html</code><br>
+    <em>edited:</em> <code>docs/HANDBOOK.html</code></td>
+  <td>Static file, nothing to build/test. <code>next build</code> exit 0 (unchanged &mdash; <code>public/</code>
+    is copied as-is). Owner clicks <strong>Verify</strong> in GSC once deployed; then Sitemaps &rarr;
+    <code>sitemap.xml</code> &rarr; Submit.</td>
+</tr>
 <tr>
   <td><code>2026-09-06<br>&mdash;</code></td>
   <td><strong>Editorial gift guides (<code>/guides</code>)</strong><br>(owner: marketing &mdash; gifting-guide content pages for organic search, from the recommendation list)</td>
