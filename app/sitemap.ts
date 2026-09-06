@@ -3,10 +3,14 @@ import type { MetadataRoute } from "next";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { getAllCategoryNames } from "@/app/utils/storeQueries";
 import { productHref, categoryHref } from "@/app/utils/slug";
+import { GIFT_GUIDES } from "@/app/utils/giftGuides";
 
 const SITE_URL = "https://tohfaonline.com";
 
-const STATIC_PAGES = ["", "/about", "/contact", "/privacy", "/terms", "/refunds", "/faq", "/wishlist", "/spotlight", "/refer"];
+const STATIC_PAGES = [
+  "", "/about", "/contact", "/privacy", "/terms", "/refunds", "/faq", "/wishlist", "/spotlight", "/refer",
+  "/guides", ...GIFT_GUIDES.map((g) => `/guides/${g.slug}`),
+];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = STATIC_PAGES.map((path) => ({
