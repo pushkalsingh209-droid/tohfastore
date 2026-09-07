@@ -9,6 +9,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Pagination from "@/app/components/Pagination";
+import ManualOrderPanel from "@/app/admin/tabs/ManualOrderPanel";
 import { useAdminData, type AdminOrder } from "@/app/admin/AdminDataContext";
 import { COURIER_PRESETS } from "@/app/utils/couriers";
 import { productHref } from "@/app/utils/slug";
@@ -137,6 +138,27 @@ export default function OrdersTab() {
     const start = (orderPage - 1) * orderPageSize;
     return visibleOrders.slice(start, start + orderPageSize);
   }, [visibleOrders, orderPage, orderPageSize]);
+
+  // COD cash remitted (0057). Separate from `status` on purpose: a COD
+  // parcel can be delivered with the money not yet reconciled. Toggles
+  // both ways so a mis-click is undoable.
+  const handleCodCollected = async (orderId: number, currentStatus: string, collected: boolean) => {
+    try {
+      const res = await fetch("/api/admin/orders/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: orderId, status: currentStatus, cod_collected: collected }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Could not update COD collection: ${data.error || "Unknown error"}`);
+        return;
+      }
+      setOrders(orders.map((o) => (o.id === orderId ? { ...o, cod_collected_at: data.order?.cod_collected_at ?? null } : o)));
+    } catch (err: unknown) {
+      alert(`Could not update COD collection: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
 
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     try {
@@ -278,6 +300,11 @@ export default function OrdersTab() {
 
   return (
     <>
+    {/* Record a sale that happened off the website (payment link, WhatsApp,
+        walk-in). Without it such a sale reaches the DB with no items, so
+        stock never moves and the GST report shows zero taxable supply. */}
+    <ManualOrderPanel />
+
     {/* NOTIFICATION ANALYTICS: totals by status of "Notify customer" sends
         (migration 0048's log), over an admin-chosen date range -- e.g. how
         many Shipped notifications went out this week vs. all time. Purely
@@ -590,6 +617,25 @@ export default function OrdersTab() {
                           <span className="mt-0.5 block text-[10px] font-sans font-normal text-stone-400">
                             incl. ₹{Number(order.cod_fee).toLocaleString("en-IN")} COD fee
                           </span>
+                        )}
+                        {order.cod_collected_at ? (
+                          <button
+                            type="button"
+                            onClick={() => handleCodCollected(order.id, order.status || "processing", false)}
+                            title="Undo -- mark the cash as not yet collected"
+                            className="mt-1 inline-block rounded border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-sans font-bold uppercase tracking-wide text-emerald-800"
+                          >
+                            ✓ Cash collected {new Date(order.cod_collected_at).toLocaleDateString("en-IN")}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleCodCollected(order.id, order.status || "processing", true)}
+                            title="Record that the courier has remitted this order's cash"
+                            className="mt-1 inline-block rounded border border-stone-400 px-2 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wide text-stone-600 hover:bg-stone-100"
+                          >
+                            Mark cash collected
+                          </button>
                         )}
                       </span>
                     ) : (

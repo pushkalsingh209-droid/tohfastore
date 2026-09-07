@@ -17,7 +17,7 @@ import { isValidOrderStatus, productSalesDelta } from "@/app/utils/orderStatus";
 
 export async function POST(req: Request) {
   try {
-    const { id, status, awb_number, courier_name } = await req.json();
+    const { id, status, awb_number, courier_name, cod_collected } = await req.json();
 
     if (!id || !isValidOrderStatus(status)) {
       return NextResponse.json({ error: "Invalid order id or status." }, { status: 400 });
@@ -31,6 +31,16 @@ export async function POST(req: Request) {
     const updates: Update<"orders"> = { status };
     if (awb_number !== undefined) updates.awb_number = String(awb_number).trim() || null;
     if (courier_name !== undefined) updates.courier_name = normalizeCourierName(courier_name);
+
+    // COD cash actually handed over (0057). A timestamp rather than a
+    // boolean so the admin can see WHEN it was remitted, and deliberately
+    // separate from `status`: a COD parcel can be delivered with the money
+    // not yet reconciled, and collapsing the two would make "delivered"
+    // mean two different things. Toggleable both ways -- marking it by
+    // mistake must be undoable.
+    if (cod_collected !== undefined) {
+      updates.cod_collected_at = cod_collected ? new Date().toISOString() : null;
+    }
 
     // Read the current status first so we can tell a real transition into
     // "cancelled" from a no-op re-save of an already-cancelled order --

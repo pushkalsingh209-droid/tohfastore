@@ -77,6 +77,16 @@ export interface FulfilOrderParams {
    * totals. Always 0 for prepaid. See docs/DESIGN-cod.md.
    */
   codFee?: number;
+  /**
+   * Send the customer/business/supplier WhatsApp + email fan-out.
+   *
+   * Defaults to true, so both existing callers are unchanged. An order
+   * recorded AFTER the fact (a WhatsApp sale already closed on a payment
+   * link) may not want the customer messaged again -- but the stock
+   * deduction, units-sold tally and coupon work still must happen, which
+   * is why this gates only the notifications and nothing else.
+   */
+  notify?: boolean;
 }
 
 // `already_recorded` is not an error: it means the DB's own unique
@@ -99,6 +109,7 @@ export async function fulfilOrder(params: FulfilOrderParams): Promise<FulfilOrde
     checkoutToken,
     paymentMethod = "prepaid",
     codFee = 0,
+    notify = true,
   } = params;
 
   const isCod = paymentMethod === "cod";
@@ -533,7 +544,7 @@ export async function fulfilOrder(params: FulfilOrderParams): Promise<FulfilOrde
   // blocks order confirmation. Note: the free Green API "Developer"
   // instance only supports a handful of distinct chats per month, so
   // customer-side delivery may stop working past that quota.
-  if (businessMessage && customerMessage) {
+  if (notify && businessMessage && customerMessage) {
     // Lead with a photo of the first item that has one -- WhatsApp
     // renders it as an image message with the order summary as the
     // caption underneath, instead of a bare wall of text.
