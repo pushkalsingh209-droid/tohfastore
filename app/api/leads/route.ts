@@ -20,14 +20,40 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // panel visibility into verified-but-not-yet-completed checkouts, distinct
 // from a fully paid order (which lands in the orders table via
 // /api/razorpay-webhook once payment is captured).
-const VALID_SOURCES = ["catalogue_download", "corporate_gifting", "checkout_started"];
+// product_enquiry: fired from the "Chat on WhatsApp" capture sheet
+// (EnquirySheet.tsx). The wa.me handoff is one-way -- WhatsApp never tells
+// the site who tapped, so before this existed an enquirer who didn't
+// actually press send in WhatsApp was unreachable forever. 23 logged
+// clicks had produced 0 conversations. Asking for the number BEFORE the
+// handoff inverts it: the business can now open the conversation itself.
+const VALID_SOURCES = ["catalogue_download", "corporate_gifting", "checkout_started", "product_enquiry"];
+
+// Indian mobile, as the client sends it (10 digits, no country code) --
+// same rule ContactStep uses at checkout. Only enforced for
+// product_enquiry: the other sources are typed into forms with their own
+// validation, this one is a one-field impulse tap and is the only source
+// where a junk number costs an outbound WhatsApp send.
+const INDIAN_MOBILE_REGEX = /^[6-9]\d{9}$/;
+
+// Stored in leads.name (NOT NULL, migration 0012) when a product enquiry
+// gives us only a phone number. Deliberately not the product name -- that
+// column means "the person", and the product travels in `details` where
+// the admin Leads table renders it.
+const ENQUIRY_PLACEHOLDER_NAME = "WhatsApp enquiry";
 
 // Warm, source-specific opener sent right after capture -- the goal is to
 // catch the lead while they're still on-site/thinking about the products,
 // not a hard sales pitch. Best-effort: only fires when the lead left a
 // phone number, and a failed send never fails the lead submission itself.
-function followUpMessage(name: string, source: string): string {
+function followUpMessage(name: string, source: string, productName?: string): string {
   const firstName = name.split(" ")[0];
+  if (source === "product_enquiry") {
+    // The one source where we message first and they never wrote to us, so
+    // it has to say what it's about or it reads like a cold blast.
+    return productName
+      ? `Hi! You were looking at *${productName}* on TOHFA. Happy to answer anything about it -- size, weight, finish, delivery time. Just reply here.`
+      : `Hi! Thanks for your interest in TOHFA. Happy to answer anything about the piece you were looking at -- just reply here.`;
+  }
   if (source === "corporate_gifting") {
     return `Hi ${firstName}! Thanks for reaching out to TOHFA about corporate/bulk gifting. We'll follow up shortly with options and pricing -- feel free to share more details here on WhatsApp anytime.`;
   }
@@ -49,11 +75,17 @@ export async function POST(req: Request) {
     const source = String(body.source || "").trim();
     const details = body.details && typeof body.details === "object" ? body.details : null;
 
-    if (!name) {
-      return NextResponse.json({ error: "Please enter your name." }, { status: 400 });
-    }
     if (!VALID_SOURCES.includes(source)) {
       return NextResponse.json({ error: "Invalid lead source." }, { status: 400 });
+    }
+    // Every other source is a real form with a name field; a product
+    // enquiry is a single phone box, so it supplies its own placeholder
+    // rather than blocking on a field the shopper was never shown.
+    if (!name && source !== "product_enquiry") {
+      return NextResponse.json({ error: "Please enter your name." }, { status: 400 });
+    }
+    if (source === "product_enquiry" && !INDIAN_MOBILE_REGEX.test(phone)) {
+      return NextResponse.json({ error: "Please enter a valid 10-digit mobile number." }, { status: 400 });
     }
     if (source === "catalogue_download" && !phone) {
       return NextResponse.json({ error: "Please enter your WhatsApp number so we can send you the catalogue." }, { status: 400 });
@@ -67,7 +99,7 @@ export async function POST(req: Request) {
 
     const { data: inserted, error } = await supabase
       .from("leads")
-      .insert([{ name, email: email || null, phone: phone || null, source, details }])
+      .insert([{ name: name || ENQUIRY_PLACEHOLDER_NAME, email: email || null, phone: phone || null, source, details }])
       .select()
       .single();
     if (error) return serverErrorResponse("Lead insert failed", error);
@@ -81,7 +113,11 @@ export async function POST(req: Request) {
     // a deliberate admin action instead (see the Leads section).
     if (phone && source !== "checkout_started") {
       try {
-        await sendWhatsappMessage(phone, followUpMessage(name, source));
+        const enquiryProduct =
+          details && typeof (details as { productName?: unknown }).productName === "string"
+            ? ((details as { productName: string }).productName)
+            : undefined;
+        await sendWhatsappMessage(phone, followUpMessage(name || ENQUIRY_PLACEHOLDER_NAME, source, enquiryProduct));
         await supabase.from("leads").update({ contacted: true, contacted_at: new Date().toISOString() }).eq("id", inserted.id);
       } catch (waError) {
         console.error("Lead follow-up WhatsApp skip:", waError);

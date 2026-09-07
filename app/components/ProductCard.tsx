@@ -7,7 +7,7 @@ import { useWishlist } from "@/app/context/WishlistContext";
 import ProductGallery from "@/app/components/ProductGallery";
 import { getProductCardGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink, resolveProductWhatsappNumber } from "@/app/utils/whatsapp";
-import { trackWhatsappEnquiry } from "@/app/utils/trackWhatsappEnquiry";
+import EnquirySheet from "@/app/components/EnquirySheet";
 import TempleCardFrame from "@/app/components/TempleCardFrame";
 import PriceDisplay from "@/app/components/PriceDisplay";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
@@ -117,6 +117,11 @@ export default function ProductCard({
   const categoryWhatsappNumber = useCategoryWhatsappNumber(product.category);
   const chatLabels = useChatLabels();
 
+  // Which face's chat button opened the enquiry sheet (null = closed). One
+  // sheet instance serves both faces -- they hand off to the identical
+  // wa.me link, only the tracking `source` differs.
+  const [enquirySource, setEnquirySource] = useState<"card_front" | "card_back" | null>(null);
+
   function handleImageClick(e: React.MouseEvent) {
     if (isDesktop) return; // desktop: hover already previews, a plain click navigates
 
@@ -225,13 +230,11 @@ export default function ProductCard({
           </button>
         </div>
 
-        <a
-          href={getProductWhatsappLink(product, outOfStock, defaultWhatsappNumber, categoryWhatsappNumber)}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
-            trackWhatsappEnquiry(product, outOfStock, resolveProductWhatsappNumber(product, outOfStock, defaultWhatsappNumber, categoryWhatsappNumber), "card_front");
+            setEnquirySource("card_front");
           }}
           className={`mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-1.5 w-full text-white text-[11px] uppercase tracking-wider font-semibold py-2.5 px-3 rounded transition active:scale-95 ${
             outOfStock ? "bg-amber-700 hover:bg-amber-800" : "bg-emerald-600 hover:bg-emerald-700"
@@ -249,7 +252,7 @@ export default function ProductCard({
           </svg>
           <span className="text-center">{outOfStock ? chatLabels.out_of_stock : chatLabels.in_stock}</span>
           <span aria-hidden="true" className="w-3.5" />
-        </a>
+        </button>
 
         <Link
           href={productHref(product)}
@@ -315,12 +318,10 @@ export default function ProductCard({
           </button>
         </div>
 
-        <a
-          href={getProductWhatsappLink(product, outOfStock, defaultWhatsappNumber, categoryWhatsappNumber)}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
           onClick={() => {
-            trackWhatsappEnquiry(product, outOfStock, resolveProductWhatsappNumber(product, outOfStock, defaultWhatsappNumber, categoryWhatsappNumber), "card_back");
+            setEnquirySource("card_back");
           }}
           className={`grid grid-cols-[auto_1fr_auto] items-center gap-1.5 w-full text-white text-[11px] uppercase tracking-wider font-semibold py-2.5 px-3 rounded transition active:scale-95 ${
             outOfStock ? "bg-amber-700 hover:bg-amber-800" : "bg-emerald-600 hover:bg-emerald-700"
@@ -331,7 +332,7 @@ export default function ProductCard({
           </svg>
           <span className="text-center">{outOfStock ? chatLabels.out_of_stock : chatLabels.in_stock}</span>
           <span aria-hidden="true" className="w-3.5" />
-        </a>
+        </button>
 
         <details className="spec-plate">
           <summary>
@@ -380,6 +381,18 @@ export default function ProductCard({
 
     </div>
     </div>
+
+    {/* One sheet for both faces. Fixed-position, so it renders correctly
+        from inside the card's own stacking context. */}
+    <EnquirySheet
+      open={enquirySource !== null}
+      onClose={() => setEnquirySource(null)}
+      product={product}
+      outOfStock={outOfStock}
+      whatsappNumber={resolveProductWhatsappNumber(product, outOfStock, defaultWhatsappNumber, categoryWhatsappNumber)}
+      waHref={getProductWhatsappLink(product, outOfStock, defaultWhatsappNumber, categoryWhatsappNumber)}
+      source={enquirySource ?? "card_front"}
+    />
     </TempleCardFrame>
   );
 }

@@ -1699,7 +1699,7 @@ referrer who brings many friends can earn many separate reward rows. RLS: no pol
 <div class="x"><table>
 <thead><tr><th>Table</th><th>Key columns</th><th>Purpose &amp; lifecycle</th></tr></thead>
 <tbody>
-<tr><td><code>leads</code></td><td><code>name</code>, <code>email</code>, <code>phone</code>, <code>source</code>, <code>details</code> jsonb, <code>contacted</code> bool=false, <code>contacted_at</code></td><td><code>source &isin; {catalogue_download, corporate_gifting, checkout_started}</code>. Auto WhatsApp follow-up on capture (except <code>checkout_started</code>). Indexes on <code>source</code>, <code>created_at</code>. <em>(0012, 0014)</em></td></tr>
+<tr><td><code>leads</code></td><td><code>name</code>, <code>email</code>, <code>phone</code>, <code>source</code>, <code>details</code> jsonb, <code>contacted</code> bool=false, <code>contacted_at</code></td><td><code>source &isin; {catalogue_download, corporate_gifting, checkout_started, product_enquiry}</code>. Auto WhatsApp follow-up on capture (except <code>checkout_started</code>). <code>product_enquiry</code> (2026-09-07) is captured by the &ldquo;Chat on WhatsApp&rdquo; sheet <em>before</em> the wa.me handoff &mdash; it is the only source with no name field, so it stores the placeholder <code>"WhatsApp enquiry"</code> in the NOT NULL <code>name</code> column and puts the product in <code>details</code> (<code>productId</code>/<code>productName</code>/<code>category</code>/<code>outOfStock</code>/<code>clickSource</code>). Indexes on <code>source</code>, <code>created_at</code>. <em>(0012, 0014)</em></td></tr>
 <tr><td><code>whatsapp_enquiries</code></td><td><code>product_id</code>, <code>product_name</code>, <code>category</code>, <code>price</code>, <code>out_of_stock</code>, <code>whatsapp_number</code>, <code>source</code></td><td>Click-intent log for enquiry buttons. <code>source &isin; {card_front, card_back, product_detail}</code>. Fed by <code>navigator.sendBeacon</code>. Aggregated in the admin Overview tab (feeds all-time totals &mdash; not pruned). <em>(0020)</em></td></tr>
 <tr><td><code>product_views</code></td><td>UNIQUE(<code>product_id</code>, <code>visitor_token</code>), <code>viewed_at</code></td><td>Real &ldquo;N people viewed this recently&rdquo; (3h window). Upserted per anon visitor (localStorage UUID). Pruned (&gt;48h) on 2% of writes. <em>(0034)</em></td></tr>
 <tr><td><code>stock_alert_subscriptions</code></td><td><code>product_id</code> FK CASCADE, <code>phone</code>, <code>notified_at</code>; UNIQUE(product_id,phone) WHERE notified_at IS NULL</td><td>&ldquo;Notify me when back in stock&rdquo;. Fired on a genuine 0 &rarr; &gt; 0 inventory transition in the admin products route; each sub marked notified after its message sends. <em>(0032)</em></td></tr>
@@ -1940,7 +1940,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/instagram-post-image</code></td><td><span class="tag t-get">get</span></td><td><code>?id=&lt;productId&gt;</code> &mdash; a branded 1080&times;1080 PNG (<code>next/og</code>'s <code>ImageResponse</code>, same mechanism as the icon/splash routes) for the public &ldquo;Create Insta Post&rdquo; tool on the product page (<code>InstagramPostGenerator.tsx</code>), so anyone sharing a product can generate one, not just the admin. Hidden products 404. The product photo (always WebP &mdash; satori can't decode that) is re-fetched + re-encoded to JPEG with <code>sharp</code> first, same move <code>catalogueGenerator.ts</code>'s <code>fetchThumbnail()</code> already makes, then embedded as a <code>data:</code> URI. <strong>Cost control (explicit owner requirement):</strong> <code>Cache-Control: public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800</code> &mdash; only the first request for a given product's image in a day pays the Supabase-fetch + render cost; every other request for that product, from anyone, is served from Vercel's edge cache. Rate-limited <code>instagram-post-image</code> 20/10min as the secondary guard (the cache-miss path only &mdash; a repeat view of an already-cached product never reaches this route at all).</td></tr>
 <tr><td><code>/api/reviews</code></td><td><span class="tag t-post">post</span></td><td>Submit a review (<code>approved:false</code>). Name + 1&ndash;5 rating required; text &le; 2000 chars.</td></tr>
 <tr><td><code>/api/enquiries</code></td><td><span class="tag t-post">post</span></td><td>Log a WhatsApp enquiry click (<code>card_front|card_back|product_detail</code>). Best-effort beacon. Also best-effort WhatsApps the clicked product's <code>enquiry_notify_numbers</code> (0053, opt-in per product, re-checked against the live <code>order_notification_numbers</code> list) &mdash; unlike the log insert above, this re-fetches the real product name/price/hidden server-side rather than trusting the client body, since it drives an actual outbound message. Rate-limited <code>enquiry-notify</code> 10/60min per IP (this route otherwise has none, being an unauthenticated beacon). When a send is attempted, writes the successful-send count back onto the just-inserted log row (<code>enquiry_notified_count</code>, 0054) for the Overview stat card.</td></tr>
-<tr><td><code>/api/leads</code></td><td><span class="tag t-post">post</span></td><td>Lead capture. <code>source &isin; {catalogue_download, corporate_gifting, checkout_started}</code>. Auto WhatsApp follow-up (not for <code>checkout_started</code>). Rate-limited <code>lead-submit</code> 10/60min.</td></tr>
+<tr><td><code>/api/leads</code></td><td><span class="tag t-post">post</span></td><td>Lead capture. <code>source &isin; {catalogue_download, corporate_gifting, checkout_started, product_enquiry}</code>. Auto WhatsApp follow-up (not for <code>checkout_started</code>) &mdash; the <code>product_enquiry</code> opener names the product from <code>details.productName</code>, since it is the one source where the business messages first and the shopper never wrote to it. <code>product_enquiry</code> is also the only source that skips the name requirement (it is a one-field sheet) and the only one whose phone is format-checked server-side (<code>/^[6-9]\d{9}$/</code>) &mdash; a junk number there costs a real outbound WhatsApp send. Rate-limited <code>lead-submit</code> 10/60min.</td></tr>
 <tr><td><code>/api/contact</code></td><td><span class="tag t-post">post</span></td><td>Contact form &rarr; Resend email. Honeypot field <code>company</code>.</td></tr>
 <tr><td><code>/api/catalogue</code></td><td><span class="tag t-get">get</span></td><td>Public catalogue PDF (cached base64, 1h). <code>maxDuration = 60</code>.</td></tr>
 <tr><td><code>/api/google-merchant-feed</code></td><td><span class="tag t-get">get</span></td><td>An RSS 2.0 + Google's <code>g:</code> namespace product feed for Google Merchant Center &mdash; every non-hidden product with a name/price/image, id/title/description/link/image_link/availability(live inventory)/price(the real GST-inclusive amount)/condition=new/brand=TOHFA/identifier_exists=no (handmade goods, no GTIN/MPN)/product_type=category. Same brand/price/availability facts each product page's own <code>Product</code> JSON-LD already states &mdash; re-shaped, not re-sourced. <code>Cache-Control: public, max-age=1800, s-maxage=3600, stale-while-revalidate=86400</code> (Merchant Center re-fetches on its own schedule, not per-visitor traffic). Not linked from <code>sitemap.ts</code> or exempted in <code>robots.ts</code>'s <code>/api/</code> disallow &mdash; a feed URL you submit directly in Merchant Center, not a page meant for organic crawl/discovery.</td></tr>
@@ -2461,6 +2461,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>CartDrawer</code> / <code>LazyCartDrawer</code> &mdash; the whole checkout flow</li>
 <li><code>CartSuggestions</code> &mdash; the &ldquo;Complete Your Gifting&rdquo; cross-sell strip inside the cart drawer, fetched client-side from <code>/api/cart-suggestions</code> (a thin filter over the already-cached <code>getBestsellers()</code>, excluding whatever's already in the cart); renders nothing while loading or once there's nothing left to suggest</li>
 <li><code>ContactForm</code>, <code>SearchBar</code></li>
+<li><code>EnquirySheet</code> &mdash; the step between tapping &ldquo;Chat on WhatsApp&rdquo; and the wa.me handoff: one phone field, then <em>Continue to WhatsApp</em>. Exists because wa.me is a <strong>one-way</strong> handoff &mdash; WhatsApp never tells the site who tapped, so an enquirer who doesn't press send inside WhatsApp was previously unreachable forever (23 logged clicks, 0 conversations). Writes a <code>product_enquiry</code> lead so the business can open the conversation itself. Always skippable via &ldquo;Just open WhatsApp&rdquo;. Mobile-first bottom sheet, centred card from <code>sm:</code>. The lead POST is fire-and-forget with <code>keepalive</code> and the CTA is a real <code>&lt;a&gt;</code>, so the WhatsApp tab opens from the user's own gesture &mdash; an awaited fetch before <code>window.open()</code> is what popup blockers kill. Used by <code>ProductCard</code> (both faces) and <code>WhatsappEnquiryLink</code> (product detail).</li>
 </ul>
 </div>
 <div>
@@ -2978,6 +2979,71 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-07<br>&mdash;</code></td>
+  <td><strong>Capture the enquirer's number before the WhatsApp handoff</strong><br>(owner: &ldquo;the chats never started, I have no enquiries&rdquo;, then &ldquo;I want to have numbers of every person enquiring in admin panel&rdquo;)</td>
+  <td>
+    <strong>The finding this fixes.</strong> Production had <strong>23 logged enquiry clicks and zero
+    conversations</strong>. Routing was fine &mdash; 21 of the 23 went to the business's own
+    <code>916302672351</code>, and Green API was <code>authorized</code> with a fresh keepalive. The failure is
+    structural: <code>whatsapp_enquiries</code> logs the <em>click</em> via <code>sendBeacon</code>, then opens a
+    <code>wa.me</code> link. <strong>That handoff is one-way</strong> &mdash; WhatsApp never tells the site who
+    tapped. Unless the visitor presses send inside WhatsApp, the business never learns they existed. So the answer
+    to &ldquo;can I see every enquirer's number?&rdquo; was <em>not from a wa.me click, ever</em>: there is no
+    callback to hook.
+    <br><br>
+    <strong>The fix inverts the flow.</strong> New <code>app/components/EnquirySheet.tsx</code> sits between the
+    Chat button and the handoff: one phone field, then <em>Continue to WhatsApp</em>. It writes a
+    <code>product_enquiry</code> lead, so the business can open the conversation itself from a number that is
+    already sending. 23 unreachable people become 23 leads with a follow-up already sent.
+    <br><br>
+    <strong>Deliberately skippable.</strong> &ldquo;Just open WhatsApp&rdquo; keeps the original path one tap
+    away &mdash; a shopper who won't share a number is never trapped, and that route is exactly as good as before,
+    never worse. Adding a step to a path already converting <strong>0 of 23</strong> costs nothing.
+    <br><br>
+    <strong>Mobile-first</strong> (owner's explicit instruction): bottom sheet on phones with safe-area padding
+    and a grab handle, centred card from <code>sm:</code> &mdash; the same shape as the Orders
+    &ldquo;Notify customer&rdquo; dialog. 48px primary target, <code>inputMode="numeric"</code>, and
+    <code>text-base</code> (16px) on the input specifically because anything smaller makes iOS Safari zoom the
+    whole page on focus.
+    <br><br>
+    <strong>Two implementation details that matter more than they look.</strong> (1) The CTA is a real
+    <code>&lt;a target="_blank"&gt;</code> and the lead POST is fire-and-forget with <code>keepalive</code>, never
+    awaited &mdash; an awaited fetch before <code>window.open()</code> is exactly what popup blockers kill, and
+    losing a lead row must never cost the shopper their handoff. (2) The enquiry beacon still fires on the
+    <em>actual</em> handoff out of the sheet (both exits), so <code>whatsapp_enquiries</code> keeps measuring what
+    it always did and the historical click numbers stay comparable.
+    <br><br>
+    <code>/api/leads</code> gains <code>product_enquiry</code>: the only source that skips the name requirement
+    (a one-field sheet never showed one &mdash; it stores the placeholder <code>"WhatsApp enquiry"</code> in the
+    NOT NULL <code>name</code> column, deliberately <em>not</em> the product name, which belongs in
+    <code>details</code>), and the only one whose phone is format-checked server-side, because it is the only one
+    where a junk number costs a real outbound send. Admin <strong>Overview &rarr; Leads</strong> gains an emerald
+    <em>Product Enquiry</em> badge and shows &ldquo;Asked about: &lt;product&gt;&rdquo; plus an amber flag when
+    they asked while it was out of stock &mdash; the phone alone would be context-free.
+    <br><br>
+    <strong>Scope boundary, stated:</strong> the two remaining direct <code>wa.me</code> links (the header contact
+    chip and <code>FloatingContactButtons</code>) are <em>general</em> &ldquo;contact us&rdquo; affordances with no
+    product to attach, and are left as-is. All three <em>product-specific</em> paths
+    (<code>card_front</code>, <code>card_back</code>, <code>product_detail</code>) now go through the sheet.
+  </td>
+  <td><em>new:</em> <code>app/components/EnquirySheet.tsx</code><br>
+    <em>edited:</em> <code>app/api/leads/route.ts</code>, <code>app/components/ProductCard.tsx</code>,
+    <code>app/components/WhatsappEnquiryLink.tsx</code>, <code>app/admin/tabs/OverviewTab.tsx</code>,
+    <code>app/admin/AdminDataContext.tsx</code>, <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 254/254 &middot; <code>eslint</code> 0 errors
+    (<code>EnquirySheet.tsx</code> 0 problems; the 4 warnings on <code>ProductCard.tsx</code> are the pre-existing
+    <code>set-state-in-effect</code> hydrate-on-mount class at lines 58&ndash;109, all above the insertion point)
+    &middot; <code>next build</code> exit 0, 143/143 static. <strong>Live-verified against a dev server</strong>:
+    <code>POST /api/leads</code> rejected a short number, a 5-prefixed non-mobile, and a bogus source, all
+    <code>400</code> &mdash; and crucially <strong>sent nothing</strong>; the product page's enquiry control now
+    renders as <code>&lt;button type="button"&gt;</code> rather than an <code>&lt;a href="wa.me&hellip;"&gt;</code>,
+    and the homepage's only remaining <code>wa.me</code> anchors are the two general contact affordances.
+    <strong>Not verified: the success path.</strong> Submitting a real number fires a real WhatsApp to a real
+    person, so it was left for the owner &mdash; enter your own number on a product, confirm the lead appears in
+    Overview &rarr; Leads with &ldquo;Asked about&rdquo;, and that the opener naming the product arrives.
+    No schema change (the source is a free-text column); not a payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-07<br>&mdash;</code></td>
   <td><strong>Extract <code>fulfilOrder()</code> from the webhook</strong> <span class="pill warnp">payment path</span><br>(owner: &ldquo;give COD option&rdquo; &mdash; this is <strong>slice 1 of 2</strong>, the prerequisite refactor. COD itself is slice 2. See <code>docs/DESIGN-cod.md</code>)</td>
