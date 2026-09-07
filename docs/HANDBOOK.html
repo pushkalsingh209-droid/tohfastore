@@ -1356,7 +1356,7 @@ takes a second arg.</p>
 <tr><td>PDF</td><td><code>@react-pdf/renderer</code> 4.5</td><td>Catalogue PDF (pure JS). <code>sharp</code> re-encodes photos to thumbnails first.</td></tr>
 <tr><td>Spreadsheet</td><td><code>exceljs</code> 4.4 (MIT, free)</td><td>The admin Overview &ldquo;Download Excel&rdquo; report (<code>/api/admin/reports</code>) &mdash; a 3-sheet <code>.xlsx</code> (Orders, GST summary, GST by state). Server-side only.</td></tr>
 <tr><td>QR</td><td><code>qrcode</code> 1.5</td><td>Admin TOTP re-provisioning QR (SVG).</td></tr>
-<tr><td>Analytics / RUM</td><td><code>@vercel/analytics</code>, <code>@vercel/speed-insights</code>, <code>@next/third-parties</code> (GA4)</td><td>All free-tier. Purchase conversions fired client-side on <code>/success</code> with the real server-verified total.</td></tr>
+<tr><td>Analytics / RUM</td><td><code>@vercel/analytics</code>, <code>@vercel/speed-insights</code>, <code>@next/third-parties</code> (GA4)</td><td>All free-tier. Purchase conversions fired client-side on <code>/success</code> with the real server-verified total. Meta Pixel also carries the middle funnel &mdash; <code>ViewContent</code> (product page), <code>AddToCart</code> (cart context), <code>InitiateCheckout</code> (checkout sheet mount, <em>before</em> the OTP gate) &mdash; which is what makes retargeting audiences and drop-off analysis possible.</td></tr>
 <tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (~167 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>bootstrapSettings</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderNotifications</code>, <code>orderNotificationNumbers</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>reports</code>, <code>repricing</code>, <code>reservation</code>, <code>spendTierOffer</code>, <code>totp</code>, <code>useCheckoutMachine</code>, <code>normalizeOrderItems</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
 <tr><td>Lint</td><td>ESLint 9 + <code>eslint-config-next</code></td><td><code>npm run lint</code>. (Next 16 no longer runs ESLint during <code>next build</code>.)</td></tr>
 </tbody></table></div>
@@ -1608,7 +1608,7 @@ paths produce an identical row because both re-read from Razorpay&rsquo;s own AP
 <tr><td><code>GREEN_API_URL</code>, <code>GREEN_API_ID_INSTANCE</code>, <code>GREEN_API_TOKEN_INSTANCE</code></td><td>server</td><td>Green API instance. All three required or every WhatsApp feature silently no-ops (OTP send surfaces an explicit error instead).</td></tr>
 <tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code>, <code>/api/cron/abandoned-checkout</code>, <code>/api/cron/product-sales-reconcile</code>, <code>/api/cron/rls-check</code>.</td></tr>
 <tr><td><code>RESEND_API_KEY</code></td><td>server</td><td>Missing &rarr; order-confirmation <em>and</em> shipped/delivered/status emails skipped silently; contact form returns 500.</td></tr>
-<tr><td><code>NEXT_PUBLIC_META_PIXEL_ID</code></td><td>public</td><td>Optional. Unset &rarr; <code>MetaPixel</code> and <code>trackMetaPurchase()</code> no-op.</td></tr>
+<tr><td><code>NEXT_PUBLIC_META_PIXEL_ID</code></td><td>public</td><td>Optional. Unset &rarr; <code>MetaPixel</code> and <em>every</em> <code>metaPixel.ts</code> event (<code>ViewContent</code>, <code>AddToCart</code>, <code>InitiateCheckout</code>, <code>Purchase</code>) no-op. Comma-separate for multiple pixels.</td></tr>
 <tr><td><code>BUSINESS_WHATSAPP_NUMBER</code></td><td>server</td><td>Optional override for order/business alerts. Default <code>916302672351</code>.</td></tr>
 <tr><td><code>BUSINESS_GSTIN</code></td><td>server</td><td>Optional override. Default <code>05AXSPV8800E1Z3</code>. Shown on invoices.</td></tr>
 </tbody></table></div>
@@ -2521,7 +2521,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>categoryContent.ts</code>, <code>categorySliderItems.ts</code></td><td>Hand-written category SEO copy; one random in-stock product photo per category (re-rolled per request).</td></tr>
 <tr><td><code>giftGuides.ts</code></td><td><code>GIFT_GUIDES</code> + <code>findGiftGuide(slug)</code> &mdash; the hand-written occasion gift-guide pages (<code>/guides</code>, <code>/guides/&lt;slug&gt;</code>). Each guide is <code>{slug, title, meta*, intro, body[], sections[]}</code> where a section names an exact <code>products.category</code> + a heading + one line of &ldquo;why this fits&rdquo;. Product grids are resolved live at request time (<code>getCatalogPage</code> per section), so the module is pure copy &mdash; no ids, no DB. Pure; no test (data only).</td></tr>
 <tr><td><code>searchProducts.ts</code></td><td>Substring autocomplete + Levenshtein &ldquo;did you mean&rdquo;.</td></tr>
-<tr><td><code>seo.ts</code>, <code>metaPixel.ts</code>, <code>googleTranslate.ts</code>, <code>trackWhatsappEnquiry.ts</code></td><td>OG default; Meta purchase event; translate cookie + voice-command parsing; enquiry beacon.</td></tr>
+<tr><td><code>seo.ts</code>, <code>metaPixel.ts</code>, <code>googleTranslate.ts</code>, <code>trackWhatsappEnquiry.ts</code></td><td>OG default; Meta Pixel funnel events (<code>ViewContent</code>/<code>AddToCart</code>/<code>InitiateCheckout</code>/<code>Purchase</code>, all no-op without a pixel id); translate cookie + voice-command parsing; enquiry beacon.</td></tr>
 <tr><td><code>recentlyViewed.ts</code>, <code>visitorId.ts</code></td><td>localStorage recently-viewed list (max 8); anonymous per-browser UUID.</td></tr>
 <tr><td><code>couriers.ts</code></td><td><code>COURIER_PRESETS</code> (dropdown list for the admin Orders tab) + <code>normalizeCourierName(raw)</code> (trim + clamp to 60, empty &rarr; null). The stored <code>orders.courier_name</code> is unconstrained free text; this list is convenience only. <em>(0045)</em></td></tr>
 <tr><td><code>instagramCaption.ts</code></td><td><code>buildInstagramCaption(product)</code> &mdash; the ready-to-paste caption for the public &ldquo;Create Insta Post&rdquo; tool. Unlike every other message-builder here, written in <strong>first person</strong>: the poster is a third party (a customer, a friend) sharing it as their own content, not the store talking to a customer. Pure, no I/O &mdash; computed client-side straight from data already on the product page. Name, price, a handcrafted-brass line, the real handle (<code>@tohfaforu</code>), <code>productHref</code> link, base hashtags + one derived from category. <strong>6 unit tests.</strong></td></tr>
@@ -2878,6 +2878,37 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
       <code>loadAll()</code>, not with an impure call in render).</li>
 </ul>
 
+<h3>Add a conversion / pixel event</h3>
+<ul class="tight">
+  <li>Add the wrapper to <code>app/utils/metaPixel.ts</code> and route it through the private
+      <code>track()</code> helper &mdash; never call <code>window.fbq</code> from a component. The helper is
+      what guarantees the standing contract: <strong>every event silently no-ops when
+      <code>NEXT_PUBLIC_META_PIXEL_ID</code> is unset</strong>, so call sites fire unconditionally and never
+      need a guard. A bare <code>fbq('track', ...)</code> multiplexes across all configured pixels.</li>
+  <li><strong>Product ids use the bare numeric <code>products.id</code></strong>, matching
+      <code>&lt;g:id&gt;</code> in <code>/api/google-merchant-feed</code>. One id space keeps Google Shopping
+      and any future Meta catalogue on the same rows without a mapping table &mdash; if the feed's id ever
+      changes, change both in the same commit.</li>
+  <li><strong>Fire from the single narrowest place the action actually happens</strong>, not from each
+      button. <code>AddToCart</code> lives in <code>CartContext.addToCart</code>, so every present and future
+      add button is covered and can't drift.</li>
+  <li><strong>Never fire inside a <code>setState</code> updater</strong> (e.g. <code>setCart(prev =&gt;
+      ...)</code>) or an effect that re-runs on data changes &mdash; those closures re-run under
+      StrictMode/replay and double-count. Put it on the plain event path, or in a mount-only effect with
+      empty deps.</li>
+  <li>Fields on <code>StoreProduct</code> are largely <em>optional/nullable</em> (<code>name</code>,
+      <code>price</code>, <code>category</code>). Accept that shape in the wrapper's signature and omit the
+      key when absent, rather than coercing at every call site.</li>
+  <li><strong>Mind what the event is measuring relative to a gate.</strong>
+      <code>InitiateCheckout</code> fires on <code>CheckoutSheet</code> mount, deliberately
+      <em>before</em> checkout's WhatsApp-OTP gate, because the <code>checkout_started</code> lead beacon
+      already covers the post-OTP side. The two together are what size the OTP drop-off; an event moved to
+      the convenient side of a gate measures nothing.</li>
+  <li>It's an analytics side effect &mdash; best-effort, never blocking, and it must not change the
+      behaviour of the path it observes. Nothing to test in Vitest (no DOM/pixel in the suite); verify in
+      Meta <strong>Events Manager &rarr; Test Events</strong> after deploy.</li>
+</ul>
+
 <h3>Touching the payment path</h3>
 <ul class="tight">
   <li><code>/api/razorpay</code>, <code>/api/razorpay-webhook</code>, and the GST / coupon / signature utils they
@@ -2936,6 +2967,64 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-07<br>&mdash;</code></td>
+  <td><strong>Meta Pixel funnel events (<code>ViewContent</code> / <code>AddToCart</code> / <code>InitiateCheckout</code>)</strong><br>(owner: &ldquo;reach has increased but the site isn't converting&rdquo; &mdash; asked for free ways to promote. Diagnosis first: the funnel had no instrumentation between <code>PageView</code> and <code>Purchase</code>, so the drop-off couldn't be located and the increased reach couldn't be retargeted)</td>
+  <td>
+    The pixel fired exactly two events: <code>PageView</code> (<code>MetaPixel.tsx</code>) and
+    <code>Purchase</code> (<code>/success</code>). Nothing in between. Three consequences, all free to fix:
+    no viewer/cart audiences to retarget with, nothing for Meta to optimise delivery against, and no
+    numbers to locate the drop-off. Added the three standard middle-funnel events.
+    <br><br>
+    <code>app/utils/metaPixel.ts</code> grew <code>trackMetaViewContent</code> /
+    <code>trackMetaAddToCart</code> / <code>trackMetaInitiateCheckout</code> alongside the existing
+    <code>trackMetaPurchase</code>, all routed through one private <code>track()</code> helper that keeps the
+    original contract &mdash; <strong>silently no-ops when <code>window.fbq</code> is absent</strong>
+    (<code>NEXT_PUBLIC_META_PIXEL_ID</code> unset), so every call site can fire unconditionally.
+    <code>content_ids</code> deliberately carries the <strong>bare numeric product id</strong>, matching
+    <code>&lt;g:id&gt;</code> in the Google Merchant feed &mdash; one id space means the same catalogue can
+    back Google Shopping and a future Meta catalogue with no mapping table.
+    <br><br>
+    Call sites, each chosen so the signal can't drift:
+    <strong>(1) <code>ViewContent</code></strong> in <code>RecordProductView.tsx</code> &mdash; piggy-backed
+    on the component that already mounts once per product view with exactly the fields the pixel needs,
+    rather than adding a second client component to the product page.
+    <strong>(2) <code>AddToCart</code></strong> in <code>CartContext.addToCart</code>, not in
+    <code>AddToCartButton</code>/<code>ProductCard</code>: one central success path covers every present and
+    future add button. Placed <em>outside</em> the <code>setCart</code> updater &mdash; that closure can run
+    twice under StrictMode/replay and would double-count. Rejected adds (out of stock / at cap) return
+    early and correctly send nothing.
+    <strong>(3) <code>InitiateCheckout</code></strong> on <code>CheckoutSheet</code> mount &mdash; the sheet
+    mounting <em>is</em> &ldquo;checkout opened&rdquo;.
+    <br><br>
+    <strong>Why (3) fires before the OTP gate, and must stay there.</strong> Checkout is OTP-first: 
+    <code>useCheckoutMachine</code>'s <code>GO_DELIVERY</code> only advances when <code>state.verified</code>
+    is set, so a shopper cannot reach the address form or the payment button until a WhatsApp code has been
+    sent and typed in. The existing <code>checkout_started</code> lead beacon
+    (<code>/api/leads</code>) is written <em>after</em> that verification &mdash; so everyone who opens the
+    cart, meets the OTP wall and leaves is currently invisible in both the pixel and the admin panel.
+    <code>InitiateCheckout</code> on mount is the only measurement of that segment; the gap between it and
+    <code>checkout_started</code> is the size of the OTP drop-off. Moving this event later re-creates the
+    blind spot it exists to close. Mount-only (empty deps): later cart edits are the same checkout, not a
+    new one.
+    <br><br>
+    No behaviour change to any existing path &mdash; pixel sends only. Nothing emits until
+    <code>NEXT_PUBLIC_META_PIXEL_ID</code> is set (it is, in production).
+  </td>
+  <td><em>edited:</em> <code>app/utils/metaPixel.ts</code>, <code>app/context/CartContext.tsx</code>,
+    <code>app/components/RecordProductView.tsx</code>,
+    <code>app/components/checkout/CheckoutSheet.tsx</code>, <code>docs/HANDBOOK.html</code>,
+    <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 253 passed / 1 env-skip, and
+    <strong>254/254 with <code>.env.local</code> loaded</strong> (the skip is
+    <code>app/utils/rls.test.ts</code>'s <code>describe.skipIf(!configured)</code> live-Supabase probe, run
+    per its own documented command and passing &mdash; RLS perimeter intact) &middot; <code>eslint</code> 0
+    errors on all 4 changed files (1 pre-existing <code>set-state-in-effect</code> warning at
+    <code>CartContext.tsx:31</code>, untouched cart hydration) &middot; <code>next build</code> exit 0,
+    143/143 static. Not a schema / payment-path change &mdash; no checkout logic, pricing or order flow
+    touched. <strong>Not verified live against Meta Events Manager</strong> (no browser session here);
+    owner should confirm the three events land in Events Manager &rarr; Test Events after deploy.</td>
+</tr>
 <tr>
   <td><code>2026-09-06<br>&mdash;</code></td>
   <td><strong>Product JSON-LD: <code>shippingDetails</code> + <code>hasMerchantReturnPolicy</code></strong><br>(owner: GSC / Rich Results flagged both as missing on the <code>Product</code> &rarr; <code>offers</code>; owner supplied the terms &mdash; free shipping across India, no returns after dispatch except a defective item with an uncut unboxing video)</td>

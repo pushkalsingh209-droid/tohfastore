@@ -12,6 +12,38 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Meta Pixel funnel events — ViewContent / AddToCart / InitiateCheckout — 2026-09-07 IST
+- Owner (marketing): "reach has increased but the site isn't converting… recommend non-cost ways to promote".
+  Diagnosis before promotion: the pixel fired only `PageView` and `Purchase`, so (a) there were no viewer /
+  cart audiences to retarget the new reach with, (b) Meta had no mid-funnel signal to optimise delivery
+  against, and (c) nobody could say *where* the funnel leaked. Adding promotion surfaces to an unmeasured
+  funnel would have wasted the reach.
+- `app/utils/metaPixel.ts`: added `trackMetaViewContent` / `trackMetaAddToCart` /
+  `trackMetaInitiateCheckout` next to the existing `trackMetaPurchase`, all via one private `track()` helper
+  keeping the original contract — **silently no-op when `window.fbq` is absent**, so call sites need no
+  guard. `content_ids` carries the bare numeric product id to match `<g:id>` in the Merchant feed (one id
+  space for Google Shopping + a future Meta catalogue, no mapping table).
+- Call sites: **ViewContent** in `RecordProductView.tsx` (already mounts once per product view with exactly
+  the needed fields — no second client component). **AddToCart** in `CartContext.addToCart`, not the
+  buttons, so every add path is covered and can't drift; placed *outside* the `setCart` updater, which
+  re-runs under StrictMode and would double-count; rejected adds (out of stock / at cap) send nothing.
+  **InitiateCheckout** on `CheckoutSheet` mount.
+- **InitiateCheckout fires before the OTP gate, by design.** Checkout is OTP-first (`useCheckoutMachine`'s
+  `GO_DELIVERY` needs `state.verified`), and the existing `checkout_started` lead beacon is only written
+  *after* verification — so OTP-wall bouncers are invisible everywhere today. The gap between
+  `InitiateCheckout` and `checkout_started` **is** the size of that drop-off. Mount-only (empty deps).
+- No behaviour change to any existing path — pixel sends only. `NEXT_PUBLIC_META_PIXEL_ID` confirmed set in
+  production by the owner.
+- Verified: `tsc --noEmit` clean; `npm test` 253 passed / 1 env-skip and **254/254 with `.env.local` loaded**
+  (the skip is `rls.test.ts`'s `describe.skipIf(!configured)` live-Supabase probe — run per its own
+  documented command, passing, RLS perimeter intact); `eslint` 0 errors on all 4 changed files (1
+  pre-existing `set-state-in-effect` warning at `CartContext.tsx:31`, untouched cart hydration);
+  `next build` exit 0, 143/143 static. Not a schema / payment-path change. **Not verified live against Meta
+  Events Manager** (no browser session) — owner to confirm in Events Manager → Test Events after deploy.
+- Also added a §27 playbook, "Add a conversion / pixel event", since this establishes a repeatable pattern
+  with real traps (double-counting in updaters, id space, gate-relative placement).
+- See `docs/HANDBOOK.html` Change log 2026-09-07.
+
 ### Editorial gift guides (`/guides`) — 2026-09-06 IST
 - Owner (marketing): gifting-guide content pages for organic search, from the recommendation list.
 - New `/guides` index + 4 `/guides/<slug>` pages — `diwali-gifts`, `housewarming-gifts`,
@@ -1177,6 +1209,27 @@ care, land behind tests, never "blind".
    catches the same thing more directly: whatever the policies are, can the anon key
    actually reach what it shouldn't.) **Left:** the Docker-gated `db pull`/`push` migration
    workflow.
+
+4. **⚠️ Checkout is OTP-first — the hardest ask is the first ask.** `useCheckoutMachine`'s
+   `GO_DELIVERY` only advances when `state.verified` is set, so a shopper cannot see the
+   address form, the shipping line or the payment button until they've handed over a phone
+   number, waited for a WhatsApp code and typed it in. For cold traffic (the increased
+   Instagram/organic reach) that's a large, unearned commitment before any price certainty
+   — the leading hypothesis for "reach up, sales flat". **Proposed:** collect
+   name/email/phone, let them complete the address and see the real total, then verify the
+   phone at the review step (or only when they opt into WhatsApp updates) — same fraud
+   posture, the ask lands after they're invested. **Blocked on data, deliberately:** the
+   `InitiateCheckout` pixel event shipped 2026-09-07 measures the pre-OTP side for the
+   first time; give it ~1 week of traffic and compare against `checkout_started` (post-OTP)
+   before touching checkout. If the gap is large this is the highest-value change on the
+   list; if it's small, the leak is elsewhere and this stays shut. Payment-path adjacent —
+   land behind the existing `useCheckoutMachine` tests, never blind.
+
+5. **💰 No cash on delivery.** `/faq` states card/UPI/netbanking/wallets only. COD remains a
+   large share of Indian e-commerce conversion, especially for a first purchase from an
+   unfamiliar brand at handicraft price points. Carries real cost and liability (RTO
+   losses, reconciliation, courier COD fees) — **owner decision, not a code decision**;
+   logged here only so it isn't silently forgotten as a conversion lever.
 
 ## Active — Tier 2 (security / hardening)
 

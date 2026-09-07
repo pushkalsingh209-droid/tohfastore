@@ -22,6 +22,7 @@ import ReviewStep from "@/app/components/checkout/steps/ReviewStep";
 import { useCheckoutMachine } from "@/app/components/checkout/useCheckoutMachine";
 import { useSpendTierOffer } from "@/app/components/checkout/useSpendTierOffer";
 import { tierDiscountFor, nextSpendTier } from "@/app/utils/spendTierOffer";
+import { trackMetaInitiateCheckout } from "@/app/utils/metaPixel";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[6-9]\d{9}$/;
@@ -43,7 +44,7 @@ function initializeRazorpaySDK(): Promise<boolean> {
 }
 
 export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
-  const { cart, cartTotal, setIsOpen } = useCart();
+  const { cart, cartTotal, cartCount, setIsOpen } = useCart();
   const categoryDiscounts = useCategoryDiscountMap();
   const router = useRouter();
   const m = useCheckoutMachine();
@@ -111,6 +112,17 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
   // on-open preload).
   useEffect(() => {
     initializeRazorpaySDK();
+  }, []);
+
+  // Pixel InitiateCheckout, on mount -- this sheet mounting IS "checkout
+  // opened". It fires BEFORE the OTP gate on purpose: the "checkout_started"
+  // lead beacon below only writes after a phone passes OTP, so shoppers who
+  // bounce off the OTP wall leave no trace anywhere else. Pairing this with
+  // that beacon is what makes the size of that drop measurable. Mount-only
+  // (empty deps): later cart edits are the same checkout, not a new one.
+  useEffect(() => {
+    trackMetaInitiateCheckout(cart.map((item) => item.id), cartTotal, cartCount);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // A phone edit drops any verification -- same trigger as the old OTP
