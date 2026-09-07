@@ -12,6 +12,26 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Fix: `/success` crashed on every COD order — 2026-09-07 IST — ⚠️ payment path
+- Owner enabled COD, placed the first live COD order, got "This page couldn't load". **The order was fine**
+  (`COD_85f0a82d9c3f4114b0`, ₹2,550 incl. ₹150 fee, stock decremented, WhatsApp sent) — only the confirmation
+  page died, which is the worst shape for it: the shopper assumes the order failed.
+- **Root cause (mine, from the COD batch):** `/api/razorpay` returns `gst` as the whole `OrderGstBreakdown`
+  object; `/api/orders/cod` returned `gst: gst.gstAmount`, a number. `/success` calls `gst.basePrice
+  .toLocaleString()` and `gst.byRate.map()` on it → `undefined.toLocaleString()` → render threw.
+- **`tsc` couldn't catch it**: the value crosses `NextResponse.json` → `JSON.parse` and is cast on arrival, so
+  there's no compile-time link between the two ends. The prepaid path was unaffected, which is why it hid.
+- **Second bug fixed alongside:** the total row rendered `gst.totalPrice` (goods only), silently understating
+  what the courier collects by the fee. Now shows an explicit *Cash on Delivery fee* row, totals
+  `gst.totalPrice + codFee`, and relabels to **"To pay on delivery"** — "Total Paid" is untrue for COD.
+- Verified: `tsc` clean; 281/281; eslint 0 errors; build exit 0. **Live-verified against the real broken
+  order** — the receipt now returns `gst` as a 4-key object, `codFee: 150`, `discount: 0`, and the rendered
+  total `2400 + 150 = 2550` **reconciles exactly with `orders.amount`**.
+- **Lesson worth keeping:** two routes feeding one client stash need the same response shape, and nothing in
+  the type system enforces that across `JSON.parse`. Any future third order path must match `StashedOrder`
+  field-for-field.
+- See `docs/HANDBOOK.html` Change log 2026-09-07.
+
 ### Cash on Delivery — 2026-09-07 IST — ⚠️ payment path
 - Owner: "cod should be made live", then per-category/per-product exclusions ("expensive items … get damaged
   and returned"), then "cod only for items below 3000". Slice 2 of 2 on the `fulfilOrder()` foundation.

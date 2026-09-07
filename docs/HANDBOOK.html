@@ -2994,6 +2994,48 @@ Newest first.</p>
 <tbody>
 <tr>
   <td><code>2026-09-07<br>&mdash;</code></td>
+  <td><strong>Fix: <code>/success</code> crashed on every COD order</strong> <span class="pill warnp">payment path</span><br>(owner enabled COD, placed the first live COD order, and got &ldquo;This page couldn&rsquo;t load&rdquo;)</td>
+  <td>
+    <strong>The order itself was fine</strong> &mdash; <code>COD_85f0a82d9c3f4114b0</code>, &#8377;2,550
+    incl. a &#8377;150 fee, recorded, stock decremented, WhatsApp sent. Only the confirmation page died, which
+    is the worst shape for this bug: the shopper sees a browser error and assumes the order failed.
+    <br><br>
+    <strong>Root cause, a shape mismatch introduced with the COD route.</strong>
+    <code>/api/razorpay</code> returns <code>gst</code> as the whole <code>OrderGstBreakdown</code>
+    <em>object</em>; <code>/api/orders/cod</code> returned <code>gst: gst.gstAmount</code>, a <em>number</em>.
+    <code>/success</code> renders <code>gst.basePrice.toLocaleString()</code>, <code>gst.byRate.map()</code>
+    and <code>gst.totalPrice</code> off that value, so a number gave
+    <code>undefined.toLocaleString()</code> and the render threw.
+    <br><br>
+    <strong>Why <code>tsc</code> couldn't catch it:</strong> the value crosses the wire through
+    <code>NextResponse.json</code> and comes back via <code>JSON.parse</code>, cast to
+    <code>StashedOrder</code> on arrival &mdash; there is no compile-time link between the two ends. The
+    prepaid path was unaffected and had been working, which is exactly why the mismatch went unnoticed.
+    <br><br>
+    <strong>A second, quieter bug fixed alongside it:</strong> the invoice's total row rendered
+    <code>gst.totalPrice</code>, which is the <em>goods</em> total. On a COD order that silently understated
+    what the courier collects by the fee. <code>/success</code> now shows an explicit <em>Cash on Delivery
+    fee</em> row, totals <code>gst.totalPrice + codFee</code>, and relabels the row
+    <strong>&ldquo;To pay on delivery&rdquo;</strong> &mdash; &ldquo;Total Paid&rdquo; is untrue when nothing
+    has been paid. <code>StashedOrder.paymentId</code> also retyped <code>string | null</code> (it is null for
+    COD; only ever in the type, never rendered).
+  </td>
+  <td><em>edited:</em> <code>app/api/orders/cod/route.ts</code>, <code>app/success/page.tsx</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 281/281 &middot; <code>eslint</code> 0
+    errors (1 pre-existing <code>set-state-in-effect</code> warning in <code>success/page.tsx</code>)
+    &middot; <code>next build</code> exit 0, 144/144 static.
+    <strong>Live-verified against the real broken order</strong>: <code>POST /api/orders/receipt</code> for
+    <code>COD_85f0a82d9c3f4114b0</code> now returns <code>gst</code> as an object with all four keys
+    (<code>basePrice</code> 2285.71 / <code>gstAmount</code> 114.29 / <code>totalPrice</code> 2400 /
+    <code>byRate</code> 1), <code>paymentMethod: "cod"</code>, <code>codFee: 150</code>,
+    <code>discount: 0</code> &mdash; and the figure the page now renders,
+    <code>gst.totalPrice + codFee = 2550</code>, <strong>reconciles exactly with
+    <code>orders.amount</code></strong>. The customer's phone was read internally to authenticate that
+    request and deliberately never printed.</td>
+</tr>
+<tr>
+  <td><code>2026-09-07<br>&mdash;</code></td>
   <td><strong>Cash on Delivery</strong> <span class="pill warnp">payment path</span><br>(owner: &ldquo;cod should be made live&rdquo;, then &ldquo;not enable cod for certain categories and certain products &hellip; expensive items &hellip; get damaged and returned&rdquo;, then &ldquo;cod only for items below 3000&rdquo;. Slice 2 of 2, on the <code>fulfilOrder()</code> foundation merged earlier today &mdash; see <code>docs/DESIGN-cod.md</code>)</td>
   <td>
     <strong>Migration 0057</strong>: <code>orders.payment_method</code> (NOT NULL default <code>prepaid</code>
