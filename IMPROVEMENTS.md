@@ -12,6 +12,26 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### `fulfilOrder()` extracted from the webhook (COD slice 1 of 2) — 2026-09-07 IST — ⚠️ payment path
+- Owner: "give COD option". COD is structurally blocked on this, so it ships first and alone.
+- Every `orders` row ever written was inserted inside `/api/razorpay-webhook`'s `payment.captured` branch, with
+  eight steps hanging off that moment inline: INSERT, coupon `used_count`, two-sided referral reward, supplier
+  resolution (0046), stock deduction + low-stock/oversell alerts, `apply_product_sales(+1)` (0042), and the
+  WhatsApp + email fan-out. **A COD order has no captured payment, so none of it fires** — yet needs all of it.
+- New `app/utils/fulfilOrder.ts` holds those eight steps; the webhook keeps only the Razorpay half (raw body,
+  caller discrimination, signature verification, API re-fetch, `order.notes` parsing) and calls it.
+  **924 → 194 lines.** `fulfilOrder` knows nothing about Razorpay — that boundary is what lets a payment-less
+  COD caller reuse it. `paymentId` typed nullable. Duplicate handling became a typed
+  `{ok:false,reason:"already_recorded"}` so each caller maps it to its own status (webhook 200, COD route 409).
+- **Shipped alone, before any COD code**, so a misbehaving real order bisects to a pure move rather than a move
+  tangled with a feature — same discipline as the `repriceCart` extraction and 17a/b/c.
+- Verified: `tsc` clean; `npm test` 254/254 with `.env.local`; `eslint` 0 problems on both files; `next build`
+  exit 0, 143/143 static. **Behaviour preservation proven by diff against HEAD** — 451 block lines + 285 helper
+  lines byte-identical modulo a uniform dedent (all template literals in range confirmed single-line first) and
+  the one typed-return swap. No new unit tests: DB/network-bound throughout, tested at route level per the
+  existing `referralCoupon` precedent. ⚠️ **Proposal until the owner watches 2–3 real orders.**
+- Design for both slices: `docs/DESIGN-cod.md`. See `docs/HANDBOOK.html` Change log 2026-09-07.
+
 ### Meta Pixel funnel events — ViewContent / AddToCart / InitiateCheckout — 2026-09-07 IST
 - Owner (marketing): "reach has increased but the site isn't converting… recommend non-cost ways to promote".
   Diagnosis before promotion: the pixel fired only `PageView` and `Purchase`, so (a) there were no viewer /
@@ -1225,11 +1245,20 @@ care, land behind tests, never "blind".
    list; if it's small, the leak is elsewhere and this stays shut. Payment-path adjacent —
    land behind the existing `useCheckoutMachine` tests, never blind.
 
-5. **💰 No cash on delivery.** `/faq` states card/UPI/netbanking/wallets only. COD remains a
-   large share of Indian e-commerce conversion, especially for a first purchase from an
-   unfamiliar brand at handicraft price points. Carries real cost and liability (RTO
-   losses, reconciliation, courier COD fees) — **owner decision, not a code decision**;
-   logged here only so it isn't silently forgotten as a conversion lever.
+5. **💰⚠️ Cash on delivery — slice 2 of 2.** Owner gave the go-ahead 2026-09-07 and settled
+   the four open decisions: **flat admin-configurable COD fee** (`cod_fee`), **no order-value
+   cap**, **OTP + one open COD order per phone** as the abuse guard, and **discounts stay
+   prepaid-only** (COD forfeits both the Spend & Save tier discount and coupons). Checkout
+   must show the two totals **side by side** — prepaid with its `SAVE ₹X` badge, COD with its
+   fee and "offers don't apply" — so the discount never silently vanishes when a shopper
+   switches. Slice 1 (`fulfilOrder()`, see Done) is merged and is the prerequisite.
+   **Left:** migration (`orders.payment_method` default `'prepaid'`, `cod_collected_at`, a COD
+   idempotency index on `checkoutToken`, seeds `cod_enabled='0'` + `cod_fee`),
+   `POST /api/orders/cod`, the comparison UI on the Review step, the admin Orders surface, and
+   report treatment. Full design + rationale: `docs/DESIGN-cod.md`.
+   **Accepted risks, recorded:** RTO on an uncapped COD order is unbounded against a flat fee;
+   and the extra checkout step lands exactly where the funnel already leaks — measure it with
+   `InitiateCheckout` rather than assuming. Ships behind `cod_enabled`, seeded off.
 
 ## Active — Tier 2 (security / hardening)
 

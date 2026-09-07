@@ -689,6 +689,13 @@
     unioned set gets the same business order message; each product's own set is copied on that product's
     low-stock / oversell alert. Best-effort, <code>Promise.allSettled</code>, never blocks.</li>
   </ol>
+  <div class="note"><b>Where this code lives</b>
+  Steps 1&ndash;3 (verification) are the route's own. <strong>Steps 4&ndash;10 are
+  <code>fulfilOrder()</code></strong> in <code>app/utils/fulfilOrder.ts</code> &mdash; extracted verbatim so a
+  Cash-on-Delivery order, which has no captured payment to trigger any of it, can run the identical sequence.
+  The route is ~194 lines now (was 924); nothing about a prepaid order changed. See
+  <code>docs/DESIGN-cod.md</code>.</div>
+
   <div class="note"><b>Deliberately absent</b>
   No <code>revalidateTag("products")</code> or <code>"orders")</code> here. Those tags are read on every
   product and catalog page, so firing them per sale scheduled a full-storefront regeneration &mdash; the
@@ -1913,7 +1920,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <thead><tr><th>Route</th><th>Methods</th><th>Purpose</th></tr></thead>
 <tbody>
 <tr><td><code>/api/razorpay</code></td><td><span class="tag t-post">post</span></td><td>Create a Razorpay order. Re-prices items from DB, re-validates coupon, re-checks stock &amp; <code>hidden</code>, enforces <code>isVerificationTokenValid(phone, token)</code>. <strong>If <code>stock_reservations_enabled='1'</code> (0043):</strong> after all other checks, <code>reserve_stock(uuid, pricedItems, 900s)</code> &mdash; on shortfall returns 400 <code>code:"stock_unavailable"</code> before any order exists; on RPC error 500 (fail closed); on success the <code>checkoutToken</code> goes into <code>order.notes</code> and the JSON response. Pins <code>items</code>/<code>couponCode</code>/<code>offerLabel</code>/<code>verifiedPhone</code>/<code>customerName</code>/<code>shippingAddress</code>(/<code>checkoutToken</code>) into <code>order.notes</code>. <strong>Discount:</strong> offer and coupon are mutually exclusive; the body's <code>discountChoice</code> ("offer" | "coupon" | absent) picks which, and the route re-validates only that one from <code>site_settings.spend_tier_offer</code> / the <code>coupons</code> table (absent &rarr; offer wins while active, coupon otherwise). Returns <code>{orderId, amount, subtotal, discount, couponCode, offerLabel, gst, checkoutToken}</code>. Error code <code>verification_required</code> when OTP is stale. 5xx bodies are generic (<code>apiError.ts</code>).</td></tr>
-<tr><td><code>/api/razorpay-webhook</code></td><td><span class="tag t-post">post</span></td><td>Handles <code>payment.captured</code> from both the Dashboard webhook (<code>x-razorpay-signature</code> &rarr; <code>isValidWebhookSignature</code>) and the client fast-path (<code>razorpay_signature</code> &rarr; <code>isValidPaymentSignature</code>). Idempotent. Inserts order, increments coupon, mints a two-sided referral reward when the coupon used was a referral share code (block 1a2, <code>app/utils/referralCoupon.ts</code> &mdash; skipped entirely when <code>referral_program_enabled='0'</code>), deducts stock + low-stock alert, sends WhatsApp + Resend confirmations. <strong>Stock deduction (block 1b):</strong> if <code>notes.checkoutToken</code> is present, <code>consume_reservation(token)</code> does every line; if it finds no held rows (expired/trimmed, or a duplicate already consumed) it falls back to the legacy per-item <code>decrement_inventory</code> loop &mdash; same alerts either way.</td></tr>
+<tr><td><code>/api/razorpay-webhook</code></td><td><span class="tag t-post">post</span></td><td>Handles <code>payment.captured</code> from both the Dashboard webhook (<code>x-razorpay-signature</code> &rarr; <code>isValidWebhookSignature</code>) and the client fast-path (<code>razorpay_signature</code> &rarr; <code>isValidPaymentSignature</code>). Idempotent. <strong>This route now owns only the Razorpay-specific half</strong> &mdash; telling the two callers apart, verifying the right signature, re-fetching the payment/order from Razorpay's API, and parsing <code>order.notes</code>. It then hands the verified order to <code>fulfilOrder()</code> (<code>app/utils/fulfilOrder.ts</code>, &sect;20), which does the insert, coupon increment, two-sided referral reward (block 1a2 &mdash; skipped when <code>referral_program_enabled='0'</code>), supplier resolution, stock deduction + low-stock alert, units-sold tally, and the WhatsApp + Resend confirmations. Same work, same order, now reachable by a payment-less COD caller too. <strong>Stock deduction (block 1b):</strong> if <code>notes.checkoutToken</code> is present, <code>consume_reservation(token)</code> does every line; if it finds no held rows (expired/trimmed, or a duplicate already consumed) it falls back to the legacy per-item <code>decrement_inventory</code> loop &mdash; same alerts either way.</td></tr>
 <tr><td><code>/api/checkout/release</code></td><td><span class="tag t-post">post</span></td><td>Public, best-effort. <code>{checkoutToken}</code> (v4 UUID) &rarr; marks that token&rsquo;s <code>held</code> rows <code>released</code>. Always 200 (incl. 0 rows / bad token). Fired by <code>CheckoutSheet</code> on Razorpay <code>ondismiss</code> / <code>payment.failed</code> so an abandoned checkout frees stock in seconds instead of at TTL. Correctness never depends on it &mdash; the 15-min TTL is the backstop.</td></tr>
 <tr><td><code>/api/coupons/validate</code></td><td><span class="tag t-post">post</span></td><td>UI-preview discount only (not authoritative) &mdash; runs regardless of whether the Spend &amp; Save offer is live (the shopper can compare a coupon against it). Rate-limited <code>coupon-validate</code> 20/10min.</td></tr>
 <tr><td><code>/api/coupons/public</code></td><td><span class="tag t-get">get</span></td><td>Live public coupons (<code>getPublicCoupons</code> + <code>filterLivePublicCoupons</code>, display-safe fields only) for the checkout Review step&rsquo;s tap-to-apply list. <code>Cache-Control</code> 60s / s-maxage 300. Same set the on-site <code>PromoBanner</code> shows (as a reverse-direction <code>.offer-ticker</code> marquee, &sect;19).</td></tr>
@@ -2499,6 +2506,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>rls.test.ts</code></td><td>Anon-key RLS perimeter regression test (&sect;6) &mdash; one <code>it()</code> calling <code>checkRlsPerimeter</code>. Env-gated (skips without Supabase creds).</td></tr>
 <tr><td><code>orderTally.ts</code></td><td><code>tallyUnitsSold(orders, {excludeId?})</code> &mdash; pure line-item quantity tally, shared by <code>getBestsellers</code> / <code>getRelatedProducts</code> via <code>getRecentOrderItems</code> (the last 300 <strong>non-cancelled</strong> orders). Unit-tested.</td></tr>
 <tr><td><code>orderTypes.ts</code></td><td><code>OrderCustomerDetails</code> / <code>OrderShippingAddress</code> (incl. <code>recipientPhone</code>, 0049) / <code>OrderItem</code> shapes + <code>asCustomerDetails(json)</code> / <code>asOrderItems(json)</code> narrowers for the <code>orders</code> table's <code>customer_details</code> / <code>items</code> jsonb columns (the generated types can only say <code>Json</code>). <em>(#15)</em></td></tr>
+<tr><td><code>fulfilOrder.ts</code></td><td><strong>Everything that turns a verified purchase into a real order</strong>, in one place: the <code>orders</code> INSERT, coupon <code>used_count</code> + <code>revalidateTag("coupons")</code>, the two-sided referral reward, supplier-number resolution (0046), stock deduction (<code>consume_reservation</code> &rarr; legacy <code>decrement_inventory</code> fallback) with its low-stock/oversell alerts, <code>apply_product_sales(+1)</code> (0042), and the business/customer/supplier WhatsApp + Resend emails. Extracted <strong>verbatim</strong> from <code>/api/razorpay-webhook</code>, which was the only place an order had ever been inserted &mdash; Cash on Delivery has no captured payment to hang any of it off but still needs every step, and duplicating ~400 lines across two callers is the &ldquo;keep in sync&rdquo; trap. <strong>Knows nothing about Razorpay</strong> (no signature, no webhook body, no <code>order.notes</code>) &mdash; that boundary is what lets a payment-less caller reuse it. <code>paymentId</code> is nullable for COD. Returns <code>{ok:true}</code> or <code>{ok:false,reason:"already_recorded"}</code> so each caller maps a duplicate to its own status code. Every step below the INSERT stays independently best-effort. See <code>docs/DESIGN-cod.md</code>.</td></tr>
 <tr><td><code>repricing.ts</code></td><td><code>repriceCart(clientItems, dbProducts, categoryGstRates, defaultGstPercent)</code> &mdash; the &ldquo;never trust the client at checkout&rdquo; guard extracted from <code>/api/razorpay</code>: rebuilds every line from the DB price/name/GST rate, rejects unknown/hidden ids and over-stock lines, returns the authoritative subtotal. Byte-for-byte match of the old inline block. <strong>12 unit tests.</strong></td></tr>
 <tr><td><code>bootstrapSettings.ts</code></td><td><code>parseChatLabels</code> / <code>parseGaneshaSettings</code> / <code>parsePhotoFilterIndex</code> / <code>parseDefaultWhatsappNumber</code> &mdash; pure parsers for the storefront <code>site_settings</code> values, run server-side in <code>getBootstrapData()</code> (#11). Reproduce the old per-context parse + clamp + fallback rules exactly. <strong>8 unit tests.</strong></td></tr>
 <tr><td><code>phone.ts</code></td><td><code>normalizeIndianPhone(raw)</code> &mdash; the <em>one</em> canonical Indian-phone normaliser (&rarr; bare digits <code>91XXXXXXXXXX</code>). Replaced 4 near-identical local copies (<code>whatsappOtp.ts</code>, <code>greenApi.ts</code> &times;2, <code>stock-alerts</code>, admin <code>whatsapp-numbers</code>) + an inline one in admin <code>orders/update-status</code>. Does not validate &mdash; callers keep their own <code>/^91[6-9]\d{9}$/</code> check. Unit-tested (7). <em>(#18)</em></td></tr>
@@ -2970,6 +2978,54 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-07<br>&mdash;</code></td>
+  <td><strong>Extract <code>fulfilOrder()</code> from the webhook</strong> <span class="pill warnp">payment path</span><br>(owner: &ldquo;give COD option&rdquo; &mdash; this is <strong>slice 1 of 2</strong>, the prerequisite refactor. COD itself is slice 2. See <code>docs/DESIGN-cod.md</code>)</td>
+  <td>
+    Every <code>orders</code> row this app has ever written was inserted in <em>one</em> place &mdash; inside
+    <code>/api/razorpay-webhook</code>'s <code>payment.captured</code> branch, after a verified capture. Eight
+    steps hang off that moment, all inline in the route handler: the INSERT, coupon <code>used_count</code>,
+    the two-sided referral reward, supplier-number resolution (0046), stock deduction with its
+    low-stock/oversell alerts, <code>apply_product_sales(+1)</code> (0042), and the WhatsApp + email fan-out.
+    <br><br>
+    <strong>A Cash-on-Delivery order has no captured payment, so none of it fires</strong> &mdash; yet it needs
+    every one of those steps to happen identically. Duplicating ~400 lines of order/stock/coupon/notification
+    logic across two callers is exactly the &ldquo;keep in sync&rdquo; trap the style guide rules out, so the
+    work is now one shared <strong><code>app/utils/fulfilOrder.ts</code></strong> that both paths call.
+    <br><br>
+    <strong>Deliberately shipped alone, before any COD code exists.</strong> This is a pure refactor of the
+    payment path: if a real prepaid order misbehaves, the diff to bisect is a move, not a move tangled with a
+    new feature. Same reasoning as the <code>repriceCart</code> extraction and the 17a/17b/17c checkout slices.
+    <br><br>
+    <code>fulfilOrder()</code> <strong>knows nothing about Razorpay</strong> &mdash; no signature, no webhook
+    body, no <code>order.notes</code>. The caller does its own verification and hands over an already-trusted,
+    already-re-priced order. That boundary is the entire point: it is what lets a payment-less COD caller reuse
+    this unchanged. <code>paymentId</code> is typed nullable for that reason. The one control-flow change is
+    the duplicate return: the route's <code>NextResponse.json({status:"already_recorded"})</code> became a
+    typed <code>{ok:false,reason:"already_recorded"}</code> so each caller maps a duplicate to its own status
+    code (the webhook still returns exactly the same 200 body; a COD route will return 409).
+    <br><br>
+    The route keeps only what is genuinely its own &mdash; reading the raw body, telling the two callers apart,
+    verifying the appropriate signature, re-fetching from Razorpay's API, parsing <code>order.notes</code> &mdash;
+    and drops from <strong>924 lines to 194</strong>. Every step below the INSERT stays independently
+    best-effort/try-caught, exactly as before.
+  </td>
+  <td><em>new:</em> <code>app/utils/fulfilOrder.ts</code>, <code>docs/DESIGN-cod.md</code><br>
+    <em>edited:</em> <code>app/api/razorpay-webhook/route.ts</code>, <code>docs/HANDBOOK.html</code>,
+    <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> <strong>254/254</strong> with
+    <code>.env.local</code> loaded &middot; <code>eslint</code> <strong>0 problems</strong> on both files
+    &middot; <code>next build</code> exit 0, 143/143 static, <code>/api/razorpay-webhook</code> still
+    registered. <strong>Behaviour preservation was proven, not asserted</strong>: a script diffed the extracted
+    text against <code>HEAD</code>'s copy and confirmed all <strong>451 lines of blocks 1&ndash;3 and 285 lines
+    of helper functions are byte-identical</strong>, modulo a uniform 4-space dedent and the single typed-return
+    swap above (every template literal in the moved range was verified single-line first, so a dedent cannot
+    alter string content). No new unit tests: <code>fulfilOrder</code> is DB/network-bound throughout, tested at
+    route level like <code>getOrCreateReferralCoupon</code> and <code>findReferralCouponByPhone</code> before it.
+    <span class="pill warnp">payment path</span> &mdash; Razorpay is live-only here, so per the working agreement
+    this is a <strong>proposal until the owner watches 2&ndash;3 real orders</strong>: order row recorded,
+    WhatsApp + email invoice delivered, stock decremented, coupon count bumped.</td>
+</tr>
 <tr>
   <td><code>2026-09-07<br>&mdash;</code></td>
   <td><strong>Meta Pixel funnel events (<code>ViewContent</code> / <code>AddToCart</code> / <code>InitiateCheckout</code>)</strong><br>(owner: &ldquo;reach has increased but the site isn't converting&rdquo; &mdash; asked for free ways to promote. Diagnosis first: the funnel had no instrumentation between <code>PageView</code> and <code>Purchase</code>, so the drop-off couldn't be located and the increased reach couldn't be retargeted)</td>
