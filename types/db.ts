@@ -88,6 +88,7 @@ export type Database = {
           created_at: string
           default_page_size: number | null
           discount_percent: number | null
+          cod_disabled: boolean
           gst_rate: number
           id: number
           name: string
@@ -98,6 +99,7 @@ export type Database = {
           created_at?: string
           default_page_size?: number | null
           discount_percent?: number | null
+          cod_disabled?: boolean
           gst_rate?: number
           id?: never
           name: string
@@ -108,6 +110,7 @@ export type Database = {
           created_at?: string
           default_page_size?: number | null
           discount_percent?: number | null
+          cod_disabled?: boolean
           gst_rate?: number
           id?: never
           name?: string
@@ -288,6 +291,9 @@ export type Database = {
         Row: {
           amount: number | null
           awb_number: string | null
+          checkout_token: string | null
+          cod_collected_at: string | null
+          cod_fee: number | null
           courier_name: string | null
           created_at: string
           customer_details: Json | null
@@ -295,12 +301,16 @@ export type Database = {
           items: Json | null
           order_id: string | null
           payment_id: string | null
+          payment_method: string
           shipping_address: Json | null
           status: string
         }
         Insert: {
           amount?: number | null
           awb_number?: string | null
+          checkout_token?: string | null
+          cod_collected_at?: string | null
+          cod_fee?: number | null
           courier_name?: string | null
           created_at?: string
           customer_details?: Json | null
@@ -308,12 +318,16 @@ export type Database = {
           items?: Json | null
           order_id?: string | null
           payment_id?: string | null
+          payment_method?: string
           shipping_address?: Json | null
           status?: string
         }
         Update: {
           amount?: number | null
           awb_number?: string | null
+          checkout_token?: string | null
+          cod_collected_at?: string | null
+          cod_fee?: number | null
           courier_name?: string | null
           created_at?: string
           customer_details?: Json | null
@@ -321,6 +335,7 @@ export type Database = {
           items?: Json | null
           order_id?: string | null
           payment_id?: string | null
+          payment_method?: string
           shipping_address?: Json | null
           status?: string
         }
@@ -405,6 +420,7 @@ export type Database = {
         Row: {
           breadth_cm: number | null
           category: string | null
+          cod_disabled: boolean
           color: string | null
           cost_price: number | null
           cost_price_per_kg: number | null
@@ -435,6 +451,7 @@ export type Database = {
         Insert: {
           breadth_cm?: number | null
           category?: string | null
+          cod_disabled?: boolean
           color?: string | null
           cost_price?: number | null
           cost_price_per_kg?: number | null
@@ -465,6 +482,7 @@ export type Database = {
         Update: {
           breadth_cm?: number | null
           category?: string | null
+          cod_disabled?: boolean
           color?: string | null
           cost_price?: number | null
           cost_price_per_kg?: number | null

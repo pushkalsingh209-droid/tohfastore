@@ -26,6 +26,7 @@ import {
 import { parseFeaturedSpotlight } from "@/app/utils/featuredSpotlight";
 import { MAX_ORDER_NOTIFICATION_NUMBERS } from "@/app/utils/orderNotificationNumbers";
 import { parseReferralProgramEnabled } from "@/app/utils/referralCoupon";
+import { parseCodEnabled } from "@/app/utils/codSettings";
 
 // --- "Spend & Save" offer editor (Storefront Settings) -------------------
 // The offer lives as one JSON row in site_settings; the strict validation
@@ -411,6 +412,33 @@ export default function SettingsTab() {
     }
   };
 
+  // Cash on Delivery kill switch (0057). Off = /api/orders/cod refuses
+  // every request and checkout stops offering the option. Reads
+  // fail-closed, so an unset row is OFF.
+  const handleUpdateCodEnabled = async (enabled: boolean) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ cod_enabled: enabled }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: unknown) {
+      alert(`Could not update Cash on Delivery: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const handleUpdateCodFee = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ cod_fee: Number(value) }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: unknown) {
+      alert(`Could not update the COD fee: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   // Site-wide default for new/unset products' WhatsApp enquiry link --
   // reuses the existing settings PATCH endpoint. Clearing it (passing "")
   // falls back to the hardcoded +91 6302672351 in app/utils/whatsapp.ts.
@@ -496,6 +524,31 @@ export default function SettingsTab() {
       setCategories(categories.map((c) => (c.id === categoryId ? { ...c, show_on_home: showOnHome } : c)));
     } catch (err: unknown) {
       alert(`Could not update category: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Whole-category COD block (0057) -- the coarse half of the rule.
+  const handleToggleCategoryCod = async (categoryId: number, codDisabled: boolean) => {
+    try {
+      await apiRequest("/api/admin/categories", {
+        method: "PATCH",
+        body: JSON.stringify({ id: categoryId, cod_disabled: codDisabled }),
+      });
+      setCategories(categories.map((c) => (c.id === categoryId ? { ...c, cod_disabled: codDisabled } : c)));
+    } catch (err: unknown) {
+      alert(`Could not update category: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const handleUpdateCodMaxItemPrice = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ cod_max_item_price: Number(value) }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: unknown) {
+      alert(`Could not update the COD price limit: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -843,6 +896,68 @@ export default function SettingsTab() {
         />
         <span className="text-stone-400 text-xs w-full">
           Used by the &ldquo;Lightweight Brass&rdquo; price calculator in the stock tracker (weight × rate × 1.20 margin). Raising this only changes the default offered to a product that doesn&rsquo;t have its own rate saved yet -- it never rewrites a product&rsquo;s already-saved rate or price.
+        </span>
+      </div>
+      <label className="flex items-center gap-2 text-sm text-stone-700 font-medium mt-4">
+        <input
+          type="checkbox"
+          checked={parseCodEnabled(settings.cod_enabled)}
+          onChange={(e) => handleUpdateCodEnabled(e.target.checked)}
+          className="accent-amber-700"
+        />
+        Cash on Delivery is available
+      </label>
+      <p className="text-stone-400 text-xs mt-1">
+        Off (the default it ships with): checkout offers online payment only and{" "}
+        <code className="font-mono">/api/orders/cod</code> refuses every request. On: shoppers see a
+        prepaid-vs-COD comparison at Review, with the flat fee below added and{" "}
+        <strong>every discount withheld</strong> &mdash; offers and coupons are prepaid-only, so paying
+        online is always visibly cheaper. There is deliberately <strong>no order-value cap</strong>, and a
+        phone may only have <strong>one undelivered COD order</strong> at a time.
+      </p>
+      <div className="flex flex-wrap items-center gap-3 mt-3">
+        <label className="text-sm text-stone-700 font-medium">COD fee (₹)</label>
+        <input
+          type="number"
+          min={0}
+          max={500}
+          step={1}
+          key={settings.cod_fee ?? "50"}
+          defaultValue={settings.cod_fee ?? "50"}
+          onBlur={(e) => {
+            const next = e.target.value.trim();
+            if (next && next !== settings.cod_fee) handleUpdateCodFee(next);
+          }}
+          className="w-28 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+        />
+        <span className="text-stone-400 text-xs w-full">
+          Added to a COD order&rsquo;s total and stored on the order, so it shows on the invoice and in
+          reports instead of being inferred from the totals. Whole rupees, 0&ndash;500. Only affects orders
+          placed after the change.
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 mt-3">
+        <label className="text-sm text-stone-700 font-medium">COD limit per item (₹)</label>
+        <input
+          type="number"
+          min={0}
+          step={1}
+          key={settings.cod_max_item_price ?? "3000"}
+          defaultValue={settings.cod_max_item_price ?? "3000"}
+          onBlur={(e) => {
+            const next = e.target.value.trim();
+            if (next && next !== settings.cod_max_item_price) handleUpdateCodMaxItemPrice(next);
+          }}
+          className="w-28 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+        />
+        <span className="text-stone-400 text-xs w-full">
+          No <strong>single item</strong> priced above this may go COD &mdash; the guard against an expensive
+          piece coming back damaged at your cost. <code className="font-mono">0</code> means no limit. You can
+          also block COD per product (Products tab) or per category (below); <strong>any one ineligible item
+          makes the whole bag prepaid-only</strong>, since a bag ships as one parcel.
+          <br />
+          <strong>Note:</strong> this caps each item, not the bag total &mdash; six ₹2,900 pieces is still a
+          ₹17,400 COD parcel.
         </span>
       </div>
       <label className="flex items-center gap-2 text-sm text-stone-700 font-medium mt-4">
@@ -1733,6 +1848,18 @@ export default function SettingsTab() {
                     <option key={n.id} value={n.phone_number}>{n.label ? `${n.label} — ` : ""}+{n.phone_number}</option>
                   ))}
                 </select>
+                <button
+                  type="button"
+                  onClick={() => handleToggleCategoryCod(cat.id, !cat.cod_disabled)}
+                  title="Block Cash on Delivery for every product in this category (e.g. categories that ship badly and come back damaged)"
+                  className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold border transition ${
+                    cat.cod_disabled
+                      ? "border-rose-500 bg-rose-50 text-rose-700"
+                      : "border-stone-300 text-stone-500 hover:bg-stone-100"
+                  }`}
+                >
+                  {cat.cod_disabled ? "COD off" : "COD ok"}
+                </button>
                 <button
                   type="button"
                   onClick={() => handleToggleCategoryHome(cat.id, !cat.show_on_home)}

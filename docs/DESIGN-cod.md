@@ -1,6 +1,8 @@
 # DESIGN — Cash on Delivery
 
-Status: **slice 1 in progress** (this branch), slice 2 to follow.
+Status: **both slices built.** Slice 1 (`fulfilOrder()` extraction) merged 2026-09-07;
+slice 2 (this document's subject) built the same day and awaiting the owner's first live COD order.
+Migration 0057 applied by the owner. `cod_enabled` deliberately still `'0'`.
 Owner decisions recorded 2026-09-07; see "Owner decisions" below.
 
 ---
@@ -87,7 +89,7 @@ a `notes` blob, or a webhook body. That boundary is what makes it reusable.
 | Decision | Choice | Consequence |
 | --- | --- | --- |
 | COD fee | **Flat, admin-configurable** (`cod_fee`, e.g. ₹50) | New line on the invoice; must flow through the GST breakdown |
-| Value cap | **None** | A ₹30,000 order can be COD; the flat fee doesn't scale with that exposure. Accepted knowingly — the per-phone limit is the real guard |
+| Value cap | **Superseded 2026-09-07** | Originally "no cap". The owner then asked to exclude expensive and fragile items outright, so eligibility became three independent vetoes: `cod_max_item_price` (₹3,000, per **item**), `products.cod_disabled`, `categories.cod_disabled`. Any one ineligible line makes the whole cart prepaid-only. Caveat: the ceiling is per item, not per order — see `IMPROVEMENTS.md` |
 | Abuse guard | **OTP (existing) + one open COD order per phone** | A phone with an undelivered COD order can't place another. Blocks bulk fake orders cheaply |
 | Discounts on COD | **Prepaid only** | COD forfeits the Spend & Save tier discount *and* coupons |
 

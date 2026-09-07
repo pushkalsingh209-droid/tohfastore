@@ -12,6 +12,8 @@ export interface StoreProduct {
   image_url?: string | null;
   thumb_url?: string | null;
   category?: string | null;
+  /** COD withheld for this specific piece (0057). */
+  cod_disabled?: boolean | null;
   inventory?: number | string | null;
    hidden?: boolean;
   description?: string | null;

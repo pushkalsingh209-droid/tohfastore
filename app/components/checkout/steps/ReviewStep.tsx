@@ -42,6 +42,20 @@ export interface ReviewBag {
   onApplyCouponCode: (code: string) => void;
   onRemoveCoupon: () => void;
 
+  // --- payment method (0057). Prepaid earns the discount; COD adds a flat
+  // fee and forfeits every discount (owner decision, docs/DESIGN-cod.md).
+  // Both totals are shown side by side rather than recalculating silently
+  // when the shopper switches -- the point is that the saving is VISIBLE.
+  codEnabled: boolean;
+  /** false when the cart contains something the owner won't ship COD. */
+  codAvailable: boolean;
+  /** Why COD is unavailable, named so the shopper isn't left guessing. */
+  codBlockedReason: string | null;
+  codFee: number;
+  paymentMethod: "prepaid" | "cod";
+  onChoosePrepaid: () => void;
+  onChooseCod: () => void;
+
   agreedToPolicy: boolean;
   setAgreedToPolicy: (v: boolean) => void;
   invalidField: string | null;
@@ -64,8 +78,16 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
       : null
     : b.offerLabel ?? "Offer";
   const showDiscountRow = discountAmount > 0;
-  const finalTotal = Math.max(0, b.cartTotal - discountAmount);
+  const finalTotal = bag.paymentMethod === "cod" ? bag.cartTotal + bag.codFee : Math.max(0, b.cartTotal - discountAmount);
   const gst = calculateGstBreakdown(finalTotal);
+
+  // What each method actually costs, computed from the same numbers the
+  // server will re-derive. `codSavings` is the FULL delta: the discount
+  // forfeited plus the fee added.
+  const isCod = b.paymentMethod === "cod";
+  const prepaidTotal = Math.max(0, b.cartTotal - discountAmount);
+  const codTotal = b.cartTotal + b.codFee;
+  const codSavings = codTotal - prepaidTotal;
 
   const nextTierGap =
     b.offerActive && b.nextTier ? Math.max(0, b.nextTier.minSubtotal - b.cartTotal) : 0;
@@ -159,7 +181,101 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           stacked; while the offer is running the shopper picks which one
           applies with the two-option selector below. When it isn't running
           there's nothing to choose between -- straight to the coupon UI. */}
-      {b.offerActive ? (
+      {b.codEnabled && (
+        <div role="radiogroup" aria-label="Payment method" className="space-y-2">
+          <p className="text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400">How would you like to pay?</p>
+
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!isCod}
+            onClick={b.onChoosePrepaid}
+            className={`w-full text-left p-3 rounded border transition ${
+              !isCod
+                ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
+                : "border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800"
+            }`}
+          >
+            <span className="flex items-baseline justify-between gap-2">
+              <span className="text-xs font-bold text-stone-800 dark:text-stone-100">Pay Online</span>
+              {codSavings > 0 && (
+                <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                  Save ₹{codSavings.toLocaleString("en-IN")}
+                </span>
+              )}
+            </span>
+            <span className="block text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+              UPI &middot; Card &middot; Netbanking &middot; Wallet
+            </span>
+            {/* Only claim a discount this cart actually earns -- otherwise
+                the shopper catches the lie at the total. */}
+            {discountAmount > 0 && (
+              <span className="block text-[11px] text-emerald-700 dark:text-emerald-400 mt-1">
+                &#10003; {discountLabel} &minus;₹{discountAmount.toLocaleString("en-IN")}
+              </span>
+            )}
+            <span className="flex items-baseline justify-between gap-2 mt-1.5 pt-1.5 border-t border-stone-200 dark:border-stone-700">
+              <span className="text-[11px] text-stone-500 dark:text-stone-400">You pay</span>
+              <span className="text-sm font-mono font-bold text-stone-900 dark:text-stone-100">
+                ₹{prepaidTotal.toLocaleString("en-IN")}
+              </span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            role="radio"
+            aria-checked={isCod}
+            onClick={b.onChooseCod}
+            disabled={!b.codAvailable}
+            className={`w-full text-left p-3 rounded border transition ${
+              !b.codAvailable
+                ? "border-stone-200 dark:border-stone-700 opacity-60 cursor-not-allowed"
+                : isCod
+                ? "border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20"
+                : "border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800"
+            }`}
+          >
+            <span className="flex items-baseline justify-between gap-2">
+              <span className="text-xs font-bold text-stone-800 dark:text-stone-100">Cash on Delivery</span>
+              <span className="text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                + ₹{b.codFee.toLocaleString("en-IN")} fee
+              </span>
+            </span>
+            <span className="block text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+              Pay the courier when it arrives
+            </span>
+            {b.codAvailable ? (
+              <span className="block text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+                &#10007; Offers &amp; coupons don&rsquo;t apply
+              </span>
+            ) : (
+              /* Naming the offending piece matters: an unexplained
+                 "unavailable" reads as a bug and costs the order. */
+              <span className="block text-[11px] text-stone-500 dark:text-stone-400 mt-1">
+                {b.codBlockedReason ?? "Not available for this bag."}
+              </span>
+            )}
+            <span className="flex items-baseline justify-between gap-2 mt-1.5 pt-1.5 border-t border-stone-200 dark:border-stone-700">
+              <span className="text-[11px] text-stone-500 dark:text-stone-400">You pay</span>
+              <span className="text-sm font-mono font-bold text-stone-900 dark:text-stone-100">
+                ₹{codTotal.toLocaleString("en-IN")}
+              </span>
+            </span>
+          </button>
+
+          {codSavings > 0 && (
+            <p className="text-center text-[11px] text-emerald-700 dark:text-emerald-400">
+              Paying online saves you ₹{codSavings.toLocaleString("en-IN")} on this order.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* COD forfeits every discount, so the offer/coupon controls are
+          hidden outright rather than left on screen disabled -- the reason
+          is already stated once on the COD card above. */}
+      {isCod ? null : b.offerActive ? (
         <div className="space-y-2">
           <div role="radiogroup" aria-label="Discount" className="grid grid-cols-2 gap-2">
             <button

@@ -28,6 +28,7 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { attachThumbUrls } from "@/app/utils/imageThumb";
 import { tallyUnitsSold } from "@/app/utils/orderTally";
 import { tallyViewedTogether } from "@/app/utils/viewedTogether";
+import { parseCodEnabled, parseCodFee, parseCodMaxItemPrice } from "@/app/utils/codSettings";
 import {
   DEFAULT_WEIGHT_UNIT,
   DEFAULT_DIMENSION_UNIT,
@@ -297,6 +298,12 @@ export const getPublicSettingsMap = unstable_cache(
           "ganesha_collapse_delay_seconds",
           "chat_label_in_stock",
           "chat_label_out_of_stock",
+          // COD (0057). Rides the existing bootstrap read rather than a new
+          // route or a client fetch -- the checkout Review step needs both
+          // to render the prepaid-vs-COD comparison on first paint.
+          "cod_enabled",
+          "cod_fee",
+          "cod_max_item_price",
         ]);
       if (error || !data) return {};
       const map: RawSettings = {};
@@ -352,6 +359,24 @@ export const getCategoryWhatsappNumberMap = unstable_cache(
   { tags: ["categories"], revalidate: 86400 }
 );
 
+// Categories the owner has switched off for Cash on Delivery (0057) --
+// the coarse half of the COD eligibility rule (the fine half is
+// products.cod_disabled, which rides the card column list). Tagged
+// `categories` like the other category maps, so an admin edit refreshes it.
+export const getCodDisabledCategories = unstable_cache(
+  async (): Promise<string[]> => {
+    try {
+      const { data, error } = await supabase.from("categories").select("name").eq("cod_disabled", true);
+      if (error || !data) return [];
+      return data.map((r) => r.name).filter(Boolean);
+    } catch {
+      return [];
+    }
+  },
+  ["cod-disabled-categories"],
+  { tags: ["categories"], revalidate: 86400 }
+);
+
 export interface BootstrapData {
   chatLabels: ReturnType<typeof parseChatLabels>;
   defaultWhatsappNumber: string;
@@ -361,6 +386,7 @@ export interface BootstrapData {
   labelPhotoFilters: Record<string, string>;
   categoryDiscounts: Record<string, number>;
   categoryWhatsappNumbers: Record<string, string>;
+  cod: { enabled: boolean; fee: number; maxItemPrice: number; disabledCategories: string[] };
 }
 
 // One server-side read of everything the storefront's client contexts used
@@ -369,13 +395,15 @@ export interface BootstrapData {
 // it); the parsing is cheap and pure (bootstrapSettings.ts), so this
 // wrapper itself isn't cached.
 export async function getBootstrapData(): Promise<BootstrapData> {
-  const [rawSettings, productUnits, labelPhotoFilters, categoryDiscounts, categoryWhatsappNumbers] = await Promise.all([
-    getPublicSettingsMap(),
-    getProductUnitSettings(),
-    getLabelPhotoFilters(),
-    getCategoryDiscountMap(),
-    getCategoryWhatsappNumberMap(),
-  ]);
+  const [rawSettings, productUnits, labelPhotoFilters, categoryDiscounts, categoryWhatsappNumbers, codDisabledCategories] =
+    await Promise.all([
+      getPublicSettingsMap(),
+      getProductUnitSettings(),
+      getLabelPhotoFilters(),
+      getCategoryDiscountMap(),
+      getCategoryWhatsappNumberMap(),
+      getCodDisabledCategories(),
+    ]);
   return {
     chatLabels: parseChatLabels(rawSettings),
     defaultWhatsappNumber: parseDefaultWhatsappNumber(rawSettings),
@@ -385,6 +413,12 @@ export async function getBootstrapData(): Promise<BootstrapData> {
     labelPhotoFilters,
     categoryDiscounts,
     categoryWhatsappNumbers,
+    cod: {
+      enabled: parseCodEnabled(rawSettings.cod_enabled),
+      fee: parseCodFee(rawSettings.cod_fee),
+      maxItemPrice: parseCodMaxItemPrice(rawSettings.cod_max_item_price),
+      disabledCategories: codDisabledCategories,
+    },
   };
 }
 
@@ -470,7 +504,7 @@ export const getCatalogPage = unstable_cache(
       let query = supabase
         .from("products")
         .select(
-          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at"
+          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at, cod_disabled"
         )
         .eq("hidden", false);
       if (category) query = query.eq("category", category);
@@ -522,7 +556,7 @@ export const getSpotlightProducts = unstable_cache(
       const { data, error } = await supabase
         .from("products")
         .select(
-          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at"
+          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at, cod_disabled"
         )
         .eq("is_spotlight", true)
         .eq("hidden", false)
@@ -586,7 +620,7 @@ const getProductsByIdsCached = unstable_cache(
       const { data, error } = await supabase
         .from("products")
         .select(
-          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at"
+          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at, cod_disabled"
         )
         .in("id", ids)
         .eq("hidden", false);
