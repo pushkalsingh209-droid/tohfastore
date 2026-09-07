@@ -172,3 +172,52 @@ describe("repriceCart", () => {
     expect(result.error).toBe("One or more items in your bag are no longer available.");
   });
 });
+
+describe("repriceCart -- enquire_only (0059)", () => {
+  const rates = new Map<string, number>();
+  const shippable = { id: 1, name: "Small Diya", price: 400, inventory: 10, category: null, image_url: null };
+  // Real stock on purpose: since 0059 lets inventory be truthful on an
+  // unshippable piece, stock can no longer be what stops the sale.
+  const unshippable = {
+    id: 2,
+    name: "Russian Chess Set Brass",
+    price: 17000,
+    inventory: 3,
+    category: null,
+    image_url: null,
+    enquire_only: true,
+  };
+
+  it("rejects an enquire-only product by default, naming it", () => {
+    const r = repriceCart([{ id: 2, quantity: 1 }], [unshippable], rates, 5);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toContain("Russian Chess Set Brass");
+      expect(r.status).toBe(400);
+    }
+  });
+
+  it("rejects the whole cart when one line is enquire-only", () => {
+    const r = repriceCart([{ id: 1, quantity: 1 }, { id: 2, quantity: 1 }], [shippable, unshippable], rates, 5);
+    expect(r.ok).toBe(false);
+  });
+
+  it("allows it when the caller opts in (the admin manual-order route)", () => {
+    const r = repriceCart([{ id: 2, quantity: 1 }], [unshippable], rates, 5, { allowEnquireOnly: true });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.subtotal).toBe(17000);
+  });
+
+  it("leaves ordinary products untouched in both modes", () => {
+    for (const opts of [undefined, { allowEnquireOnly: true }]) {
+      const r = repriceCart([{ id: 1, quantity: 2 }], [shippable], rates, 5, opts);
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.subtotal).toBe(800);
+    }
+  });
+
+  it("treats a missing enquire_only field as shippable (older rows)", () => {
+    const r = repriceCart([{ id: 1, quantity: 1 }], [shippable], rates, 5);
+    expect(r.ok).toBe(true);
+  });
+});

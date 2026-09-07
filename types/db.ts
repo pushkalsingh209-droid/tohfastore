@@ -426,6 +426,7 @@ export type Database = {
           cost_price_per_kg: number | null
           created_at: string
           depth_cm: number | null
+          enquire_only: boolean
           description: string | null
           display_order: number | null
           enquiry_notify_numbers: string[] | null
@@ -457,6 +458,7 @@ export type Database = {
           cost_price_per_kg?: number | null
           created_at?: string
           depth_cm?: number | null
+          enquire_only?: boolean
           description?: string | null
           display_order?: number | null
           enquiry_notify_numbers?: string[] | null
@@ -488,6 +490,7 @@ export type Database = {
           cost_price_per_kg?: number | null
           created_at?: string
           depth_cm?: number | null
+          enquire_only?: boolean
           description?: string | null
           display_order?: number | null
           enquiry_notify_numbers?: string[] | null

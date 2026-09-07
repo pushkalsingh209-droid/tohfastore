@@ -219,6 +219,9 @@ export default async function ProductDetailPage({
 
   const stock = product ? Number(product.inventory) || 0 : 0;
   const outOfStock = stock <= 0;
+  // 0059: available, but not sold through the site (can't survive
+  // shipping). Distinct from sold out everywhere it's shown.
+  const enquireOnly = Boolean(product?.enquire_only);
   const lowStock = !outOfStock && stock <= 3;
   const categoryWhatsappNumber = product?.category ? categoryWhatsappNumbers[product.category] : undefined;
   const whatsappHref = product
@@ -258,7 +261,15 @@ export default async function ProductDetailPage({
           url: `https://tohfaonline.com${productHref(product)}`,
           priceCurrency: "INR",
           price: Number(product.price),
-          availability: outOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+          // InStoreOnly is the precise schema.org term for a product that
+          // exists and is purchasable, just not online -- more honest than
+          // OutOfStock (which would be a lie) and better for the free
+          // Shopping listing than pretending it's orderable.
+          availability: enquireOnly
+            ? "https://schema.org/InStoreOnly"
+            : outOfStock
+            ? "https://schema.org/OutOfStock"
+            : "https://schema.org/InStock",
           shippingDetails: PRODUCT_SHIPPING_DETAILS,
           hasMerchantReturnPolicy: PRODUCT_RETURN_POLICY,
         },
@@ -321,10 +332,10 @@ export default async function ProductDetailPage({
           <meta property="og:type" content="product" />
           <meta property="og:price:amount" content={String(Number(product.price))} />
           <meta property="og:price:currency" content="INR" />
-          <meta property="og:availability" content={outOfStock ? "outofstock" : "instock"} />
+          <meta property="og:availability" content={enquireOnly || outOfStock ? "outofstock" : "instock"} />
           <meta property="product:price:amount" content={String(Number(product.price))} />
           <meta property="product:price:currency" content="INR" />
-          <meta property="product:availability" content={outOfStock ? "out of stock" : "in stock"} />
+          <meta property="product:availability" content={enquireOnly || outOfStock ? "out of stock" : "in stock"} />
         </>
       )}
       {breadcrumbJsonLd && (
@@ -449,7 +460,12 @@ export default async function ProductDetailPage({
                 {/* Mounted unconditionally now -- it hides itself unless the
                     live stock count says out of stock (see LiveStock.tsx),
                     so an item selling out mid-cache still grows a prompt. */}
-                <NotifyWhenInStockButton productId={product.id} initialOutOfStock={outOfStock} />
+                {/* Never offered for an enquire-only piece: it is not
+                    coming "back in stock", so the alert could never fire
+                    and anyone who signed up would wait forever. */}
+                {!enquireOnly && (
+                  <NotifyWhenInStockButton productId={product.id} initialOutOfStock={outOfStock} />
+                )}
 
                 <TrustBadges />
 

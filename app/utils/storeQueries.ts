@@ -364,6 +364,23 @@ export const getCategoryWhatsappNumberMap = unstable_cache(
 // the coarse half of the COD eligibility rule (the fine half is
 // products.cod_disabled, which rides the card column list). Tagged
 // `categories` like the other category maps, so an admin edit refreshes it.
+// The exact columns a <ProductCard> (and the product page) renders.
+//
+// One constant rather than three copies: getCatalogPage,
+// getSpotlightProducts and getProductsByIds must all return the same shape,
+// and this list has been edited three-at-a-time twice now (cod_disabled in
+// 0057, enquire_only in 0059) -- precisely the "keep in sync" drift
+// CLAUDE.md rules out. Deliberately narrow, not select("*"): the 2026-08-30
+// Active-CPU pass cut it from 24 columns to the ~17 actually rendered, and
+// anything added here is deserialised on every cache miss.
+//
+// NOTE: adding a column here makes the storefront depend on that column
+// existing. A read against a database missing it fails with Postgres 42703
+// and getCatalogPage returns an EMPTY product list -- a blank shop. Always
+// apply the migration before deploying a change to this list.
+const PRODUCT_CARD_COLUMNS =
+  "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at, cod_disabled, enquire_only";
+
 export const getCodDisabledCategories = unstable_cache(
   async (): Promise<string[]> => {
     try {
@@ -505,7 +522,7 @@ export const getCatalogPage = unstable_cache(
       let query = supabase
         .from("products")
         .select(
-          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at, cod_disabled"
+          PRODUCT_CARD_COLUMNS
         )
         .eq("hidden", false);
       if (category) query = query.eq("category", category);
@@ -557,7 +574,7 @@ export const getSpotlightProducts = unstable_cache(
       const { data, error } = await supabase
         .from("products")
         .select(
-          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at, cod_disabled"
+          PRODUCT_CARD_COLUMNS
         )
         .eq("is_spotlight", true)
         .eq("hidden", false)
@@ -621,7 +638,7 @@ const getProductsByIdsCached = unstable_cache(
       const { data, error } = await supabase
         .from("products")
         .select(
-          "id, name, price, description, image_url, images, category, inventory, label, photo_filter, whatsapp_number, material, color, weight_g, height_cm, depth_cm, breadth_cm, created_at, cod_disabled"
+          PRODUCT_CARD_COLUMNS
         )
         .in("id", ids)
         .eq("hidden", false);

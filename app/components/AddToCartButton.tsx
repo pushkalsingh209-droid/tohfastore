@@ -2,12 +2,24 @@
 "use client";
 import { useCart } from "@/app/context/CartContext";
 import { useLiveStock } from "@/app/components/LiveStock";
+import EnquireToBuyButton from "@/app/components/EnquireToBuyButton";
 
 import type { StoreProduct } from "@/app/types/product";
 
 export default function AddToCartButton({ product }: { product: StoreProduct }) {
   const { addToCart, cart } = useCart();
   const liveStock = useLiveStock();
+
+  // 0059: an unshippable piece is never added to the cart. Swapping the
+  // control here rather than at each call site covers the product page's
+  // buy box AND the mobile sticky bottom bar in one place -- and the
+  // sticky bar is the primary buy affordance on a phone, so a dead
+  // disabled control there would be worse than the state it replaces.
+  // /api/razorpay and /api/orders/cod reject these server-side too
+  // (repriceCart), so this is convenience, not the guard.
+  if (product.enquire_only) {
+    return <EnquireToBuyButton product={product} />;
+  }
 
   // Prefer the live count (fetched client-side, never cached) over the figure
   // baked into this statically-rendered page, which can be up to a day stale
