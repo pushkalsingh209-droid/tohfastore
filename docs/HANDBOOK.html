@@ -3129,11 +3129,12 @@ Newest first.</p>
     <strong>NOT verified: the happy path.</strong> Completing a COD order needs a genuine OTP token and writes a
     real order, decrements real stock and sends real WhatsApp &mdash; and <code>cod_enabled</code> was
     deliberately left at <code>0</code> rather than flipping a live kill switch to test.
-    <span class="pill warnp">payment path</span> &mdash; a <strong>proposal until the owner enables COD in
-    Settings and places one test order</strong>, confirming: the comparison shows both totals, an
-    over-&#8377;3,000 item blocks COD with a named reason, the order records with
-    <code>payment_method=cod</code> + the stored fee, stock decrements, the invoice reads &ldquo;Amount to pay
-    on delivery&rdquo;, and the business alert carries <code>*** CASH ON DELIVERY ***</code>.</td>
+    <span class="pill warnp">payment path</span> &mdash; <strong>CONFIRMED LIVE 2026-09-07.</strong> The owner
+    enabled COD (<code>cod_enabled='1'</code>, fee set to &#8377;150) and placed a real end-to-end order
+    (<code>COD_22f0d3237fc9466881</code>, &#8377;2,550 = &#8377;2,400 goods + &#8377;150 fee) which recorded
+    with <code>payment_method='cod'</code> and the stored fee, decremented stock and notified normally.
+    <em>No longer a proposal.</em> (The first attempt, <code>COD_85f0a82d9c3f4114b0</code>, hit the
+    <code>/success</code> crash fixed in the row above and was cancelled.)</td>
 </tr>
 <tr>
   <td><code>2026-09-07<br>&mdash;</code></td>
@@ -3245,8 +3246,11 @@ Newest first.</p>
     alter string content). No new unit tests: <code>fulfilOrder</code> is DB/network-bound throughout, tested at
     route level like <code>getOrCreateReferralCoupon</code> and <code>findReferralCouponByPhone</code> before it.
     <span class="pill warnp">payment path</span> &mdash; Razorpay is live-only here, so per the working agreement
-    this is a <strong>proposal until the owner watches 2&ndash;3 real orders</strong>: order row recorded,
-    WhatsApp + email invoice delivered, stock decremented, coupon count bumped.</td>
+    this was a proposal until watched against real orders. <strong>Partially confirmed 2026-09-07</strong>:
+    two live Cash-on-Delivery orders exercised <code>fulfilOrder()</code> end-to-end &mdash; order row
+    recorded, stock decremented, notifications sent &mdash; which is the whole shared path. <strong>Still
+    owed: one real PREPAID order</strong>, since the Razorpay caller (signature verification, the API
+    re-fetch, <code>order.notes</code> parsing) is the half COD never touches.</td>
 </tr>
 <tr>
   <td><code>2026-09-07<br>&mdash;</code></td>

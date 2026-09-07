@@ -62,9 +62,10 @@ care, land behind tests, never "blind".
   migration; bootstrap shipped the real seeds. **Eligibility checked against the live catalogue — 50 of 158
   products (32%) sit above ₹3,000**: the chess sets (₹15k–30k) and large brass idols, exactly the pieces meant
   to be excluded. Two unit tests caught real bugs pre-ship (`Number("")===0` would have made COD **free**).
-- **NOT verified: the happy path.** `cod_enabled` left at `'0'` rather than flipping a live kill switch;
-  completing an order needs a real OTP and writes real data. ⚠️ **Proposal until the owner enables COD in
-  Settings and places one test order.**
+- ✅ **CONFIRMED LIVE 2026-09-07.** Owner enabled COD (`cod_enabled='1'`, fee ₹150) and placed a real
+  end-to-end order — `COD_22f0d3237fc9466881`, ₹2,550 (₹2,400 goods + ₹150 fee) — recorded with
+  `payment_method='cod'` and the stored fee, stock decremented, notifications sent. No longer a proposal.
+  (The first attempt hit the `/success` crash fixed separately, and was cancelled.)
 - See `docs/DESIGN-cod.md` and `docs/HANDBOOK.html` Change log 2026-09-07.
 
 ### Capture the enquirer's number before the WhatsApp handoff — 2026-09-07 IST
@@ -114,7 +115,10 @@ care, land behind tests, never "blind".
   exit 0, 143/143 static. **Behaviour preservation proven by diff against HEAD** — 451 block lines + 285 helper
   lines byte-identical modulo a uniform dedent (all template literals in range confirmed single-line first) and
   the one typed-return swap. No new unit tests: DB/network-bound throughout, tested at route level per the
-  existing `referralCoupon` precedent. ⚠️ **Proposal until the owner watches 2–3 real orders.**
+  existing `referralCoupon` precedent. ⚠️ **Partially confirmed 2026-09-07** — two live COD orders
+  exercised `fulfilOrder()` end-to-end (insert, stock, notifications), which is the whole shared path.
+  **Still owed: one real prepaid order**, since the Razorpay caller (signature verify, API re-fetch,
+  `order.notes` parsing) is the half COD never touches.
 - Design for both slices: `docs/DESIGN-cod.md`. See `docs/HANDBOOK.html` Change log 2026-09-07.
 
 ### Meta Pixel funnel events — ViewContent / AddToCart / InitiateCheckout — 2026-09-07 IST
