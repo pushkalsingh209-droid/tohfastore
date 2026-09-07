@@ -2933,9 +2933,12 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
       <code>npx eslint &lt;changed&gt;</code> (no <em>new</em> errors vs. the pre-existing baseline). Report the
       real output.</li>
   <li><strong>Update the docs &mdash; this gates the deploy.</strong> Edit the affected &sect; sections
-      <em>and</em> add a dated Change-log row (IST time, files, how verified). Re-strip the skeleton and
-      re-publish the artifact (<code>https://claude.ai/code/artifact/85252c72-364e-44ee-80cf-710ae21d88cb</code>,
-      pass as <code>url</code>). Move shipped items to Done in <code>IMPROVEMENTS.md</code>.</li>
+      <em>and</em> add a dated Change-log row (IST time, files, how verified). Re-publish the handbook
+      artifact (<code>https://claude.ai/code/artifact/7aa7da6c-f415-4e08-a840-669955210d9d</code>, pass as
+      <code>url</code>) &mdash; this file is already in publish-ready form (its own <code>&lt;title&gt;</code>
+      + <code>&lt;style&gt;</code> at the top, content directly, no
+      <code>&lt;!doctype&gt;</code>/<code>&lt;head&gt;</code>/<code>&lt;body&gt;</code> wrapper), so there is
+      no skeleton to strip. Move shipped items to Done in <code>IMPROVEMENTS.md</code>.</li>
   <li>Only then ship. <code>main</code> is branch-protected &mdash; a direct <code>git push origin main</code> is
       rejected (<code>GH013 &hellip; Required status check "verify"</code>). Push the branch, open a PR, wait for
       the <code>verify</code> check green, re-verify the merged HEAD (<code>next build</code> + <code>npm test</code>),
