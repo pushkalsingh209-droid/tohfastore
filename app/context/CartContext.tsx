@@ -2,6 +2,7 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type Dispatch, type SetStateAction } from "react";
 import type { StoreProduct, CartItem } from "@/app/types/product";
+import { trackMetaAddToCart } from "@/app/utils/metaPixel";
 
 export interface CartContextValue {
   cart: CartItem[];
@@ -63,6 +64,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("tohfa_cart", JSON.stringify(updated));
         return updated;
       });
+      // Pixel AddToCart lives here, not in AddToCartButton/ProductCard, so it
+      // fires exactly once per successful add from every call site and can't
+      // drift as new add buttons appear. Deliberately outside the setCart
+      // updater -- that closure can run twice under StrictMode/replay, which
+      // would double-count. Rejected adds (out of stock / at cap) returned
+      // above and correctly send nothing.
+      trackMetaAddToCart(product.id, product.name, Number(product.price) || 0, product.category);
+
       setIsOpen(true); // Automatically open sliding panel view drawer layout on add
       return true;
     },
