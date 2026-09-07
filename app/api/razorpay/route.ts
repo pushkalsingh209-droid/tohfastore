@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     // handles the same as a deleted product.
     const { data: dbProducts, error: productErr } = await supabase
       .from("products")
-      .select("id, name, price, inventory, category, image_url")
+      .select("id, name, price, inventory, category, image_url, enquire_only")
       .in("id", itemIds)
       .eq("hidden", false);
 

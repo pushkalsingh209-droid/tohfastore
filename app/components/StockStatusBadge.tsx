@@ -9,17 +9,29 @@ export default function StockStatusBadge({
   lowStock,
   inventory,
   soldCount,
+  enquireOnly = false,
   className = "",
 }: {
   outOfStock: boolean;
   lowStock: boolean;
   inventory: number;
   soldCount?: number;
+  /**
+   * Available, but not sold through the website (0059). Takes precedence
+   * over every stock state: these pieces sat at inventory 0 purely to stop
+   * online sales, so "Sold Out" was a lie, and now that inventory can be
+   * truthful a real count would be just as misleading on its own.
+   */
+  enquireOnly?: boolean;
   className?: string;
 }) {
   return (
     <div className={`flex flex-col gap-0.5 ${className}`}>
-      {outOfStock ? (
+      {enquireOnly ? (
+        <span className="text-[10px] uppercase font-bold text-amber-700 dark:text-amber-500">
+          Available on enquiry
+        </span>
+      ) : outOfStock ? (
         <span className="text-[10px] uppercase font-bold text-rose-600">Sold Out</span>
       ) : lowStock ? (
         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded-full w-fit">

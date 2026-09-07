@@ -96,6 +96,9 @@ export default function ProductCard({
   const stock = typeof liveInventory === "number" ? liveInventory : Number(product.inventory) || 0;
   const cartQty = cart?.find((item: CartItem) => item.id === product.id)?.quantity || 0;
   const outOfStock = stock <= 0;
+  // 0059: real and available, just not shippable. Distinct from sold out --
+  // "Sold Out" was untrue and left a willing buyer with no path at all.
+  const enquireOnly = Boolean(product.enquire_only);
   const lowStock = !outOfStock && stock <= LOW_STOCK_THRESHOLD;
   const atMaxInCart = !outOfStock && cartQty >= stock;
   const addToCartDisabled = outOfStock || atMaxInCart;
@@ -215,18 +218,30 @@ export default function ProductCard({
         <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
           <div className="flex flex-col">
             <PriceDisplay price={Number(product.price)} category={product.category} />
-            <StockStatusBadge outOfStock={outOfStock} lowStock={lowStock} inventory={stock} soldCount={product.sold_count} />
+            <StockStatusBadge outOfStock={outOfStock} lowStock={lowStock} inventory={stock} soldCount={product.sold_count} enquireOnly={enquireOnly} />
           </div>
           <button
-            onClick={handleAddToCart}
-            disabled={addToCartDisabled}
+            onClick={(e) => {
+              // An enquire-only piece has exactly one meaningful action:
+              // start the conversation. Reuses the same sheet the chat
+              // button opens, so the shopper's number is captured either way.
+              if (enquireOnly) {
+                e.stopPropagation();
+                setEnquirySource("card_front");
+                return;
+              }
+              handleAddToCart();
+            }}
+            disabled={!enquireOnly && addToCartDisabled}
             className={`text-xs uppercase tracking-wider px-5 py-2.5 rounded font-medium transition duration-200 shadow-sm ${
-              addToCartDisabled
+              enquireOnly
+                ? "bg-amber-700 hover:bg-amber-800 text-white active:scale-95"
+                : addToCartDisabled
                 ? "bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-500 cursor-not-allowed"
                 : "bg-stone-900 hover:bg-amber-700 text-white active:scale-95"
             }`}
           >
-            {outOfStock ? "Sold Out" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
+            {enquireOnly ? "Enquire to Buy" : outOfStock ? "Sold Out" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
           </button>
         </div>
 
@@ -303,18 +318,31 @@ export default function ProductCard({
         <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
           <div className="flex flex-col">
             <PriceDisplay price={Number(product.price)} category={product.category} />
-            <StockStatusBadge outOfStock={outOfStock} lowStock={lowStock} inventory={stock} soldCount={product.sold_count} />
+            <StockStatusBadge outOfStock={outOfStock} lowStock={lowStock} inventory={stock} soldCount={product.sold_count} enquireOnly={enquireOnly} />
           </div>
           <button
-            onClick={handleAddToCart}
-            disabled={addToCartDisabled}
+            onClick={() => {
+              // An enquire-only piece has exactly one meaningful action:
+              // start the conversation. Reuses the same sheet the chat
+              // button opens, so the shopper's number is captured either way.
+              // No stopPropagation needed on the back face -- unlike the
+              // front, a tap here isn't also a card-flip target.
+              if (enquireOnly) {
+                setEnquirySource("card_back");
+                return;
+              }
+              handleAddToCart();
+            }}
+            disabled={!enquireOnly && addToCartDisabled}
             className={`text-xs uppercase tracking-wider px-5 py-2.5 rounded font-medium transition duration-200 shadow-sm ${
-              addToCartDisabled
+              enquireOnly
+                ? "bg-amber-700 hover:bg-amber-800 text-white active:scale-95"
+                : addToCartDisabled
                 ? "bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-500 cursor-not-allowed"
                 : "bg-stone-900 hover:bg-amber-700 text-white active:scale-95"
             }`}
           >
-            {outOfStock ? "Sold Out" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
+            {enquireOnly ? "Enquire to Buy" : outOfStock ? "Sold Out" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
           </button>
         </div>
 

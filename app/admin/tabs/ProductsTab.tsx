@@ -534,6 +534,20 @@ export default function ProductsTab() {
     }
   };
 
+  // 0059: available, but not sold online -- it can't survive shipping.
+  // Separate from stock so inventory can be set truthfully on these rows.
+  const handleInlineEnquireOnlyToggle = async (productId: string | number, enquireOnly: boolean) => {
+    try {
+      const result = await apiRequest("/api/admin/products", {
+        method: "PATCH",
+        body: JSON.stringify({ id: productId, enquire_only: enquireOnly }),
+      });
+      setProducts(products.map((p) => (p.id === productId ? result.product : p)));
+    } catch (err: unknown) {
+      alert(`Could not update the enquire-only setting: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   // COD withheld for this one piece (0057). Any ineligible line makes the
   // whole cart prepaid-only, since a cart ships as one parcel.
   const handleInlineCodToggle = async (productId: string | number, codDisabled: boolean) => {
@@ -1496,6 +1510,23 @@ export default function ProductsTab() {
                   }`}
                 >
                   {product.is_spotlight ? "★ Featured" : "☆ Feature"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInlineEnquireOnlyToggle(product.id, !product.enquire_only)}
+                  title={
+                    product.enquire_only
+                      ? "Sell this online again"
+                      : "Not sold online -- shows 'Available on enquiry' and routes to WhatsApp instead of Add to Cart (for pieces that can't survive shipping)"
+                  }
+                  className={`px-4 py-2 rounded font-semibold text-xs uppercase shadow-sm transition border ${
+                    product.enquire_only
+                      ? "border-amber-600 bg-amber-50 text-amber-800"
+                      : "border-stone-400 text-stone-600 hover:bg-stone-100"
+                  }`}
+                >
+                  {product.enquire_only ? "Enquire only" : "Sold online"}
                 </button>
 
                 <button

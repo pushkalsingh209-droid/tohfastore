@@ -74,7 +74,7 @@ export async function POST(req: Request) {
     const itemIds = (items as ManualItem[]).map((i) => Number(i.id)).filter(Number.isFinite);
     const { data: dbProducts, error: productErr } = await supabase
       .from("products")
-      .select("id, name, price, inventory, category, image_url")
+      .select("id, name, price, inventory, category, image_url, enquire_only")
       .in("id", itemIds);
     if (productErr) {
       return NextResponse.json({ error: "Could not load those products." }, { status: 500 });
@@ -94,7 +94,12 @@ export async function POST(req: Request) {
     // hidden or sold out -- refusing to record history because the catalogue
     // moved on would defeat the point. repriceCart still rejects an unknown
     // id and an over-stock quantity, so the line items stay honest.
-    const repriced = repriceCart(items, (dbProducts ?? []) as RepriceProduct[], categoryGstRates, GST_RATE * 100);
+    // allowEnquireOnly: recording an offline sale of an unshippable piece
+    // (a chess set, a resin earring set) is exactly what this route is for.
+    // The storefront routes leave it at its safe default and reject them.
+    const repriced = repriceCart(items, (dbProducts ?? []) as RepriceProduct[], categoryGstRates, GST_RATE * 100, {
+      allowEnquireOnly: true,
+    });
     if (!repriced.ok) {
       return NextResponse.json({ error: repriced.error }, { status: repriced.status });
     }

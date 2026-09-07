@@ -55,8 +55,13 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from("products")
-      .select("id, name, description, price, image_url, category, inventory")
-      .eq("hidden", false);
+      .select("id, name, description, price, image_url, category, inventory, enquire_only")
+      .eq("hidden", false)
+      // 0059: an enquire-only piece can't be bought online at all, so
+      // listing it in Shopping would send clicks to a page with no buy
+      // button. Excluded rather than marked out-of-stock, which would be
+      // untrue.
+      .eq("enquire_only", false);
     if (!error && data) rows = data;
   } catch (err) {
     console.error("google-merchant-feed query failed:", err);

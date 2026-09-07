@@ -34,6 +34,11 @@ export interface RepriceProduct {
   inventory: number | string;
   category: string | null;
   image_url: string | null;
+  /**
+   * Available, but not sold through the website -- it can't survive
+   * shipping (0059). Optional so older callers/tests are unaffected.
+   */
+  enquire_only?: boolean | null;
 }
 
 export interface PricedItem {
@@ -55,6 +60,21 @@ export function repriceCart(
   dbProducts: RepriceProduct[],
   categoryGstRates: Map<string, number>,
   defaultGstRatePercent: number,
+  options?: {
+    /**
+     * Permit `enquire_only` products (0059).
+     *
+     * Defaults to FALSE, so both storefront checkout routes reject them
+     * without needing to remember to. Since 0059 lets inventory be set
+     * truthfully on an unshippable piece, this flag is the only thing
+     * standing between a real stock count and an online sale that can't be
+     * fulfilled -- so the safe value has to be the default.
+     *
+     * The admin's manual-order route passes true: recording an offline
+     * sale of exactly such a piece is the whole point of that route.
+     */
+    allowEnquireOnly?: boolean;
+  },
 ): RepriceResult {
   if (!Array.isArray(clientItems) || clientItems.length === 0) {
     return { ok: false, error: "Your bag is empty.", status: 400 };
@@ -84,6 +104,19 @@ export function repriceCart(
   }
 
   const pricedItems = priced as PricedItem[];
+
+  if (!options?.allowEnquireOnly) {
+    for (const item of pricedItems) {
+      const product = dbProducts.find((p) => String(p.id) === String(item.id));
+      if (product?.enquire_only) {
+        return {
+          ok: false,
+          error: `"${item.name}" isn't sold online -- message us on WhatsApp to buy it.`,
+          status: 400,
+        };
+      }
+    }
+  }
 
   for (const item of pricedItems) {
     const product = dbProducts.find((p) => String(p.id) === String(item.id));

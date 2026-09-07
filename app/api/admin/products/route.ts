@@ -15,7 +15,7 @@ import type { Insert, Update } from "@/types/tables";
 // migration the admin hasn't run) -- these routes degrade gracefully by
 // dropping whichever optional column Postgres complains about and retrying,
 // instead of failing the whole save.
-const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg", "hidden", "supplier_numbers", "is_spotlight", "spotlight_order", "enquiry_notify_numbers", "cod_disabled"];
+const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg", "hidden", "supplier_numbers", "is_spotlight", "spotlight_order", "enquiry_notify_numbers", "cod_disabled", "enquire_only"];
 
 function isMissingColumn(error: unknown, columnHint: string) {
   const e = (error ?? {}) as { message?: string; code?: string };
@@ -223,6 +223,10 @@ export async function PATCH(req: Request) {
     // of the eligibility rule, for an item too expensive or too fragile to
     // risk coming back damaged at the store's cost.
     if (fields.cod_disabled !== undefined) payload.cod_disabled = Boolean(fields.cod_disabled);
+    // 0059: available, but not sold through the website -- it can't survive
+    // shipping. Distinct from stock, so inventory can finally be truthful
+    // on these rows without them becoming purchasable.
+    if (fields.enquire_only !== undefined) payload.enquire_only = Boolean(fields.enquire_only);
 
     // Fetched before the update specifically to detect a 0 -> positive
     // inventory transition below -- "was this product actually sold out a

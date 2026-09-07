@@ -12,6 +12,36 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### "Enquire to buy" products (0059) — 2026-09-07 IST
+- Owner, on being shown 28% of the catalogue was out of stock: "the out of stock are offline to be sold as
+  they can damage in shipping."
+- **The finding:** 44 of 158 products sat at `inventory = 0` because they're unshippable, not sold out. That
+  made the shop say *Sold Out* (untrue), rendered a back-in-stock alert that could never fire, and left two
+  **entire categories** (UV Resin Earrings 24/24, Board Games 8/8) reading as sold out. They're also the
+  premium end (avg ₹5,080 vs ₹3,041) and **~17% of enquiry clicks already landed on them** — real demand,
+  dead end.
+- **Migration 0059** adds `products.enquire_only`, separate from stock. Product stays visible and indexed,
+  shows *Available on enquiry*, routes to the enquiry sheet (which captures the number) instead of the cart.
+  Closes the loop with everything else built today: enquire-only → captured enquiry → offline sale → manual
+  order that keeps stock and GST right.
+- **Safety consequence:** inventory can now be truthful on these rows, so stock no longer stops the sale —
+  this flag does. Enforced in `repriceCart` with `allowEnquireOnly` defaulting to **false**, so both
+  storefront routes get it without remembering; only the admin manual-order route opts in. 5 new tests.
+- Mobile-first: the swap lives in `AddToCartButton`, covering the buy box **and** the sticky bottom bar (the
+  primary phone affordance) in one change.
+- Also: JSON-LD now uses `InStoreOnly` (the exact schema.org term) instead of lying with `OutOfStock`; the
+  Merchant feed excludes them; the back-in-stock button doesn't render.
+- Housekeeping: the 18-column card `select` existed in **three** copies, edited three-at-a-time twice
+  (0057, 0059) — extracted to one `PRODUCT_CARD_COLUMNS`.
+- Verified: `tsc` clean; 299/299 (5 new); `eslint` 0 errors (one genuine new error caught and fixed before
+  commit); `next build` exit 0, 145/145 static.
+- ⚠️ **RUN 0059 BEFORE MERGING** — unlike 0057/0058 this is not deploy-ahead safe: the column joins
+  `PRODUCT_CARD_COLUMNS`, and a read without it fails `42703`, which `getCatalogPage` turns into an empty
+  product list (blank shop). Recoverable in seconds, avoidable entirely.
+- Not verified against a real flagged product (column didn't exist at build time) — owner to flag one and
+  check the card, the sticky bar, and that checkout refuses it.
+- See `docs/HANDBOOK.html` Change log 2026-09-07.
+
 ### Manual orders + Mark COD cash collected — 2026-09-07 IST
 - Owner: "build manual orders and mark cod collected". PR 2 of 2, after the Test status.
 - **Found in live data:** a ₹2,200 payment-link sale (three bells) had landed as

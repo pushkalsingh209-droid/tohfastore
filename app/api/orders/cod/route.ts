@@ -133,7 +133,7 @@ export async function POST(req: Request) {
     const itemIds = (items as CartItem[]).map((i) => Number(i.id)).filter(Number.isFinite);
     const { data: dbProducts, error: productErr } = await supabase
       .from("products")
-      .select("id, name, price, inventory, category, image_url, cod_disabled")
+      .select("id, name, price, inventory, category, image_url, cod_disabled, enquire_only")
       .in("id", itemIds)
       .eq("hidden", false);
     if (productErr) {

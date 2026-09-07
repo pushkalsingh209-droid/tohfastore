@@ -14,6 +14,12 @@ export interface StoreProduct {
   category?: string | null;
   /** COD withheld for this specific piece (0057). */
   cod_disabled?: boolean | null;
+  /**
+   * Real and available, but NOT sold through the website -- it can't
+   * survive shipping (0059). Shows an "available on enquiry" state and the
+   * WhatsApp enquiry button instead of Add to Cart.
+   */
+  enquire_only?: boolean | null;
   inventory?: number | string | null;
    hidden?: boolean;
   description?: string | null;

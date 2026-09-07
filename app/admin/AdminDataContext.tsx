@@ -85,6 +85,8 @@ export interface AdminProduct {
   [key: string]: any;
   /** COD withheld for this specific product (0057). */
   cod_disabled?: boolean;
+  /** Available, but not sold through the website (0059). */
+  enquire_only?: boolean;
 }
 
 // Dropdown/lookup lists shared between the products form (ProductsTab) and
