@@ -11,7 +11,13 @@ import { useCategoryDiscountMap } from "@/app/context/CategoryDiscountContext";
 
 interface StashedOrder {
   orderId: string;
-  paymentId: string;
+  // null for Cash on Delivery -- there is no payment id until money is
+  // collected. Never rendered; typed honestly so nobody assumes otherwise.
+  paymentId: string | null;
+  /** 'cod' orders show the fee and an "to pay on delivery" total. */
+  paymentMethod?: string | null;
+  /** Flat COD fee included in `total`, absent/0 for prepaid (0057). */
+  codFee?: number | null;
   date: string;
   customerName: string;
   customerPhone: string;
@@ -113,6 +119,8 @@ export default function CheckoutSuccessPage() {
   }
 
   const gst = order?.gst || null;
+  const isCod = order?.paymentMethod === "cod";
+  const codFee = Number(order?.codFee ?? 0) || 0;
 
   return (
     <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
@@ -346,12 +354,30 @@ export default function CheckoutSuccessPage() {
                 )}
               </div>
 
+              {/* The COD fee is a service charge on top of the goods, so it
+                  sits outside the GST breakdown (which prices the items) and
+                  is added to the payable figure below. Without this row the
+                  invoice silently understated what the courier collects. */}
+              {codFee > 0 && (
+                <div className="flex justify-between">
+                  <span>Cash on Delivery fee</span>
+                  <span className="font-mono">₹{codFee.toLocaleString("en-IN")}</span>
+                </div>
+              )}
+
               <div className="flex justify-between items-center pt-4 border-t border-stone-200 dark:border-stone-800">
-                <span className="text-sm font-serif font-medium text-stone-900 dark:text-stone-100">Total Paid</span>
+                <span className="text-sm font-serif font-medium text-stone-900 dark:text-stone-100">
+                  {isCod ? "To pay on delivery" : "Total Paid"}
+                </span>
                 <span className="text-lg font-mono font-bold text-amber-800 dark:text-amber-500">
-                  ₹{gst.totalPrice.toLocaleString("en-IN")}
+                  ₹{(gst.totalPrice + codFee).toLocaleString("en-IN")}
                 </span>
               </div>
+              {isCod && (
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 text-right">
+                  Please keep the exact amount ready for the delivery partner.
+                </p>
+              )}
             </div>
           )}
 

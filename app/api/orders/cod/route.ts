@@ -255,12 +255,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: "already_recorded", orderId }, { status: 409 });
     }
 
+    // `gst` MUST be the whole OrderGstBreakdown object, exactly as
+    // /api/razorpay returns it -- /success renders gst.basePrice,
+    // gst.byRate and gst.totalPrice off this. Returning just the amount
+    // (as this did originally) crashed the confirmation page on every COD
+    // order: undefined.toLocaleString(). Not caught by tsc because the
+    // value crosses NextResponse.json -> JSON.parse and is cast on arrival.
     const gst = calculateOrderGstBreakdown(pricedItems, 0);
     return NextResponse.json({
       orderId,
       subtotal,
       codFee: fee,
-      gst: gst.gstAmount,
+      gst,
       total,
     });
   } catch (err) {
