@@ -15,7 +15,7 @@ import type { Insert, Update } from "@/types/tables";
 // migration the admin hasn't run) -- these routes degrade gracefully by
 // dropping whichever optional column Postgres complains about and retrying,
 // instead of failing the whole save.
-const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg", "hidden", "supplier_numbers", "is_spotlight", "spotlight_order", "enquiry_notify_numbers"];
+const OPTIONAL_COLUMNS = ["category", "images", "weight_g", "height_cm", "depth_cm", "breadth_cm", "material", "color", "whatsapp_number", "label", "price_per_kg", "photo_filter", "cost_price", "last_restocked_at", "cost_price_per_kg", "hidden", "supplier_numbers", "is_spotlight", "spotlight_order", "enquiry_notify_numbers", "cod_disabled"];
 
 function isMissingColumn(error: unknown, columnHint: string) {
   const e = (error ?? {}) as { message?: string; code?: string };
@@ -219,6 +219,10 @@ export async function PATCH(req: Request) {
     // (a future manual-reorder pass); NULLS LAST keeps newly toggled
     // products appending in id order until it exists.
     if (fields.is_spotlight !== undefined) payload.is_spotlight = Boolean(fields.is_spotlight);
+    // COD withheld for this specific piece (0057) -- the fine-grained half
+    // of the eligibility rule, for an item too expensive or too fragile to
+    // risk coming back damaged at the store's cost.
+    if (fields.cod_disabled !== undefined) payload.cod_disabled = Boolean(fields.cod_disabled);
 
     // Fetched before the update specifically to detect a 0 -> positive
     // inventory transition below -- "was this product actually sold out a

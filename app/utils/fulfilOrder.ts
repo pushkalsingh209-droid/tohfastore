@@ -65,6 +65,18 @@ export interface FulfilOrderParams {
   shippingAddress: OrderShippingAddressInput | null;
   /** Reservation hold to consume, when the 0043 feature is enabled. */
   checkoutToken: string | null;
+  /**
+   * How the money is (or isn't yet) collected. 'prepaid' is a captured
+   * Razorpay payment; 'cod' is cash the courier collects on delivery.
+   * Defaults to 'prepaid' so the webhook caller needs no change.
+   */
+  paymentMethod?: "prepaid" | "cod";
+  /**
+   * Flat COD fee already included in `totalAmount`, stored so reports and
+   * the invoice can show it explicitly rather than inferring it from the
+   * totals. Always 0 for prepaid. See docs/DESIGN-cod.md.
+   */
+  codFee?: number;
 }
 
 // `already_recorded` is not an error: it means the DB's own unique
@@ -85,7 +97,11 @@ export async function fulfilOrder(params: FulfilOrderParams): Promise<FulfilOrde
     customerEmail,
     shippingAddress,
     checkoutToken,
+    paymentMethod = "prepaid",
+    codFee = 0,
   } = params;
+
+  const isCod = paymentMethod === "cod";
 
   // 1. Log directly to Supabase orders table with the updated details.
   // The structured address lives in its own shipping_address column,
@@ -97,6 +113,16 @@ export async function fulfilOrder(params: FulfilOrderParams): Promise<FulfilOrde
       {
         order_id: orderId,
         payment_id: paymentId,
+        payment_method: paymentMethod,
+        // Stored, not derived: a COD order's `amount` is subtotal + fee, so
+        // anything reconstructing a discount by subtraction would otherwise
+        // lose the fee entirely (0057's header explains the full trap).
+        cod_fee: isCod ? codFee : null,
+        // COD's idempotency key. Prepaid is guarded by UNIQUE(payment_id)
+        // (0037), but a COD order has no payment_id and Postgres lets
+        // multiple NULLs coexist -- without the partial unique index on this
+        // column a double-submitted checkout ships two parcels (0057).
+        checkout_token: checkoutToken,
         amount: totalAmount,
         customer_details: { email: customerEmail, contact: customerPhone, name: customerName },
         shipping_address: shippingAddress,
@@ -394,7 +420,11 @@ export async function fulfilOrder(params: FulfilOrderParams): Promise<FulfilOrde
     // what Razorpay verified was captured) is spread across rate groups
     // proportionally.
     const itemsSubtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const discount = Math.max(0, itemsSubtotal - totalAmount);
+    // Subtract the COD fee before inferring a discount: `totalAmount`
+    // includes it, so without this a COD order reads as "subtotal minus
+    // more than the subtotal" and the fee silently vanishes from the GST
+    // split. codFee is 0 for prepaid, leaving that path byte-identical.
+    const discount = Math.max(0, itemsSubtotal - (totalAmount - codFee));
     gst = calculateOrderGstBreakdown(orderItems, discount);
     const gstLines =
       gst.byRate.length > 1
@@ -420,7 +450,7 @@ export async function fulfilOrder(params: FulfilOrderParams): Promise<FulfilOrde
     }
 
     businessMessage = [
-      "New Tohfa order received!",
+      isCod ? "New Tohfa order received! *** CASH ON DELIVERY ***" : "New Tohfa order received!",
       `Order ID: ${orderId}`,
       `Customer: ${customerName}`,
       `Phone: ${customerPhone}`,
@@ -430,6 +460,12 @@ export async function fulfilOrder(params: FulfilOrderParams): Promise<FulfilOrde
       `Base Amount: ₹${gst.basePrice.toLocaleString("en-IN")}`,
       gstLines,
       `Total Amount: ₹${gst.totalPrice.toLocaleString("en-IN")}`,
+      ...(isCod
+        ? [
+            `COD fee: ₹${codFee.toLocaleString("en-IN")}`,
+            `COLLECT ON DELIVERY: ₹${(gst.totalPrice + codFee).toLocaleString("en-IN")}`,
+          ]
+        : []),
     ].join("\n");
 
     // Customer-facing item lines show "MRP ₹X, Y% off" per line when
@@ -467,7 +503,13 @@ export async function fulfilOrder(params: FulfilOrderParams): Promise<FulfilOrde
       "",
       `${savingsLine}Base Amount: ₹${gst.basePrice.toLocaleString("en-IN")}`,
       gstLines,
-      `Total Amount Paid: ₹${gst.totalPrice.toLocaleString("en-IN")}`,
+      ...(isCod
+        ? [
+            `COD fee: ₹${codFee.toLocaleString("en-IN")}`,
+            `*Amount to pay on delivery: ₹${(gst.totalPrice + codFee).toLocaleString("en-IN")}*`,
+            "(Please keep the exact amount ready for the delivery partner.)",
+          ]
+        : [`Total Amount Paid: ₹${gst.totalPrice.toLocaleString("en-IN")}`]),
       "",
       "Shipping to:",
       formattedAddress,

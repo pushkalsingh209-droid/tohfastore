@@ -61,6 +61,11 @@ export interface AdminOrder {
   status?: string;
   awb_number?: string | null;
   courier_name?: string | null;
+  // Cash on Delivery (0057). payment_method defaults to 'prepaid' in the
+  // DB, so every pre-COD order reads correctly with no backfill.
+  payment_method?: string | null;
+  cod_fee?: number | string | null;
+  cod_collected_at?: string | null;
   customer_details?: { name?: string; email?: string; contact?: string } | null;
   shipping_address?: { line?: string; landmark?: string; city?: string; state?: string; pincode?: string; recipientPhone?: string } | null;
   items?: AdminOrderItem[];
@@ -78,6 +83,8 @@ export interface AdminProduct {
   label?: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
+  /** COD withheld for this specific product (0057). */
+  cod_disabled?: boolean;
 }
 
 // Dropdown/lookup lists shared between the products form (ProductsTab) and
@@ -92,6 +99,8 @@ export interface AdminCategory {
   discount_percent?: number | string;
   default_page_size?: number | string | null;
   whatsapp_number?: string | null;
+  /** Whole-category Cash on Delivery block (0057). */
+  cod_disabled?: boolean;
 }
 export interface AdminLabel {
   id: number;

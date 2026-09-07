@@ -83,3 +83,14 @@ export function useCategoryWhatsappNumber(category: string | null | undefined): 
   if (!category) return null;
   return numbers[category] ?? null;
 }
+
+/**
+ * Cash on Delivery availability + the flat fee, server-provided like every
+ * other bootstrap value (no client fetch). The checkout Review step needs
+ * both on first paint to render the prepaid-vs-COD comparison without a
+ * layout shift. NOT authoritative -- /api/orders/cod re-reads the settings
+ * and re-computes the total; this only decides what the UI offers.
+ */
+export function useCodSettings(): { enabled: boolean; fee: number; maxItemPrice: number; disabledCategories: string[] } {
+  return useBootstrap().cod;
+}

@@ -566,6 +566,23 @@ export default function OrdersTab() {
                   </td>
                   <td className="p-4 text-right font-mono font-bold text-amber-800 text-base">
                     ₹{Number(order.amount).toLocaleString("en-IN")}
+                    {/* Loud, next to the money: whether this parcel goes out
+                        already paid for or with cash still to collect is the
+                        single most important thing to know before dispatch. */}
+                    {order.payment_method === "cod" ? (
+                      <span className="mt-1 block">
+                        <span className="inline-block rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-sans font-bold uppercase tracking-wide text-amber-800">
+                          COD &mdash; collect on delivery
+                        </span>
+                        {order.cod_fee != null && (
+                          <span className="mt-0.5 block text-[10px] font-sans font-normal text-stone-400">
+                            incl. ₹{Number(order.cod_fee).toLocaleString("en-IN")} COD fee
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="mt-1 block text-[10px] font-sans font-normal text-stone-400">Paid online</span>
+                    )}
                   </td>
                 </tr>
               ))}

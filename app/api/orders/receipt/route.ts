@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
     const { data } = await supabase
       .from("orders")
-      .select("order_id, amount, items, created_at, customer_details, awb_number, courier_name")
+      .select("order_id, amount, items, created_at, customer_details, awb_number, courier_name, payment_method, cod_fee")
       .eq("order_id", cleanOrderId)
       .maybeSingle();
 
@@ -47,7 +47,13 @@ export async function POST(req: Request) {
     // The coupon code isn't persisted on the order row (only used to bump
     // used_count in the webhook), so it can't be recovered -- the invoice
     // shows the discount amount without a code.
-    const discount = Math.max(0, Math.round((subtotal - total) * 100) / 100);
+    // A COD order's `amount` is goods + fee, so the fee has to come off
+    // before inferring a discount -- otherwise `subtotal - total` goes
+    // negative, clamps to 0, and the fee vanishes from the invoice while
+    // still being charged. cod_fee is null for prepaid, leaving that
+    // arithmetic exactly as it was. (0057; same guard as fulfilOrder.)
+    const codFee = Number(data.cod_fee || 0);
+    const discount = Math.max(0, Math.round((subtotal - (total - codFee)) * 100) / 100);
     const gst = calculateOrderGstBreakdown(items, discount);
 
     return NextResponse.json({
@@ -64,6 +70,8 @@ export async function POST(req: Request) {
       subtotal,
       discount,
       couponCode: null,
+      codFee: codFee || null,
+      paymentMethod: data.payment_method || "prepaid",
       total,
       gst,
       awbNumber: data.awb_number || null,

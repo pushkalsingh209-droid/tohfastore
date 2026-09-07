@@ -21,6 +21,13 @@ import {
   MAX_REFERRAL_VALID_DAYS,
   REFERRAL_PROGRAM_ENABLED_KEY,
 } from "@/app/utils/referralCoupon";
+import {
+  COD_ENABLED_KEY,
+  COD_FEE_KEY,
+  COD_MAX_ITEM_PRICE_KEY,
+  validateCodFee,
+  validateCodMaxItemPrice,
+} from "@/app/utils/codSettings";
 
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 500;
@@ -284,6 +291,29 @@ export async function PATCH(req: Request) {
     // ON. See app/utils/referralCoupon.ts.
     if (body.referral_program_enabled !== undefined) {
       updates.push({ key: REFERRAL_PROGRAM_ENABLED_KEY, value: body.referral_program_enabled ? "1" : "0" });
+    }
+
+    // Cash on Delivery (0057). cod_enabled is the kill switch -- stored
+    // "1"/"0" and read fail-closed (an unset/garbage row is OFF), because
+    // COD dispatches goods with no money collected.
+    if (body.cod_enabled !== undefined) {
+      updates.push({ key: COD_ENABLED_KEY, value: body.cod_enabled ? "1" : "0" });
+    }
+
+    if (body.cod_max_item_price !== undefined) {
+      const checked = validateCodMaxItemPrice(body.cod_max_item_price);
+      if ("error" in checked) {
+        return NextResponse.json({ error: checked.error }, { status: 400 });
+      }
+      updates.push({ key: COD_MAX_ITEM_PRICE_KEY, value: String(checked.value) });
+    }
+
+    if (body.cod_fee !== undefined) {
+      const checked = validateCodFee(body.cod_fee);
+      if ("error" in checked) {
+        return NextResponse.json({ error: checked.error }, { status: 400 });
+      }
+      updates.push({ key: COD_FEE_KEY, value: String(checked.value) });
     }
 
     if (body.referral_coupon_valid_days !== undefined) {

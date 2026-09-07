@@ -13,6 +13,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
+import { useCodSettings } from "@/app/context/BootstrapContext";
+import { checkCodEligibility } from "@/app/utils/codSettings";
 import { useCategoryDiscountMap } from "@/app/context/CategoryDiscountContext";
 import { INDIAN_STATES } from "@/app/utils/indianStates";
 import Stepper from "@/app/components/checkout/Stepper";
@@ -103,6 +105,26 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
   const offerDiscount = spendOffer ? tierDiscountFor(spendOffer.tiers, cartTotal) : 0;
   const offerNextTier = spendOffer ? nextSpendTier(spendOffer.tiers, cartTotal) : null;
   const [discountChoice, setDiscountChoice] = useState<"offer" | "coupon">("offer");
+  // Payment method (0057). Defaults to prepaid: it is both the cheaper
+  // option for the shopper and the one that actually collects money.
+  const [paymentMethod, setPaymentMethod] = useState<"prepaid" | "cod">("prepaid");
+  const codSettings = useCodSettings();
+
+  // Client-side mirror of the server's COD eligibility rule, so an
+  // ineligible cart is explained BEFORE the shopper commits rather than
+  // rejected after. /api/orders/cod re-checks from the DB and stays
+  // authoritative -- this only decides what the UI offers and what it says.
+  const codEligibility = checkCodEligibility(
+    cart.map((i) => ({
+      name: i.name,
+      price: Number(i.price) || 0,
+      category: i.category,
+      codDisabled: i.cod_disabled,
+    })),
+    { maxItemPrice: codSettings.maxItemPrice, disabledCategories: codSettings.disabledCategories }
+  );
+  const codAvailable = codSettings.enabled && codEligibility.eligible;
+  const codBlockedReason = codEligibility.eligible ? null : codEligibility.reason;
   // Only meaningful while the offer is actually running -- once it isn't,
   // behave exactly as before the offer existed (coupon-only).
   const usingCoupon = offerRunning ? discountChoice === "coupon" : true;
@@ -606,6 +628,110 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
     else m.goDelivery();
   };
 
+  // Switching to COD clears whatever discount was in play: no COD code
+  // path can apply one (see /api/orders/cod), so leaving a coupon "applied"
+  // in the UI would promise a reduction the server will not honour.
+  const chooseCod = () => {
+    setPaymentMethod("cod");
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setCouponError("");
+  };
+
+  const handleCodOrder = async () => {
+    setValidationError("");
+    setInvalidField(null);
+
+    const creds = m.credentials;
+    const cleanPhone = creds?.phone ?? customerPhone.replace(/\D/g, "");
+
+    // Same consent gate as the prepaid path -- a COD order is still a
+    // binding order under the same cancellation/refund terms.
+    if (!agreedToPolicy) {
+      setValidationError(
+        "Please agree to our Cancellation & Refund Policy to proceed. / कृपया आगे बढ़ने के लिए हमारी रद्दीकरण और धनवापसी नीति से सहमत हों।"
+      );
+      flagInvalid("policy");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/orders/cod", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
+          phone: cleanPhone,
+          whatsappVerificationToken: creds?.token ?? "",
+          customerName,
+          customerEmail,
+          shippingAddress: {
+            line: addressLine.trim(),
+            landmark: landmark.trim(),
+            city: city.trim(),
+            state: addressState,
+            pincode,
+            recipientPhone: recipientPhone.trim(),
+          },
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Same rewind the prepaid path does when the 60-min OTP window
+        // lapses mid-checkout -- back to step 1 without losing input.
+        if (data?.code === "verification_required") {
+          m.verificationExpired();
+          setValidationError("Your WhatsApp verification expired. Please verify again.");
+          return;
+        }
+        setValidationError(data?.error || "We couldn't place your order. Please try again.");
+        return;
+      }
+
+      try {
+        sessionStorage.setItem(
+          "tohfa_last_order",
+          JSON.stringify({
+            orderId: data.orderId,
+            paymentId: null,
+            date: new Date().toISOString(),
+            customerName,
+            customerPhone: cleanPhone,
+            customerEmail,
+            items: cart.map((item) => ({
+              name: item.name,
+              price: Number(item.price) || 0,
+              quantity: item.quantity,
+              category: item.category ?? null,
+            })),
+            // Server-computed, never the client's arithmetic.
+            subtotal: data.subtotal ?? cartTotal,
+            discount: 0,
+            couponCode: null,
+            offerLabel: null,
+            codFee: data.codFee,
+            paymentMethod: "cod",
+            total: data.total,
+            gst: data.gst,
+          })
+        );
+      } catch (e) {
+        console.error("Could not stash invoice data:", e);
+      }
+
+      m.reset();
+      setIsOpen(false);
+      router.push(`/success?order_id=${encodeURIComponent(data.orderId)}`);
+    } catch (err) {
+      console.error("COD order failed:", err);
+      setValidationError("We couldn't place your order. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFooter = () => {
     if (m.step === 1) {
       if (validateContact()) m.goDelivery();
@@ -615,18 +741,30 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
       if (validateDelivery()) m.goReview();
       return;
     }
-    handleRazorpayPayment();
+    if (isCodOrder) handleCodOrder();
+    else handleRazorpayPayment();
   };
 
   const activeDiscount = usingCoupon ? appliedCoupon?.discount ?? 0 : offerDiscount;
-  const payTotal = Math.max(0, cartTotal - activeDiscount);
+  // Derived, not synced: if the cart stops being COD-eligible (an item
+  // added after the choice), the selection silently reverts to prepaid
+  // instead of leaving an unpayable method armed. Avoids a
+  // set-state-in-effect too.
+  const isCodOrder = codAvailable && paymentMethod === "cod";
+  // COD forfeits every discount and adds the flat fee -- the same sum
+  // /api/orders/cod recomputes server-side.
+  const payTotal = isCodOrder ? cartTotal + codSettings.fee : Math.max(0, cartTotal - activeDiscount);
   const footerLabel =
     m.step === 1
       ? "Continue"
       : m.step === 2
       ? "Continue to Review"
       : loading
-      ? "Starting secure payment…"
+      ? isCodOrder
+        ? "Placing your order…"
+        : "Starting secure payment…"
+      : isCodOrder
+      ? `Place Order · Pay ₹${Math.round(payTotal).toLocaleString("en-IN")} on delivery`
       : `Pay ₹${Math.round(payTotal).toLocaleString("en-IN")}`;
   const footerDisabled =
     (m.step === 1 && !m.contactVerified) || (m.step === 3 && (loading || !agreedToPolicy));
@@ -724,7 +862,15 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
                 onApplyCoupon: handleApplyCoupon,
                 onApplyCouponCode: applyCouponCode,
                 onRemoveCoupon: handleRemoveCoupon,
-                agreedToPolicy,
+                codEnabled: codSettings.enabled,
+              codAvailable,
+              codBlockedReason,
+              codFee: codSettings.fee,
+              paymentMethod: isCodOrder ? "cod" : "prepaid",
+              onChoosePrepaid: () => setPaymentMethod("prepaid"),
+              onChooseCod: chooseCod,
+
+              agreedToPolicy,
                 setAgreedToPolicy,
                 invalidField,
                 clearInvalid: () => setInvalidField(null),

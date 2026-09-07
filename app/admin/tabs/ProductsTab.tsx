@@ -533,6 +533,20 @@ export default function ProductsTab() {
     }
   };
 
+  // COD withheld for this one piece (0057). Any ineligible line makes the
+  // whole cart prepaid-only, since a cart ships as one parcel.
+  const handleInlineCodToggle = async (productId: string | number, codDisabled: boolean) => {
+    try {
+      const result = await apiRequest("/api/admin/products", {
+        method: "PATCH",
+        body: JSON.stringify({ id: productId, cod_disabled: codDisabled }),
+      });
+      setProducts(products.map((p) => (p.id === productId ? result.product : p)));
+    } catch (err: unknown) {
+      alert(`Could not update COD setting: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   // Manual storefront position -- lower numbers show first. Left blank
   // (null), a product falls back to sorting last (newest-first among
   // other unassigned products) until an admin gives it a number.
@@ -1481,6 +1495,23 @@ export default function ProductsTab() {
                   }`}
                 >
                   {product.is_spotlight ? "★ Featured" : "☆ Feature"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInlineCodToggle(product.id, !product.cod_disabled)}
+                  title={
+                    product.cod_disabled
+                      ? "Allow Cash on Delivery for this product again"
+                      : "Never allow Cash on Delivery for this product (too expensive / too fragile to risk a damaged return)"
+                    }
+                  className={`px-4 py-2 rounded font-semibold text-xs uppercase shadow-sm transition border ${
+                    product.cod_disabled
+                      ? "border-rose-500 bg-rose-50 text-rose-700"
+                      : "border-stone-400 text-stone-600 hover:bg-stone-100"
+                  }`}
+                >
+                  {product.cod_disabled ? "COD off" : "COD ok"}
                 </button>
 
                 <button type="button" onClick={() => handleEditClick(product)} className="px-4 py-2 border border-amber-600 rounded text-amber-700 hover:bg-amber-50 font-semibold text-xs uppercase shadow-sm transition">

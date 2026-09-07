@@ -12,6 +12,41 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Cash on Delivery — 2026-09-07 IST — ⚠️ payment path
+- Owner: "cod should be made live", then per-category/per-product exclusions ("expensive items … get damaged
+  and returned"), then "cod only for items below 3000". Slice 2 of 2 on the `fulfilOrder()` foundation.
+- **Migration 0057** (owner applied it mid-batch): `orders.payment_method` (NOT NULL default `'prepaid'` —
+  that default *is* the backfill), `cod_fee`, `cod_collected_at`, `checkout_token` + partial UNIQUE index,
+  `products.cod_disabled`, `categories.cod_disabled`, seeds `cod_enabled='0'` / `cod_fee='50'` /
+  `cod_max_item_price='3000'`. Deliberately does **not** widen `orders.status`'s CHECK — payment state is a
+  separate axis from fulfilment state.
+- **Idempotency:** prepaid is guarded by `UNIQUE(payment_id)`; COD has none, and Postgres permits many NULLs,
+  so COD rows never collide — useless as a guard. Without the partial unique index on `checkout_token` a
+  double-tapped "Place Order" ships **two parcels**. Duplicate → 409.
+- **Fee stored, not derived:** a COD `amount` is subtotal + fee, and three places rebuild a discount as
+  `max(0, subtotal − amount)` (`reports.ts`, `/api/orders/receipt`, `fulfilOrder`). Each would have read the
+  fee as a negative discount, clamped to 0 and lost it — understating collected cash on every COD order.
+- **Eligibility — three vetoes:** per-item price ceiling, per-product flag, per-category flag. **Any one
+  ineligible line makes the whole cart prepaid-only** (a cart ships as one parcel). Enforced server-side from
+  DB rows before stock is held; mirrored client-side only so the shopper is told *which piece* blocked it.
+- **Known gap, documented not patched:** "below 3000" caps each *item*, as asked. Six ₹2,900 pieces is still a
+  ₹17,400 COD parcel. An order-total ceiling is the obvious follow-up — see Active.
+- **No discount logic exists in the COD route at all** — prepaid-only encoded as an *absence*, so there is no
+  COD discount bug to have.
+- Checkout shows **both totals side by side** with a `SAVE ₹X` badge (discount forfeited + fee added) that
+  degrades honestly when the cart earns no discount. Admin: Settings controls, per-product and per-category
+  `COD ok / COD off` toggles, and a loud COD badge beside the amount in Orders.
+- Verified: `tsc` clean; `npm test` **281/281** (27 new); `eslint` 0 errors on all 16 changed files;
+  `next build` exit 0, 144/144 static. **Live-verified against the real DB**: all six columns + three settings
+  present; `/api/orders/cod` returned a clean `400 cod_disabled` (not a 500) both before and after the
+  migration; bootstrap shipped the real seeds. **Eligibility checked against the live catalogue — 50 of 158
+  products (32%) sit above ₹3,000**: the chess sets (₹15k–30k) and large brass idols, exactly the pieces meant
+  to be excluded. Two unit tests caught real bugs pre-ship (`Number("")===0` would have made COD **free**).
+- **NOT verified: the happy path.** `cod_enabled` left at `'0'` rather than flipping a live kill switch;
+  completing an order needs a real OTP and writes real data. ⚠️ **Proposal until the owner enables COD in
+  Settings and places one test order.**
+- See `docs/DESIGN-cod.md` and `docs/HANDBOOK.html` Change log 2026-09-07.
+
 ### Capture the enquirer's number before the WhatsApp handoff — 2026-09-07 IST
 - Owner: "the chats never started, I have no enquiries", then "I want numbers of every person enquiring in the
   admin panel". **Mobile-first** was an explicit instruction.
@@ -1275,20 +1310,17 @@ care, land behind tests, never "blind".
    list; if it's small, the leak is elsewhere and this stays shut. Payment-path adjacent —
    land behind the existing `useCheckoutMachine` tests, never blind.
 
-5. **💰⚠️ Cash on delivery — slice 2 of 2.** Owner gave the go-ahead 2026-09-07 and settled
-   the four open decisions: **flat admin-configurable COD fee** (`cod_fee`), **no order-value
-   cap**, **OTP + one open COD order per phone** as the abuse guard, and **discounts stay
-   prepaid-only** (COD forfeits both the Spend & Save tier discount and coupons). Checkout
-   must show the two totals **side by side** — prepaid with its `SAVE ₹X` badge, COD with its
-   fee and "offers don't apply" — so the discount never silently vanishes when a shopper
-   switches. Slice 1 (`fulfilOrder()`, see Done) is merged and is the prerequisite.
-   **Left:** migration (`orders.payment_method` default `'prepaid'`, `cod_collected_at`, a COD
-   idempotency index on `checkoutToken`, seeds `cod_enabled='0'` + `cod_fee`),
-   `POST /api/orders/cod`, the comparison UI on the Review step, the admin Orders surface, and
-   report treatment. Full design + rationale: `docs/DESIGN-cod.md`.
-   **Accepted risks, recorded:** RTO on an uncapped COD order is unbounded against a flat fee;
-   and the extra checkout step lands exactly where the funnel already leaks — measure it with
-   `InitiateCheckout` rather than assuming. Ships behind `cod_enabled`, seeded off.
+5. **⚠️ COD order-total ceiling (the documented gap).** `cod_max_item_price` caps each *item*
+   at ₹3,000, which is what was asked for — but a cart of many cheaper pieces still totals far above it
+   (six ₹2,900 items = a ₹17,400 COD parcel), and RTO cost tracks the parcel, not the line. A second
+   setting on the same path (`checkCodEligibility` already takes an options object) would close it.
+   Not invented unasked; raise it only if real COD carts start clustering high.
+
+6. **COD operational follow-ups.** `orders.cod_collected_at` exists but nothing writes it yet — a "Mark COD
+   collected" action in the Orders tab is the natural next step so cash owed vs. cash received is trackable.
+   The GST/Excel report also does not yet itemise `cod_fee` as its own column: the discount arithmetic is
+   correct (the fee is subtracted before inferring a discount), but the fee is not broken out, and whether a
+   COD convenience fee is itself taxable is a question for the owner's accountant, not a guess to encode.
 
 ## Active — Tier 2 (security / hardening)
 
