@@ -563,15 +563,32 @@ export default function OverviewTab() {
                           ? "bg-amber-50 text-amber-700 border border-amber-200"
                           : lead.source === "checkout_started"
                           ? "bg-sky-50 text-sky-700 border border-sky-200"
+                          : lead.source === "product_enquiry"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                           : "bg-stone-100 text-stone-600 border border-stone-200"
                       }`}
                     >
-                      {lead.source === "corporate_gifting" ? "Corporate" : lead.source === "checkout_started" ? "Started Checkout" : "Catalogue"}
+                      {lead.source === "corporate_gifting"
+                        ? "Corporate"
+                        : lead.source === "checkout_started"
+                        ? "Started Checkout"
+                        : lead.source === "product_enquiry"
+                        ? "Product Enquiry"
+                        : "Catalogue"}
                     </span>
                   </td>
                   <td className="p-3 text-stone-500 max-w-[240px]">
                     {lead.details && (
                       <div className="space-y-0.5">
+                        {/* A product enquiry only ever has a phone number, so
+                            the product it was about is the whole context the
+                            admin needs before replying. */}
+                        {lead.details.productName && (
+                          <div className="font-medium text-stone-700">Asked about: {lead.details.productName}</div>
+                        )}
+                        {lead.details.productName && lead.details.outOfStock && (
+                          <div className="text-amber-700">Was out of stock when they asked</div>
+                        )}
                         {lead.details.company && <div>Company: {lead.details.company}</div>}
                         {lead.details.quantity && <div>Qty: {lead.details.quantity}</div>}
                         {lead.details.occasion && <div>Occasion: {lead.details.occasion}</div>}

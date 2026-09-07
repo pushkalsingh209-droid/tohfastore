@@ -171,6 +171,14 @@ export interface AdminLead {
     message?: string;
     cartItems?: { name?: string; quantity?: number }[];
     cartTotal?: number;
+    // product_enquiry (2026-09-07): captured by the "Chat on WhatsApp"
+    // sheet before the wa.me handoff, so an enquirer is reachable even
+    // when they never press send inside WhatsApp.
+    productId?: string;
+    productName?: string;
+    category?: string;
+    outOfStock?: boolean;
+    clickSource?: string;
   } | null;
 }
 

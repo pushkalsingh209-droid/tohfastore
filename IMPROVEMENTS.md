@@ -12,6 +12,36 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Capture the enquirer's number before the WhatsApp handoff — 2026-09-07 IST
+- Owner: "the chats never started, I have no enquiries", then "I want numbers of every person enquiring in the
+  admin panel". **Mobile-first** was an explicit instruction.
+- **Diagnosis first.** Production had **23 enquiry clicks and 0 conversations**. Routing was fine (21 of 23 went
+  to the business's own `916302672351`) and Green API was `authorized` with a fresh keepalive — so neither
+  misrouting nor a dead session. The failure is structural: `whatsapp_enquiries` logs the *click* via
+  `sendBeacon`, then opens `wa.me`. **That handoff is one-way** — WhatsApp never tells the site who tapped. So
+  the honest answer to "can I see every enquirer's number?" was *not from a wa.me click, ever*.
+- **The fix inverts it.** New `EnquirySheet.tsx` between the Chat button and the handoff: one phone field →
+  *Continue to WhatsApp*. Writes a `product_enquiry` lead, so the business opens the conversation itself.
+  Always skippable ("Just open WhatsApp"), so the original path is never removed — and adding a step to a path
+  converting **0 of 23** costs nothing.
+- Mobile-first: bottom sheet + safe-area padding + grab handle on phones, centred card from `sm:`, 48px target,
+  `inputMode="numeric"`, `text-base` input (smaller makes iOS Safari zoom the page on focus).
+- Two details that matter: the CTA is a real `<a target="_blank">` with the lead POST fire-and-forget +
+  `keepalive` — an awaited fetch before `window.open()` is what popup blockers kill; and the enquiry beacon
+  still fires on the *actual* handoff (both exits), so `whatsapp_enquiries` stays comparable to its history.
+- `/api/leads` gains `product_enquiry` — the only source that skips the name requirement (one-field sheet;
+  stores placeholder `"WhatsApp enquiry"` in the NOT NULL `name` column, deliberately not the product name) and
+  the only one whose phone is format-checked server-side, since it's the only one where junk costs a real send.
+  Admin Overview → Leads gets a *Product Enquiry* badge, "Asked about: <product>", and an out-of-stock flag.
+- **Scope boundary:** the header contact chip and `FloatingContactButtons` stay direct `wa.me` links — they're
+  general "contact us", with no product to attach. All three product-specific paths now use the sheet.
+- Verified: `tsc` clean; `npm test` 254/254; `eslint` 0 errors (`EnquirySheet.tsx` 0 problems); `next build`
+  exit 0, 143/143 static. **Live-verified on a dev server**: the three validation guards all returned 400 and
+  sent nothing; the PDP enquiry control now renders `<button type="button">`, and the homepage's only remaining
+  `wa.me` anchors are the two general contact affordances. **Success path deliberately not tested** — it fires a
+  real WhatsApp to a real person; owner to confirm with their own number.
+- See `docs/HANDBOOK.html` Change log 2026-09-07.
+
 ### `fulfilOrder()` extracted from the webhook (COD slice 1 of 2) — 2026-09-07 IST — ⚠️ payment path
 - Owner: "give COD option". COD is structurally blocked on this, so it ships first and alone.
 - Every `orders` row ever written was inserted inside `/api/razorpay-webhook`'s `payment.captured` branch, with
