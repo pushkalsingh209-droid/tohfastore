@@ -12,6 +12,31 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Manual orders + Mark COD cash collected — 2026-09-07 IST
+- Owner: "build manual orders and mark cod collected". PR 2 of 2, after the Test status.
+- **Found in live data:** a ₹2,200 payment-link sale (three bells) had landed as
+  `Premium Customer`/`9999999999` with an **empty items array** — because a payment link never touches
+  `/api/razorpay`, so the webhook had no `order.notes`. Result: revenue counted, **stock never decremented,
+  units-sold never moved, and the GST report showed ₹0 taxable supply** for a real sale. Not a webhook bug —
+  it did the only thing it could — but an inconsistent record that repeats for every WhatsApp sale.
+- **New `POST /api/admin/orders/manual`** + a *Record a manual order* panel at the top of the Orders tab,
+  running the sale through the **same `fulfilOrder()` path** a website order uses. Third caller of that
+  function; needed no change beyond an opt-out for notifications — exactly why it was extracted.
+- Design: re-prices from the DB (admin picks *products*, not prices) but deliberately does **not** filter
+  `hidden` — a past sale may be for a since-hidden product. `amountCollected` may be *lower* than the items
+  total (recorded as a discount, GST follows); *higher* is refused as a typo. Notifications default **off**.
+  A `randomUUID` checkout token is the idempotency key via 0057's unique index, so a double-submit can't
+  record twice.
+- **Mark cash collected** stamps/clears `orders.cod_collected_at` — finally writing the column 0057 added.
+  Kept separate from `status` on purpose: a COD parcel can be delivered with the cash not yet reconciled.
+- `fulfilOrder()` gains an optional `notify` flag (default true, existing callers unchanged) suppressing only
+  the message fan-out.
+- Verified: `tsc` clean; 294/294; `eslint` 0 problems on all 5 files; `next build` exit 0, 145/145 static.
+  **Live-verified the admin gate** — POST without a session returns 401 from `proxy.ts`.
+  **NOT verified: recording an actual order** (writes real data). Owner to record one real past sale and
+  confirm line items, stock drop, sold count and GST taxable value.
+- See `docs/HANDBOOK.html` Change log 2026-09-07.
+
 ### "Test" order status — 2026-09-07 IST
 - Owner: "in order status there should be status as test orders and they should be removed from stats as well
   as all orders". PR 1 of 2 (manual orders + Mark COD collected follow).
@@ -1362,11 +1387,11 @@ care, land behind tests, never "blind".
    setting on the same path (`checkCodEligibility` already takes an options object) would close it.
    Not invented unasked; raise it only if real COD carts start clustering high.
 
-6. **COD operational follow-ups.** `orders.cod_collected_at` exists but nothing writes it yet — a "Mark COD
-   collected" action in the Orders tab is the natural next step so cash owed vs. cash received is trackable.
-   The GST/Excel report also does not yet itemise `cod_fee` as its own column: the discount arithmetic is
-   correct (the fee is subtracted before inferring a discount), but the fee is not broken out, and whether a
-   COD convenience fee is itself taxable is a question for the owner's accountant, not a guess to encode.
+6. **COD fee not itemised in the GST/Excel report.** ~~`cod_collected_at` unwritten~~ — done, see the
+   Mark-cash-collected entry in Done. What remains: the report does not break `cod_fee` out as its own
+   column. The discount arithmetic is correct (the fee is subtracted before inferring a discount), but the
+   fee is not shown separately — and whether a COD convenience fee is itself taxable is a question for the
+   owner's accountant, not a guess to encode.
 
 ## Active — Tier 2 (security / hardening)
 
