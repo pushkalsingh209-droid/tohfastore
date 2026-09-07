@@ -12,6 +12,7 @@
 // cancelled/refunded order is not a taxable supply.
 
 import { calculateOrderGstBreakdown, type OrderLineItem } from "@/app/utils/gst";
+import { isCountedInStats } from "@/app/utils/orderStatus";
 
 // Seller's registered state -- TOHFA's GSTIN starts "05" = Uttarakhand.
 // Used as the place-of-supply reference for the intra- vs inter-state split.
@@ -292,7 +293,7 @@ export function buildReport(orders: ReportOrderInput[], period: ResolvedPeriod):
 
   orders.forEach((o, idx) => {
     const row = orderRows[idx];
-    if (row.status === "cancelled") return;
+    if (!isCountedInStats(row.status)) return;
 
     ordersTotals.orders += 1;
     ordersTotals.itemsSubtotal = round2(ordersTotals.itemsSubtotal + row.itemsSubtotal);

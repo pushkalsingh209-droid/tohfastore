@@ -58,6 +58,17 @@ export async function POST(req: Request) {
     const customerName = cd.name || "there";
     const orderId = order.order_id ?? "";
     const status = order.status || "processing";
+
+    // A test order (0058) is the owner's own dry run -- it must never
+    // message anyone. Without this guard leadLine() falls through to its
+    // `default` branch and a real customer number receives "it's confirmed
+    // and being prepared for dispatch" about an order that isn't real.
+    if (status === "test") {
+      return NextResponse.json(
+        { error: "This is a test order -- notifications are disabled for it." },
+        { status: 400 }
+      );
+    }
     const courierName = normalizeCourierName(order.courier_name);
     const awbNumber = order.awb_number ? String(order.awb_number).trim() : "";
     const cleanComment = cleanNotifyComment(comment);

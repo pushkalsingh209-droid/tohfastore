@@ -33,8 +33,13 @@ import {
   calculateCodTotal,
   checkCodEligibility,
 } from "@/app/utils/codSettings";
+import { statsExcludedInList } from "@/app/utils/orderStatus";
 import { fulfilOrder } from "@/app/utils/fulfilOrder";
 import type { Json } from "@/types/tables";
+
+// Delivered = done, cancelled/test = never counted. Built from the shared
+// rule so a new excluded status can't be forgotten here.
+const OPEN_COD_EXCLUDED = `("delivered",${statsExcludedInList().slice(1)}`;
 
 interface CartItem {
   id: string | number;
@@ -100,7 +105,7 @@ export async function POST(req: Request) {
       .from("orders")
       .select("id, customer_details")
       .eq("payment_method", "cod")
-      .not("status", "in", '("delivered","cancelled")');
+      .not("status", "in", OPEN_COD_EXCLUDED);
     if (openCodErr) {
       return serverErrorResponse(
         "COD open-order lookup failed (is migration 0057 applied?)",

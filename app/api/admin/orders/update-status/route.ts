@@ -10,14 +10,16 @@ import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { normalizeCourierName } from "@/app/utils/couriers";
 import type { Update } from "@/types/tables";
+import { isValidOrderStatus, productSalesDelta } from "@/app/utils/orderStatus";
 
-const VALID_STATUSES = ["processing", "shipped", "delivered", "cancelled"];
+// Vocabulary lives in app/utils/orderStatus.ts so this route, the DB
+// CHECK constraint (0058) and every stats filter share one definition.
 
 export async function POST(req: Request) {
   try {
     const { id, status, awb_number, courier_name } = await req.json();
 
-    if (!id || !VALID_STATUSES.includes(status)) {
+    if (!id || !isValidOrderStatus(status)) {
       return NextResponse.json({ error: "Invalid order id or status." }, { status: 400 });
     }
 
@@ -49,6 +51,16 @@ export async function POST(req: Request) {
       .single();
 
     if (updateError || !order) {
+      // 23514 = check_violation. The only status this can realistically be
+      // is "test" against a database where migration 0058 hasn't been run
+      // yet -- say so, rather than surfacing a raw Postgres string that
+      // reads like a bug.
+      if (updateError?.code === "23514" && status === "test") {
+        return NextResponse.json(
+          { error: 'The "test" status needs migration 0058 applied first (supabase/migrations/0058_add_test_order_status.sql).' },
+          { status: 400 }
+        );
+      }
       return NextResponse.json({ error: updateError?.message || "Order not found." }, { status: 404 });
     }
 
@@ -63,17 +75,23 @@ export async function POST(req: Request) {
     // just leaves getSoldCounts briefly high by this order's units. The
     // 300-order paths (getBestsellers/getRelatedProducts) already ignore
     // cancelled orders on their own, so they need nothing here.
-    if (status === "cancelled" && prevStatus !== "cancelled") {
+    // The reverse direction is new: this route previously only decremented
+    // on cancel, so un-cancelling left the tally permanently low -- exactly
+    // the drift /api/cron/product-sales-reconcile exists to catch. Deriving
+    // both directions from one predicate stops creating it. `test` (0058)
+    // crosses the same boundary as `cancelled`.
+    const salesDelta = productSalesDelta(prevStatus, status);
+    if (salesDelta !== 0) {
       try {
         const { error: salesError } = await supabase.rpc("apply_product_sales", {
           p_items: Array.isArray(order.items) ? order.items : [],
-          p_sign: -1,
+          p_sign: salesDelta,
         });
         if (salesError) {
-          console.error("apply_product_sales(-1) on cancel failed (is migration 0042 applied?):", salesError);
+          console.error(`apply_product_sales(${salesDelta}) failed (is migration 0042 applied?):`, salesError);
         }
       } catch (salesErr) {
-        console.error("Units-sold tally rollback failed:", salesErr);
+        console.error("Units-sold tally adjustment failed:", salesErr);
       }
     }
 
