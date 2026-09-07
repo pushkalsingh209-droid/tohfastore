@@ -15,6 +15,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { apiRequest } from "@/app/admin/lib/apiRequest";
+import { isCountedInStats } from "@/app/utils/orderStatus";
 import { useAdminData, type AdminProduct } from "@/app/admin/AdminDataContext";
 import { getAutocompleteMatches, getSuggestions, type SearchableProduct } from "@/app/utils/searchProducts";
 import Pagination from "@/app/components/Pagination";
@@ -277,7 +278,7 @@ export default function ProductsTab() {
   const soldCountByProductId = useMemo(() => {
     const map = new Map<string, number>();
     for (const order of orders) {
-      if (order.status === "cancelled") continue;
+      if (!isCountedInStats(order.status)) continue;
       const items = Array.isArray(order.items) ? order.items : [];
       for (const item of items) {
         if (!item?.id) continue;

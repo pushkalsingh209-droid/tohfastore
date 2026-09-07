@@ -29,6 +29,7 @@ import { attachThumbUrls } from "@/app/utils/imageThumb";
 import { tallyUnitsSold } from "@/app/utils/orderTally";
 import { tallyViewedTogether } from "@/app/utils/viewedTogether";
 import { parseCodEnabled, parseCodFee, parseCodMaxItemPrice } from "@/app/utils/codSettings";
+import { statsExcludedInList } from "@/app/utils/orderStatus";
 import {
   DEFAULT_WEIGHT_UNIT,
   DEFAULT_DIMENSION_UNIT,
@@ -854,7 +855,7 @@ export const getRecentOrderItems = unstable_cache(
       const { data, error } = await supabase
         .from("orders")
         .select("items")
-        .neq("status", "cancelled")
+        .not("status", "in", statsExcludedInList())
         .order("created_at", { ascending: false })
         .limit(300);
       if (error || !data) return [];

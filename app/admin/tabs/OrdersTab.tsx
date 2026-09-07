@@ -26,6 +26,10 @@ const ORDER_STATUS_TABS: { key: string; label: string }[] = [
   { key: "shipped", label: "Shipped" },
   { key: "delivered", label: "Delivered" },
   { key: "cancelled", label: "Cancelled" },
+  // Test orders (0058) get their own tab and are DELIBERATELY absent from
+  // "All" -- a cancelled order is real history worth seeing, a test order
+  // is noise the owner created themselves.
+  { key: "test", label: "Test" },
 ];
 
 export default function OrdersTab() {
@@ -75,10 +79,12 @@ export default function OrdersTab() {
   // sub-tab. "processing" covers newly-received/not-yet-shipped orders
   // (there's no separate "received" status stored -- see ORDER_STATUS_TABS).
   const orderStatusCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: orders.length, processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
+    const counts: Record<string, number> = { all: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0, test: 0 };
     for (const order of orders) {
       const status = order.status || "processing";
       counts[status] = (counts[status] || 0) + 1;
+      // "All" counts everything except test, matching what the tab shows.
+      if (status !== "test") counts.all += 1;
     }
     return counts;
   }, [orders]);
@@ -89,7 +95,10 @@ export default function OrdersTab() {
   const visibleOrders = useMemo(() => {
     const query = orderSearch.trim().toLowerCase();
     return orders.filter((order) => {
-      if (orderStatusFilter !== "all" && (order.status || "processing") !== orderStatusFilter) return false;
+      const status = order.status || "processing";
+      // "All" hides test orders; every other tab is an exact match, so the
+      // Test tab is the only place they surface.
+      if (orderStatusFilter === "all" ? status === "test" : status !== orderStatusFilter) return false;
       if (!query) return true;
       const haystack = [
         order.order_id,
@@ -471,6 +480,8 @@ export default function OrdersTab() {
                           ? "bg-amber-50 text-amber-700 border-amber-200"
                           : order.status === "cancelled"
                           ? "bg-rose-50 text-rose-700 border-rose-200"
+                          : order.status === "test"
+                          ? "bg-violet-50 text-violet-700 border-violet-200"
                           : "bg-stone-100 text-stone-700 border-stone-200"
                       }`}
                     >
@@ -478,6 +489,7 @@ export default function OrdersTab() {
                       <option value="shipped">Shipped</option>
                       <option value="delivered">Delivered</option>
                       <option value="cancelled">Cancelled</option>
+                      <option value="test">Test order</option>
                     </select>
                     {(() => {
                       const courier = order.courier_name || "";

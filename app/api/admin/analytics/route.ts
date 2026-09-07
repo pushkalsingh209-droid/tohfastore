@@ -5,6 +5,7 @@
 // so that's deliberately left out here rather than faked.
 import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
+import { statsExcludedInList } from "@/app/utils/orderStatus";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { asCustomerDetails } from "@/app/utils/orderTypes";
 
@@ -33,7 +34,7 @@ export async function GET() {
     const { data: orders, error } = await supabase
       .from("orders")
       .select("id, amount, created_at, customer_details")
-      .neq("status", "cancelled")
+      .not("status", "in", statsExcludedInList())
       .order("created_at", { ascending: true });
     if (error) return serverErrorResponse("admin analytics", error);
 

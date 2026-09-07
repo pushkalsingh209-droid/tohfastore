@@ -20,6 +20,7 @@
 // after seeing the alert and sanity-checking it).
 import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
+import { statsExcludedInList } from "@/app/utils/orderStatus";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
 import { tallyUnitsSold } from "@/app/utils/orderTally";
@@ -49,7 +50,7 @@ export async function GET(req: Request) {
       const { data: orders, error } = await supabase
         .from("orders")
         .select("items")
-        .neq("status", "cancelled")
+        .not("status", "in", statsExcludedInList())
         .order("id", { ascending: true })
         .range(from, from + PAGE - 1);
       if (error) return serverErrorResponse("cron product-sales-reconcile (orders read)", error);

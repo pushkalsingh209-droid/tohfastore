@@ -12,6 +12,28 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### "Test" order status — 2026-09-07 IST
+- Owner: "in order status there should be status as test orders and they should be removed from stats as well
+  as all orders". PR 1 of 2 (manual orders + Mark COD collected follow).
+- **Migration 0058** widens `orders_status_check` to allow `'test'`. Purely additive — safe to widen where
+  0057 declined to, because a *payment* status would have overloaded a column meaning *fulfilment* state.
+- **The real work was the six places that knew about `cancelled`**: the analytics query, the
+  bestsellers/related scan, the reconcile cron, the GST report, the admin sold-count panel and the COD
+  open-order cap. Missing any one would have left test orders in revenue or in the GST summary. New
+  `app/utils/orderStatus.ts` (13 tests) holds the vocabulary + rule once; `statsExcludedInList()` generates
+  the PostgREST literal from the same array the JS predicate uses, so SQL and JS can't drift.
+- **Pre-existing bug fixed en route:** `update-status` decremented `product_sales` on cancel but never added
+  units back on un-cancel, leaving the tally permanently low — the exact drift the reconcile cron exists to
+  catch. Both directions now come from one predicate (`productSalesDelta`).
+- Test orders **never message anyone** — `/api/admin/orders/notify` refuses them; without the guard
+  `leadLine()` falls through to `default` and a real customer hears about an order that isn't real.
+- **Limitation, stated:** marking Test does *not* restore stock (nor does cancelling, today). The units-sold
+  tally is corrected; inventory needs a manual adjustment in the stock tracker.
+- Verified: `tsc` clean; `npm test` 294/294 (13 new); `eslint` 0 errors on all 11 changed files; `next build`
+  exit 0, 144/144 static. **Owner must run migration 0058** — until then the status returns an explicit 400
+  naming it rather than a raw `23514`, so deploying ahead is safe.
+- See `docs/HANDBOOK.html` Change log 2026-09-07.
+
 ### Fix: `/success` crashed on every COD order — 2026-09-07 IST — ⚠️ payment path
 - Owner enabled COD, placed the first live COD order, got "This page couldn't load". **The order was fine**
   (`COD_85f0a82d9c3f4114b0`, ₹2,550 incl. ₹150 fee, stock decremented, WhatsApp sent) — only the confirmation
