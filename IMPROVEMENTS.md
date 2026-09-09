@@ -12,6 +12,31 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Close a third RLS gap — `orders_cancelled_archive` (0060) — 2026-09-09 IST — 🔒 security
+- Trigger: Supabase advisor email — "Table publicly accessible / `rls_disabled_in_public`" for project
+  `tohfastore` (same lint that caught `site_settings` in 0047).
+- **Root cause, different shape this time:** `orders_cancelled_archive` — 13 rows, same PII shape as `orders`
+  (customer name/phone/address, items) — exists in the live database with **no migration file anywhere in this
+  repo** and is never referenced by any route. Created directly on the Supabase dashboard at some point, it fell
+  outside every existing safeguard: not in `supabase/migrations/`, not in `rlsProbes.ts`, not in the handbook.
+  Never having a migration meant it never got RLS, so the anon/publishable key could read all 13 rows via the
+  REST API.
+- **Diagnosis (no direct DB/SQL access available):** ran the existing live RLS probe first — every table it
+  already knows about was correctly locked down, ruling out a regression. Hand-probed the other 18 migrated
+  tables with the anon key (all blocked; the two zero-row ones double-checked with an insert→read→delete round
+  trip so an empty table wasn't mistaken for a blocked one). With every known table clear, diffed
+  `GET {SUPABASE_URL}/rest/v1/` (PostgREST's own OpenAPI doc — just needs an API key, no SQL access) against
+  `supabase/migrations/`; that's what surfaced the untracked table. Confirmed with a count-only anon probe (no
+  row data pulled, to avoid exposing customer PII through the diagnostic itself).
+- **Migration `0060`** (owner still needs to hand-run): `alter table orders_cancelled_archive enable row level
+  security;`, no policy — identical lockdown to `orders`/`coupons`.
+- **Regression guard:** `app/utils/rlsProbes.ts` / `rls.test.ts` now probe this table too.
+- Verified: `tsc --noEmit` clean; `npm test` 298/299 (1 pre-existing live-only skip, unrelated); the new probe
+  run live against production **confirmed the violation** before the fix. **Not yet fixed live** — owner must
+  run the `0060` SQL, then re-run `npx vitest run app/utils/rls.test.ts` with `.env.local` exported to confirm
+  green.
+- See `docs/HANDBOOK.html` Change log 2026-09-09 13:10.
+
 ### "Enquire to buy" products (0059) — 2026-09-07 IST
 - Owner, on being shown 28% of the catalogue was out of stock: "the out of stock are offline to be sold as
   they can damage in shipping."

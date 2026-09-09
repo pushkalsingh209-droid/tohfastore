@@ -9,10 +9,11 @@
 //   - app/utils/rls.test.ts  -- fails CI on a regression
 //   - /api/cron/rls-check     -- scheduled probe against production, alerts
 //
-// Intended state (see docs/ARCHITECTURE.html "Row Level Security model"):
+// Intended state (see docs/HANDBOOK.html "Row Level Security model"):
 //   products -- anon SELECT where hidden = false, no anon write
 //   reviews  -- anon SELECT where approved = true, no anon write
-//   orders / coupons / site_settings / everything else -- no anon policy => denied
+//   orders / coupons / site_settings / orders_cancelled_archive / everything
+//   else -- no anon policy => denied
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // PostgREST returns an empty set (not an error) for a table with RLS on and
@@ -31,6 +32,12 @@ export async function checkRlsPerimeter(anon: SupabaseClient): Promise<string[]>
   if (!(await fullReadIsBlocked(anon, "coupons"))) violations.push("anon can READ coupons");
   if (!(await fullReadIsBlocked(anon, "leads"))) violations.push("anon can READ leads");
   if (!(await fullReadIsBlocked(anon, "admin_sessions"))) violations.push("anon can READ admin_sessions");
+  // orders_cancelled_archive predates the migrations folder (no CREATE TABLE
+  // anywhere in supabase/migrations/) and was found via the Supabase
+  // security advisor with RLS off -- see 0060. Probed explicitly so a repeat
+  // of that exact failure mode (a dashboard-created table nobody wrote a
+  // migration for) is caught here instead of by an external advisor again.
+  if (!(await fullReadIsBlocked(anon, "orders_cancelled_archive"))) violations.push("anon can READ orders_cancelled_archive");
   // site_settings has no `id` column (PK is `key`); it was created in 0011
   // without RLS and 0047 turned it on -- config the anon key must not touch.
   if (!(await fullReadIsBlocked(anon, "site_settings", "key"))) violations.push("anon can READ site_settings");

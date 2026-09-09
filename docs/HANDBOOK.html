@@ -1725,7 +1725,7 @@ referrer who brings many friends can earn many separate reward rows. RLS: no pol
 
 <h2 id="rls">Row Level Security model</h2>
 <p>The publishable/anon key ships in every visitor&rsquo;s JS bundle, so RLS is the real perimeter for
-direct-to-Supabase reads. Final effective state (migrations 0003 &rarr; 0039 &rarr; 0040 &rarr; 0047):</p>
+direct-to-Supabase reads. Final effective state (migrations 0003 &rarr; 0039 &rarr; 0040 &rarr; 0047 &rarr; 0060):</p>
 <div class="x"><table>
 <thead><tr><th>Table</th><th>Anon key &mdash; read</th><th>Anon key &mdash; write</th><th>Service role</th></tr></thead>
 <tbody>
@@ -1734,6 +1734,7 @@ direct-to-Supabase reads. Final effective state (migrations 0003 &rarr; 0039 &ra
 <tr><td><code>orders</code></td><td class="no">no policy &rarr; denied</td><td class="no">no</td><td class="yes">full</td></tr>
 <tr><td><code>coupons</code></td><td class="no">no policy &rarr; denied</td><td class="no">no</td><td class="yes">full</td></tr>
 <tr><td><code>site_settings</code></td><td class="no">no policy &rarr; denied <em>(RLS on since 0047)</em></td><td class="no">no</td><td class="yes">full</td></tr>
+<tr><td><code>orders_cancelled_archive</code></td><td class="no">no policy &rarr; denied <em>(RLS on since 0060; table predates the migrations folder entirely)</em></td><td class="no">no</td><td class="yes">full</td></tr>
 <tr><td>every other table</td><td class="no">no policy &rarr; denied</td><td class="no">no</td><td class="yes">full</td></tr>
 </tbody></table></div>
 <div class="note">
@@ -1754,6 +1755,16 @@ key could read <em>and write</em> every KV row (pricing, the Spend &amp; Save of
 ~36 migrations, until Supabase's advisor flagged <code>rls_disabled_in_public</code>. 0047 turns it on (no
 policy). The lesson: <strong>every <code>create table</code> migration must include its RLS line</strong>, and
 <code>rlsProbes.ts</code> now covers <code>site_settings</code> read + write.</p>
+<p><strong>Third instance (0060):</strong> a table called <code>orders_cancelled_archive</code> &mdash; full
+order records (customer name/phone/address, items), never referenced anywhere in the app &mdash; existed in the
+live database with <strong>no migration file at all</strong>, so it fell outside every safeguard above: not in
+<code>supabase/migrations/</code>, not in <code>rlsProbes.ts</code>, not in <code>docs/HANDBOOK.html</code>.
+Supabase's advisor caught it (<code>rls_disabled_in_public</code>, 2026-09-09) after the anon key had unrestricted
+read access to it for an unknown period. 0060 turns RLS on (no policy, same as <code>orders</code>). The lesson
+this time: <strong>a table created directly on the Supabase dashboard, outside a migration, is invisible to every
+guard in this repo</strong> &mdash; periodically diff the live table list (<code>GET {SUPABASE_URL}/rest/v1/</code>
+with an API key returns PostgREST's auto-generated OpenAPI doc, whose <code>paths</code> are the actual live
+tables/views) against <code>supabase/migrations/</code> to catch the next one before an external advisor does.</p>
 </div>
 
 <h2 id="migrations">Migration history</h2>
@@ -1806,6 +1817,7 @@ policy). The lesson: <strong>every <code>create table</code> migration must incl
 <tr><td>0057</td><td>add_cash_on_delivery</td><td><code>orders.payment_method</code> (NOT NULL default <code>'prepaid'</code> &mdash; that default <em>is</em> the backfill), <code>orders.cod_fee</code>, <code>orders.cod_collected_at</code>, <code>orders.checkout_token</code> + a <strong>partial UNIQUE index</strong> on it (COD's idempotency guard &mdash; <code>UNIQUE(payment_id)</code> can't serve, since COD has no payment id and Postgres allows many NULLs), an index on <code>payment_method</code>, and seeds <code>cod_enabled='0'</code> + <code>cod_fee='50'</code> + <code>cod_max_item_price='3000'</code>. Also <strong>COD eligibility</strong>: <code>products.cod_disabled</code> and <code>categories.cod_disabled</code> (both boolean, default false). Three independent vetoes &mdash; per-item price ceiling, per-product flag, per-category flag &mdash; because the risk being managed is return-to-origin damage on expensive/fragile pieces and that isn't one rule. <strong>Any one ineligible line makes the whole cart prepaid-only</strong>, since a cart ships as one parcel. <strong>Ships disabled</strong>, same discipline as 0043/0044: a change that can dispatch goods with no money collected does not switch itself on at deploy. Deliberately does <em>not</em> widen <code>orders.status</code>'s CHECK &mdash; that would change the meaning of every existing status filter, the Orders sub-tabs, and the GST report's cancelled-order exclusion. See <code>docs/DESIGN-cod.md</code>.</td></tr>
 <tr><td>0058</td><td>add_test_order_status</td><td>Widens <code>orders_status_check</code> to allow <code>'test'</code>. Purely additive &mdash; no existing row can be <code>test</code> and no existing filter changes meaning for the four prior values, which is why this constraint was safe to widen where a <em>payment</em> status would not have been (0057's header explains that distinction). The vocabulary and the &ldquo;which statuses count&rdquo; rule live in <code>app/utils/orderStatus.ts</code>; keep the two in step. Until this is applied, setting a status to <code>test</code> returns an explicit 400 naming the migration rather than a raw check-violation.</td></tr>
 <tr><td>0059</td><td>add_product_enquire_only</td><td><code>products.enquire_only boolean = false</code> + a partial index. Separates &ldquo;not sold online&rdquo; from &ldquo;out of stock&rdquo;. <strong>Deliberately not backfilled</strong> from <code>inventory = 0</code>: some of those 44 rows may be genuinely sold out, and guessing wrong would silently make a real product unbuyable &mdash; the owner sets it per product. <strong>Apply this BEFORE deploying the code</strong>: the column joins <code>PRODUCT_CARD_COLUMNS</code>, and a storefront read against a database missing it fails with Postgres <code>42703</code>, which <code>getCatalogPage</code> turns into an empty product list &mdash; a blank shop until the migration runs.</td></tr>
+<tr><td>0060</td><td>lock_down_orders_cancelled_archive</td><td><code>alter table orders_cancelled_archive enable row level security;</code> (no policy). This table (13 rows, same PII shape as <code>orders</code>) was created directly on the Supabase dashboard at some point &mdash; it has no <code>CREATE TABLE</code> anywhere in this folder and nothing in the app reads or writes it. Because it was never migrated it also never got RLS, so the anon key could read all 13 rows via the REST API until Supabase's advisor flagged <code>rls_disabled_in_public</code> (2026-09-09). See the RLS model section's &ldquo;Third instance&rdquo; note. <strong>Owner to apply in the SQL editor</strong> &mdash; not yet confirmed live as of this row.</td></tr>
 </tbody></table></div>
 
 <p><strong><code>product_sales</code> drift check</strong> &mdash; the tally is only self-correcting for cancellations
@@ -2998,6 +3010,44 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-09<br>13:10</code></td>
+  <td><strong>🔒 Close a third RLS gap &mdash; <code>orders_cancelled_archive</code></strong><br>(triggered by a Supabase advisor email: &ldquo;Table publicly accessible&rdquo;, <code>rls_disabled_in_public</code>)</td>
+  <td>
+    Supabase's security advisor flagged the project again (same lint that caught <code>site_settings</code> in
+    0047). This time the culprit wasn't a migration that skipped its RLS line &mdash; it was a table,
+    <code>orders_cancelled_archive</code>, that has <strong>no migration file anywhere in this repo</strong> and
+    is never referenced by any route. It was created directly on the Supabase dashboard at some point, holds 13
+    rows in the same shape as <code>orders</code> (customer name/phone/address, items), and because it fell
+    outside <code>supabase/migrations/</code> it also fell outside <code>rlsProbes.ts</code> and this handbook
+    &mdash; invisible to every existing safeguard.
+    <br><br>
+    <strong>Diagnosis, since there's no direct DB/SQL access from here:</strong> the existing anon-key probe
+    set (<code>rlsProbes.ts</code>) was run live first and came back clean &mdash; every table it knows about
+    (<code>orders</code>, <code>coupons</code>, <code>leads</code>, <code>admin_sessions</code>,
+    <code>site_settings</code>, <code>products</code>, <code>reviews</code>) was correctly locked down. That
+    ruled out a regression in anything tracked. The other 18 tables in <code>supabase/migrations/</code> were
+    then probed by hand with the anon key (read-blocked on all 18; two zero-row tables were double-checked with
+    a service-role insert &rarr; anon-read &rarr; service-role-delete round trip rather than trusting an empty
+    result). With every known table cleared, <code>GET {SUPABASE_URL}/rest/v1/</code> (PostgREST's
+    auto-generated OpenAPI doc, fetchable with just an API key) was diffed against the migrations folder &mdash;
+    that surfaced <code>orders_cancelled_archive</code> as the one table with no corresponding <code>CREATE
+    TABLE</code>. A count-only anon probe (<code>select(..., {count:'exact', head:true})</code>, no row data
+    fetched) confirmed all 13 rows were readable.
+    <br><br>
+    <strong>Fix:</strong> migration <code>0060</code> &mdash; <code>alter table orders_cancelled_archive enable
+    row level security;</code>, no policy, same lockdown as <code>orders</code>/<code>coupons</code>.
+    <code>rlsProbes.ts</code> now probes this table too, so a repeat is caught by CI/the daily cron instead of
+    only by an external advisor. See the RLS model section's &ldquo;Third instance&rdquo; note for the
+    diff-the-live-table-list technique going forward.
+  </td>
+  <td><code>supabase/migrations/0060_lock_down_orders_cancelled_archive.sql</code> (new); <code>app/utils/rlsProbes.ts</code>, <code>app/utils/rls.test.ts</code> (add the probe); this handbook.</td>
+  <td><code>tsc --noEmit</code> clean; <code>npm test</code> 298/299 (1 pre-existing live-only skip); the new
+    probe run live against production with <code>.env.local</code> confirmed the violation
+    (<code>anon can READ orders_cancelled_archive</code>) before the fix &mdash; <strong>owner still needs to run
+    the migration 0060 SQL in the Supabase SQL editor; re-run <code>npx vitest run app/utils/rls.test.ts</code>
+    with <code>.env.local</code> exported afterward to confirm it goes green.</strong></td>
+</tr>
 <tr>
   <td><code>2026-09-07<br>&mdash;</code></td>
   <td><strong>&ldquo;Enquire to buy&rdquo; products &mdash; unshippable pieces stop pretending to be sold out</strong><br>(owner, on being shown that 28% of the catalogue was out of stock: &ldquo;the out of stock are offline to be sold as they can damage in shipping&rdquo;)</td>
