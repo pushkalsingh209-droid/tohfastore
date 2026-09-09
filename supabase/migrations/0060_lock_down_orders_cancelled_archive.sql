@@ -1,0 +1,30 @@
+-- Run this in the Supabase SQL editor.
+--
+-- `orders_cancelled_archive` exists in the live database but was never
+-- created by any file in this migrations folder -- same situation
+-- `products`/`orders` were in before 0000_base_schema.sql reconstructed
+-- them. It was almost certainly created directly through the Supabase
+-- dashboard. No route or script anywhere in this repo reads or writes it
+-- (`grep -r orders_cancelled_archive` across the whole app returns nothing),
+-- so it is dead weight left over from some manual archiving step -- but its
+-- 13 rows are full order records (customer_details, shipping_address,
+-- items), the same PII shape as `orders`.
+--
+-- Discovered 2026-09-09 via a Supabase security-advisor email
+-- (`rls_disabled_in_public`): because it was never migrated, it also never
+-- got the `enable row level security` line every other table has, so the
+-- anon/publishable key -- shipped in every visitor's browser bundle -- could
+-- read every row directly via the REST API. This is exactly the failure
+-- mode 0039/0040 already document for `orders`/`coupons`: a table that
+-- predates (or falls outside) the migrations folder silently has no RLS.
+--
+-- Columns (introspected via the live REST API's OpenAPI doc + a service-role
+-- select, since `supabase db pull` needs Docker, which isn't set up here):
+-- id, created_at, order_id, payment_id, amount, customer_details, items,
+-- status, awb_number, shipping_address -- an older subset of `orders`'
+-- columns (predates payment_method/cod_collected_at/courier_name/etc.).
+--
+-- Fix: same lockdown as `orders`/`coupons` (0039) -- RLS on, zero policies,
+-- so only the service-role client can read or write it. No policy is added
+-- because nothing needs anon access to it.
+alter table orders_cancelled_archive enable row level security;
