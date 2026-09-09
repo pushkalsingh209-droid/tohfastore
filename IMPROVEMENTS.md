@@ -28,13 +28,16 @@ care, land behind tests, never "blind".
   `GET {SUPABASE_URL}/rest/v1/` (PostgREST's own OpenAPI doc — just needs an API key, no SQL access) against
   `supabase/migrations/`; that's what surfaced the untracked table. Confirmed with a count-only anon probe (no
   row data pulled, to avoid exposing customer PII through the diagnostic itself).
-- **Migration `0060`** (owner still needs to hand-run): `alter table orders_cancelled_archive enable row level
-  security;`, no policy — identical lockdown to `orders`/`coupons`.
+- **Migration `0060`**: `alter table orders_cancelled_archive enable row level security;`, no policy —
+  identical lockdown to `orders`/`coupons`.
 - **Regression guard:** `app/utils/rlsProbes.ts` / `rls.test.ts` now probe this table too.
 - Verified: `tsc --noEmit` clean; `npm test` 298/299 (1 pre-existing live-only skip, unrelated); the new probe
-  run live against production **confirmed the violation** before the fix. **Not yet fixed live** — owner must
-  run the `0060` SQL, then re-run `npx vitest run app/utils/rls.test.ts` with `.env.local` exported to confirm
-  green.
+  run live against production **confirmed the violation** before the fix. **Owner ran migration `0060`;
+  re-ran the live probe afterward and it now passes** — anon read is blocked. No longer a proposal.
+- Still open: the branch (`fix/rls-orders-cancelled-archive`) is pushed but no PR has been opened yet — `gh`
+  isn't available here and the GitHub API shows no PR for this branch. Owner needs to open one from
+  https://github.com/pushkalsingh209-droid/tohfastore/pull/new/fix/rls-orders-cancelled-archive and merge
+  once `verify` is green.
 - See `docs/HANDBOOK.html` Change log 2026-09-09 13:10.
 
 ### "Enquire to buy" products (0059) — 2026-09-07 IST
