@@ -1,6 +1,7 @@
 # DESIGN — user-selectable colour themes
 
-Status: **proposal, awaiting owner sign-off.** Nothing below is built yet.
+Status: **PR 1 shipped and merged 2026-09-10** (token layer + `themes.ts` registry +
+`ThemePicker` + `sand`/`ink`, no visual change). PRs 2–4 remaining — see the phasing table.
 Owner brief (2026-09-10): "add 9–10 colour themes (light, dark, dusk, …) the user can
 choose, make it playful." Decisions taken via clarifying questions:
 
@@ -22,7 +23,7 @@ classes; **972** `dark:` variant occurrences. Every one of those is a hardcoded 
 theme cannot touch. "Full refactor" means replacing them all with semantic utilities
 (`bg-bg`, `text-fg`, `bg-surface`, `text-accent`, `border-border`, …) driven by CSS
 variables. That is mechanical but large, and it must land in reviewable slices behind the
-one-PR-at-a-time rule. Ships **after** the queued thumbnail batch (#9a) merges.
+one-PR-at-a-time rule.
 
 Cost/liability: **none** — pure CSS + one client component + `localStorage`. No paid
 service, no payment/RLS/schema surface. Not flagged 💰/⚠️.
@@ -92,13 +93,16 @@ hex, `isDark`). The picker renders from it; a unit test asserts every registry s
 matching `[data-theme="<slug>"]` block in `globals.css` (read the file in the test — same
 "test the invariant" approach as `orderStatus.ts` / `statsExcludedInList`).
 
-### Picker (`app/components/ThemePicker.tsx`, replaces `ThemeToggle.tsx`)
+### Picker (`app/components/ThemePicker.tsx`, replaces `ThemeToggle.tsx`) — shipped in PR 1
 
-Palette-icon button in `headerNavbar` where the sun/moon is now. Opens a small popover:
-one swatch per theme (the registry hex), current one ringed, name shown on hover
-(`title` + visible label). Click → set `dataset.theme` + `localStorage.setItem("theme", slug)`.
-`prefers-reduced-motion` respected on the cross-fade. Per-browser only, exactly like the
-current dark-mode persistence.
+Palette-icon button in `headerNavbar` where the sun/moon was. **An anchored dropdown that
+opens directly under the trigger on every screen size** — left-aligned on the mobile
+header's top row, right-aligned in the desktop nav; `max-h-[60vh]` + scrolls for a long
+list; a transparent full-screen tap-scrim on small screens so an outside tap dismisses
+reliably. One swatch + name per theme, the active one marked. Click → set `data-theme` +
+toggle `.dark` + `localStorage.setItem("theme", slug)`. It's a menu, not a modal form, so
+deliberately **not** a bottom sheet (that pattern is `EnquirySheet` / the Notify dialog).
+Per-browser persistence, exactly like the old dark-mode toggle.
 
 ---
 
@@ -122,22 +126,24 @@ locked to the current values so PR 1 is a zero-visual-change refactor).
 
 ---
 
-## Phasing (one PR each, sequential)
+## Phasing — compressed to ~4 PRs (owner's call, 2026-09-10)
+
+The `dark:` → token conversion is pure mechanical substitution with **zero visual change
+until the palettes land in PR 4**, so larger batches carry less risk here than for feature
+work. The original 8-slice plan is folded into 4 (+ an optional admin one):
 
 | PR | Scope | Visual change |
 | --- | --- | --- |
-| **1** | Token layer + Tailwind mappings; `[data-theme="sand"]` / `["ink"]` reproducing today's light/dark exactly; new blocking script (+ legacy `.dark` shim); `themes.ts` registry + invariant test; `ThemePicker` with the 2 swatches. | **none** — light & ink must render pixel-identical to current light & dark |
-| **2** | Shared chrome: `layout.tsx`, `headerNavbar`, footer + compliance links, shared buttons, `PromoBanner`, `SpendOfferBanner`. | none (token values unchanged) |
-| **3** | Product surfaces: `ProductCard`, catalog grid / `CatalogSection`, `PriceDisplay`, badges, `ProductGallery`. | none |
-| **4** | PDP + homepage strips: `product/[id]`, `BestsellersStrip`, `CategorySlider`, `HeroProductRotator`, `TestimonialsStrip`. | none |
-| **5** | Cart / checkout / wishlist: `CartDrawer`, `CheckoutSheet` + steps, `/wishlist`, `/success`. | none |
-| **6** | Remaining pages: `/faq`, `/guides`, `/refer`, `/corporate`, policy pages, `/track`, `/spotlight`, error/not-found. | none |
-| **7** | `grep` gate: 0 `dark:` / `stone-` / `amber-` left in storefront → delete the `.dark` shim from the blocking script. Add themes 3–10 (CSS block + registry row each) + their swatches in the picker. | **themes go live** |
-| **8** *(optional)* | Admin panel (`app/admin/**`) — internal tool, lower priority; convert only if wanted. | none |
+| **1** ✅ *(merged 2026-09-10)* | Token layer + Tailwind mappings; `[data-theme="sand"]` / `["ink"]` reproducing today's light/dark exactly; new blocking script (+ legacy `.dark` shim); `themes.ts` registry + tests; `ThemePicker` (anchored dropdown) with the 2 swatches. | **none** — `sand` & `ink` render pixel-identical to current light & dark |
+| **2** | **Chrome + product surfaces.** `layout.tsx`, `headerNavbar`, footer + compliance links, shared buttons, `PromoBanner`, `SpendOfferBanner`; `ProductCard`, catalog grid / `CatalogSection`, `PriceDisplay`, badges, `ProductGallery`; `product/[id]`, `BestsellersStrip`, `CategorySlider`, `HeroProductRotator`, `TestimonialsStrip`. Convert `dark:` variants → semantic tokens. | **none** (`sand`/`ink` token values unchanged) |
+| **3** | **Cart / checkout / remaining pages.** `CartDrawer`, `CheckoutSheet` + steps, `CartSuggestions`, `/wishlist`, `/wishlist/shared`, `/success`; `/faq`, `/guides`, `/refer`, `/corporate`, policy pages, `/track`, `/spotlight`, error/not-found. Convert `dark:` → tokens. | **none** |
+| **4** | **`grep` gate** — 0 `dark:` / `stone-` / `amber-` left in the storefront → delete the `.dark` shim from the blocking script + `ThemePicker`. **Add the 8 remaining palettes** (`dusk`, `brass`, `forest`, `rose`, `midnight`, `marigold`, `slate`, `peacock`) as one `:root[data-theme]` CSS block + a `THEMES` row + a swatch each. Tune each for WCAG AA body-text contrast. | **the 10 themes go live** |
+| **5** *(optional)* | Admin panel (`app/admin/**`) — internal tool; convert only if wanted. | none |
 
-Each PR: `tsc --noEmit` clean · `eslint` no new errors · `npm test` green (registry test in
-PR 1) · `next build` exit 0 · eyeball the affected surfaces in both `sand` and `ink` ·
-HANDBOOK.html section + Change-log row · re-publish the artifact · then merge.
+Each PR: `tsc --noEmit` clean · `eslint` no new errors vs. the `main` baseline · `npm test`
+green · `next build` exit 0 · eyeball the affected surfaces in both `sand` and `ink` (PR 2/3)
+or all 10 themes (PR 4) · HANDBOOK.html section + Change-log row · re-publish the artifact ·
+one PR open at a time.
 
 ---
 

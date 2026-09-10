@@ -12,15 +12,19 @@ care, land behind tests, never "blind".
 
 ## Done
 
-### Theming series PR 1 of 8 — token foundation + swatch picker — 2026-09-10 IST
+### Theming series PR 1 of ~4 — token foundation + swatch picker — 2026-09-10 IST
 - Owner asked for 9–10 user-selectable colour themes ("playful"); signed off `docs/DESIGN-theming.md` —
-  full semantic-token refactor, each theme its own fixed look, subtle swatch menu, 8 sequential PRs.
+  full semantic-token refactor, each theme its own fixed look, anchored swatch dropdown; the `dark:`→token
+  conversion compressed to ~4 PRs.
 - **PR 1 changes nothing visually** (either theme). New `app/utils/themes.ts` registry (`sand` = old light,
   `ink` = old dark; `resolveThemeSlug`, `buildThemeInitScript`), semantic `:root[data-theme]` token blocks +
   `@theme inline` map in `globals.css` (inert — nothing consumes them yet), rewritten pre-paint script
   (sets `data-theme`, keeps a `.dark` shim for the ~970 unconverted `dark:` variants; behaviour identical
-  for every value `ThemeToggle` ever wrote), `ThemePicker.tsx` replacing `ThemeToggle.tsx` — mobile-first
-  (bottom sheet on phones with a backdrop / grab handle / 48px rows, dropdown from `sm:`).
+  for every value `ThemeToggle` ever wrote), `ThemePicker.tsx` replacing `ThemeToggle.tsx`.
+- Follow-up (2026-09-10 09:59): `ThemePicker` menu changed from a phone bottom sheet to an **anchored
+  dropdown on every screen size** (opens under the trigger; height-capped + scrolls) — a bottom sheet made
+  the user tap top-left then look bottom-of-screen. See HANDBOOK Change log.
+- **Conversion compressed to ~4 PRs** (owner, 2026-09-10) — see Active #22.
 - Verified: `tsc` clean · `npm test` 319/320 (+21, incl. a globals.css cross-check and a sandbox that pins
   the generated script to `resolveThemeSlug`) · `eslint` 0 errors, warnings net-neutral · `next build` exit 0.
 - **Owner to eyeball on the dev server** before merge: light/dark unchanged, swatch menu opens + switches,
@@ -1559,14 +1563,16 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 4 (maintainability / observability)
 
-22. **Theming series — PRs 2–8** (plan: `docs/DESIGN-theming.md`; PR 1 shipped 2026-09-10, see Done).
-    One PR each, sequential: **2** shared chrome (layout/header/footer/buttons/banners) → **3** ProductCard +
-    catalog grid + PriceDisplay + gallery → **4** product page + homepage strips → **5** cart/checkout/
-    wishlist/success → **6** remaining pages (faq/guides/refer/policy/track/spotlight) → **7** drop the
-    `.dark` shim once `grep` shows 0 `dark:`/`stone-`/`amber-` left, then add themes 3–10 (CSS block +
-    registry row + swatch each) → **8** *(optional)* admin panel. Each PR: convert one cluster's `dark:`
-    variants to the semantic tokens, zero visual change until PR 7's palettes land, full verify gate +
-    docs. Order it after the COD-fee-report batch (Tier 1 #6) or before — owner's call.
+22. **Theming series — PRs 2–4** (plan: `docs/DESIGN-theming.md`; PR 1 merged 2026-09-10, see Done).
+    Compressed from 8 slices to ~4 (owner's call — the `dark:`→token swap is mechanical and invisible
+    until PR 4's palettes land): **2** chrome + product surfaces (layout/header/footer/buttons/banners +
+    ProductCard/catalog/PriceDisplay/gallery + product page + homepage strips) → **3** cart/checkout +
+    remaining pages (wishlist/success/faq/guides/refer/corporate/policy/track/spotlight/not-found) →
+    **4** `grep` gate to 0 `dark:` left → drop the `.dark` shim + add the 8 palettes (`dusk`, `brass`,
+    `forest`, `rose`, `midnight`, `marigold`, `slate`, `peacock`) as CSS block + registry row + swatch
+    each, tuned for AA contrast → **10 themes live**. **5** *(optional)* admin panel. Each PR: full
+    verify gate, eyeball `sand`+`ink` (PR 2/3) or all 10 (PR 4), docs. Sequence vs. the COD-fee-report
+    batch (Tier 1 #6) — owner's call.
 
 16. ~~**`product_sales` reconcile check.**~~ — **done + scheduled.**
     `/api/cron/product-sales-reconcile` (GET, `CRON_SECRET` bearer): recomputes the tally

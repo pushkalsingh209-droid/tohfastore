@@ -12,10 +12,13 @@ import { THEMES, isDarkThemeSlug, DEFAULT_THEME_SLUG } from "@/app/utils/themes"
 // While a dark theme is active it also toggles the legacy `.dark` class so
 // the not-yet-converted Tailwind `dark:` variants keep working.
 //
-// Mobile-first: the menu is a full-width bottom sheet on phones (thumb-
-// reachable, safe-area padded, backdrop, grab handle, 48px rows) and a
-// compact dropdown anchored to the button from sm: up -- the same shape as
-// EnquirySheet and the admin "Notify customer" dialog.
+// It's a menu, not a form, so it's an anchored dropdown right under the
+// trigger on every screen size -- NOT a bottom sheet (that pattern, e.g.
+// EnquirySheet, is for modal forms; here it would mean "tap top, look at
+// the bottom of the screen"). Anchors left under the icon on the mobile
+// header's top row, right in the desktop nav. A faint tap-scrim on small
+// screens makes an outside tap dismiss reliably; 44px rows; caps its height
+// and scrolls once there are many themes.
 export default function ThemePicker() {
   const [open, setOpen] = useState(false);
   // Hydrate the active row from the <html> attribute the blocking script
@@ -85,29 +88,23 @@ export default function ThemePicker() {
 
       {open && (
         <>
-          {/* Dim backdrop -- phones only (the bottom sheet). On desktop the
-              outside-click handler is enough and a full-screen dim would be
-              heavy for a small dropdown. */}
+          {/* Transparent tap-scrim -- small screens only. Touch "outside
+              click" can miss when the tap lands on an inert element; a
+              full-screen catcher makes dismissal reliable without dimming
+              the page for what is a small menu. */}
           <button
             type="button"
             aria-label="Close theme menu"
+            tabIndex={-1}
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 bg-stone-900/50 backdrop-blur-[2px] sm:hidden"
+            className="fixed inset-0 z-40 cursor-default sm:hidden"
           />
 
           <div
             role="menu"
             aria-label="Colour theme"
-            className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-stone-200 bg-white p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-xl dark:border-stone-700 dark:bg-stone-900 sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:mt-2 sm:w-44 sm:rounded-lg sm:border sm:p-1.5 sm:pb-1.5 sm:shadow-lg"
+            className="absolute left-0 top-full z-50 mt-2 max-h-[60vh] w-44 overflow-y-auto overscroll-contain rounded-lg border border-stone-200 bg-white p-1.5 shadow-lg dark:border-stone-700 dark:bg-stone-900 sm:left-auto sm:right-0"
           >
-            {/* grab handle + label -- phones only */}
-            <div className="sm:hidden">
-              <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-stone-300 dark:bg-stone-600" />
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
-                Colour theme
-              </p>
-            </div>
-
             {THEMES.map((t) => {
               const isActive = t.slug === active;
               return (
@@ -118,7 +115,7 @@ export default function ThemePicker() {
                   aria-checked={isActive}
                   onClick={() => pick(t.slug)}
                   title={t.name}
-                  className={`flex min-h-[48px] w-full items-center gap-3 rounded-md px-3 text-left text-sm transition sm:min-h-0 sm:gap-2.5 sm:px-2 sm:py-1.5 ${
+                  className={`flex min-h-[44px] w-full items-center gap-2.5 rounded-md px-2 text-left text-sm transition sm:min-h-0 sm:py-1.5 ${
                     isActive
                       ? "bg-stone-100 font-medium text-stone-900 dark:bg-stone-800 dark:text-stone-100"
                       : "text-stone-600 hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800/60"
@@ -126,7 +123,7 @@ export default function ThemePicker() {
                 >
                   <span
                     aria-hidden="true"
-                    className="h-5 w-5 flex-shrink-0 rounded-full border border-black/10 dark:border-white/15 sm:h-4 sm:w-4"
+                    className="h-4 w-4 flex-shrink-0 rounded-full border border-black/10 dark:border-white/15"
                     style={{ backgroundColor: t.swatch }}
                   />
                   <span className="flex-1">
@@ -134,7 +131,7 @@ export default function ThemePicker() {
                   </span>
                   {isActive && (
                     <svg
-                      className="h-4 w-4 text-amber-600 dark:text-amber-500 sm:h-3.5 sm:w-3.5"
+                      className="h-3.5 w-3.5 flex-shrink-0 text-amber-600 dark:text-amber-500"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                       aria-hidden="true"
