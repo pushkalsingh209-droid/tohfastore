@@ -2046,11 +2046,15 @@ once the new flow had clean live orders.)</p>
       (<code>useCheckoutMachine.test.ts</code>, 24 cases).</li>
   <li><strong><code>CheckoutSheet.tsx</code></strong> owns every typed value (name/email/phone, OTP code, address,
       coupon, policy consent) and the payment orchestration. Renders <code>Stepper</code> + one of
-      <code>steps/{ContactStep,DeliveryStep,ReviewStep}</code>. The WhatsApp OTP block is its own
-      <code>steps/PhoneVerification.tsx</code>, rendered inside <code>ReviewStep</code> right above the policy
-      consent; the sheet footer stays disabled on step 3 until <code>contactVerified &amp;&amp; agreedToPolicy</code>.
-      Each step component is a near-verbatim lift of the old <code>CartDrawer</code> JSX; each owns its own input
-      refs and self-manages focus.</li>
+      <code>steps/{ContactStep,DeliveryStep,ReviewStep}</code>, plus the two Review-step gate sheets. On step 3
+      the footer is a <strong>progressive CTA</strong>: not-verified &rarr; &ldquo;Verify WhatsApp number&rdquo;
+      (opens <code>CheckoutGateSheets</code>&rsquo; <strong>VerifySheet</strong>, which wraps the slimmed
+      <code>steps/PhoneVerification.tsx</code> OTP controls); then not-agreed &rarr; &ldquo;Review &amp; accept
+      terms&rdquo; (opens <strong>TermsSheet</strong> &mdash; the bilingual policy + an explicit &ldquo;I Agree
+      &amp; Continue&rdquo;); then &ldquo;Pay &#8377;X&rdquo;. The button is only disabled while a request is in
+      flight. <code>ReviewStep</code> shows a compact <code>GateRow</code> per gate. Each step component is a
+      near-verbatim lift of the old <code>CartDrawer</code> JSX; each owns its own input refs and self-manages
+      focus.</li>
   <li><code>Stepper.tsx</code> &mdash; sticky header: Back chevron (never loses input) + step title + 3-segment
       progress bar + &ldquo;Step N of 3&rdquo;.</li>
 </ul>
@@ -3024,6 +3028,47 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-10<br>15:30</code></td>
+  <td><strong>Checkout Review: the two gates become footer-triggered bottom-sheets</strong><br>(&#9888; payment path &mdash; UX follow-up to #4, owner-reported: the verify field was buried and the disabled button gave no clue)</td>
+  <td>
+    On the live #4 build, an unverified shopper hit a <em>disabled</em> &ldquo;Verify WhatsApp number to
+    continue&rdquo; button with the verify field far below the fold &mdash; inexperienced users got stuck with
+    no idea to scroll. Fixed by making the sheet footer a <strong>progressive CTA</strong> and moving both
+    gates into focused bottom-sheets (<code>CheckoutGateSheets.tsx</code>, same shape as
+    <code>EnquirySheet</code>):
+    <ul class="tight">
+      <li>Footer, step 3: <code>not verified</code> &rarr; <strong>&ldquo;Verify WhatsApp number&rdquo;</strong>
+      opens the <strong>Verify sheet</strong> (phone shown, Send code / 6-digit / Verify, auto-focused; closes
+      itself on success). Then <code>terms not accepted</code> &rarr;
+      <strong>&ldquo;Review &amp; accept terms&rdquo;</strong> opens the <strong>Terms sheet</strong> (full
+      bilingual policy, scrolls inside; one explicit <strong>&ldquo;I Agree &amp; Continue&rdquo;</strong>
+      button records consent and closes). Then &rarr; <strong>&ldquo;Pay &#8377;X&rdquo;</strong>. The button
+      is only ever <em>disabled</em> while a request is in flight &mdash; every other state is a live action,
+      no dead button.</li>
+      <li><code>ReviewStep</code> body shrank: the long inline <code>PhoneVerification</code> block and the
+      long inline policy block are gone, replaced by two compact <code>GateRow</code>s (&ldquo;&ndash; verify
+      to place the order&rdquo; / &ldquo;&#10003; verified &middot; +91&hellip;&rdquo;, with a
+      Change/Open/View link into the matching sheet/step). No scrolling to find a field or a checkbox; no
+      scrolling back down to pay.</li>
+      <li>Consent is still an <strong>explicit affirmative act</strong> (the &ldquo;I Agree &amp;
+      Continue&rdquo; button) and still recorded per-order in <code>agreedToPolicy</code> &mdash; the server
+      path is unchanged.</li>
+    </ul>
+  </td>
+  <td>
+    <em>edited:</em> new <code>app/components/checkout/CheckoutGateSheets.tsx</code>;
+    <code>CheckoutSheet.tsx</code>, <code>steps/ReviewStep.tsx</code>, <code>steps/PhoneVerification.tsx</code>
+    (slimmed to just the OTP controls); this handbook, <code>docs/DESIGN-extract-checkout-machine.md</code>,
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> (checkout dir) clean &middot;
+    <code>npm test</code> 337 / 1 skip &middot; <code>next build</code> exit 0, 145/145. Walkthrough
+    (headless, seeded cart) reaches Review with the progressive footer label and the footer tap opens a
+    bottom-sheet (scrim + slide-up panel confirmed); a clean shot of the sheet <em>body</em> wasn&rsquo;t
+    captured (dev-server recompile + cookie/install overlays in the frame). <strong>Owner: verify the two
+    sheets on the deploy preview.</strong></td>
+</tr>
 <tr>
   <td><code>2026-09-10<br>14:41</code></td>
   <td><strong>&ldquo;Gift Guides&rdquo; reachable on mobile</strong><br>(nav fix &mdash; no payment/schema surface)</td>

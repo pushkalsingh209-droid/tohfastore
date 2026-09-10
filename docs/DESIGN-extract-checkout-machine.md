@@ -47,6 +47,29 @@ see the address form or the real total. IMPROVEMENTS.md #4, owner-approved.
   identical, the ask just lands later in the funnel.
 - `useCheckoutMachine.test.ts` rewritten for the new flow (24 cases).
 
+### Follow-up 2026-09-10 (15:30) — the two Review gates are bottom-sheets
+
+The first cut put `PhoneVerification` + the full policy block **inline** near
+the bottom of `ReviewStep`. On a phone that buried the verify field below the
+fold, and the footer button just sat there *disabled* with helper text
+pointing "above" — inexperienced shoppers got stuck. Fixed:
+
+- **`CheckoutGateSheets.tsx`** — `VerifySheet` + `TermsSheet`, bottom-sheets
+  with the same shell as `EnquirySheet` (scrim, slide-up, grab handle, Esc).
+- **The footer is a progressive CTA** on step 3:
+  `!verified` → "Verify WhatsApp number" (opens VerifySheet, auto-focused;
+  `handleVerifyOtp` success calls `setGate(null)`) →
+  `!agreedToPolicy` → "Review & accept terms" (opens TermsSheet; its
+  "I Agree & Continue" button sets `agreedToPolicy` + closes) →
+  "Pay ₹X" / "Place Order · Pay ₹X on delivery".
+  The button is `disabled` only while `loading`.
+- **`ReviewStep`** drops both inline blocks; shows one compact `GateRow` per
+  gate (done ✓ / pending –, with a Change/Open/View link).
+- `PhoneVerification.tsx` slimmed to just the send/verify/resend controls
+  (the sheet supplies the heading + phone line).
+- Consent is still an explicit affirmative act, still recorded per-order in
+  `agreedToPolicy`; server path unchanged.
+
 ---
 
 ## 1. Current shape

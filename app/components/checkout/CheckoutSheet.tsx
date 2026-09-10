@@ -20,6 +20,7 @@ import { INDIAN_STATES } from "@/app/utils/indianStates";
 import Stepper from "@/app/components/checkout/Stepper";
 import ContactStep from "@/app/components/checkout/steps/ContactStep";
 import { type OtpUi } from "@/app/components/checkout/steps/PhoneVerification";
+import { VerifySheet, TermsSheet } from "@/app/components/checkout/CheckoutGateSheets";
 import DeliveryStep, { type PincodeLookupStatus } from "@/app/components/checkout/steps/DeliveryStep";
 import ReviewStep from "@/app/components/checkout/steps/ReviewStep";
 import { useCheckoutMachine } from "@/app/components/checkout/useCheckoutMachine";
@@ -91,6 +92,9 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Which Review-step gate sheet is open (#4 follow-up). The footer's
+  // progressive CTA opens these; each closes itself once satisfied.
+  const [gate, setGate] = useState<null | "verify" | "terms">(null);
 
   // --- storewide "Spend & Save" tier offer (preview only) ---
   // When it's running, the offer and a coupon are mutually exclusive but
@@ -292,6 +296,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
         return;
       }
       m.otpVerified(data.token || "", customerPhone);
+      setGate(null); // close the verify sheet; footer advances to the next gate
 
       // Best-effort "verified but not yet paid" signal -- once per phone.
       if (leadCapturedPhoneRef.current !== customerPhone) {
@@ -742,10 +747,14 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
       if (validateDelivery()) m.goReview();
       return;
     }
-    // Step 3: verification is the last gate before paying (#4).
+    // Step 3: progressive CTA -- each gate opens its own focused sheet, so
+    // the shopper never has to hunt for a field or a checkbox (#4 follow-up).
     if (!m.contactVerified) {
-      setValidationError("Please verify your WhatsApp number above to place the order.");
-      flagInvalid("phone");
+      setGate("verify");
+      return;
+    }
+    if (!agreedToPolicy) {
+      setGate("terms");
       return;
     }
     if (isCodOrder) handleCodOrder();
@@ -771,12 +780,15 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
         ? "Placing your order…"
         : "Starting secure payment…"
       : !m.contactVerified
-      ? "Verify WhatsApp number to continue"
+      ? "Verify WhatsApp number"
+      : !agreedToPolicy
+      ? "Review & accept terms"
       : isCodOrder
       ? `Place Order · Pay ₹${Math.round(payTotal).toLocaleString("en-IN")} on delivery`
       : `Pay ₹${Math.round(payTotal).toLocaleString("en-IN")}`;
-  const footerDisabled =
-    m.step === 3 && (loading || !agreedToPolicy || !m.contactVerified);
+  // Every step now has a meaningful footer action -- the only time the
+  // button does nothing is while a request is in flight.
+  const footerDisabled = m.step === 3 && loading;
 
   return (
     <div
@@ -847,22 +859,14 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
                 cart,
                 cartTotal,
                 categoryDiscounts,
-                verification: {
-                  customerName,
-                  customerEmail,
-                  customerPhone,
-                  whatsappCheckStatus,
-                  whatsappCheckedPhone,
-                  otpUi,
-                  otpVerified: m.contactVerified,
-                  otpCode,
-                  setOtpCode,
-                  otpError: otpErrorText,
-                  cooldown,
-                  onSendOtp: handleSendOtp,
-                  onVerifyOtp: handleVerifyOtp,
-                  onEditDetails: () => m.goContact(),
+                verified: m.contactVerified,
+                verifiedPhone: m.credentials?.phone ?? customerPhone,
+                agreedToPolicy,
+                onEditContact: () => {
+                  setGate(null);
+                  m.goContact();
                 },
+                onOpenTerms: () => setGate("terms"),
                 offerActive: offerRunning,
                 offerLabel: spendOffer?.label ?? null,
                 offerDiscount,
@@ -885,11 +889,6 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
               paymentMethod: isCodOrder ? "cod" : "prepaid",
               onChoosePrepaid: () => setPaymentMethod("prepaid"),
               onChooseCod: chooseCod,
-
-              agreedToPolicy,
-                setAgreedToPolicy,
-                invalidField,
-                clearInvalid: () => setInvalidField(null),
               }}
             />
           )}
@@ -910,17 +909,46 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
             Enter your name, email, and WhatsApp number to continue. You&rsquo;ll verify the number at the last step.
           </p>
         )}
-        {m.step === 3 && !m.contactVerified && (
+        {m.step === 3 && !loading && !m.contactVerified && (
           <p className="mt-2 text-[10px] text-faint text-center">
-            Verify your WhatsApp number above to place the order.
+            Two quick steps left: verify your WhatsApp number, then accept the refund policy.
           </p>
         )}
-        {m.step === 3 && m.contactVerified && !agreedToPolicy && (
+        {m.step === 3 && !loading && m.contactVerified && !agreedToPolicy && (
           <p className="mt-2 text-[10px] text-faint text-center">
-            Tick the Cancellation &amp; Refund Policy above to enable payment.
+            One step left: read &amp; accept the Cancellation &amp; Refund Policy.
           </p>
         )}
       </div>
+
+      <VerifySheet
+        open={gate === "verify"}
+        onClose={() => setGate(null)}
+        verification={{
+          customerName,
+          customerEmail,
+          customerPhone,
+          whatsappCheckStatus,
+          whatsappCheckedPhone,
+          otpUi,
+          otpVerified: m.contactVerified,
+          otpCode,
+          setOtpCode,
+          otpError: otpErrorText,
+          cooldown,
+          onSendOtp: handleSendOtp,
+          onVerifyOtp: handleVerifyOtp,
+          onEditDetails: () => {
+            setGate(null);
+            m.goContact();
+          },
+        }}
+      />
+      <TermsSheet
+        open={gate === "terms"}
+        onClose={() => setGate(null)}
+        onAgree={() => setAgreedToPolicy(true)}
+      />
     </div>
   );
 }
