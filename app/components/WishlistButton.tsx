@@ -16,7 +16,7 @@ export default function WishlistButton({ product }: { product: StoreProduct }) {
       className={`w-full flex items-center justify-center gap-2 text-xs uppercase tracking-wider px-5 py-3.5 rounded font-medium transition duration-200 border ${
         wishlisted
           ? "border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20"
-          : "border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800"
+          : "border-border-strong text-muted hover:bg-surface-2"
       }`}
     >
       <svg

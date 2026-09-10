@@ -76,18 +76,18 @@ export default function HeaderNavbar() {
                   mark reads as one color system with the wordmark instead
                   of the darker maroon used on the favicon/email/WhatsApp
                   asset. */}
-              <rect width="200" height="200" rx="40" className="fill-amber-700 dark:fill-amber-500" />
+              <rect width="200" height="200" rx="40" className="fill-link" />
               <rect x="48" y="100" width="104" height="62" rx="8" fill="url(#brassGradHeader)" />
               <rect x="40" y="82" width="120" height="20" rx="8" fill="#FFF0CF" />
-              <rect x="93" y="82" width="14" height="80" className="fill-amber-700 dark:fill-amber-500" />
-              <rect x="36" y="89" width="128" height="6" className="fill-amber-700 dark:fill-amber-500" />
+              <rect x="93" y="82" width="14" height="80" className="fill-link" />
+              <rect x="36" y="89" width="128" height="6" className="fill-link" />
               <path d="M 100 80 C 78 80 68 64 82 54 C 94 47 100 62 100 78 Z" fill="url(#brassGradHeader)" />
               <path d="M 100 80 C 122 80 132 64 118 54 C 106 47 100 62 100 78 Z" fill="url(#brassGradHeader)" />
-              <rect x="93" y="73" width="14" height="13" rx="4" className="fill-amber-700 dark:fill-amber-500" stroke="url(#brassGradHeader)" strokeWidth="2.5" />
+              <rect x="93" y="73" width="14" height="13" rx="4" className="fill-link" stroke="url(#brassGradHeader)" strokeWidth="2.5" />
             </svg>
             <div className="flex flex-col">
-              <span className="text-xl md:text-2xl font-serif tracking-widest text-amber-700 dark:text-amber-500 font-bold group-hover:text-amber-800 dark:group-hover:text-amber-400 transition">TOHFA</span>
-              <span className="text-[9px] md:text-[10px] italic tracking-wide leading-tight text-stone-500 dark:text-stone-400 -mt-1 max-w-[130px] sm:max-w-none">Crafted Traditions. Timeless Gifts.</span>
+              <span className="text-xl md:text-2xl font-serif tracking-widest text-link font-bold group-hover:text-link-hover transition">TOHFA</span>
+              <span className="text-[9px] md:text-[10px] italic tracking-wide leading-tight text-faint -mt-1 max-w-[130px] sm:max-w-none">Crafted Traditions. Timeless Gifts.</span>
             </div>
           </Link>
 
@@ -95,7 +95,7 @@ export default function HeaderNavbar() {
             <ThemePicker />
             <Link
               href="/wishlist"
-              className="relative p-2 text-stone-800 dark:text-stone-200 hover:text-rose-600 transition"
+              className="relative p-2 text-fg hover:text-rose-600 transition"
               aria-label="Wishlist"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -110,11 +110,11 @@ export default function HeaderNavbar() {
             {/* Shopping Bag: shown here on mobile's top row; hidden on desktop where it moves into the right-side nav */}
             <button
               onClick={() => setIsOpen(true)}
-              className="relative p-2 text-stone-800 dark:text-stone-200 hover:text-amber-700 dark:hover:text-amber-500 font-semibold tracking-wide transition text-xs uppercase border-l pl-4 border-stone-200 dark:border-stone-700"
+              className="relative p-2 text-fg hover:text-link font-semibold tracking-wide transition text-xs uppercase border-l pl-4 border-border"
             >
               Bag
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-amber-700 text-white text-[10px] font-bold font-mono w-5 h-5 rounded-full flex items-center justify-center shadow-md">
+                <span className="absolute -top-1 -right-1 bg-accent text-accent-fg text-[10px] font-bold font-mono w-5 h-5 rounded-full flex items-center justify-center shadow-md">
                   {cartCount}
                 </span>
               )}
@@ -128,15 +128,15 @@ export default function HeaderNavbar() {
         </div>
 
         {/* Desktop-only right side controls */}
-        <nav className="hidden md:flex items-center gap-6 sm:gap-8 font-medium text-sm tracking-wide text-stone-600 dark:text-stone-300 md:ml-auto">
-          <Link href="/" className="hover:text-amber-700 dark:hover:text-amber-500 transition">Collections</Link>
-          <Link href="/guides" className="hover:text-amber-700 dark:hover:text-amber-500 transition">Gift Guides</Link>
+        <nav className="hidden md:flex items-center gap-6 sm:gap-8 font-medium text-sm tracking-wide text-muted md:ml-auto">
+          <Link href="/" className="hover:text-link transition">Collections</Link>
+          <Link href="/guides" className="hover:text-link transition">Gift Guides</Link>
 
           <ThemePicker />
 
           <Link
             href="/wishlist"
-            className="relative p-2 text-stone-800 dark:text-stone-200 hover:text-rose-600 transition"
+            className="relative p-2 text-fg hover:text-rose-600 transition"
             aria-label="Wishlist"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -152,11 +152,11 @@ export default function HeaderNavbar() {
           {/* Interactive Shopping Bag Counter Key */}
           <button
             onClick={() => setIsOpen(true)}
-            className="relative p-2 text-stone-800 dark:text-stone-200 hover:text-amber-700 dark:hover:text-amber-500 font-semibold tracking-wide transition text-xs uppercase border-l pl-4 border-stone-200 dark:border-stone-700"
+            className="relative p-2 text-fg hover:text-link font-semibold tracking-wide transition text-xs uppercase border-l pl-4 border-border"
           >
             Shopping Bag
             {cartCount > 0 && (
-              <span className="absolute -top-1 -right-2 bg-amber-700 text-white text-[10px] font-bold font-mono w-5 h-5 rounded-full flex items-center justify-center shadow-md animate-fade-in">
+              <span className="absolute -top-1 -right-2 bg-accent text-accent-fg text-[10px] font-bold font-mono w-5 h-5 rounded-full flex items-center justify-center shadow-md animate-fade-in">
                 {cartCount}
               </span>
             )}
@@ -172,7 +172,7 @@ export default function HeaderNavbar() {
           links into the homepage's existing ?category filter. The default
           (unfiltered) homepage is never touched; products only appear
           scoped to a category once a link here is clicked. */}
-      <div className="border-t border-stone-100 dark:border-stone-800">
+      <div className="border-t border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between gap-3 py-2.5">
             {menuCategories.length > 0 ? (
@@ -181,7 +181,7 @@ export default function HeaderNavbar() {
                 onClick={() => setCategoryMenuOpen((open) => !open)}
                 aria-expanded={categoryMenuOpen}
                 aria-controls="category-menu-panel"
-                className="relative flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold text-amber-800 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 rounded pl-2.5 pr-3 py-1.5 shadow-sm transition active:scale-95 flex-shrink-0"
+                className="relative flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold text-link-hover bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 rounded pl-2.5 pr-3 py-1.5 shadow-sm transition active:scale-95 flex-shrink-0"
               >
                 {/* Everything else in this bar is plain text (contact info)
                     or already a filled pill (Chat) -- giving this the same
@@ -213,16 +213,16 @@ export default function HeaderNavbar() {
             )}
 
             {/* Contact info -- desktop only, centered between Categories and Menu */}
-            <div className="hidden md:flex items-center gap-6 text-[11px] text-stone-500 dark:text-stone-400">
+            <div className="hidden md:flex items-center gap-6 text-[11px] text-faint">
               <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <span className="uppercase tracking-wider font-semibold text-stone-400 dark:text-stone-500">Email:</span>
-                <a href="mailto:contact@tohfaonline.com" className="text-amber-800 dark:text-amber-400 font-mono hover:underline">
+                <a href="mailto:contact@tohfaonline.com" className="text-link-hover font-mono hover:underline">
                   contact@tohfaonline.com
                 </a>
               </span>
               <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <span className="uppercase tracking-wider font-semibold text-stone-400 dark:text-stone-500">Call/WhatsApp:</span>
-                <span className="font-mono text-stone-900 dark:text-stone-100">+91 6302672351</span>
+                <span className="font-mono text-fg">+91 6302672351</span>
               </span>
               <a
                 href="https://wa.me/916302672351"
@@ -250,14 +250,14 @@ export default function HeaderNavbar() {
           {categoryMenuOpen && menuCategories.length > 0 && (
             <div
               id="category-menu-panel"
-              className="pb-3 flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-5 text-[11px] uppercase tracking-wider font-medium text-stone-500 dark:text-stone-400"
+              className="pb-3 flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-5 text-[11px] uppercase tracking-wider font-medium text-faint"
             >
               {menuCategories.map((name) => (
                 <a
                   key={name}
                   href={categoryHref(name)}
                   onClick={(e) => goToCategory(e, name)}
-                  className="py-2 sm:py-0 hover:text-amber-700 dark:hover:text-amber-500 transition"
+                  className="py-2 sm:py-0 hover:text-link transition"
                 >
                   {name}
                 </a>

@@ -12,6 +12,30 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Theming series PR 2 of ~4 — convert chrome + product surfaces to tokens — 2026-09-10 IST
+- ~350 `dark:` / `stone-` / `amber-` class occurrences across ~19 files → the semantic tokens from PR 1
+  (`bg-surface`, `text-fg`, `text-muted`, `text-faint`, `border-border`, `text-link`, `bg-accent`, …).
+  Files: `layout.tsx` (body + skip-link), `headerNavbar`, `PromoBanner`, `PriceDisplay`, `ProductCard`,
+  `CatalogSection`, `BestsellersStrip`, `CategorySlider`, `TestimonialsStrip`, `product/[id]/page.tsx`,
+  and the buy-box buttons (`AddToCartButton` / `StickyAddToCartBar` / `WishlistButton` /
+  `EnquireToBuyButton` / `ShareButtons` / `StockStatusBadge` / `NotifyWhenInStockButton` /
+  `RecentlyViewedStrip`).
+- **`globals.css` token values re-pinned** to the exact stone/amber hex each `X dark:Y` pair produces,
+  so `sand`/`ink` are byte-identical to today. Split `--link`/`--link-hover` out of `--accent` (they
+  default to `var(--accent*)`; only `ink` overrides — the one spot today's palette makes accent text
+  brighter than accent fills). `body{}` / focus-ring now use `var(--bg)`/`var(--fg)`/`var(--accent)`.
+- **Deferred to PR 4** (genuinely distinct hues, not sub-perceptual): the always-dark footer blocks,
+  the warm-amber pills (Categories menu / coupon pills / flip-bar gradient), disabled-button greys,
+  the inverted MRP-strike greys, and `rose`/`emerald`/`red` status colours. All still carry their
+  literal classes; the PR 4 `grep` gate resolves them.
+- **No visual change** — verified two ways: (1) a CDP `getComputedStyle` probe against the live dev
+  server confirmed every token resolves to the exact replaced hex in both `sand` and `ink`;
+  (2) homepage + PDP screenshots (headless Chrome, `preferredColorScheme` toggled) match `main` in
+  both themes.
+- Verified: `tsc` clean · `eslint .` 33 problems / 0 errors (= `main` baseline) · `npm test` 319/320 ·
+  `next build` exit 0, 145/145 static.
+- See `docs/HANDBOOK.html` Change log 2026-09-10 and `docs/DESIGN-theming.md`.
+
 ### Theming series PR 1 of ~4 — token foundation + swatch picker — 2026-09-10 IST
 - Owner asked for 9–10 user-selectable colour themes ("playful"); signed off `docs/DESIGN-theming.md` —
   full semantic-token refactor, each theme its own fixed look, anchored swatch dropdown; the `dark:`→token
@@ -1563,15 +1587,14 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 4 (maintainability / observability)
 
-22. **Theming series — PRs 2–4** (plan: `docs/DESIGN-theming.md`; PR 1 merged 2026-09-10, see Done).
-    Compressed from 8 slices to ~4 (owner's call — the `dark:`→token swap is mechanical and invisible
-    until PR 4's palettes land): **2** chrome + product surfaces (layout/header/footer/buttons/banners +
-    ProductCard/catalog/PriceDisplay/gallery + product page + homepage strips) → **3** cart/checkout +
-    remaining pages (wishlist/success/faq/guides/refer/corporate/policy/track/spotlight/not-found) →
-    **4** `grep` gate to 0 `dark:` left → drop the `.dark` shim + add the 8 palettes (`dusk`, `brass`,
-    `forest`, `rose`, `midnight`, `marigold`, `slate`, `peacock`) as CSS block + registry row + swatch
-    each, tuned for AA contrast → **10 themes live**. **5** *(optional)* admin panel. Each PR: full
-    verify gate, eyeball `sand`+`ink` (PR 2/3) or all 10 (PR 4), docs. Sequence vs. the COD-fee-report
+22. **Theming series — PRs 3–4** (plan: `docs/DESIGN-theming.md`; PRs 1 & 2 merged 2026-09-10, see Done).
+    ~4-PR plan: ~~**2** chrome + product surfaces~~ (shipped — ~350 class occurrences → tokens, verified
+    no visual change via CDP probe + screenshot diff; footer/warm-pills/disabled/MRP-grey/status colours
+    deferred to PR 4). **3** cart/checkout + remaining pages (CartDrawer/CheckoutSheet + wishlist/success/
+    faq/guides/refer/corporate/policy/track/spotlight/not-found). **4** `grep` gate to 0 `dark:` left
+    (resolves the PR-2 deferrals) → drop the `.dark` shim → add the 8 palettes (`dusk`, `brass`, `forest`,
+    `rose`, `midnight`, `marigold`, `slate`, `peacock`) as CSS block + registry row + swatch each, tuned
+    for AA contrast → **10 themes live**. **5** *(optional)* admin panel. Sequence vs. the COD-fee-report
     batch (Tier 1 #6) — owner's call.
 
 16. ~~**`product_sales` reconcile check.**~~ — **done + scheduled.**

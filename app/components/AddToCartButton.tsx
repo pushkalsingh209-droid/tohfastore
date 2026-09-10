@@ -38,7 +38,7 @@ export default function AddToCartButton({ product }: { product: StoreProduct }) 
       className={`w-full text-xs uppercase tracking-wider px-5 py-3.5 rounded font-medium transition duration-200 shadow-sm ${
         addToCartDisabled
           ? "bg-stone-200 text-stone-400 cursor-not-allowed"
-          : "bg-stone-900 hover:bg-amber-700 text-white active:scale-95"
+          : "bg-stone-900 hover:bg-accent text-accent-fg active:scale-95"
       }`}
     >
       {outOfStock ? "Sold Out" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}

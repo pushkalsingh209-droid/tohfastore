@@ -44,7 +44,7 @@ export default function EnquireToBuyButton({
         onClick={() => setOpen(true)}
         /* min-h-[48px] and full width: on a phone this is the sticky bar's
            only control, so it has to be a comfortable thumb target. */
-        className="w-full min-h-[48px] flex flex-col items-center justify-center rounded bg-amber-700 hover:bg-amber-800 active:scale-95 px-5 py-2.5 text-white shadow-sm transition duration-200"
+        className="w-full min-h-[48px] flex flex-col items-center justify-center rounded bg-accent hover:bg-accent-hover active:scale-95 px-5 py-2.5 text-accent-fg shadow-sm transition duration-200"
       >
         <span className="text-xs uppercase tracking-wider font-medium">Enquire to Buy</span>
         <span className="text-[10px] font-normal text-amber-100 leading-tight">Not shipped &middot; we&rsquo;ll message you</span>

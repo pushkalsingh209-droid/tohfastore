@@ -20,8 +20,8 @@ import type { StoreProduct } from "@/app/types/product";
 export default function StickyAddToCartBar({ product }: { product: StoreProduct }) {
   return (
     <LiveStockProvider productId={product.id} initialInventory={Number(product.inventory) || 0}>
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] print:hidden">
-        <div className="pt-1.5 pb-1 border-b border-stone-100 dark:border-stone-800">
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-border shadow-[0_-4px_12px_rgba(0,0,0,0.08)] print:hidden">
+        <div className="pt-1.5 pb-1 border-b border-border">
           <TrustBadges compact />
         </div>
         <div className="p-3 flex items-center gap-3">
@@ -29,7 +29,7 @@ export default function StickyAddToCartBar({ product }: { product: StoreProduct 
             <PriceDisplay
               price={Number(product.price)}
               category={product.category}
-              className="text-amber-700 dark:text-amber-500 font-bold font-mono text-base"
+              className="text-link font-bold font-mono text-base"
               originalClassName="text-stone-400 dark:text-stone-500 line-through font-mono text-[10px]"
               badgeClassName="text-emerald-700 dark:text-emerald-500 text-[8px] font-bold uppercase"
             />

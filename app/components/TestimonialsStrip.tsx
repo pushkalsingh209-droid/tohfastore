@@ -11,25 +11,25 @@ export default function TestimonialsStrip({ items, title = "What Customers Are S
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-14">
-      <h2 className="text-xl font-serif text-stone-900 dark:text-stone-100 mb-5">{title}</h2>
+      <h2 className="text-xl font-serif text-fg mb-5">{title}</h2>
       <div className="flex gap-4 overflow-x-auto pb-3 -mx-6 px-6">
         {items.map((t) => (
           <Link
             key={t.id}
             href={productHref({ id: t.productId, name: t.productName })}
-            className="group flex-shrink-0 w-64 sm:w-72 p-4 rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-amber-600 transition flex flex-col"
+            className="group flex-shrink-0 w-64 sm:w-72 p-4 rounded-lg border border-border bg-surface hover:border-amber-600 transition flex flex-col"
           >
             <span className="text-amber-500 text-xs leading-none mb-2">
               {"★".repeat(t.rating)}
               {"☆".repeat(5 - t.rating)}
             </span>
-            <p className="text-stone-600 dark:text-stone-300 text-sm font-light leading-relaxed line-clamp-4 flex-1">
+            <p className="text-muted text-sm font-light leading-relaxed line-clamp-4 flex-1">
               &ldquo;{t.reviewText}&rdquo;
             </p>
-            <p className="mt-3 text-xs text-stone-500 dark:text-stone-400">
-              <span className="font-medium text-stone-800 dark:text-stone-200">{t.customerName}</span>
+            <p className="mt-3 text-xs text-faint">
+              <span className="font-medium text-fg">{t.customerName}</span>
               {" — on "}
-              <span className="group-hover:text-amber-700 dark:group-hover:text-amber-500 transition">{t.productName}</span>
+              <span className="group-hover:text-link transition">{t.productName}</span>
             </p>
           </Link>
         ))}

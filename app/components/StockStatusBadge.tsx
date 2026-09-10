@@ -28,7 +28,7 @@ export default function StockStatusBadge({
   return (
     <div className={`flex flex-col gap-0.5 ${className}`}>
       {enquireOnly ? (
-        <span className="text-[10px] uppercase font-bold text-amber-700 dark:text-amber-500">
+        <span className="text-[10px] uppercase font-bold text-link">
           Available on enquiry
         </span>
       ) : outOfStock ? (
