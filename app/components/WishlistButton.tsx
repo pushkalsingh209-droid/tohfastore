@@ -15,12 +15,12 @@ export default function WishlistButton({ product }: { product: StoreProduct }) {
       aria-pressed={wishlisted}
       className={`w-full flex items-center justify-center gap-2 text-xs uppercase tracking-wider px-5 py-3.5 rounded font-medium transition duration-200 border ${
         wishlisted
-          ? "border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20"
+          ? "border-danger-border text-danger bg-danger-soft"
           : "border-border-strong text-muted hover:bg-surface-2"
       }`}
     >
       <svg
-        className={`w-4 h-4 ${wishlisted ? "fill-rose-600 text-rose-600" : "fill-none text-stone-500"}`}
+        className={`w-4 h-4 ${wishlisted ? "fill-rose-600 text-rose-600" : "fill-none text-faint"}`}
         viewBox="0 0 24 24"
         stroke="currentColor"
         strokeWidth="2"

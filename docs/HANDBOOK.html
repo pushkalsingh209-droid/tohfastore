@@ -377,7 +377,7 @@
     <thead><tr><th>Layer</th><th>Choice</th><th>Notes</th></tr></thead>
     <tbody>
       <tr><td>Framework</td><td>Next.js 16 (App Router, Turbopack)</td><td>React 19, TypeScript <strong>strict</strong>. Breaking changes vs older Next &mdash; check <code>node_modules/next/dist/docs/</code> before writing route/convention code.</td></tr>
-      <tr><td>Styling</td><td>Tailwind v4</td><td>Themes are set as <code>data-theme</code> on <code>&lt;html&gt;</code> by a blocking script in <code>layout.tsx</code> (registry: <code>app/utils/themes.ts</code>). Two today &mdash; <code>sand</code> (light) / <code>ink</code> (dark) &mdash; the script also toggles a legacy <code>.dark</code> class so the existing Tailwind <code>dark:</code> variants still work while they're migrated to semantic tokens (<code>docs/DESIGN-theming.md</code>).</td></tr>
+      <tr><td>Styling</td><td>Tailwind v4</td><td><strong>10 colour themes</strong>, each a <code>:root[data-theme="&hellip;"]</code> block of 14 semantic tokens in <code>globals.css</code> (the rest <code>color-mix()</code>-derived), set as <code>data-theme</code> on <code>&lt;html&gt;</code> by a blocking script in <code>layout.tsx</code> before first paint (registry: <code>app/utils/themes.ts</code>). <code>sand</code> = the old light, <code>ink</code> = the old dark. No <code>.dark</code> class and no <code>dark:</code> variants &mdash; the picker just flips the attribute (<code>docs/DESIGN-theming.md</code>).</td></tr>
       <tr><td>Data</td><td>Supabase (Postgres + Storage)</td><td>Migrations are hand-run SQL in <code>supabase/migrations/</code> (no CLI wired). The two base tables (<code>products</code>, <code>orders</code>) have no migration file.</td></tr>
       <tr><td>Payments</td><td>Razorpay &mdash; <strong>LIVE keys only</strong></td><td>No test keys on this project. Payment-path changes are proposals until watched against real orders.</td></tr>
       <tr><td>Messaging</td><td>WhatsApp via Green API</td><td>Order confirmations, business alerts, back-in-stock, status updates, checkout OTP. Free tier has a monthly distinct-chat cap.</td></tr>
@@ -859,8 +859,8 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
     <code>app/utils/apiError.ts</code>; log the real error, don't echo it. 4xx validation messages are
     user-facing and fine.</li>
     <li>TypeScript strict; path alias <code>@/*</code> &rarr; repo root (mirrored in <code>vitest.config.ts</code>).
-    Tailwind v4; <code>data-theme</code>-driven themes (<code>app/utils/themes.ts</code>) with a legacy
-    <code>.dark</code> class shim &mdash; mid-migration, see <code>docs/DESIGN-theming.md</code>.</li>
+    Tailwind v4; 10 <code>data-theme</code>-driven themes (<code>app/utils/themes.ts</code>), fully
+    token-based &mdash; no <code>.dark</code> class, no <code>dark:</code> variants (<code>docs/DESIGN-theming.md</code>).</li>
     <li><strong>Docs are self-contained</strong> &mdash; this handbook stays CDN-free: system fonts,
     inline SVG, zero scripts, no external assets. The tab nav is pure CSS
     (<code>:target</code>&nbsp;+&nbsp;<code>:has()</code>).</li>
@@ -1360,7 +1360,7 @@ takes a second arg.</p>
 <tbody>
 <tr><td>Framework</td><td>Next.js <code>16.2.7</code> App Router</td><td>React <code>19.2.4</code>, RSC + Route Handlers. Node runtime where <code>crypto</code> is needed.</td></tr>
 <tr><td>Language</td><td>TypeScript 5, <code>strict</code></td><td>Path alias <code>@/*</code> &rarr; repo root. <code>target ES2017</code>, <code>moduleResolution bundler</code>.</td></tr>
-<tr><td>Styling</td><td>Tailwind CSS v4</td><td><strong>Themes</strong> are a <code>data-theme</code> attribute on <code>&lt;html&gt;</code>, set before first paint by a blocking script in <code>layout.tsx</code> built from the registry in <code>app/utils/themes.ts</code> (<code>buildThemeInitScript</code>). Currently two &mdash; <code>sand</code> (= the old light) and <code>ink</code> (= the old dark); each theme is one <code>:root[data-theme="&hellip;"]</code> block of semantic tokens in <code>globals.css</code>, mapped to Tailwind utilities via <code>@theme inline</code> (<code>--color-bg</code>, <code>--color-fg</code>, <code>--color-accent</code>&hellip;). <strong>Mid-migration:</strong> ~970 Tailwind <code>dark:</code> variants across ~86 files still drive the dark look, so the blocking script and <code>ThemePicker</code> also toggle the legacy <code>.dark</code> class (<code>@custom-variant dark</code>) whenever a dark theme is active. Later PRs replace the <code>dark:</code> variants with the tokens, then add the remaining 8 palettes &mdash; plan + phasing in <code>docs/DESIGN-theming.md</code>. The old single <code>--background</code>/<code>--foreground</code> pair is kept (still referenced by the <code>&lt;body&gt;</code> class).</td></tr>
+<tr><td>Styling</td><td>Tailwind CSS v4</td><td><strong>10 colour themes</strong>, selected via <code>ThemePicker</code> in the header. Each is a <code>data-theme</code> attribute on <code>&lt;html&gt;</code>, set before first paint by a blocking script in <code>layout.tsx</code> built from the registry in <code>app/utils/themes.ts</code> (<code>buildThemeInitScript</code>). <code>sand</code> = the old light, <code>ink</code> = the old dark; the others: <code>dusk</code>, <code>brass</code>, <code>forest</code>, <code>rose</code>, <code>midnight</code>, <code>marigold</code>, <code>slate</code>, <code>peacock</code>. Each theme is one <code>:root[data-theme="&hellip;"]</code> block of <strong>14 primitive tokens</strong> in <code>globals.css</code>; everything else (<code>--accent-hover</code>, <code>--link</code>, <code>--*-soft</code>/<code>-border</code>, <code>--disabled</code>, <code>--footer-*</code>, <code>--scrim</code>) is derived once via <code>color-mix()</code> in a bare <code>:root</code> block, so it re-resolves per theme. Mapped to Tailwind utilities via <code>@theme inline</code> (<code>--color-bg</code>, <code>--color-fg</code>, <code>--color-accent</code>, <code>--color-link</code>, <code>--color-surface</code>&hellip;). <strong>No <code>.dark</code> class and no <code>dark:</code> variants anywhere</strong> &mdash; the picker just flips the attribute (the <code>@custom-variant dark</code> + <code>.dark</code>-toggle shim was removed once the last <code>dark:</code> utility became a token; theming PR 4, 2026-09-10). The old single <code>--background</code>/<code>--foreground</code> pair is kept only for the <code>&lt;body&gt;</code>&rsquo;s legacy class; page code uses <code>bg-bg</code>/<code>text-fg</code>. Plan + phasing in <code>docs/DESIGN-theming.md</code>.</td></tr>
 <tr><td>Database</td><td>Supabase Postgres</td><td>Project ref <code>gxlervcazzddqcoagewy</code>. Migrations are hand-run SQL in <code>supabase/migrations/*.sql</code>.</td></tr>
 <tr><td>Supabase SDK</td><td><code>@supabase/ssr</code> 0.10, <code>@supabase/supabase-js</code> 2.107</td><td>Four client factories (&sect;8). Storefront reads use the service-role key server-side.</td></tr>
 <tr><td>Payments</td><td><code>razorpay</code> 2.9</td><td>Server SDK for order creation + payment/order fetch in the webhook. Client loads <code>checkout.razorpay.com/v1/checkout.js</code>.</td></tr>
@@ -2573,7 +2573,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>codSettings.ts</code></td><td>Cash on Delivery config + rules (0057), same lenient-parse / strict-validate split as <code>spendMarquee.ts</code>. <code>parseCodEnabled</code> is <strong>fail-closed</strong> &mdash; only an explicit <code>'1'</code> is ON, the deliberate OPPOSITE of <code>parseReferralProgramEnabled</code> (nothing predates COD, and an ambiguous value must never dispatch goods with no money collected). <code>parseCodFee</code> falls back to the default rather than 0 &mdash; <code>Number("")</code> is <code>0</code>, not <code>NaN</code>, so without an explicit empty-string guard an empty settings row would silently make COD free; <code>validateCodFee</code> rejects <code>null</code>/<code>""</code>/booleans for the same coercion reason. <code>calculateCodTotal(subtotal, fee)</code> has <strong>no discount parameter at all</strong> &mdash; prepaid-only discounts encoded as an absence. <code>canPlaceCodOrder(openCount)</code> is the per-phone gate as a pure predicate, and <code>checkCodEligibility(items, {maxItemPrice, disabledCategories})</code> is the three-veto rule &mdash; returning a <em>named</em> reason, because an unexplained &ldquo;COD unavailable&rdquo; reads as a bug and costs the order. <strong>27 unit tests</strong> (two of which caught the <code>Number("")===0</code> traps above before they shipped).</td></tr>
 <tr><td><code>reports.ts</code></td><td>Pure logic for the admin Excel report. <code>resolvePeriod(preset, now, from?, to?)</code> &rarr; an IST-bounded <code>[from, to)</code> (month / Mon&ndash;Sun week / Apr&ndash;Mar FY / all-time / custom), TZ-independent (Vercel is UTC). <code>buildReport(orders, period)</code> &rarr; flat order rows + a GSTR-style GST summary (<code>calculateOrderGstBreakdown</code> per order; CGST=SGST=tax/2 when the buyer state is Uttarakhand &mdash; <code>isIntraStateSupply</code> &mdash; else IGST) + a by-state table. Cancelled orders stay in the order rows but are dropped from every GST total. The <code>.xlsx</code> assembly (exceljs) lives in the route. <strong>12 unit tests.</strong></td></tr>
 <tr><td><code>viewedTogether.ts</code></td><td><code>tallyViewedTogether(rows, excludeProductId)</code> &mdash; pure co-occurrence tally behind <code>getViewedTogether</code> (<code>storeQueries.ts</code>): given every <code>product_views</code> row for the visitors who recently viewed an anchor product, counts how many of them also viewed each other product. Relies on <code>product_views</code>' own <code>UNIQUE(product_id, visitor_token)</code> constraint &mdash; a raw row is already exactly one distinct visitor for that product, no extra dedup needed. <strong>3 unit tests.</strong></td></tr>
-<tr><td><code>themes.ts</code></td><td>The single source of truth for the storefront's colour themes (<code>docs/DESIGN-theming.md</code>). <code>THEMES</code> registry (<code>{slug,name,emoji,swatch,isDark}</code>; two today &mdash; <code>sand</code>/<code>ink</code>), <code>LEGACY_THEME_MAP</code> (<code>light&rarr;sand</code>, <code>dark&rarr;ink</code>), the pure <code>resolveThemeSlug(stored, prefersDark)</code>, and <code>buildThemeInitScript()</code> which stringifies those constants into the synchronous <code>&lt;head&gt;</code> IIFE <code>layout.tsx</code> injects (mirrors <code>resolveThemeSlug</code> line-for-line; sets <code>data-theme</code> + toggles the legacy <code>.dark</code> class). Read by both that script and <code>ThemePicker</code>, so the slug list can't drift. <strong>21 unit tests</strong> &mdash; incl. a globals.css cross-check (every slug has a <code>:root[data-theme]</code> block with the same token set) and a sandbox that runs the generated script against a fake DOM and asserts it matches <code>resolveThemeSlug</code>.</td></tr>
+<tr><td><code>themes.ts</code></td><td>The single source of truth for the storefront's colour themes (<code>docs/DESIGN-theming.md</code>). <code>THEMES</code> registry (<code>{slug,name,emoji,swatch,isDark}</code>; 10 &mdash; <code>sand</code>, <code>ink</code>, <code>dusk</code>, <code>brass</code>, <code>forest</code>, <code>rose</code>, <code>midnight</code>, <code>marigold</code>, <code>slate</code>, <code>peacock</code>), <code>themeBySlug</code>, <code>LEGACY_THEME_MAP</code> (<code>light&rarr;sand</code>, <code>dark&rarr;ink</code>), <code>DARK_THEME_SLUGS</code> (first entry = the OS-dark fallback), the pure <code>resolveThemeSlug(stored, prefersDark)</code>, and <code>buildThemeInitScript()</code> which stringifies those constants into the synchronous <code>&lt;head&gt;</code> IIFE <code>layout.tsx</code> injects (mirrors <code>resolveThemeSlug</code> line-for-line; sets <code>data-theme</code> only &mdash; no <code>classList</code>). Read by both that script and <code>ThemePicker</code>, so the slug list can't drift. <strong>26 unit tests</strong> &mdash; incl. a <code>globals.css</code> cross-check (every slug has a <code>:root[data-theme]</code> block with an identical primitive-token set; every <code>@theme inline</code> ref resolves), a swatch-vs-<code>--accent</code>/<code>--link</code> check, and a sandbox that runs the generated script against a fake DOM and asserts it matches <code>resolveThemeSlug</code> and never touches <code>classList</code>.</td></tr>
 <tr><td><code>chatLabels.ts</code>, <code>indianStates.ts</code>, <code>pagination.ts</code>, <code>loadingMessages.ts</code>, <code>downloadCsv.ts</code>, <code>brandMark.tsx</code>, <code>appleSplashScreens.ts</code></td><td>Small constants / helpers. <code>brandMark.tsx</code>'s <code>BrandGlyph</code> (exported for this) is now also reused directly by <code>/api/instagram-post-image</code> for its corner mark, on top of the icon/splash routes it already backed.</td></tr>
 </tbody></table></div>
 
@@ -2738,7 +2738,7 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
 |- vitest.config.ts          re-declares @ alias
 |- app/
 |  |- layout.tsx             root (async): getBootstrapData() + 4 providers, theme script, JSON-LD, GA/Ads/Pixel, footer
-|  |- globals.css            Tailwind v4; :root[data-theme] token blocks + @theme inline map; legacy dark variant; focus styles
+|  |- globals.css            Tailwind v4; 10 :root[data-theme] primitive-token blocks + color-mix() derived block + @theme inline map; focus styles (no dark: variant)
 |  |- page.tsx               "/" -> StorefrontPage("")
 |  |- loading.tsx / not-found.tsx
 |  |- sitemap.ts / robots.ts / manifest.ts / icon*.tsx / apple-*.tsx
@@ -3012,6 +3012,47 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-10<br>12:08</code></td>
+  <td><strong>Theming PR 4 of ~4: grep gate + drop the <code>.dark</code> shim + 8 palettes &mdash; 10 themes live</strong><br>(the mechanical conversion is finished; the 8 new palettes are the visual change)</td>
+  <td>
+    Every remaining <code>dark:</code> variant and stray <code>stone-</code>/<code>amber-</code>/<code>emerald-</code>/<code>rose-</code>
+    colour class in the storefront resolved to a semantic token or given a documented deliberate keep &mdash;
+    non-admin <code>dark:</code> count <strong>329 &rarr; 0</strong>.
+    <br><br>
+    <code>globals.css</code>: new <strong>derived-token</strong> <code>:root</code> block &mdash;
+    <code>--accent-hover</code>, <code>--link</code>/<code>--link-hover</code>, <code>--accent-soft</code>/<code>-border</code>,
+    <code>--success-soft</code>/<code>-border</code>, <code>--danger-soft</code>/<code>-border</code>, <code>--disabled</code>,
+    <code>--footer-bg</code>/<code>-fg</code>/<code>-accent</code> are all <code>color-mix()</code> off the 14 primitives, so a
+    new palette only defines 14 values. <code>--scrim</code> &rarr; a solid <code>#0c0a09</code> (fixed on every theme;
+    <code>bg-scrim/NN</code> for modal &amp; photo overlays). <code>@custom-variant dark</code> and the <code>.dark</code>
+    class shim <strong>deleted</strong> from <code>globals.css</code>, <code>themes.ts</code> (<code>buildThemeInitScript</code>
+    no longer touches <code>classList</code>) and <code>ThemePicker</code>. Added <code>:root[data-theme]</code> blocks for
+    <code>dusk</code>, <code>brass</code>, <code>forest</code>, <code>rose</code>, <code>midnight</code>, <code>marigold</code>,
+    <code>slate</code>, <code>peacock</code> (14 primitives each) + a <code>THEMES</code> row + swatch for each.
+    <br><br>
+    Faithful-conversion decisions: primary CTA buttons <code>bg-stone-900/950</code> &rarr; <code>bg-fg text-bg</code>
+    (inverted, accent-on-hover) so they stay legible on the 4 dark themes; <code>StorefrontPage</code> wrapper
+    <code>bg-[var(--background)]</code> &rarr; <code>bg-bg</code> (the legacy <code>--background</code> var is not per-theme);
+    cookie bar &amp; <code>/about</code>&rsquo;s local footer moved onto <code>--footer-*</code>; cart-count badge
+    <code>bg-rose-600</code> &rarr; <code>bg-accent</code>. <strong>Deliberate keeps</strong> (fixed on every theme):
+    WhatsApp buttons (<code>bg-emerald-600</code>), the wishlist heart (<code>fill-rose-600</code>), star-rating gold
+    (<code>text-amber-500</code>), the maroon &ldquo;Spend&nbsp;&amp;&nbsp;Save&rdquo; / hero gradient + <code>/success</code>&rsquo;s
+    strip, the <code>.spec-plate</code> brass nameplate, the <code>bg-amber-950</code> panel on <code>/about</code>, and the
+    near-black footer band.
+  </td>
+  <td>
+    <em>edited:</em> <code>app/globals.css</code>, <code>app/utils/themes.ts</code>, <code>app/utils/themes.test.ts</code>,
+    <code>app/layout.tsx</code>, <code>app/components/StorefrontPage.tsx</code> + ~55 more storefront <code>.tsx</code>
+    (all non-admin); <code>docs/DESIGN-theming.md</code>, this handbook, <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> (changed files) <strong>0 errors</strong>
+    (warnings all pre-existing <code>set-state-in-effect</code> / <code>no-img-element</code>) &middot;
+    <code>npm test</code> 324 / 1 skip (<code>themes.test.ts</code> now 26 tests) &middot; <code>next build</code>
+    exit 0, 145/145 static &middot; homepage + PDP + <code>/track</code> screenshotted in <strong>all 10 themes</strong>
+    (headless Chrome, <code>data-theme</code> cycled) &mdash; every one legible and coherent. Pure CSS + client
+    component; not a schema / payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-10<br>11:00</code></td>
   <td><strong>Theming PR 3 of ~4: convert cart / checkout / remaining pages to tokens</strong><br>(same mechanical <code>dark:</code> &rarr; token pass as PR 2, across the rest of the storefront; no visual change)</td>

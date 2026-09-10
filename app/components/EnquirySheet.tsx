@@ -117,7 +117,7 @@ export default function EnquirySheet({
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-stone-900/50 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-scrim/50 backdrop-blur-[2px]"
       />
 
       <div
@@ -125,7 +125,7 @@ export default function EnquirySheet({
         onClick={(e) => e.stopPropagation()}
       >
         {/* grab handle -- phones only; signals "drag/tap away to dismiss" */}
-        <div className="sm:hidden mx-auto mb-4 h-1 w-10 rounded-full bg-stone-300 dark:bg-stone-600" />
+        <div className="sm:hidden mx-auto mb-4 h-1 w-10 rounded-full bg-border-strong" />
 
         <h2 className="text-base font-semibold text-fg">
           We&rsquo;ll reply on WhatsApp
@@ -162,7 +162,7 @@ export default function EnquirySheet({
             className="flex-1 min-w-0 px-3 py-3 border rounded text-base sm:text-sm bg-surface-2 text-fg border-border-strong focus:outline-none focus:border-accent"
           />
         </div>
-        {error && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{error}</p>}
+        {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
 
         <a
           href={waHref}
@@ -181,14 +181,14 @@ export default function EnquirySheet({
           }}
           className={`mt-4 flex min-h-[48px] w-full items-center justify-center rounded px-5 text-xs font-medium uppercase tracking-wider transition ${
             valid
-              ? "bg-stone-900 text-white hover:bg-accent active:scale-[0.98]"
-              : "bg-stone-200 dark:bg-stone-700 text-faint dark:text-stone-500"
+              ? "bg-fg text-bg hover:bg-accent hover:text-accent-fg active:scale-[0.98]"
+              : "bg-disabled text-faint"
           }`}
         >
           Continue to WhatsApp
         </a>
 
-        <p className="mt-2 text-center text-[11px] text-faint dark:text-stone-500">
+        <p className="mt-2 text-center text-[11px] text-faint">
           We&rsquo;ll message you about this piece. No spam.
         </p>
 
@@ -201,7 +201,7 @@ export default function EnquirySheet({
             handoff();
             onClose();
           }}
-          className="mt-3 block min-h-[44px] pt-3 text-center text-xs text-faint underline hover:text-stone-700 dark:hover:text-stone-200"
+          className="mt-3 block min-h-[44px] pt-3 text-center text-xs text-faint underline hover:text-muted"
         >
           Just open WhatsApp
         </a>

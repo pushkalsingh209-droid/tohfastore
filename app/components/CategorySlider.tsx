@@ -126,11 +126,11 @@ export default function CategorySlider({
               sizes="(max-width: 640px) 144px, 176px"
               className="object-cover transition-transform duration-300 group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-stone-900/85 via-stone-900/10 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-scrim/85 via-scrim/10 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 p-3">
               <span className="text-white text-xs font-serif font-semibold block leading-tight">{item.name}</span>
             </div>
-            <div className="absolute inset-0 flex items-center justify-center bg-stone-900/70 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute inset-0 flex items-center justify-center bg-scrim/70 opacity-0 group-hover:opacity-100 transition-opacity">
               <span className="text-white text-[10px] uppercase tracking-wider font-semibold text-center px-3 py-1.5 border border-white/60 rounded-full">
                 Click to view {item.name} products
               </span>

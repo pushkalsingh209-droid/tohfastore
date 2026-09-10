@@ -58,7 +58,7 @@ export default function GiftGuidesIndexPage() {
           <Link
             key={g.slug}
             href={`/guides/${g.slug}`}
-            className="block bg-surface border border-border rounded-lg p-6 shadow-sm hover:border-amber-400 dark:hover:border-amber-700 hover:shadow transition"
+            className="block bg-surface border border-border rounded-lg p-6 shadow-sm hover:border-accent-soft-border hover:shadow transition"
           >
             <span className="text-link uppercase tracking-widest text-[10px] font-semibold block mb-2">
               {g.eyebrow}

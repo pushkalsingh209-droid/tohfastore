@@ -77,7 +77,7 @@ export default function GoogleTranslateWidget() {
           type="button"
           onClick={() => setLoaded(true)}
           aria-label="Translate this page"
-          className="text-[10px] font-semibold underline text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 whitespace-nowrap"
+          className="text-[10px] font-semibold underline text-faint hover:text-link whitespace-nowrap"
         >
           Translate
         </button>
@@ -86,7 +86,7 @@ export default function GoogleTranslateWidget() {
         type="button"
         onClick={() => setPageLanguage(null)}
         aria-label="Show original page in English"
-        className="text-[10px] font-semibold underline text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 whitespace-nowrap"
+        className="text-[10px] font-semibold underline text-faint hover:text-link whitespace-nowrap"
       >
         English
       </button>

@@ -42,7 +42,7 @@ export default function ReviewForm({ productId }: { productId: number }) {
 
   if (submitted) {
     return (
-      <div className="p-4 text-sm bg-emerald-50 border border-emerald-100 text-emerald-800 rounded">
+      <div className="p-4 text-sm bg-success-soft border border-success-border text-success rounded">
         Thank you! Your review has been submitted and will appear here once approved.
       </div>
     );
@@ -53,7 +53,7 @@ export default function ReviewForm({ productId }: { productId: number }) {
       <h4 className="text-xs font-serif font-bold text-fg uppercase tracking-wider">Write a Review</h4>
 
       {error && (
-        <div className="p-2.5 text-[11px] font-medium bg-rose-50 border border-rose-100 text-rose-800 rounded">
+        <div className="p-2.5 text-[11px] font-medium bg-danger-soft border border-danger-border text-danger rounded">
           {error}
         </div>
       )}
@@ -68,7 +68,7 @@ export default function ReviewForm({ productId }: { productId: number }) {
             onMouseLeave={() => setHoverRating(0)}
             aria-label={`${star} star${star > 1 ? "s" : ""}`}
             className={`text-2xl leading-none transition ${
-              star <= (hoverRating || rating) ? "text-amber-500" : "text-stone-300"
+              star <= (hoverRating || rating) ? "text-amber-500" : "text-faint"
             }`}
           >
             &#9733;
@@ -82,7 +82,7 @@ export default function ReviewForm({ productId }: { productId: number }) {
         placeholder="Your name"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="w-full px-3 py-2 border border-border rounded text-xs bg-surface dark:bg-stone-800 text-fg focus:outline-none focus:border-accent"
+        className="w-full px-3 py-2 border border-border rounded text-xs bg-surface text-fg focus:outline-none focus:border-accent"
       />
 
       <textarea
@@ -90,13 +90,13 @@ export default function ReviewForm({ productId }: { productId: number }) {
         placeholder="Share your experience (optional)"
         value={reviewText}
         onChange={(e) => setReviewText(e.target.value)}
-        className="w-full px-3 py-2 border border-border rounded text-xs bg-surface dark:bg-stone-800 text-fg focus:outline-none focus:border-accent"
+        className="w-full px-3 py-2 border border-border rounded text-xs bg-surface text-fg focus:outline-none focus:border-accent"
       />
 
       <button
         type="submit"
         disabled={submitting}
-        className="text-xs uppercase tracking-wider font-semibold px-5 py-2.5 rounded bg-stone-900 hover:bg-accent text-accent-fg transition disabled:opacity-50"
+        className="text-xs uppercase tracking-wider font-semibold px-5 py-2.5 rounded bg-fg text-bg hover:bg-accent hover:text-accent-fg transition disabled:opacity-50"
       >
         {submitting ? "Submitting..." : "Submit Review"}
       </button>

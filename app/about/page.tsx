@@ -17,7 +17,7 @@ export default function AboutUsPage() {
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-fg tracking-wide">
               About TOHFA
             </h1>
-            <div className="w-16 h-0.5 bg-amber-600 mx-auto mt-4" />
+            <div className="w-16 h-0.5 bg-accent mx-auto mt-4" />
           </div>
 
           {/* Editorial Story Elements */}
@@ -80,9 +80,9 @@ export default function AboutUsPage() {
           </div>
 
           {/* Updated Communication Panel with Explicit Email Text Display */}
-          <div className="bg-amber-950 text-stone-100 rounded-lg p-6 sm:p-8 md:p-10 text-center space-y-4 shadow-md">
-            <h3 className="font-serif text-lg sm:text-xl tracking-wide text-amber-400 font-medium">Direct Procurement Requests</h3>
-            <p className="text-[11px] sm:text-xs md:text-sm text-stone-300 max-w-xl mx-auto font-light leading-relaxed">
+          <div className="bg-amber-950 text-white rounded-lg p-6 sm:p-8 md:p-10 text-center space-y-4 shadow-md">
+            <h3 className="font-serif text-lg sm:text-xl tracking-wide text-footer-accent font-medium">Direct Procurement Requests</h3>
+            <p className="text-[11px] sm:text-xs md:text-sm text-white/70 max-w-xl mx-auto font-light leading-relaxed">
               Have bulk corporate gifting needs, custom weight scaling queries, or want to consult directly? Reach out to our logistics team across our active channels.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
@@ -102,7 +102,7 @@ export default function AboutUsPage() {
               {/* Explicit Email Placement Link Block */}
               <a 
                 href="mailto:contact@tohfaonline.com"
-                className="w-full sm:w-auto bg-stone-900 hover:bg-stone-800 text-stone-200 text-xs font-mono px-5 py-3.5 rounded border border-stone-800 transition shadow-sm text-center tracking-wide flex items-center justify-center gap-1.5 break-all active:scale-[0.99]"
+                className="w-full sm:w-auto bg-fg text-bg hover:bg-accent hover:text-accent-fg text-xs font-mono px-5 py-3.5 rounded border border-border transition shadow-sm text-center tracking-wide flex items-center justify-center gap-1.5 break-all active:scale-[0.99]"
               >
                 <span className="uppercase font-sans font-semibold tracking-wider text-[10px] text-faint">Email:</span> 
                 contact@tohfaonline.com
@@ -114,21 +114,21 @@ export default function AboutUsPage() {
       </div>
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}
-      <footer className="bg-stone-900 text-faint text-xs py-8 border-t border-stone-800 w-full mt-auto">
+      <footer className="bg-footer-bg text-footer-fg text-xs py-8 border-t border-white/10 w-full mt-auto">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
-            <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-faint mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
+            <p className="font-serif text-white tracking-widest text-sm font-bold">TOHFA</p>
+            <p className="text-[10px] text-footer-fg/70 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
           
           {/* Public links verified during gateway inspections */}
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-wider font-medium text-faint">
-            <a href="/terms" className="hover:text-amber-400 transition">Terms & Conditions</a>
-            <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
-            <a href="/refunds" className="hover:text-amber-400 transition">Refund & Cancellation</a>
-            <a href="/contact" className="hover:text-amber-400 transition">Contact Us</a>
-            <a href="/faq" className="hover:text-amber-400 transition">FAQ</a>
-            <a href="/track" className="hover:text-amber-400 transition">Track Your Order</a>
+            <a href="/terms" className="hover:text-footer-accent transition">Terms & Conditions</a>
+            <a href="/privacy" className="hover:text-footer-accent transition">Privacy Policy</a>
+            <a href="/refunds" className="hover:text-footer-accent transition">Refund & Cancellation</a>
+            <a href="/contact" className="hover:text-footer-accent transition">Contact Us</a>
+            <a href="/faq" className="hover:text-footer-accent transition">FAQ</a>
+            <a href="/track" className="hover:text-footer-accent transition">Track Your Order</a>
           </div>
         </div>
       </footer>

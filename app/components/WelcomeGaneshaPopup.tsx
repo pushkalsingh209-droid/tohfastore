@@ -359,7 +359,7 @@ export default function WelcomeGaneshaPopup() {
       {phase !== "hidden" && (
         <div className="fixed left-0 top-1/2 -translate-y-1/2 z-40 flex items-center gap-1.5 print:hidden">
           <div className={`relative -ml-3 sm:-ml-2 ${ganeshaAnimClass}`}>
-            <div className="rounded-2xl overflow-hidden shadow-xl ring-2 ring-amber-300 dark:ring-amber-600">
+            <div className="rounded-2xl overflow-hidden shadow-xl ring-2 ring-accent-soft-border">
               <img
                 src="/ganesha.jpg"
                 alt="Ganesha mascot"
@@ -371,7 +371,7 @@ export default function WelcomeGaneshaPopup() {
           </div>
 
           <div
-            className={`relative bg-white dark:bg-stone-900 border border-amber-200 dark:border-stone-700 rounded-2xl rounded-bl-sm shadow-xl px-4 py-3 max-w-[200px] sm:max-w-[220px] transition-opacity duration-300 ease-out ${
+            className={`relative bg-surface border border-accent-soft-border rounded-2xl rounded-bl-sm shadow-xl px-4 py-3 max-w-[200px] sm:max-w-[220px] transition-opacity duration-300 ease-out ${
               bubbleVisible ? "opacity-100" : "opacity-0"
             }`}
           >
@@ -380,7 +380,7 @@ export default function WelcomeGaneshaPopup() {
               onClick={toggleMute}
               aria-label={muted ? "Unmute Ganesha's greeting" : "Mute Ganesha's greeting"}
               aria-pressed={muted}
-              className="absolute top-1.5 right-7 w-5 h-5 flex items-center justify-center text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+              className="absolute top-1.5 right-7 w-5 h-5 flex items-center justify-center text-faint hover:text-muted"
             >
               {muted ? (
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
@@ -399,18 +399,18 @@ export default function WelcomeGaneshaPopup() {
               type="button"
               onClick={startLeaving}
               aria-label="Dismiss"
-              className="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+              className="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center text-faint hover:text-muted"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
               </svg>
             </button>
-            <p className="text-sm font-serif text-stone-900 dark:text-stone-100 pr-9 mb-2">{greeting}</p>
+            <p className="text-sm font-serif text-fg pr-9 mb-2">{greeting}</p>
             {!muted && audioBlocked && phase === "shown" && (
               <button
                 type="button"
                 onClick={playVoice}
-                className="w-full mb-2 flex items-center justify-center gap-1.5 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-xs font-semibold px-3 py-2 rounded-lg transition active:scale-[0.98] animate-bounce"
+                className="w-full mb-2 flex items-center justify-center gap-1.5 bg-accent-soft hover:bg-accent-soft-border text-accent-hover text-xs font-semibold px-3 py-2 rounded-lg transition active:scale-[0.98] animate-bounce"
               >
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M3 9v6h4l5 5V4L7 9H3z" />
@@ -423,7 +423,7 @@ export default function WelcomeGaneshaPopup() {
             <button
               type="button"
               onClick={shopNow}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs uppercase tracking-wider font-semibold px-3 py-2 rounded-lg transition active:scale-[0.98]"
+              className="w-full bg-accent hover:bg-accent text-white text-xs uppercase tracking-wider font-semibold px-3 py-2 rounded-lg transition active:scale-[0.98]"
             >
               Shop Now
             </button>
@@ -447,7 +447,7 @@ export default function WelcomeGaneshaPopup() {
             type="button"
             onClick={expandTrigger}
             aria-label="Show the Ganesha greeting options"
-            className="fixed left-0 bottom-28 z-40 flex items-center justify-center w-7 h-11 bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-700 border-l-0 rounded-r-full shadow-lg text-amber-700 dark:text-amber-400 hover:w-9 transition-all print:hidden"
+            className="fixed left-0 bottom-28 z-40 flex items-center justify-center w-7 h-11 bg-surface border border-accent-soft-border border-l-0 rounded-r-full shadow-lg text-accent hover:w-9 transition-all print:hidden"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
@@ -458,7 +458,7 @@ export default function WelcomeGaneshaPopup() {
             type="button"
             onClick={manualShow}
             aria-label="Show Ganesha's greeting again"
-            className="fixed left-0 bottom-28 z-40 flex items-center gap-1.5 bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-700 rounded-r-full shadow-lg pl-1.5 pr-3 py-1.5 text-xs font-semibold text-amber-800 dark:text-amber-400 hover:pr-4 transition-all print:hidden"
+            className="fixed left-0 bottom-28 z-40 flex items-center gap-1.5 bg-surface border border-accent-soft-border rounded-r-full shadow-lg pl-1.5 pr-3 py-1.5 text-xs font-semibold text-link-hover hover:pr-4 transition-all print:hidden"
           >
             <img src="/ganesha.jpg" alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
             Show Ganesha

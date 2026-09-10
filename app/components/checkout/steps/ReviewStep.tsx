@@ -131,19 +131,19 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
               <PriceDisplay
                 price={(Number(item.price) || 0) * item.quantity}
                 category={item.category}
-                className="text-xs text-accent-hover dark:text-amber-500 font-bold font-mono"
-                originalClassName="text-faint dark:text-stone-500 line-through font-mono text-[10px]"
-                badgeClassName="text-emerald-700 dark:text-emerald-500 text-[8px] font-bold uppercase"
+                className="text-xs text-accent-hover font-bold font-mono"
+                originalClassName="text-faint line-through font-mono text-[10px]"
+                badgeClassName="text-success text-[8px] font-bold uppercase"
               />
             </div>
           ))}
         </div>
 
-        <div className="px-3 py-3 space-y-1.5 bg-surface-2 dark:bg-stone-950">
+        <div className="px-3 py-3 space-y-1.5 bg-surface-2">
           {hasMrpSavings && (
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-faint font-medium">MRP Subtotal:</span>
-              <span className="font-mono text-faint dark:text-stone-500 line-through">₹{mrpSubtotal.toLocaleString("en-IN")}</span>
+              <span className="font-mono text-faint line-through">₹{mrpSubtotal.toLocaleString("en-IN")}</span>
             </div>
           )}
           <div className="flex items-center justify-between text-sm">
@@ -152,8 +152,8 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           </div>
           {hasMrpSavings && (
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-emerald-700 dark:text-emerald-400 font-medium">You Save:</span>
-              <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">
+              <span className="text-success font-medium">You Save:</span>
+              <span className="font-mono font-bold text-success">
                 ₹{(mrpSubtotal - b.cartTotal).toLocaleString("en-IN")} ({mrpSavingsPercent}% off)
               </span>
             </div>
@@ -161,8 +161,8 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           {showDiscountRow && (
             <>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-emerald-700 dark:text-emerald-400 font-medium">{discountLabel}:</span>
-                <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">&minus;₹{discountAmount.toLocaleString("en-IN")}</span>
+                <span className="text-success font-medium">{discountLabel}:</span>
+                <span className="font-mono font-bold text-success">&minus;₹{discountAmount.toLocaleString("en-IN")}</span>
               </div>
               <div className="flex items-center justify-between text-sm border-t border-border pt-1.5">
                 <span className="text-muted font-medium">Total:</span>
@@ -192,14 +192,14 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
             onClick={b.onChoosePrepaid}
             className={`w-full text-left p-3 rounded border transition ${
               !isCod
-                ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
+                ? "border-success-border bg-success-soft"
                 : "border-border hover:bg-surface-2"
             }`}
           >
             <span className="flex items-baseline justify-between gap-2">
               <span className="text-xs font-bold text-fg">Pay Online</span>
               {codSavings > 0 && (
-                <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-success">
                   Save ₹{codSavings.toLocaleString("en-IN")}
                 </span>
               )}
@@ -210,7 +210,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
             {/* Only claim a discount this cart actually earns -- otherwise
                 the shopper catches the lie at the total. */}
             {discountAmount > 0 && (
-              <span className="block text-[11px] text-emerald-700 dark:text-emerald-400 mt-1">
+              <span className="block text-[11px] text-success mt-1">
                 &#10003; {discountLabel} &minus;₹{discountAmount.toLocaleString("en-IN")}
               </span>
             )}
@@ -232,13 +232,13 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
               !b.codAvailable
                 ? "border-border opacity-60 cursor-not-allowed"
                 : isCod
-                ? "border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20"
+                ? "border-accent-soft-border bg-accent-soft"
                 : "border-border hover:bg-surface-2"
             }`}
           >
             <span className="flex items-baseline justify-between gap-2">
               <span className="text-xs font-bold text-fg">Cash on Delivery</span>
-              <span className="text-[10px] font-bold uppercase tracking-wide text-accent dark:text-amber-400">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-accent">
                 + ₹{b.codFee.toLocaleString("en-IN")} fee
               </span>
             </span>
@@ -246,7 +246,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
               Pay the courier when it arrives
             </span>
             {b.codAvailable ? (
-              <span className="block text-[11px] text-accent dark:text-amber-400 mt-1">
+              <span className="block text-[11px] text-accent mt-1">
                 &#10007; Offers &amp; coupons don&rsquo;t apply
               </span>
             ) : (
@@ -265,7 +265,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           </button>
 
           {codSavings > 0 && (
-            <p className="text-center text-[11px] text-emerald-700 dark:text-emerald-400">
+            <p className="text-center text-[11px] text-success">
               Paying online saves you ₹{codSavings.toLocaleString("en-IN")} on this order.
             </p>
           )}
@@ -285,7 +285,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
               onClick={b.onChooseOffer}
               className={`text-left p-2.5 rounded border text-xs transition ${
                 !usingCoupon
-                  ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
+                  ? "border-success-border bg-success-soft"
                   : "border-border hover:bg-surface-2"
               }`}
             >
@@ -301,7 +301,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
               onClick={b.onChooseCoupon}
               className={`text-left p-2.5 rounded border text-xs transition ${
                 usingCoupon
-                  ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
+                  ? "border-success-border bg-success-soft"
                   : "border-border hover:bg-surface-2"
               }`}
             >
@@ -317,19 +317,19 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           </div>
 
           {!usingCoupon && (
-            <div className="rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-3 space-y-1">
+            <div className="rounded border border-success-border bg-success-soft p-3 space-y-1">
               {b.offerDiscount > 0 ? (
-                <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                <p className="text-xs font-bold text-success">
                   🎉 {b.offerLabel}: &minus;₹{b.offerDiscount.toLocaleString("en-IN")} off your order
                 </p>
               ) : (
                 <p className="text-xs font-medium text-muted">
-                  <span className="font-bold text-emerald-800 dark:text-emerald-300">{b.offerLabel}</span> is live
+                  <span className="font-bold text-success">{b.offerLabel}</span> is live
                   {b.nextTier ? "." : " — add more to your bag to unlock a discount."}
                 </p>
               )}
               {b.nextTier && (
-                <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                <p className="text-[11px] text-success">
                   Add ₹{nextTierGap.toLocaleString("en-IN")} more to save ₹{b.nextTier.discount.toLocaleString("en-IN")}.
                 </p>
               )}
@@ -346,12 +346,12 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           Lifted verbatim from the old CartDrawer so acceptance of the
           return-window / unboxing-video terms is a proven part of THIS
           order, not something buried on a policy page nobody visited. */}
-      <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded space-y-3">
-        <h4 className="text-[11px] font-bold uppercase tracking-wide text-amber-900 dark:text-amber-300">
+      <div className="p-3 bg-accent-soft border border-accent-soft-border rounded space-y-3">
+        <h4 className="text-[11px] font-bold uppercase tracking-wide text-accent-hover">
           Cancellation &amp; Refund Policy
         </h4>
 
-        <div className="space-y-1.5 text-[11px] text-amber-900 dark:text-amber-300 leading-relaxed">
+        <div className="space-y-1.5 text-[11px] text-accent-hover leading-relaxed">
           <p>
             As each piece is handcrafted, we&rsquo;re unable to accept returns for change of mind once an order has been dispatched. However, if you receive a damaged, defective, or incorrect item, please contact us within 48 hours of delivery, along with a continuous, unedited unboxing video as proof.
           </p>
@@ -366,7 +366,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           </p>
         </div>
 
-        <div lang="hi" className="space-y-1.5 text-[11px] text-amber-900 dark:text-amber-300 leading-relaxed pt-2 border-t border-amber-200/60 dark:border-amber-800/60">
+        <div lang="hi" className="space-y-1.5 text-[11px] text-accent-hover leading-relaxed pt-2 border-t border-accent-soft-border">
           <p>
             चूंकि प्रत्येक वस्तु हस्तनिर्मित होती है, ऑर्डर डिस्पैच होने के बाद केवल मन बदलने पर रिटर्न स्वीकार नहीं किया जाएगा। हालांकि, यदि आपको क्षतिग्रस्त, दोषपूर्ण या गलत उत्पाद प्राप्त होता है, तो कृपया डिलीवरी के 48 घंटों के भीतर, प्रमाण के रूप में एक निरंतर, बिना एडिट की गई अनबॉक्सिंग वीडियो के साथ हमसे संपर्क करें।
           </p>
@@ -382,8 +382,8 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
         </div>
 
         <label
-          className={`flex items-start gap-2 text-[11px] text-amber-900 dark:text-amber-300 cursor-pointer pt-2 border-t ${
-            b.invalidField === "policy" ? "border-rose-400 dark:border-rose-700" : "border-amber-200/60 dark:border-amber-800/60"
+          className={`flex items-start gap-2 text-[11px] text-accent-hover cursor-pointer pt-2 border-t ${
+            b.invalidField === "policy" ? "border-danger-border" : "border-accent-soft-border"
           }`}
         >
           <input
@@ -398,7 +398,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           />
           <span>
             I have read and agree to the above Cancellation &amp; Refund Policy. / मैंने उपरोक्त रद्दीकरण और धनवापसी नीति पढ़ ली है और सहमत हूं। (
-            <a href="/refunds" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-accent dark:hover:text-amber-400">
+            <a href="/refunds" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-accent">
               full policy
             </a>
             )
@@ -416,11 +416,11 @@ function CouponPanel({ b, suggestions }: { b: ReviewBag; suggestions: AvailableC
   return (
     <div>
       {b.appliedCoupon ? (
-        <div className="flex items-center justify-between p-2.5 text-xs bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 rounded">
+        <div className="flex items-center justify-between p-2.5 text-xs bg-success-soft border border-success-border text-success rounded">
           <span>
             Coupon <span className="font-mono font-bold">{b.appliedCoupon.code}</span> applied &minus;₹{b.appliedCoupon.discount.toLocaleString("en-IN")}
           </span>
-          <button type="button" onClick={b.onRemoveCoupon} className="text-emerald-700 dark:text-emerald-400 hover:underline font-medium">
+          <button type="button" onClick={b.onRemoveCoupon} className="text-success hover:underline font-medium">
             Remove
           </button>
         </div>
@@ -456,12 +456,12 @@ function CouponPanel({ b, suggestions }: { b: ReviewBag; suggestions: AvailableC
                     type="button"
                     onClick={() => b.onApplyCouponCode(c.code)}
                     disabled={b.applyingCoupon}
-                    className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded border border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-100 dark:hover:bg-amber-900/20 transition text-left disabled:opacity-50"
+                    className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded border border-dashed border-accent-soft-border bg-accent-soft hover:bg-accent-soft transition text-left disabled:opacity-50"
                   >
                     <span className="min-w-0">
-                      <span className="font-mono font-bold text-xs text-amber-900 dark:text-amber-300">{c.code}</span>
+                      <span className="font-mono font-bold text-xs text-accent-hover">{c.code}</span>
                       <span className="text-[11px] text-link-hover"> &middot; {off}</span>
-                      {urgency && <span className="ml-1 text-[9px] uppercase font-bold text-rose-600 dark:text-rose-400">{urgency}</span>}
+                      {urgency && <span className="ml-1 text-[9px] uppercase font-bold text-danger">{urgency}</span>}
                     </span>
                     <span className="text-[10px] uppercase font-bold text-link flex-shrink-0">Apply</span>
                   </button>
@@ -471,7 +471,7 @@ function CouponPanel({ b, suggestions }: { b: ReviewBag; suggestions: AvailableC
           )}
         </>
       )}
-      {b.couponError && <p className="text-[11px] text-rose-600 mt-1.5">{b.couponError}</p>}
+      {b.couponError && <p className="text-[11px] text-danger mt-1.5">{b.couponError}</p>}
     </div>
   );
 }

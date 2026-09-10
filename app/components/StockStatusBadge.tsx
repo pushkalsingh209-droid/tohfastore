@@ -32,19 +32,19 @@ export default function StockStatusBadge({
           Available on enquiry
         </span>
       ) : outOfStock ? (
-        <span className="text-[10px] uppercase font-bold text-rose-600">Sold Out</span>
+        <span className="text-[10px] uppercase font-bold text-danger">Sold Out</span>
       ) : lowStock ? (
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded-full w-fit">
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-danger bg-danger-soft px-1.5 py-0.5 rounded-full w-fit">
           <svg className="w-2.5 h-2.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2L1 21h22L12 2zm0 4.5L19.5 19h-15L12 6.5zM11 10v5h2v-5h-2zm0 6v2h2v-2h-2z" />
           </svg>
           Only {inventory} left!
         </span>
       ) : (
-        <span className="text-[10px] uppercase font-medium text-stone-400">Stock: {inventory} units</span>
+        <span className="text-[10px] uppercase font-medium text-faint">Stock: {inventory} units</span>
       )}
       {!!soldCount && soldCount > 0 && (
-        <span className="text-[10px] text-stone-400 dark:text-stone-500">{soldCount} sold</span>
+        <span className="text-[10px] text-faint">{soldCount} sold</span>
       )}
     </div>
   );

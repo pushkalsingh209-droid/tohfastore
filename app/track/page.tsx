@@ -20,9 +20,9 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  delivered: "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
-  shipped: "bg-amber-50 dark:bg-amber-900/30 text-accent dark:text-amber-400 border-amber-200 dark:border-amber-800",
-  cancelled: "bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800",
+  delivered: "bg-success-soft text-success border-success-border",
+  shipped: "bg-accent-soft text-accent border-accent-soft-border",
+  cancelled: "bg-danger-soft text-danger border-danger-border",
   processing: "bg-surface-2 text-muted border-border",
 };
 
@@ -100,12 +100,12 @@ export default function TrackOrderPage() {
             />
           </div>
 
-          {error && <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">{error}</p>}
+          {error && <p className="text-xs text-danger font-medium">{error}</p>}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-stone-950 dark:bg-amber-700 hover:bg-accent-hover dark:hover:bg-amber-600 disabled:opacity-60 text-white font-medium text-xs uppercase tracking-widest py-3.5 rounded shadow transition active:scale-[0.99]"
+            className="w-full bg-fg text-bg hover:bg-accent hover:text-accent-fg disabled:opacity-60 font-medium text-xs uppercase tracking-widest py-3.5 rounded shadow transition active:scale-[0.99]"
           >
             {loading ? "Looking up..." : "Track Order"}
           </button>
@@ -125,7 +125,7 @@ export default function TrackOrderPage() {
             </p>
 
             {(order.awbNumber || order.courierName) && (
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded px-4 py-3 space-y-2">
+              <div className="bg-accent-soft border border-accent-soft-border rounded px-4 py-3 space-y-2">
                 {order.courierName && (
                   <div>
                     <span className="block text-[10px] uppercase tracking-wider text-link font-semibold mb-1">
@@ -155,7 +155,7 @@ export default function TrackOrderPage() {
 
             <div className="border-t border-border pt-4 flex justify-between items-center">
               <span className="text-sm font-serif font-medium text-fg">Total Paid</span>
-              <span className="text-lg font-mono font-bold text-accent-hover dark:text-amber-500">
+              <span className="text-lg font-mono font-bold text-accent-hover">
                 ₹{Number(order.amount).toLocaleString("en-IN")}
               </span>
             </div>
@@ -163,18 +163,18 @@ export default function TrackOrderPage() {
         )}
       </div>
 
-      <footer className="bg-stone-900 text-faint text-xs py-8 border-t border-stone-800">
+      <footer className="bg-footer-bg text-footer-fg text-xs py-8 border-t border-white/10">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
-            <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-faint mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
+            <p className="font-serif text-white tracking-widest text-sm font-bold">TOHFA</p>
+            <p className="text-[10px] text-footer-fg/70 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
-          <div className="flex flex-wrap justify-center gap-6 text-[11px] uppercase tracking-wider font-medium text-faint">
-            <a href="/terms" className="hover:text-amber-400 transition">Terms &amp; Conditions</a>
-            <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
-            <a href="/refunds" className="hover:text-amber-400 transition">Refund &amp; Cancellation</a>
-            <a href="/contact" className="hover:text-amber-400 transition">Contact Us</a>
-            <a href="/faq" className="hover:text-amber-400 transition">FAQ</a>
+          <div className="flex flex-wrap justify-center gap-6 text-[11px] uppercase tracking-wider font-medium text-footer-fg">
+            <a href="/terms" className="hover:text-footer-accent transition">Terms &amp; Conditions</a>
+            <a href="/privacy" className="hover:text-footer-accent transition">Privacy Policy</a>
+            <a href="/refunds" className="hover:text-footer-accent transition">Refund &amp; Cancellation</a>
+            <a href="/contact" className="hover:text-footer-accent transition">Contact Us</a>
+            <a href="/faq" className="hover:text-footer-accent transition">FAQ</a>
           </div>
         </div>
       </footer>

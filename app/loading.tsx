@@ -8,10 +8,10 @@ import BrandSpinner from "@/app/components/BrandSpinner";
 
 export default function Loading() {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/30 backdrop-blur-sm">
-      <div className="bg-white dark:bg-stone-900 rounded-lg shadow-xl border border-amber-200 dark:border-amber-800 px-10 py-8 text-center min-w-[240px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/30 backdrop-blur-sm">
+      <div className="bg-surface rounded-lg shadow-xl border border-accent-soft-border px-10 py-8 text-center min-w-[240px]">
         <BrandSpinner />
-        <p className="text-sm font-serif text-stone-700 dark:text-stone-300">{randomLoadingMessage()}</p>
+        <p className="text-sm font-serif text-muted">{randomLoadingMessage()}</p>
       </div>
     </div>
   );

@@ -39,7 +39,7 @@ function InStockToggle({
         aria-label="In stock only"
         onClick={() => onFilterChange({ inStock: !inStockOnly })}
         className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-          inStockOnly ? "bg-amber-600" : "bg-stone-300 dark:bg-stone-700"
+          inStockOnly ? "bg-accent" : "bg-border-strong"
         }`}
       >
         <span
@@ -72,7 +72,7 @@ export default function CatalogFilters({
   if (categories.length === 0) {
     // No categorized products yet -- only offer sorting + stock toggle.
     return (
-      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between text-xs text-muted dark:text-stone-400">
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between text-xs text-muted">
         <div className={GROUP_LEFT}>
           <span>Sort</span>
           <select value={sort} onChange={(e) => onFilterChange({ sort: e.target.value })} className={SELECT_CLASSES}>
@@ -89,7 +89,7 @@ export default function CatalogFilters({
   }
 
   return (
-    <div className={`grid ${labels.length > 0 ? "grid-cols-2" : "grid-cols-3"} gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between text-xs text-muted dark:text-stone-400`}>
+    <div className={`grid ${labels.length > 0 ? "grid-cols-2" : "grid-cols-3"} gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between text-xs text-muted`}>
       <div className={GROUP_LEFT}>
         <span>Category</span>
         <select value={category} onChange={(e) => onFilterChange({ category: e.target.value })} className={SELECT_CLASSES}>

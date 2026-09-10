@@ -42,23 +42,23 @@ export default function AbandonedCartNudge() {
   }
 
   return (
-    <div className="fixed bottom-24 left-4 z-40 max-w-[15rem] bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg shadow-xl p-4 print:hidden">
+    <div className="fixed bottom-24 left-4 z-40 max-w-[15rem] bg-surface border border-border rounded-lg shadow-xl p-4 print:hidden">
       <button
         type="button"
         onClick={dismiss}
         aria-label="Dismiss"
-        className="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-xs"
+        className="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center text-faint hover:text-muted text-xs"
       >
         &#10005;
       </button>
-      <p className="text-sm font-serif font-semibold text-stone-900 dark:text-stone-100 pr-4 mb-1">Still interested?</p>
-      <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
+      <p className="text-sm font-serif font-semibold text-fg pr-4 mb-1">Still interested?</p>
+      <p className="text-xs text-faint mb-3">
         {cartCount} item{cartCount === 1 ? "" : "s"} waiting in your bag.
       </p>
       <button
         type="button"
         onClick={openCart}
-        className="w-full bg-amber-700 hover:bg-amber-800 text-white text-xs uppercase tracking-wider font-semibold py-2 rounded transition"
+        className="w-full bg-accent hover:bg-accent-hover text-accent-fg text-xs uppercase tracking-wider font-semibold py-2 rounded transition"
       >
         View Bag
       </button>

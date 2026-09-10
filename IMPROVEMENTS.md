@@ -12,6 +12,32 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Theming series PR 4 of ~4 — grep gate + drop the `.dark` shim + 8 palettes → 10 themes live — 2026-09-10 IST
+- **10 user-selectable colour themes are live.** Storefront is fully token-driven: non-admin `dark:`
+  329 → **0**; every stray `stone-*`/`amber-*`/`emerald-*`/`rose-*` class resolved or given a documented
+  deliberate keep.
+- `globals.css`: new **derived-token** `:root` block — `--accent-hover`, `--link(-hover)`,
+  `--accent-soft(-border)`, `--success-soft/-border`, `--danger-soft/-border`, `--disabled`,
+  `--footer-*` are `color-mix()` off the 14 primitives, so each new palette only defines 14 values.
+  `--scrim` → solid `#0c0a09` (fixed on every theme; `bg-scrim/NN` for overlays). `@custom-variant dark`
+  removed. Added `[data-theme]` blocks for `dusk`, `brass`, `forest`, `rose`, `midnight`, `marigold`,
+  `slate`, `peacock` (14 primitives each).
+- `themes.ts` / `ThemePicker` / blocking script: `.dark` class shim **deleted** — the picker just flips
+  `data-theme`. `themes.test.ts` (26 tests) asserts the generated script never touches `classList`, all
+  10 blocks carry an identical primitive set, every `@theme inline` ref resolves, swatches match.
+- Faithful-conversion calls: primary CTA buttons `bg-stone-900/950` → `bg-fg text-bg` (inverted,
+  accent-on-hover) so they stay legible on the 4 dark themes; `StorefrontPage` wrapper
+  `bg-[var(--background)]` → `bg-bg` (legacy var isn't per-theme); cookie bar / `/about` local footer
+  moved onto `--footer-*`; cart-count badge `bg-rose-600` → `bg-accent`. Deliberate keeps: WhatsApp
+  green, wishlist heart, gold stars, the maroon hero/"Spend & Save" gradient + `/success` strip,
+  `.spec-plate`, the `bg-amber-950` `/about` panel, the near-black footer band.
+- Verified: `tsc` clean · `eslint` changed files 0 errors (warnings all pre-existing
+  `set-state-in-effect`/`no-img-element`) · `npm test` 324/325 (1 skip) · `next build` exit 0, 145/145
+  static · homepage + PDP + `/track` screenshotted in **all 10 themes** (headless Chrome, `data-theme`
+  cycled) — each legible and coherent.
+- See `docs/HANDBOOK.html` Change log 2026-09-10 and `docs/DESIGN-theming.md`. **Only PR 5 (optional
+  admin-panel conversion) remains.**
+
 ### Theming series PR 3 of ~4 — convert cart/checkout + all remaining pages to tokens — 2026-09-10 IST
 - Same mechanical `dark:` / bare-`stone-`/`amber-` → semantic-token pass as PR 2, across the rest of the
   storefront: `CartDrawer`, `CheckoutSheet` + `ContactStep`/`DeliveryStep`/`ReviewStep`/`Stepper`,
@@ -1606,18 +1632,10 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 4 (maintainability / observability)
 
-22. **Theming series — PR 4** (plan: `docs/DESIGN-theming.md`; PRs 1–3 merged 2026-09-10, see Done).
-    ~~**2** chrome + product surfaces~~ · ~~**3** cart/checkout + remaining pages~~ — both shipped, no
-    visual change (~880 class occurrences → tokens; 859 → 329 non-admin `dark:` remaining). **PR 4:**
-    `grep` gate to 0 `dark:`/`stone-`/`amber-` in the storefront — resolve the PR-2/3 deferrals (the
-    always-dark compliance footer on every page, emerald/rose/amber info-panel callouts, warm badges,
-    disabled greys, MRP-strike greys) each with a token or a deliberate keep; the deferred widgets
-    (`WelcomeGaneshaPopup`, `AbandonedCartNudge`, `CookieConsent`, `InstallPrompt`, `BrandSpinner`,
-    `CatalogLoadingOverlay`, `SearchBar`, `GoogleTranslateWidget`, `InstagramPost/ReelGenerator`) too →
-    drop the `.dark` shim from the blocking script + `ThemePicker` → **add the 8 palettes** (`dusk`,
-    `brass`, `forest`, `rose`, `midnight`, `marigold`, `slate`, `peacock`) as CSS block + `THEMES` row +
-    swatch each, tuned for AA contrast → **10 themes live**. **5** *(optional)* admin panel. Sequence
-    vs. the COD-fee-report batch (Tier 1 #6) — owner's call.
+22. **Theming series — PR 5 (optional).** ~~PRs 1–4~~ all shipped & merged 2026-09-10 (see Done) —
+    **10 themes are live**, storefront 100 % token-driven, 0 `dark:` variants. Only remaining slice:
+    convert `app/admin/**` (internal tool) to the same tokens so the admin panel also themes — purely
+    cosmetic, do it only if wanted. Otherwise this item is complete.
 
 16. ~~**`product_sales` reconcile check.**~~ — **done + scheduled.**
     `/api/cron/product-sales-reconcile` (GET, `CRON_SECRET` bearer): recomputes the tally

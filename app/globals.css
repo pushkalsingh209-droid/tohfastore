@@ -1,9 +1,10 @@
 @import "tailwindcss";
 
-/* Class-based dark mode (Tailwind v4): toggled by adding/removing "dark" on
-   <html>, set by the blocking script in app/layout.tsx (reads localStorage,
-   falls back to system preference) so there's no flash of the wrong theme. */
-@custom-variant dark (&:where(.dark, .dark *));
+/* Theming: every look is a :root[data-theme="<slug>"] token block (below),
+   picked before first paint by the blocking script in app/layout.tsx
+   (app/utils/themes.ts). There is no light/dark *class* any more -- the old
+   `@custom-variant dark` + `.dark`-toggle shim was removed once the last
+   `dark:` utility was converted to a token (docs/DESIGN-theming.md, PR 4). */
 
 :root {
   /* Single source of truth for the site's light-mode page background --
@@ -16,31 +17,48 @@
 /* ============================================================
    Semantic colour tokens -- the theme layer.
    Theming series (docs/DESIGN-theming.md). Every theme is one
-   :root[data-theme="<slug>"] block; the pre-paint script in app/layout.tsx
-   sets data-theme before first paint (see app/utils/themes.ts). Keep every
-   theme block's token set identical -- themes.test.ts enforces it.
+   :root[data-theme="<slug>"] block of 14 PRIMITIVE tokens; the pre-paint
+   script in app/layout.tsx sets data-theme before first paint (see
+   app/utils/themes.ts). Keep every theme block's token set identical --
+   themes.test.ts enforces it against the 10 slugs in the THEMES registry.
 
-   `sand` / `ink` are pinned to the EXACT stone/amber values today's classes
-   resolve to, so the PR-2/3 `dark:`-variant -> token conversion is a no-op
-   visually. Mapping (light / dark) each token reproduces:
-     --surface        bg-white / dark:bg-stone-900
-     --surface-2      bg-stone-50 / dark:bg-stone-800   (raised panels, hovers)
-     --fg             text-stone-800 / dark:text-stone-200   (stone-900/-100 headings fold in -- sub-perceptual)
-     --muted          text-stone-600 / dark:text-stone-300
-     --faint          text-stone-500 / dark:text-stone-400   (stone-400/-500 fold in)
-     --border         border-stone-200 / dark:border-stone-800   (stone-100 folds in)
-     --border-strong  border-stone-300 / dark:border-stone-700   (inputs; stone-600 folds in)
-     --accent         amber-700 both modes   (bare bg-/text-/fill-amber-700 -- badges, fills, icons)
-     --accent-fg      #fff both   (text on --accent)
-     --accent-hover   amber-800 both   (bare bg-/text-amber-800 hovers)
-     --link           amber-700 / amber-500   (the paired `text-amber-700 dark:text-amber-500` accent text)
-     --link-hover     amber-800 / amber-400
-     --accent-soft    amber-100 / amber-900   (tint backgrounds)
-     --footer-bg/-fg  the always-dark footer block (stone-900+stone-400 / black+stone-400)
-   `--link*` default to `var(--accent*)`; only `ink` overrides them (that is the
-   one place today's palette makes accent text brighter than accent fills).
-   `--success` / `--danger` exist for later; emerald/rose/red stay hardcoded for now.
+   Everything else (--accent-hover, --accent-soft, --success-soft,
+   --disabled, --footer-*, --scrim, ...) is DERIVED once in the bare :root
+   block below via color-mix(), so it re-resolves correctly for each theme
+   from that theme's primitives -- a new palette only picks 14 values.
+
+   `sand` / `ink` primitives are pinned to the stone/amber hex today's
+   classes resolve to, so PR-2/3's conversion stayed a visual no-op; the
+   derived tokens shift a handful of soft-panel tints by a hair, which
+   lands with PR 4 ("the 10 themes go live"). `--link`/`--link-hover`
+   default to the accent; only `ink` brightens them (amber-500/-400).
    ============================================================ */
+
+/* Derived tokens -- resolve per theme from that theme's primitives. */
+:root {
+  --accent-hover: color-mix(in oklab, var(--accent) 80%, #000);
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
+  --accent-soft: color-mix(in oklab, var(--accent) 13%, var(--surface));
+  --accent-soft-border: color-mix(in oklab, var(--accent) 34%, var(--surface));
+  --success-soft: color-mix(in oklab, var(--success) 12%, var(--surface));
+  --success-border: color-mix(in oklab, var(--success) 34%, var(--surface));
+  --danger-soft: color-mix(in oklab, var(--danger) 12%, var(--surface));
+  --danger-border: color-mix(in oklab, var(--danger) 34%, var(--surface));
+  --disabled: color-mix(in oklab, var(--fg) 13%, var(--surface));
+  --disabled-fg: var(--faint);
+  /* Modal/photo overlay ink -- a fixed near-black on every theme (a scrim
+     that tinted with the palette would stop reading as "dimmed"). Solid, so
+     the Tailwind `/NN` opacity modifiers land on an exact alpha. */
+  --scrim: #0c0a09;
+  /* The site footer is always a near-black band, on every theme; its accent
+     is a lightened tint of the theme accent so it reads on the dark band. */
+  --footer-bg: #0b0a09;
+  --footer-fg: #a8a29e;
+  --footer-accent: color-mix(in oklab, var(--accent), #fff 24%);
+}
+
+/* --- light default / sand : today's light palette, exact --- */
 :root,
 :root[data-theme="sand"] {
   --bg: #fff0cf;
@@ -53,37 +71,172 @@
   --border-strong: #d6d3d1;
   --accent: #b45309;
   --accent-fg: #ffffff;
-  --accent-hover: #92400e;
   --link: var(--accent);
   --link-hover: var(--accent-hover);
-  --accent-soft: #fef3c7;
-  --scrim: rgba(28, 25, 23, 0.85); /* stone-900/85 -- CategorySlider bottom fade */
-  --footer-bg: #1c1917; /* stone-900 */
-  --footer-fg: #a8a29e; /* stone-400 */
-  --success: #047857; /* emerald-700 */
-  --danger: #b91c1c; /* red-700 */
+  --success: #047857;
+  --danger: #b91c1c;
 }
 
+/* --- ink : today's dark palette, exact (accent text brighter than fills) --- */
 :root[data-theme="ink"] {
-  --bg: #0c0a09; /* stone-950 */
-  --surface: #1c1917; /* stone-900 */
-  --surface-2: #292524; /* stone-800 */
-  --fg: #e7e5e4; /* stone-200 */
-  --muted: #d6d3d1; /* stone-300 */
-  --faint: #a8a29e; /* stone-400 */
-  --border: #292524; /* stone-800 */
-  --border-strong: #44403c; /* stone-700 */
-  --accent: #b45309; /* amber-700 -- bare amber-700 badges/fills/icons unchanged */
+  --bg: #0c0a09;
+  --surface: #1c1917;
+  --surface-2: #292524;
+  --fg: #e7e5e4;
+  --muted: #d6d3d1;
+  --faint: #a8a29e;
+  --border: #292524;
+  --border-strong: #44403c;
+  --accent: #b45309;
   --accent-fg: #ffffff;
-  --accent-hover: #92400e; /* amber-800 */
-  --link: #f59e0b; /* amber-500 -- the paired accent text/icons */
-  --link-hover: #fbbf24; /* amber-400 */
-  --accent-soft: #78350f; /* amber-900 */
-  --scrim: rgba(0, 0, 0, 0.85);
-  --footer-bg: #000000; /* dark:bg-black */
-  --footer-fg: #a8a29e; /* stone-400 */
-  --success: #10b981; /* emerald-500 */
-  --danger: #ef4444; /* red-500 */
+  --link: #f59e0b;
+  --link-hover: #fbbf24;
+  --success: #10b981;
+  --danger: #ef4444;
+}
+
+/* --- dusk : deep indigo / plum, warm-gold accent --- */
+:root[data-theme="dusk"] {
+  --bg: #14121c;
+  --surface: #1e1b2e;
+  --surface-2: #2a2640;
+  --fg: #e8e4f0;
+  --muted: #b7b1cd;
+  --faint: #8b84a6;
+  --border: #2a2640;
+  --border-strong: #423c5e;
+  --accent: #f0b45c;
+  --accent-fg: #1a1626;
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
+  --success: #34d399;
+  --danger: #fb7185;
+}
+
+/* --- brass : parchment, antique-bronze accent --- */
+:root[data-theme="brass"] {
+  --bg: #f5ecd8;
+  --surface: #fdfaf1;
+  --surface-2: #f0e6cf;
+  --fg: #2e2416;
+  --muted: #6b5d42;
+  --faint: #94856a;
+  --border: #e2d4b5;
+  --border-strong: #ceba8f;
+  --accent: #9a6a2f;
+  --accent-fg: #ffffff;
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
+  --success: #047857;
+  --danger: #b91c1c;
+}
+
+/* --- forest : sage / ivory, deep-green accent --- */
+:root[data-theme="forest"] {
+  --bg: #f2f4ee;
+  --surface: #ffffff;
+  --surface-2: #e8ede1;
+  --fg: #23291f;
+  --muted: #556050;
+  --faint: #7d8874;
+  --border: #dde3d5;
+  --border-strong: #c3ccb8;
+  --accent: #2f6b3d;
+  --accent-fg: #ffffff;
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
+  --success: #047857;
+  --danger: #b91c1c;
+}
+
+/* --- rose : warm blush, terracotta accent --- */
+:root[data-theme="rose"] {
+  --bg: #fbf0ec;
+  --surface: #fffaf8;
+  --surface-2: #f6e3db;
+  --fg: #2c211d;
+  --muted: #6d5750;
+  --faint: #997c73;
+  --border: #ecd8d0;
+  --border-strong: #d9b8ab;
+  --accent: #b3532f;
+  --accent-fg: #ffffff;
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
+  --success: #047857;
+  --danger: #b91c1c;
+}
+
+/* --- midnight : near-black, cyan accent --- */
+:root[data-theme="midnight"] {
+  --bg: #0a0e12;
+  --surface: #131a21;
+  --surface-2: #1e2830;
+  --fg: #dfe8ee;
+  --muted: #a3b3bf;
+  --faint: #6f818e;
+  --border: #1e2830;
+  --border-strong: #33434f;
+  --accent: #22d3ee;
+  --accent-fg: #06141a;
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
+  --success: #34d399;
+  --danger: #fb7185;
+}
+
+/* --- marigold : bright saffron / orange, festive --- */
+:root[data-theme="marigold"] {
+  --bg: #fff4e0;
+  --surface: #fffaf0;
+  --surface-2: #ffe9c4;
+  --fg: #33230d;
+  --muted: #7a5a2c;
+  --faint: #a07d47;
+  --border: #f5ddb0;
+  --border-strong: #e6c07f;
+  --accent: #e0620d;
+  --accent-fg: #ffffff;
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
+  --success: #047857;
+  --danger: #b91c1c;
+}
+
+/* --- slate : cool grey, muted-blue accent --- */
+:root[data-theme="slate"] {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --surface-2: #e2e8ee;
+  --fg: #1e252c;
+  --muted: #556069;
+  --faint: #7a8791;
+  --border: #d5dde3;
+  --border-strong: #b8c3cc;
+  --accent: #3b6ea5;
+  --accent-fg: #ffffff;
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
+  --success: #047857;
+  --danger: #b91c1c;
+}
+
+/* --- peacock : teal-navy, jewel-green accent --- */
+:root[data-theme="peacock"] {
+  --bg: #0b1418;
+  --surface: #122229;
+  --surface-2: #1c3138;
+  --fg: #e0efe8;
+  --muted: #a1b8b0;
+  --faint: #6e857d;
+  --border: #1c3138;
+  --border-strong: #2f4a52;
+  --accent: #2bb8a0;
+  --accent-fg: #05201c;
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
+  --success: #34d399;
+  --danger: #fb7185;
 }
 
 @theme inline {
@@ -109,11 +262,19 @@
   --color-link: var(--link);
   --color-link-hover: var(--link-hover);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-border: var(--accent-soft-border);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+  --color-disabled: var(--disabled);
+  --color-disabled-fg: var(--disabled-fg);
   --color-scrim: var(--scrim);
   --color-footer-bg: var(--footer-bg);
   --color-footer-fg: var(--footer-fg);
-  --color-success: var(--success);
-  --color-danger: var(--danger);
+  --color-footer-accent: var(--footer-accent);
 }
 
 /* Guards against any one element's accidental horizontal bleed (e.g. a
@@ -267,23 +428,19 @@ textarea:focus-visible,
    -- a <details> styled like a small brass nameplate set into a recessed
    panel: beveled double-edge border, centered metallic label plate with an
    engraved-text look, raised rivet studs, warm gradient fill. */
+/* Brass-nameplate spec box (ProductCard flip-back). Derives from the theme
+   tokens so it themes with everything else (was a hardcoded warm cream in
+   light + a .dark override; that override went with the `.dark` shim). */
 .spec-plate {
   position: relative;
-  border: 1px solid var(--spec-plate-line, #cbb789);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   padding: 22px 16px 16px;
-  background: linear-gradient(165deg, var(--spec-plate-bg-from, #fffdf7) 0%, var(--spec-plate-bg-to, #f4e6c4) 100%);
+  background: linear-gradient(165deg, var(--surface) 0%, var(--surface-2) 100%);
   box-shadow:
-    inset 0 1px 0 var(--spec-plate-hi, rgba(255, 255, 255, 0.9)),
-    inset 0 -1px 3px var(--spec-plate-lo, rgba(120, 90, 40, 0.12)),
-    0 1px 2px rgba(61, 17, 19, 0.05);
-}
-.dark .spec-plate {
-  --spec-plate-line: #574632;
-  --spec-plate-bg-from: #2b2119;
-  --spec-plate-bg-to: #221a14;
-  --spec-plate-hi: rgba(255, 255, 255, 0.06);
-  --spec-plate-lo: rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 color-mix(in oklab, var(--fg) 6%, transparent),
+    inset 0 -1px 3px color-mix(in oklab, var(--fg) 10%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.05);
 }
 .spec-plate > summary {
   position: absolute;

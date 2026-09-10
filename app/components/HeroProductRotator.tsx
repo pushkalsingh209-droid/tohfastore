@@ -113,7 +113,7 @@ export default function HeroProductRotator({ items }: { items: HeroRotatorItem[]
       onTouchStart={pause}
       onTouchEnd={resume}
     >
-      <div className="absolute inset-0 bg-amber-500/25 blur-3xl rounded-full scale-90 -z-10" aria-hidden="true"></div>
+      <div className="absolute inset-0 bg-accent/25 blur-3xl rounded-full scale-90 -z-10" aria-hidden="true"></div>
       <div className="relative aspect-square max-w-[160px] sm:max-w-[220px] md:max-w-sm mx-auto rounded-lg overflow-hidden border border-white/10 shadow-2xl">
         <Image
           src={current.product.thumb_url || current.product.image_url}
@@ -124,7 +124,7 @@ export default function HeroProductRotator({ items }: { items: HeroRotatorItem[]
           priority={index === 0}
         />
       </div>
-      <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-amber-600 text-stone-950 text-[10px] uppercase tracking-wider font-bold px-4 py-1.5 rounded-full shadow-lg whitespace-nowrap max-w-[90%] truncate">
+      <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-accent text-fg text-[10px] uppercase tracking-wider font-bold px-4 py-1.5 rounded-full shadow-lg whitespace-nowrap max-w-[90%] truncate">
         {current.product.name}
       </span>
     </a>

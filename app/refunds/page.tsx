@@ -20,7 +20,7 @@ export default function RefundPolicy() {
             <button
               type="button"
               onClick={() => setLang(lang === "hi" ? "en" : "hi")}
-              className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold uppercase tracking-wide px-3 py-1.5 rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-link-hover hover:bg-amber-100 dark:hover:bg-amber-900/40 transition"
+              className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold uppercase tracking-wide px-3 py-1.5 rounded border border-accent-soft-border bg-accent-soft text-link-hover hover:bg-accent-soft transition"
             >
               <span aria-hidden="true">🌐</span>
               {lang === "hi" ? "Read in English" : "हिंदी में पढ़ें (Read in Hindi)"}
@@ -73,7 +73,7 @@ export default function RefundPolicy() {
                 </p>
               </div>
 
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded p-4 text-[11px] sm:text-xs font-medium text-amber-900 dark:text-amber-300 leading-relaxed">
+              <div className="bg-accent-soft border border-accent-soft-border rounded p-4 text-[11px] sm:text-xs font-medium text-accent-hover leading-relaxed">
                 💡 <span className="font-bold">Note:</span> Refunds typically require <span className="font-bold underline">5 to 7 working days</span> to clear and reflect inside your personal bank statement, conforming to standard automated banking settlement processing pipelines.
               </div>
             </>
@@ -123,7 +123,7 @@ export default function RefundPolicy() {
                 </p>
               </div>
 
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded p-4 text-[11px] sm:text-xs font-medium text-amber-900 dark:text-amber-300 leading-relaxed mt-6">
+              <div className="bg-accent-soft border border-accent-soft-border rounded p-4 text-[11px] sm:text-xs font-medium text-accent-hover leading-relaxed mt-6">
                 💡 <span className="font-bold">ध्यान दें:</span> धनवापसी को आपके बैंक स्टेटमेंट में दिखने और पूरी तरह से क्लियर होने में सामान्यतः <span className="font-bold underline">5 से 7 कार्य दिवस</span> लगते हैं, जो मानक स्वचालित बैंकिंग सेटलमेंट प्रक्रिया के अनुरूप है।
               </div>
             </div>
@@ -132,21 +132,21 @@ export default function RefundPolicy() {
       </div>
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}
-      <footer className="bg-stone-900 text-faint text-xs py-8 border-t border-stone-800 w-full mt-auto">
+      <footer className="bg-footer-bg text-footer-fg text-xs py-8 border-t border-white/10 w-full mt-auto">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
-            <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-faint mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
+            <p className="font-serif text-white tracking-widest text-sm font-bold">TOHFA</p>
+            <p className="text-[10px] text-footer-fg/70 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
 
           {/* Public links verified during gateway inspections */}
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-wider font-medium text-faint">
-            <a href="/terms" className="hover:text-amber-400 transition">Terms & Conditions</a>
-            <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
-            <a href="/refunds" className="hover:text-amber-400 transition font-semibold text-amber-400">Refund & Cancellation</a>
-            <a href="/contact" className="hover:text-amber-400 transition">Contact Us</a>
-            <a href="/faq" className="hover:text-amber-400 transition">FAQ</a>
-            <a href="/track" className="hover:text-amber-400 transition">Track Your Order</a>
+            <a href="/terms" className="hover:text-footer-accent transition">Terms & Conditions</a>
+            <a href="/privacy" className="hover:text-footer-accent transition">Privacy Policy</a>
+            <a href="/refunds" className="hover:text-footer-accent transition font-semibold text-footer-accent">Refund & Cancellation</a>
+            <a href="/contact" className="hover:text-footer-accent transition">Contact Us</a>
+            <a href="/faq" className="hover:text-footer-accent transition">FAQ</a>
+            <a href="/track" className="hover:text-footer-accent transition">Track Your Order</a>
           </div>
         </div>
       </footer>
