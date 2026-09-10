@@ -60,7 +60,7 @@ export default function PromoBanner({ coupons }: { coupons: PublicCoupon[] }) {
   const durationSec = Math.max(24, coupons.length * 8);
 
   const pillClass =
-    "inline-flex items-center gap-1.5 whitespace-nowrap text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-stone-700 rounded-full px-3 py-1 transition";
+    "inline-flex items-center gap-1.5 whitespace-nowrap text-link-hover border border-amber-200 dark:border-stone-700 rounded-full px-3 py-1 transition";
 
   // One copy of the scrolling content. `dup` is the seamless-loop twin --
   // aria-hidden and non-interactive (no duplicate copy buttons for AT or
@@ -102,7 +102,7 @@ export default function PromoBanner({ coupons }: { coupons: PublicCoupon[] }) {
   );
 
   return (
-    <div className="bg-stone-50 dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 text-[11px] sm:text-xs py-2 px-4">
+    <div className="bg-surface-2 border-b border-border text-[11px] sm:text-xs py-2 px-4">
       <div className="max-w-7xl mx-auto flex items-center">
         <div className="offer-ticker offer-ticker--reverse offer-ticker--pause-on-hover">
           <div className="offer-ticker-track gap-2" style={{ animationDuration: `${durationSec}s` }}>

@@ -70,7 +70,7 @@ export default function NotifyWhenInStockButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full text-xs uppercase tracking-wider font-semibold text-stone-600 dark:text-stone-300 border border-stone-300 dark:border-stone-600 rounded py-3 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+        className="w-full text-xs uppercase tracking-wider font-semibold text-muted border border-border-strong rounded py-3 hover:bg-surface-2 transition"
       >
         Notify Me When Back In Stock
       </button>
@@ -87,12 +87,12 @@ export default function NotifyWhenInStockButton({
           value={phone}
           onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
           placeholder="Your WhatsApp number"
-          className="flex-grow px-3 py-2.5 border border-stone-300 dark:border-stone-600 rounded text-sm bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700 font-mono"
+          className="flex-grow px-3 py-2.5 border border-border-strong rounded text-sm bg-surface-2 text-fg focus:outline-none focus:border-accent font-mono"
         />
         <button
           type="submit"
           disabled={status === "submitting" || phone.length !== 10}
-          className="px-4 py-2.5 text-xs uppercase tracking-wider font-semibold rounded bg-stone-900 hover:bg-amber-700 text-white transition disabled:opacity-50"
+          className="px-4 py-2.5 text-xs uppercase tracking-wider font-semibold rounded bg-stone-900 hover:bg-accent text-accent-fg transition disabled:opacity-50"
         >
           {status === "submitting" ? "Saving..." : "Notify Me"}
         </button>

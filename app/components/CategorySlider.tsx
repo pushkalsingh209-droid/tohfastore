@@ -102,7 +102,7 @@ export default function CategorySlider({
 
   return (
     <section id="shop-by-category" className="max-w-7xl mx-auto px-6 pt-6 scroll-mt-24">
-      <h2 className="text-xl font-serif text-stone-900 dark:text-stone-100 mb-5">Shop by Category</h2>
+      <h2 className="text-xl font-serif text-fg mb-5">Shop by Category</h2>
       <div
         ref={trackRef}
         onMouseEnter={pause}
@@ -116,7 +116,7 @@ export default function CategorySlider({
             key={item.name}
             href={categoryHref(item.name)}
             onClick={(e) => goToCategory(e, item.name)}
-            className="group relative flex-shrink-0 w-36 sm:w-44 aspect-[3/4] rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900"
+            className="group relative flex-shrink-0 w-36 sm:w-44 aspect-[3/4] rounded-lg overflow-hidden border border-border bg-surface"
           >
             <Image
               src={item.product.thumb_url || item.product.image_url}

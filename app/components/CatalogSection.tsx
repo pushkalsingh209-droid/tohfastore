@@ -277,7 +277,7 @@ export default function CatalogSection({
           />
         )}
 
-        <h2 id="signature-collection" className="text-2xl font-serif text-stone-900 dark:text-stone-100 border-b border-stone-200 dark:border-stone-800 pb-4 mb-8 mt-2 scroll-mt-24">
+        <h2 id="signature-collection" className="text-2xl font-serif text-fg border-b border-border pb-4 mb-8 mt-2 scroll-mt-24">
           {heading || "Our Signature Collection"}
         </h2>
 
@@ -296,31 +296,31 @@ export default function CatalogSection({
         )}
 
         {count === 0 && inStockOnly ? (
-          <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
-            <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">
+          <div className="text-center py-16 border-2 border-dashed border-border rounded-lg bg-surface">
+            <p className="text-faint font-serif mb-2">
               No in-stock artifacts {category ? <>in &ldquo;{category}&rdquo;</> : "found"} right now.
             </p>
             <button
               onClick={() => handleFilterChange({ inStock: false })}
-              className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline"
+              className="text-xs uppercase tracking-wider text-link hover:underline"
             >
               Show out-of-stock items too
             </button>
           </div>
         ) : count === 0 && category ? (
-          <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
-            <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">No artifacts found in &ldquo;{category}&rdquo;.</p>
-            <Link href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">Clear filter</Link>
+          <div className="text-center py-16 border-2 border-dashed border-border rounded-lg bg-surface">
+            <p className="text-faint font-serif mb-2">No artifacts found in &ldquo;{category}&rdquo;.</p>
+            <Link href="/" className="text-xs uppercase tracking-wider text-link hover:underline">Clear filter</Link>
           </div>
         ) : count === 0 ? (
-          <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
-            <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">No brass artifacts found in stock.</p>
-            <p className="text-stone-400 text-xs">Log into the admin workspace to upload your catalog items.</p>
+          <div className="text-center py-16 border-2 border-dashed border-border rounded-lg bg-surface">
+            <p className="text-faint font-serif mb-2">No brass artifacts found in stock.</p>
+            <p className="text-faint text-xs">Log into the admin workspace to upload your catalog items.</p>
           </div>
         ) : products.length === 0 ? (
-          <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
-            <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">No artifacts on this page.</p>
-            <Link href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">Back to page 1</Link>
+          <div className="text-center py-16 border-2 border-dashed border-border rounded-lg bg-surface">
+            <p className="text-faint font-serif mb-2">No artifacts on this page.</p>
+            <Link href="/" className="text-xs uppercase tracking-wider text-link hover:underline">Back to page 1</Link>
           </div>
         ) : (
           <>

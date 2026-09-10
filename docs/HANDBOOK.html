@@ -3013,6 +3013,55 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-09-10<br>10:39</code></td>
+  <td><strong>Theming PR 2 of ~4: convert chrome + product surfaces to tokens</strong><br>(mechanical <code>dark:</code>-variant &rarr; semantic-token pass; no visual change &mdash; see <code>docs/DESIGN-theming.md</code>)</td>
+  <td>
+    ~350 <code>dark:</code>/<code>stone-</code>/<code>amber-</code> Tailwind class occurrences across ~19
+    files replaced with the semantic-token utilities PR 1 declared: <code>bg-surface</code> /
+    <code>bg-surface-2</code>, <code>text-fg</code> / <code>text-muted</code> / <code>text-faint</code>,
+    <code>border-border</code> / <code>border-border-strong</code>, <code>text-link</code> /
+    <code>bg-accent</code> / <code>bg-accent-hover</code>. Files: <code>layout.tsx</code> (body + skip
+    link), <code>headerNavbar</code>, <code>PromoBanner</code>, <code>PriceDisplay</code>,
+    <code>ProductCard</code>, <code>CatalogSection</code>, <code>BestsellersStrip</code>,
+    <code>CategorySlider</code>, <code>TestimonialsStrip</code>, <code>product/[id]/page.tsx</code>, and the
+    buy-box buttons (<code>AddToCartButton</code>, <code>StickyAddToCartBar</code>, <code>WishlistButton</code>,
+    <code>EnquireToBuyButton</code>, <code>ShareButtons</code>, <code>StockStatusBadge</code>,
+    <code>NotifyWhenInStockButton</code>, <code>RecentlyViewedStrip</code>).
+    <br><br>
+    <strong><code>globals.css</code> token values re-pinned</strong> to the exact stone/amber hex each
+    <code>X&nbsp;dark:Y</code> pair resolves to, so <code>sand</code>/<code>ink</code> stay byte-identical to
+    today's light/dark. <code>--link</code> / <code>--link-hover</code> split out of <code>--accent</code>
+    (they <code>var()</code>-default to it; only <code>ink</code> overrides &mdash; the one place today's
+    palette makes accent <em>text</em> brighter, amber-500, than accent <em>fills</em>, amber-700).
+    <code>body{}</code> and the focus-ring rule now read <code>var(--bg)</code>/<code>var(--fg)</code>/<code>var(--accent)</code>.
+    <br><br>
+    <strong>Deliberately deferred to PR 4</strong> (genuinely distinct hues, not sub-perceptual, so not
+    safe to fold into an accent/neutral token without a call): the two always-dark footer blocks
+    (<code>layout.tsx</code> + <code>product/[id]</code>), the warm-amber pills (Categories menu, coupon
+    pills, the card flip-bar gradient), disabled-button greys, the inverted MRP-strikethrough greys, and the
+    <code>rose</code> (wishlist) / <code>emerald</code> (save badge, WhatsApp) / <code>red</code> (errors)
+    status colours. These keep their literal classes; PR 4's <code>grep</code> gate resolves each.
+  </td>
+  <td>
+    <em>edited:</em> <code>app/globals.css</code>, <code>app/layout.tsx</code>,
+    <code>app/components/{headerNavbar,PromoBanner,PriceDisplay,ProductCard,CatalogSection,BestsellersStrip,CategorySlider,TestimonialsStrip,AddToCartButton,StickyAddToCartBar,WishlistButton,EnquireToBuyButton,ShareButtons,StockStatusBadge,NotifyWhenInStockButton,RecentlyViewedStrip,RecentViewersNote}.tsx</code>,
+    <code>app/product/[id]/page.tsx</code>; <code>docs/DESIGN-theming.md</code>, this handbook,
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint .</code> 33 problems / <strong>0 errors</strong>
+    (= the <code>main</code> baseline; the 33 are the pre-existing <code>set-state-in-effect</code> warnings)
+    &middot; <code>npm test</code> 319 passed / 1 skip (unchanged &mdash; presentational) &middot;
+    <code>next build</code> exit 0, 145/145 static.
+    <strong>No visual change &mdash; verified two ways.</strong> (1) A Chrome DevTools-Protocol
+    <code>getComputedStyle</code> probe against the running dev server: every semantic token
+    (<code>--bg</code>, <code>--fg</code>, <code>--link</code>, <code>--border</code>, <code>--surface</code>,
+    <code>--muted</code>, <code>--faint</code>&hellip;) resolves to the exact hex the replaced classes
+    produced, in both <code>sand</code> and <code>ink</code>. (2) Headless-Chrome screenshots of the homepage
+    and a product page, <code>preferredColorScheme</code> toggled for dark, diffed against <code>main</code>
+    &mdash; identical in both themes (aside from the per-request random hero / category images). Not a
+    schema / payment-path change.</td>
+</tr>
+<tr>
   <td><code>2026-09-10<br>09:59</code></td>
   <td><strong>Theming &mdash; <code>ThemePicker</code>: bottom sheet &rarr; anchored dropdown</strong><br>(follow-up to PR 1, merged the same day; owner: on mobile the trigger is top-left and the sheet opened at the bottom of the screen)</td>
   <td>

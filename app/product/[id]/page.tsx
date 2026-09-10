@@ -306,7 +306,7 @@ export default async function ProductDetailPage({
     // pb-20 on mobile only -- clears space for StickyAddToCartBar (fixed,
     // md:hidden) below so it doesn't cover the footer/last content on a
     // short page; no-op on desktop where that bar never renders.
-    <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors pb-20 md:pb-0">
+    <div className="bg-bg min-h-screen flex flex-col justify-between transition-colors pb-20 md:pb-0">
       {/* JSON.stringify alone doesn't sanitize against XSS inside a
           <script> tag (e.g. an admin-entered product name/description
           containing "</script>" or a "<" sequence) -- escaping "<" to its
@@ -349,9 +349,9 @@ export default async function ProductDetailPage({
         <BackToCollectionsLink />
 
         {!product ? (
-          <div className="text-center py-24 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
-            <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">This artifact could not be found.</p>
-            <Link href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">
+          <div className="text-center py-24 border-2 border-dashed border-border rounded-lg bg-surface">
+            <p className="text-faint font-serif mb-2">This artifact could not be found.</p>
+            <Link href="/" className="text-xs uppercase tracking-wider text-link hover:underline">
               Return to Collections
             </Link>
           </div>
@@ -367,7 +367,7 @@ export default async function ProductDetailPage({
           <RecordProductView id={product.id} name={product.name} price={product.price} image_url={product.image_url ?? ""} thumb_url={product.thumb_url} category={product.category} />
           <div className="flex flex-col md:flex-row md:items-start gap-8 md:gap-12">
             {/* Gallery */}
-            <div className="md:w-1/2 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 shadow-sm bg-white">
+            <div className="md:w-1/2 rounded-lg overflow-hidden border border-border shadow-sm bg-white">
               <ProductGallery
                 images={getProductGallery(product)}
                 productName={product.name}
@@ -386,7 +386,7 @@ export default async function ProductDetailPage({
                 possibly day-stale figure this page was rendered with. */}
             <LiveStockProvider productId={product.id} initialInventory={stock}>
             <div className="md:w-1/2 flex flex-col">
-              <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 dark:text-stone-100 mb-2 leading-snug">
+              <h1 className="text-2xl sm:text-3xl font-serif text-fg mb-2 leading-snug">
                 {product.name}
               </h1>
               {reviews.length > 0 && (
@@ -395,7 +395,7 @@ export default async function ProductDetailPage({
                     {"★".repeat(Math.round(averageRating))}
                     {"☆".repeat(5 - Math.round(averageRating))}
                   </span>
-                  <span className="text-[11px] text-stone-400">
+                  <span className="text-[11px] text-faint">
                     {averageRating.toFixed(1)} ({reviews.length} review{reviews.length === 1 ? "" : "s"})
                   </span>
                 </div>
@@ -404,7 +404,7 @@ export default async function ProductDetailPage({
                 <PriceDisplay
                   price={Number(product.price)}
                   category={product.category}
-                  className="text-amber-700 dark:text-amber-500 font-bold font-mono text-2xl"
+                  className="text-link font-bold font-mono text-2xl"
                 />
               </div>
               <div className="mb-6 space-y-2">
@@ -419,12 +419,12 @@ export default async function ProductDetailPage({
 
               {(dimensionsLine || attributesLine) && (
                 <div className="mb-6 space-y-1">
-                  {dimensionsLine && <p className="text-stone-500 dark:text-stone-400 text-xs">{dimensionsLine}</p>}
-                  {attributesLine && <p className="text-stone-500 dark:text-stone-400 text-xs">{attributesLine}</p>}
+                  {dimensionsLine && <p className="text-faint text-xs">{dimensionsLine}</p>}
+                  {attributesLine && <p className="text-faint text-xs">{attributesLine}</p>}
                 </div>
               )}
 
-              <p className="text-stone-600 dark:text-stone-300 text-sm sm:text-base font-light leading-relaxed mb-8 whitespace-pre-line">
+              <p className="text-muted text-sm sm:text-base font-light leading-relaxed mb-8 whitespace-pre-line">
                 {product.description}
               </p>
 
@@ -437,7 +437,7 @@ export default async function ProductDetailPage({
                   whatsappNumber={whatsappNumberUsed}
                   source="product_detail"
                   className={`grid grid-cols-[auto_1fr_auto] items-center gap-2 w-full text-white text-sm uppercase tracking-wider font-semibold py-4 px-4 rounded shadow transition active:scale-[0.99] ${
-                    outOfStock ? "bg-amber-700 hover:bg-amber-800" : "bg-emerald-600 hover:bg-emerald-700"
+                    outOfStock ? "bg-accent hover:bg-accent-hover" : "bg-emerald-600 hover:bg-emerald-700"
                   }`}
                 >
                   {/* Grid, not flex+justify-center: the icon and this
@@ -449,7 +449,7 @@ export default async function ProductDetailPage({
                     <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-4.846c1.66.986 3.296 1.489 4.974 1.49 5.405 0 9.811-4.366 9.815-9.736.002-2.599-1.002-5.045-2.83-6.876C16.718 2.2 14.28 1.2 11.999 1.2c-5.41 0-9.821 4.366-9.825 9.736a9.617 9.617 0 0 0 1.503 5.123L2.68 20.2l4.411-1.154z" />
                   </svg>
                 </WhatsappEnquiryLink>
-                <p className="text-center text-[11px] text-stone-400">
+                <p className="text-center text-[11px] text-faint">
                   {outOfStock
                     ? "This item is currently out of stock — reach out to us on WhatsApp to check when it will be available again."
                     : "Our team replies fast on WhatsApp — ask questions, request bulk pricing, or negotiate before you buy."}
@@ -480,25 +480,25 @@ export default async function ProductDetailPage({
 
           {/* Customer Reviews */}
           <div className="mt-16 max-w-2xl">
-            <h2 className="text-xl font-serif text-stone-900 dark:text-stone-100 border-b border-stone-200 dark:border-stone-800 pb-4 mb-6">
+            <h2 className="text-xl font-serif text-fg border-b border-border pb-4 mb-6">
               Customer Reviews
             </h2>
 
             {reviews.length === 0 ? (
-              <p className="text-stone-400 text-sm mb-6">No reviews yet — be the first to share your experience.</p>
+              <p className="text-faint text-sm mb-6">No reviews yet — be the first to share your experience.</p>
             ) : (
               <div className="space-y-4 mb-8">
                 {reviews.map((review) => (
-                  <div key={review.id} className="border-b border-stone-100 dark:border-stone-800 pb-4">
+                  <div key={review.id} className="border-b border-border pb-4">
                     <div className="flex items-center gap-2">
                       <span className="text-amber-500 text-xs leading-none">
                         {"★".repeat(review.rating)}
                         {"☆".repeat(5 - review.rating)}
                       </span>
-                      <span className="text-sm font-medium text-stone-900 dark:text-stone-100">{review.customer_name}</span>
+                      <span className="text-sm font-medium text-fg">{review.customer_name}</span>
                     </div>
                     {review.review_text && (
-                      <p className="text-stone-600 dark:text-stone-300 text-sm font-light mt-1.5 leading-relaxed">{review.review_text}</p>
+                      <p className="text-muted text-sm font-light mt-1.5 leading-relaxed">{review.review_text}</p>
                     )}
                   </div>
                 ))}
@@ -530,7 +530,7 @@ export default async function ProductDetailPage({
       <CategorySlider items={categorySliderItems} />
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}
-      <footer className="bg-stone-900 text-stone-400 text-xs py-8 border-t border-stone-800">
+      <footer className="bg-stone-900 text-faint text-xs py-8 border-t border-stone-800">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
             <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>

@@ -131,13 +131,13 @@ export default async function RootLayout({
       <CartProvider>
       <WishlistProvider>
       <CatalogLoadingProvider>
-        <body className="bg-[var(--background)] dark:bg-stone-950 text-stone-800 dark:text-stone-200 antialiased min-h-screen flex flex-col transition-colors">
+        <body className="bg-bg text-fg antialiased min-h-screen flex flex-col transition-colors">
 
           {/* Skip link for keyboard/screen-reader users -- visually hidden
               until focused, jumps straight past the nav to page content. */}
           <a
             href="#main-content"
-            className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-amber-700 focus:text-white focus:px-4 focus:py-2 focus:rounded focus:shadow-lg focus:text-sm focus:font-semibold"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-accent focus:text-accent-fg focus:px-4 focus:py-2 focus:rounded focus:shadow-lg focus:text-sm focus:font-semibold"
           >
             Skip to main content
           </a>

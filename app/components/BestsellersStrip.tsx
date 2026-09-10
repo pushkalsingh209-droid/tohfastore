@@ -27,7 +27,7 @@ export default function BestsellersStrip({
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-14">
-      <h2 className="text-xl font-serif text-stone-900 dark:text-stone-100 mb-5">{title}</h2>
+      <h2 className="text-xl font-serif text-fg mb-5">{title}</h2>
       <div className="flex gap-4 overflow-x-auto pb-3 -mx-6 px-6">
         {items.map((product, index) => (
           <Link
@@ -35,7 +35,7 @@ export default function BestsellersStrip({
             href={productHref(product)}
             className="group flex-shrink-0 w-36 sm:w-44"
           >
-            <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 bg-white">
+            <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-lg overflow-hidden border border-border bg-white">
               <Image
                 src={product.thumb_url || product.image_url}
                 alt={product.name}
@@ -45,18 +45,18 @@ export default function BestsellersStrip({
                 priority={priorityFirst && index === 0}
               />
               {product.unitsSold > 0 && (
-                <span className="absolute top-2 left-2 bg-amber-700 text-white text-[9px] uppercase tracking-wider font-bold px-2 py-1 rounded-full shadow">
+                <span className="absolute top-2 left-2 bg-accent text-accent-fg text-[9px] uppercase tracking-wider font-bold px-2 py-1 rounded-full shadow">
                   {product.unitsSold} sold
                 </span>
               )}
             </div>
-            <p className="mt-2 text-xs font-serif text-stone-800 dark:text-stone-200 line-clamp-2 group-hover:text-amber-700 dark:group-hover:text-amber-500 transition">
+            <p className="mt-2 text-xs font-serif text-fg line-clamp-2 group-hover:text-link transition">
               {product.name}
             </p>
             <PriceDisplay
               price={Number(product.price)}
               category={product.category}
-              className="text-[11px] text-amber-700 dark:text-amber-500 font-mono font-bold"
+              className="text-[11px] text-link font-mono font-bold"
               originalClassName="text-stone-400 dark:text-stone-500 line-through font-mono text-[9px]"
               badgeClassName="text-emerald-700 dark:text-emerald-500 text-[8px] font-bold uppercase"
             />

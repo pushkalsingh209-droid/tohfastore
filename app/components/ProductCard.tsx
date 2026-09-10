@@ -145,7 +145,7 @@ export default function ProductCard({
     <TempleCardFrame>
     <div className="card-flip-perspective">
     <div className={`card-flip-inner ${cardFlipped ? "is-flipped" : ""} ${cardFlip3dLive ? "flip-3d-live" : ""}`}>
-    <div className="card-flip-face-front bg-white dark:bg-stone-900 rounded-lg overflow-hidden group shadow-sm hover:shadow-md dark:shadow-stone-950/50 transition duration-300">
+    <div className="card-flip-face-front bg-surface rounded-lg overflow-hidden group shadow-sm hover:shadow-md dark:shadow-stone-950/50 transition duration-300">
       <Link
         href={productHref(product)}
         className="block relative touch-manipulation"
@@ -175,7 +175,7 @@ export default function ProductCard({
           }}
           aria-label={isWishlisted(product.id) ? "Remove from wishlist" : "Add to wishlist"}
           aria-pressed={isWishlisted(product.id)}
-          className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white/90 dark:bg-stone-900/90 shadow-sm flex items-center justify-center hover:scale-110 transition"
+          className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-surface/90 shadow-sm flex items-center justify-center hover:scale-110 transition"
         >
           <svg
             className={`w-4 h-4 transition ${isWishlisted(product.id) ? "fill-rose-600 text-rose-600" : "fill-none text-stone-500"}`}
@@ -209,13 +209,13 @@ export default function ProductCard({
       )}
 
       <div className="p-6">
-        <h3 className="font-serif text-lg text-stone-900 dark:text-stone-100 mb-1 group-hover:text-amber-700 dark:group-hover:text-amber-500 transition">
+        <h3 className="font-serif text-lg text-fg mb-1 group-hover:text-link transition">
           {product.name}
         </h3>
-        <p className="text-stone-500 dark:text-stone-400 text-xs line-clamp-2 mb-4 font-light">
+        <p className="text-faint text-xs line-clamp-2 mb-4 font-light">
           {product.description}
         </p>
-        <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
+        <div className="flex items-center justify-between pt-3 border-t border-border">
           <div className="flex flex-col">
             <PriceDisplay price={Number(product.price)} category={product.category} />
             <StockStatusBadge outOfStock={outOfStock} lowStock={lowStock} inventory={stock} soldCount={product.sold_count} enquireOnly={enquireOnly} />
@@ -235,10 +235,10 @@ export default function ProductCard({
             disabled={!enquireOnly && addToCartDisabled}
             className={`text-xs uppercase tracking-wider px-5 py-2.5 rounded font-medium transition duration-200 shadow-sm ${
               enquireOnly
-                ? "bg-amber-700 hover:bg-amber-800 text-white active:scale-95"
+                ? "bg-accent hover:bg-accent-hover text-accent-fg active:scale-95"
                 : addToCartDisabled
                 ? "bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-500 cursor-not-allowed"
-                : "bg-stone-900 hover:bg-amber-700 text-white active:scale-95"
+                : "bg-stone-900 hover:bg-accent text-accent-fg active:scale-95"
             }`}
           >
             {enquireOnly ? "Enquire to Buy" : outOfStock ? "Sold Out" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
@@ -252,7 +252,7 @@ export default function ProductCard({
             setEnquirySource("card_front");
           }}
           className={`mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-1.5 w-full text-white text-[11px] uppercase tracking-wider font-semibold py-2.5 px-3 rounded transition active:scale-95 ${
-            outOfStock ? "bg-amber-700 hover:bg-amber-800" : "bg-emerald-600 hover:bg-emerald-700"
+            outOfStock ? "bg-accent hover:bg-accent-hover" : "bg-emerald-600 hover:bg-emerald-700"
           }`}
         >
           {/* Grid, not flex+justify-center: the icon and this invisible
@@ -271,7 +271,7 @@ export default function ProductCard({
 
         <Link
           href={productHref(product)}
-          className="block mt-3 text-[11px] uppercase tracking-wider font-semibold text-amber-700 hover:text-amber-800 transition text-center"
+          className="block mt-3 text-[11px] uppercase tracking-wider font-semibold text-accent hover:text-accent-hover transition text-center"
         >
           View details &rsaquo;
         </Link>
@@ -298,7 +298,7 @@ export default function ProductCard({
       </button>
     </div>
 
-    <div className="card-flip-face-back rounded-lg overflow-hidden bg-white dark:bg-stone-900 shadow-sm dark:shadow-stone-950/50 flex flex-col">
+    <div className="card-flip-face-back rounded-lg overflow-hidden bg-surface shadow-sm dark:shadow-stone-950/50 flex flex-col">
       {/* Not wrapped in a Link this time -- the Description/Specifications
           boxes below are <details> elements a visitor needs to be able to
           tap without navigating away. Getting to the product page from here
@@ -306,16 +306,16 @@ export default function ProductCard({
       <div className="p-6 flex-1 overflow-y-auto space-y-4">
         <div>
           {product.category && (
-            <p className="text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-500 font-semibold mb-1">
+            <p className="text-[10px] uppercase tracking-wider text-link font-semibold mb-1">
               {product.category}
             </p>
           )}
-          <h3 className="font-serif text-lg text-stone-900 dark:text-stone-100">{product.name}</h3>
+          <h3 className="font-serif text-lg text-fg">{product.name}</h3>
         </div>
 
         {/* Same price/stock/Add to Cart/WhatsApp actions as the front --
             a visitor shouldn't have to flip back just to buy. */}
-        <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
+        <div className="flex items-center justify-between pt-3 border-t border-border">
           <div className="flex flex-col">
             <PriceDisplay price={Number(product.price)} category={product.category} />
             <StockStatusBadge outOfStock={outOfStock} lowStock={lowStock} inventory={stock} soldCount={product.sold_count} enquireOnly={enquireOnly} />
@@ -336,10 +336,10 @@ export default function ProductCard({
             disabled={!enquireOnly && addToCartDisabled}
             className={`text-xs uppercase tracking-wider px-5 py-2.5 rounded font-medium transition duration-200 shadow-sm ${
               enquireOnly
-                ? "bg-amber-700 hover:bg-amber-800 text-white active:scale-95"
+                ? "bg-accent hover:bg-accent-hover text-accent-fg active:scale-95"
                 : addToCartDisabled
                 ? "bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-500 cursor-not-allowed"
-                : "bg-stone-900 hover:bg-amber-700 text-white active:scale-95"
+                : "bg-stone-900 hover:bg-accent text-accent-fg active:scale-95"
             }`}
           >
             {enquireOnly ? "Enquire to Buy" : outOfStock ? "Sold Out" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
@@ -352,7 +352,7 @@ export default function ProductCard({
             setEnquirySource("card_back");
           }}
           className={`grid grid-cols-[auto_1fr_auto] items-center gap-1.5 w-full text-white text-[11px] uppercase tracking-wider font-semibold py-2.5 px-3 rounded transition active:scale-95 ${
-            outOfStock ? "bg-amber-700 hover:bg-amber-800" : "bg-emerald-600 hover:bg-emerald-700"
+            outOfStock ? "bg-accent hover:bg-accent-hover" : "bg-emerald-600 hover:bg-emerald-700"
           }`}
         >
           <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
@@ -367,7 +367,7 @@ export default function ProductCard({
             Description
             <span className="spec-chev" aria-hidden="true" />
           </summary>
-          <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed whitespace-pre-line pt-1">
+          <p className="text-xs text-muted leading-relaxed whitespace-pre-line pt-1">
             {product.description}
           </p>
         </details>
@@ -379,16 +379,16 @@ export default function ProductCard({
               <span className="spec-chev" aria-hidden="true" />
             </summary>
             <div className="pt-1 space-y-1">
-              {dimensionsLine && <p className="text-xs text-stone-600 dark:text-stone-300">{dimensionsLine}</p>}
-              {product.material && <p className="text-xs text-stone-600 dark:text-stone-300">Material: {product.material}</p>}
-              {product.color && <p className="text-xs text-stone-600 dark:text-stone-300">Colour: {product.color}</p>}
+              {dimensionsLine && <p className="text-xs text-muted">{dimensionsLine}</p>}
+              {product.material && <p className="text-xs text-muted">Material: {product.material}</p>}
+              {product.color && <p className="text-xs text-muted">Colour: {product.color}</p>}
             </div>
           </details>
         )}
 
         <Link
           href={productHref(product)}
-          className="block text-center text-[11px] uppercase tracking-wider font-semibold text-amber-700 hover:text-amber-800 dark:text-amber-500 dark:hover:text-amber-400 transition"
+          className="block text-center text-[11px] uppercase tracking-wider font-semibold text-link hover:text-link-hover transition"
         >
           View Full Details &rsaquo;
         </Link>

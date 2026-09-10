@@ -12,7 +12,7 @@ import { calculateSlashedPrice } from "@/app/utils/pricing";
 export default function PriceDisplay({
   price,
   category,
-  className = "text-amber-700 dark:text-amber-500 font-bold font-mono text-lg",
+  className = "text-link font-bold font-mono text-lg",
   originalClassName = "text-stone-400 dark:text-stone-500 line-through font-mono text-xs",
   badgeClassName = "text-emerald-700 dark:text-emerald-500 text-[10px] font-bold uppercase",
   showBadge = true,

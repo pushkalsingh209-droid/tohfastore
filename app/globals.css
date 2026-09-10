@@ -15,49 +15,73 @@
 
 /* ============================================================
    Semantic colour tokens -- the theme layer.
-   PR 1 of the theming series (docs/DESIGN-theming.md). Every theme is one
+   Theming series (docs/DESIGN-theming.md). Every theme is one
    :root[data-theme="<slug>"] block; the pre-paint script in app/layout.tsx
-   sets data-theme before first paint (see app/utils/themes.ts). `sand` and
-   `ink` reproduce today's light and dark palette exactly, so nothing
-   changes visually yet -- NOTHING consumes these `--color-*` utilities
-   (bg-bg, text-fg, border-border, bg-accent, ...) at this point. Later PRs
-   replace the Tailwind `dark:` variants with them, one component cluster at
-   a time; the last PR adds the remaining palettes. Keep every theme block's
-   token set identical -- themes.test.ts enforces it.
+   sets data-theme before first paint (see app/utils/themes.ts). Keep every
+   theme block's token set identical -- themes.test.ts enforces it.
+
+   `sand` / `ink` are pinned to the EXACT stone/amber values today's classes
+   resolve to, so the PR-2/3 `dark:`-variant -> token conversion is a no-op
+   visually. Mapping (light / dark) each token reproduces:
+     --surface        bg-white / dark:bg-stone-900
+     --surface-2      bg-stone-50 / dark:bg-stone-800   (raised panels, hovers)
+     --fg             text-stone-800 / dark:text-stone-200   (stone-900/-100 headings fold in -- sub-perceptual)
+     --muted          text-stone-600 / dark:text-stone-300
+     --faint          text-stone-500 / dark:text-stone-400   (stone-400/-500 fold in)
+     --border         border-stone-200 / dark:border-stone-800   (stone-100 folds in)
+     --border-strong  border-stone-300 / dark:border-stone-700   (inputs; stone-600 folds in)
+     --accent         amber-700 both modes   (bare bg-/text-/fill-amber-700 -- badges, fills, icons)
+     --accent-fg      #fff both   (text on --accent)
+     --accent-hover   amber-800 both   (bare bg-/text-amber-800 hovers)
+     --link           amber-700 / amber-500   (the paired `text-amber-700 dark:text-amber-500` accent text)
+     --link-hover     amber-800 / amber-400
+     --accent-soft    amber-100 / amber-900   (tint backgrounds)
+     --footer-bg/-fg  the always-dark footer block (stone-900+stone-400 / black+stone-400)
+   `--link*` default to `var(--accent*)`; only `ink` overrides them (that is the
+   one place today's palette makes accent text brighter than accent fills).
+   `--success` / `--danger` exist for later; emerald/rose/red stay hardcoded for now.
    ============================================================ */
 :root,
 :root[data-theme="sand"] {
-  --bg: #fff0cf; /* == --background, today's light page background */
+  --bg: #fff0cf;
   --surface: #ffffff;
-  --surface-2: #faf5e6;
-  --fg: #292524; /* stone-800, today's default body text */
-  --muted: #57534e; /* stone-600 */
-  --faint: #78716c; /* stone-500 */
-  --border: #e7e5e4; /* stone-200 */
-  --border-strong: #d6d3d1; /* stone-300 */
-  --accent: #b45309; /* amber-700 -- also the focus-ring colour below */
+  --surface-2: #fafaf9;
+  --fg: #292524;
+  --muted: #57534e;
+  --faint: #78716c;
+  --border: #e7e5e4;
+  --border-strong: #d6d3d1;
+  --accent: #b45309;
   --accent-fg: #ffffff;
-  --accent-hover: #92400e; /* amber-800 */
-  --accent-soft: #fef3c7; /* amber-100 */
+  --accent-hover: #92400e;
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
+  --accent-soft: #fef3c7;
   --scrim: rgba(28, 25, 23, 0.85); /* stone-900/85 -- CategorySlider bottom fade */
+  --footer-bg: #1c1917; /* stone-900 */
+  --footer-fg: #a8a29e; /* stone-400 */
   --success: #047857; /* emerald-700 */
   --danger: #b91c1c; /* red-700 */
 }
 
 :root[data-theme="ink"] {
-  --bg: #0c0a09; /* stone-950, today's dark:bg-stone-950 */
+  --bg: #0c0a09; /* stone-950 */
   --surface: #1c1917; /* stone-900 */
   --surface-2: #292524; /* stone-800 */
-  --fg: #e7e5e4; /* stone-200, today's dark:text-stone-200 */
-  --muted: #a8a29e; /* stone-400 */
-  --faint: #78716c; /* stone-500 */
+  --fg: #e7e5e4; /* stone-200 */
+  --muted: #d6d3d1; /* stone-300 */
+  --faint: #a8a29e; /* stone-400 */
   --border: #292524; /* stone-800 */
   --border-strong: #44403c; /* stone-700 */
-  --accent: #f59e0b; /* amber-500 */
-  --accent-fg: #1c1917;
-  --accent-hover: #fbbf24; /* amber-400 */
-  --accent-soft: #451a03; /* amber-950 */
+  --accent: #b45309; /* amber-700 -- bare amber-700 badges/fills/icons unchanged */
+  --accent-fg: #ffffff;
+  --accent-hover: #92400e; /* amber-800 */
+  --link: #f59e0b; /* amber-500 -- the paired accent text/icons */
+  --link-hover: #fbbf24; /* amber-400 */
+  --accent-soft: #78350f; /* amber-900 */
   --scrim: rgba(0, 0, 0, 0.85);
+  --footer-bg: #000000; /* dark:bg-black */
+  --footer-fg: #a8a29e; /* stone-400 */
   --success: #10b981; /* emerald-500 */
   --danger: #ef4444; /* red-500 */
 }
@@ -68,9 +92,9 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Semantic theme tokens -> Tailwind colour utilities. Consumed from PR 2
-     on; harmless to declare now (Tailwind v4 only emits a utility when it's
-     actually used in the source). */
+  /* Semantic theme tokens -> Tailwind colour utilities (bg-surface, text-fg,
+     border-border, text-link, bg-accent, ...). Tailwind v4 only emits a
+     utility when it's actually used in the source. */
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
@@ -82,8 +106,12 @@
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
   --color-accent-hover: var(--accent-hover);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
   --color-accent-soft: var(--accent-soft);
   --color-scrim: var(--scrim);
+  --color-footer-bg: var(--footer-bg);
+  --color-footer-fg: var(--footer-fg);
   --color-success: var(--success);
   --color-danger: var(--danger);
 }
@@ -99,8 +127,8 @@ html {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--fg);
   font-family: Arial, Helvetica, sans-serif;
   overflow-x: hidden;
   max-width: 100%;
@@ -126,7 +154,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid #b45309;
+  outline: 2px solid var(--accent); /* amber-700 in sand/ink -- identical to the old hardcoded #b45309 */
   outline-offset: 2px;
 }
 
