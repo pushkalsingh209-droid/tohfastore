@@ -3025,6 +3025,20 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-09-10<br>14:41</code></td>
+  <td><strong>&ldquo;Gift Guides&rdquo; reachable on mobile</strong><br>(nav fix &mdash; no payment/schema surface)</td>
+  <td>
+    <code>/guides</code> was only linked from the desktop top-nav (<code>hidden md:flex</code> in
+    <code>headerNavbar</code>), so on mobile &mdash; where most traffic is &mdash; there was <em>no</em> path
+    to it. Added &ldquo;Gift Guides&rdquo; as the second item (after Home) in the <code>PageNavLinks</code>
+    &ldquo;Menu&rdquo; dropdown, which renders at every width. Mobile-first: no new always-visible header
+    element, just one more row in the existing menu; one tap from the persistent Menu button.
+  </td>
+  <td><em>edited:</em> <code>app/components/PageNavLinks.tsx</code>; this handbook. <code>tsc</code> clean ·
+    <code>npm test</code> 337/338 · <code>next build</code> exit 0, 145/145 · screenshotted (mobile menu open,
+    Gift Guides visible at the top).</td>
+</tr>
+<tr>
   <td><code>2026-09-10<br>14:04</code></td>
   <td><strong>Checkout: verify at Review not step 1 (#4) + COD order-total ceiling (#5)</strong><br>(&#9888; payment path &mdash; owner approved doing both in one PR, overriding #4's &ldquo;wait for pixel data&rdquo; hold)</td>
   <td>
