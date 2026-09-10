@@ -1,16 +1,12 @@
 // app/components/checkout/steps/ContactStep.tsx
-// Step 1 of the 3-step checkout: name / email / phone + the WhatsApp OTP
-// block. All *state* lives in CheckoutSheet and comes in via `bag`; this
-// component owns only its input refs (for self-managed focus). The JSX is
-// lifted verbatim from the old CartDrawer inline form; only the
-// OTP-status checks are re-pointed at the reducer (`otpUi` / `otpVerified`
-// derived from useCheckoutMachine).
+// Step 1 of the 3-step checkout: name / email / phone. Verification moved to
+// step 3 (IMPROVEMENTS #4, 2026-09-10) -- see PhoneVerification.tsx, rendered
+// in ReviewStep. All *state* lives in CheckoutSheet and comes in via `bag`;
+// this component owns only its input refs (for self-managed focus). The
+// free "is this number on WhatsApp" pre-check still runs from CheckoutSheet
+// and its result is shown inline here.
 "use client";
 import { useEffect, useRef } from "react";
-
-const PHONE_REGEX = /^[6-9]\d{9}$/;
-
-export type OtpUi = "idle" | "sending" | "sent" | "verifying" | "error";
 
 export interface ContactBag {
   customerName: string;
@@ -26,16 +22,6 @@ export interface ContactBag {
 
   whatsappCheckStatus: "idle" | "checking" | "valid" | "invalid" | "unknown";
   whatsappCheckedPhone: string;
-
-  otpUi: OtpUi;
-  otpVerified: boolean;
-  otpCode: string;
-  setOtpCode: (v: string) => void;
-  otpError: string;
-  cooldown: number;
-  onSendOtp: () => void;
-  onVerifyOtp: () => void;
-  onChangeDetails: () => void;
 }
 
 export default function ContactStep({ bag }: { bag: ContactBag }) {
@@ -43,12 +29,6 @@ export default function ContactStep({ bag }: { bag: ContactBag }) {
   const nameRef = useRef<HTMLInputElement | null>(null);
   const emailRef = useRef<HTMLInputElement | null>(null);
   const phoneRef = useRef<HTMLInputElement | null>(null);
-  const otpRef = useRef<HTMLInputElement | null>(null);
-
-  // Focus the OTP box the moment a code has been sent.
-  useEffect(() => {
-    if (b.otpUi === "sent") otpRef.current?.focus();
-  }, [b.otpUi]);
 
   // Scroll to / focus whichever field a validation error is about.
   useEffect(() => {
@@ -64,39 +44,10 @@ export default function ContactStep({ bag }: { bag: ContactBag }) {
     }
   }, [b.invalidField]);
 
-  const showSendButton = b.otpUi === "idle" || (b.otpUi === "error" && !b.otpCode);
-  const showCodeEntry = b.otpUi === "sent" || b.otpUi === "verifying" || (b.otpUi === "error" && !!b.otpCode);
-  const offerOtp =
-    PHONE_REGEX.test(b.customerPhone) &&
-    (b.whatsappCheckStatus === "valid" || b.whatsappCheckStatus === "unknown") &&
-    !b.otpVerified;
-
-  if (b.otpVerified) {
-    return (
-      <div className="space-y-3">
-        <div className="p-3 bg-success-soft border border-success-border rounded flex items-start justify-between gap-3">
-          <div className="text-xs text-success min-w-0">
-            <p className="font-semibold mb-0.5">&#10003; WhatsApp Verified</p>
-            <p className="truncate">{b.customerName} &middot; {b.customerEmail}</p>
-            <p className="font-mono">+91 {b.customerPhone}</p>
-          </div>
-          <button
-            type="button"
-            onClick={b.onChangeDetails}
-            className="text-[11px] underline text-success hover:text-success flex-shrink-0"
-          >
-            Change
-          </button>
-        </div>
-        <p className="text-[11px] text-faint">Tap <strong>Continue</strong> below to enter your delivery address.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3">
       <div className="p-3 text-[11px] font-medium bg-accent-soft border border-accent-soft-border text-accent-hover rounded">
-        📱 Order updates (confirmation, dispatch, delivery) are sent via WhatsApp only. Please enter a number that is active on WhatsApp.
+        📱 Order updates (confirmation, dispatch, delivery) are sent via WhatsApp only. Please enter a number that is active on WhatsApp — you&rsquo;ll verify it with a code at the last step.
       </div>
 
       <div>
@@ -155,56 +106,6 @@ export default function ContactStep({ bag }: { bag: ContactBag }) {
           <div className="mt-1.5 px-2.5 py-2 rounded bg-danger-soft border border-danger-border text-danger text-[11px] font-medium flex items-start gap-1.5">
             <span aria-hidden="true">⚠️</span>
             <span>That number isn&rsquo;t on WhatsApp, so we&rsquo;ve cleared it &mdash; please re-enter your correct WhatsApp number. Order updates are sent via WhatsApp only, so we can&rsquo;t proceed without a real one.</span>
-          </div>
-        )}
-
-        {offerOtp && (
-          <div className="mt-2 space-y-1.5">
-            {showSendButton && (
-              <button
-                type="button"
-                onClick={b.onSendOtp}
-                className="w-full px-3 py-2 text-[11px] uppercase tracking-wider font-semibold border border-accent-soft-border rounded text-link-hover hover:bg-accent-soft transition"
-              >
-                Send Verification Code
-              </button>
-            )}
-            {showCodeEntry && (
-              <div className="space-y-1.5">
-                <p className="text-[11px] text-success">Code sent via WhatsApp &mdash; enter it below.</p>
-                <div className="flex gap-2">
-                  <input
-                    ref={otpRef}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={b.otpCode}
-                    onChange={(e) => b.setOtpCode(e.target.value.replace(/\D/g, ""))}
-                    placeholder="6-digit code"
-                    className="flex-grow px-3 py-2 border border-border rounded text-xs bg-surface-2 text-fg focus:outline-none focus:border-accent font-mono tracking-widest text-center"
-                  />
-                  <button
-                    type="button"
-                    onClick={b.onVerifyOtp}
-                    disabled={b.otpUi === "verifying" || b.otpCode.length !== 6}
-                    className="px-4 py-2 text-[11px] uppercase tracking-wider font-semibold rounded bg-fg text-bg hover:bg-accent hover:text-accent-fg transition disabled:opacity-50"
-                  >
-                    {b.otpUi === "verifying" ? "Verifying..." : "Verify"}
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={b.onSendOtp}
-                  disabled={b.cooldown > 0}
-                  className="text-[10px] text-faint hover:text-link disabled:hover:text-faint transition"
-                >
-                  {b.cooldown > 0 ? `Resend code in ${b.cooldown}s` : "Resend code"}
-                </button>
-              </div>
-            )}
-            {b.otpError && (
-              <p className="text-[11px] text-danger font-medium">⚠️ {b.otpError}</p>
-            )}
           </div>
         )}
       </div>

@@ -552,6 +552,18 @@ export default function SettingsTab() {
     }
   };
 
+  const handleUpdateCodMaxOrderTotal = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ cod_max_order_total: Number(value) }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: unknown) {
+      alert(`Could not update the COD order-total limit: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   const handleUpdateCategoryGstRate = async (categoryId: number, gstRate: string) => {
     try {
       const result = await apiRequest("/api/admin/categories", {
@@ -955,9 +967,27 @@ export default function SettingsTab() {
           piece coming back damaged at your cost. <code className="font-mono">0</code> means no limit. You can
           also block COD per product (Products tab) or per category (below); <strong>any one ineligible item
           makes the whole bag prepaid-only</strong>, since a bag ships as one parcel.
-          <br />
-          <strong>Note:</strong> this caps each item, not the bag total &mdash; six ₹2,900 pieces is still a
-          ₹17,400 COD parcel.
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 mt-3">
+        <label className="text-sm text-muted font-medium">COD limit per order (₹)</label>
+        <input
+          type="number"
+          min={0}
+          step={1}
+          key={settings.cod_max_order_total ?? "0"}
+          defaultValue={settings.cod_max_order_total ?? "0"}
+          onBlur={(e) => {
+            const next = e.target.value.trim();
+            if (next !== "" && next !== (settings.cod_max_order_total ?? "0")) handleUpdateCodMaxOrderTotal(next);
+          }}
+          className="w-28 px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
+        />
+        <span className="text-faint text-xs w-full">
+          Caps the <strong>whole bag</strong> &mdash; a cart of many cheaper pieces can still add up to a large
+          COD parcel, and return-to-origin loss tracks the parcel, not the line.
+          <code className="font-mono">0</code> means no limit (the default &mdash; turn this on only if
+          high-value COD orders start coming through).
         </span>
       </div>
       <label className="flex items-center gap-2 text-sm text-muted font-medium mt-4">

@@ -5,7 +5,7 @@
 "use client";
 import { TOTAL_STEPS } from "@/app/components/checkout/useCheckoutMachine";
 
-const TITLES = ["Contact & Verify", "Delivery", "Review & Pay"] as const;
+const TITLES = ["Your Details", "Delivery", "Review & Pay"] as const;
 
 export default function Stepper({
   step,

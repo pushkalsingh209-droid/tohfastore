@@ -11,12 +11,17 @@ import { calculateGstBreakdown, GST_RATE } from "@/app/utils/gst";
 import { calculateSlashedPrice } from "@/app/utils/pricing";
 import PriceDisplay from "@/app/components/PriceDisplay";
 import { useAvailableCoupons, couponUrgencyText, type AvailableCoupon } from "@/app/components/checkout/useAvailableCoupons";
+import PhoneVerification, { type PhoneVerificationBag } from "@/app/components/checkout/steps/PhoneVerification";
 import type { CartItem } from "@/app/types/product";
 
 export interface ReviewBag {
   cart: CartItem[];
   cartTotal: number;
   categoryDiscounts: Record<string, number>;
+
+  // WhatsApp OTP verification -- moved here from step 1 (IMPROVEMENTS #4).
+  // The Pay button (sheet footer) stays disabled until `verification.otpVerified`.
+  verification: PhoneVerificationBag;
 
   // Storewide "Spend & Save" tier offer. The offer and a coupon are
   // mutually exclusive but never forced -- while `offerActive`, the shopper
@@ -341,6 +346,11 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
       ) : (
         <CouponPanel b={b} suggestions={suggestions} />
       )}
+
+      {/* --- WhatsApp number verification (moved from step 1, #4) --- the
+          last gate before Pay. The footer button stays disabled until this
+          is done. */}
+      <PhoneVerification bag={b.verification} />
 
       {/* --- Cancellation & Refund Policy (bilingual, required consent) ---
           Lifted verbatim from the old CartDrawer so acceptance of the

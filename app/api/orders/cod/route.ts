@@ -26,9 +26,11 @@ import {
   COD_ENABLED_KEY,
   COD_FEE_KEY,
   COD_MAX_ITEM_PRICE_KEY,
+  COD_MAX_ORDER_TOTAL_KEY,
   parseCodEnabled,
   parseCodFee,
   parseCodMaxItemPrice,
+  parseCodMaxOrderTotal,
   canPlaceCodOrder,
   calculateCodTotal,
   checkCodEligibility,
@@ -68,7 +70,7 @@ export async function POST(req: Request) {
     const { data: settingRows } = await supabase
       .from("site_settings")
       .select("key, value")
-      .in("key", [COD_ENABLED_KEY, COD_FEE_KEY, COD_MAX_ITEM_PRICE_KEY, STOCK_RESERVATIONS_ENABLED_KEY]);
+      .in("key", [COD_ENABLED_KEY, COD_FEE_KEY, COD_MAX_ITEM_PRICE_KEY, COD_MAX_ORDER_TOTAL_KEY, STOCK_RESERVATIONS_ENABLED_KEY]);
     const settings = new Map((settingRows ?? []).map((r) => [r.key, r.value]));
 
     if (!parseCodEnabled(settings.get(COD_ENABLED_KEY))) {
@@ -180,6 +182,8 @@ export async function POST(req: Request) {
       {
         maxItemPrice: parseCodMaxItemPrice(settings.get(COD_MAX_ITEM_PRICE_KEY)),
         disabledCategories: codDisabledCategories,
+        maxOrderTotal: parseCodMaxOrderTotal(settings.get(COD_MAX_ORDER_TOTAL_KEY)),
+        orderTotal: subtotal,
       }
     );
     if (!eligibility.eligible) {

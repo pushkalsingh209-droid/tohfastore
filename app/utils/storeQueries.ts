@@ -28,7 +28,7 @@ import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { attachThumbUrls } from "@/app/utils/imageThumb";
 import { tallyUnitsSold } from "@/app/utils/orderTally";
 import { tallyViewedTogether } from "@/app/utils/viewedTogether";
-import { parseCodEnabled, parseCodFee, parseCodMaxItemPrice } from "@/app/utils/codSettings";
+import { parseCodEnabled, parseCodFee, parseCodMaxItemPrice, parseCodMaxOrderTotal } from "@/app/utils/codSettings";
 import { statsExcludedInList } from "@/app/utils/orderStatus";
 import {
   DEFAULT_WEIGHT_UNIT,
@@ -305,6 +305,7 @@ export const getPublicSettingsMap = unstable_cache(
           "cod_enabled",
           "cod_fee",
           "cod_max_item_price",
+          "cod_max_order_total",
         ]);
       if (error || !data) return {};
       const map: RawSettings = {};
@@ -404,7 +405,7 @@ export interface BootstrapData {
   labelPhotoFilters: Record<string, string>;
   categoryDiscounts: Record<string, number>;
   categoryWhatsappNumbers: Record<string, string>;
-  cod: { enabled: boolean; fee: number; maxItemPrice: number; disabledCategories: string[] };
+  cod: { enabled: boolean; fee: number; maxItemPrice: number; maxOrderTotal: number; disabledCategories: string[] };
 }
 
 // One server-side read of everything the storefront's client contexts used
@@ -435,6 +436,7 @@ export async function getBootstrapData(): Promise<BootstrapData> {
       enabled: parseCodEnabled(rawSettings.cod_enabled),
       fee: parseCodFee(rawSettings.cod_fee),
       maxItemPrice: parseCodMaxItemPrice(rawSettings.cod_max_item_price),
+      maxOrderTotal: parseCodMaxOrderTotal(rawSettings.cod_max_order_total),
       disabledCategories: codDisabledCategories,
     },
   };
