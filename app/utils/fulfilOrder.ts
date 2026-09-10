@@ -588,6 +588,8 @@ export async function fulfilOrder(params: FulfilOrderParams): Promise<FulfilOrde
           orderItems,
           gst,
           categoryDiscounts,
+          codFee,
+          isCod,
         });
       } catch (emailError) {
         console.error("Order email dispatch skip:", emailError);
@@ -699,8 +701,17 @@ function buildOrderEmailHtml(params: {
   includeRefundPolicy: boolean;
   categoryDiscounts?: Record<string, number>;
   invoiceUrl?: string;
+  // COD: a flat, non-taxable convenience fee added on top of the goods. It
+  // sits below the GST breakdown and is folded into the payable figure, so
+  // the email total matches what the courier actually collects. 0/false for
+  // prepaid leaves the rendered email byte-identical.
+  codFee?: number;
+  isCod?: boolean;
 }): string {
   const { heading, intro, orderId, customerName, customerPhone, customerEmail, formattedAddress, orderItems, gst, showCustomerContact, includeRefundPolicy, categoryDiscounts, invoiceUrl } = params;
+  const codFee = Math.max(0, Number(params.codFee) || 0);
+  const isCod = Boolean(params.isCod);
+  const payable = gst.totalPrice + codFee;
 
   const gstRows = gst.byRate
     .map(
@@ -708,6 +719,10 @@ function buildOrderEmailHtml(params: {
         `<tr><td style="padding:2px 0;color:#78716c;">GST (${g.rate}%)</td><td style="padding:2px 0;text-align:right;font-family:monospace;">&#8377;${g.gstAmount.toLocaleString("en-IN")}</td></tr>`
     )
     .join("");
+  const codFeeRow =
+    isCod && codFee > 0
+      ? `<tr><td style="padding:2px 0;color:#78716c;">Cash on Delivery fee</td><td style="padding:2px 0;text-align:right;font-family:monospace;">&#8377;${codFee.toLocaleString("en-IN")}</td></tr>`
+      : "";
 
   return `<div style="font-family: Arial, Helvetica, sans-serif; background:#f5f5f4; padding:24px 0;">
     <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e7e5e4;">
@@ -748,7 +763,8 @@ function buildOrderEmailHtml(params: {
           ${mrpSavingsRowsHtml(orderItems, showCustomerContact ? undefined : categoryDiscounts)}
           <tr><td style="padding:2px 0;">Base Amount</td><td style="padding:2px 0;text-align:right;font-family:monospace;">&#8377;${gst.basePrice.toLocaleString("en-IN")}</td></tr>
           ${gstRows}
-          <tr><td style="padding:8px 0 0;font-weight:bold;font-size:15px;color:#1c1917;">Total</td><td style="padding:8px 0 0;text-align:right;font-weight:bold;font-size:16px;color:#b45309;font-family:monospace;">&#8377;${gst.totalPrice.toLocaleString("en-IN")}</td></tr>
+          ${codFeeRow}
+          <tr><td style="padding:8px 0 0;font-weight:bold;font-size:15px;color:#1c1917;">${isCod ? "To pay on delivery" : "Total"}</td><td style="padding:8px 0 0;text-align:right;font-weight:bold;font-size:16px;color:#b45309;font-family:monospace;">&#8377;${payable.toLocaleString("en-IN")}</td></tr>
         </table>
         ${
           invoiceUrl
@@ -777,11 +793,15 @@ async function sendOrderEmails(params: {
   orderItems: PricedItem[];
   gst: ReturnType<typeof calculateOrderGstBreakdown>;
   categoryDiscounts?: Record<string, number>;
+  codFee?: number;
+  isCod?: boolean;
 }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
 
   const { orderId, customerName, customerPhone, customerEmail, formattedAddress, orderItems, gst, categoryDiscounts } = params;
+  const codFee = Math.max(0, Number(params.codFee) || 0);
+  const isCod = Boolean(params.isCod);
   const resend = new Resend(apiKey);
 
   const sends = [
@@ -791,7 +811,9 @@ async function sendOrderEmails(params: {
       subject: `New order received — ${orderId}`,
       html: buildOrderEmailHtml({
         heading: "New Order Received",
-        intro: "A new order has been placed and payment has been verified by Razorpay.",
+        intro: isCod
+          ? "A new *Cash on Delivery* order has been placed — the amount below is collected by the courier on delivery."
+          : "A new order has been placed and payment has been verified by Razorpay.",
         orderId,
         customerName,
         customerPhone,
@@ -802,6 +824,8 @@ async function sendOrderEmails(params: {
         showCustomerContact: true,
         includeRefundPolicy: false,
         categoryDiscounts,
+        codFee,
+        isCod,
       }),
     }),
   ];
@@ -817,7 +841,9 @@ async function sendOrderEmails(params: {
         subject: `Your TOHFA order confirmation — ${orderId}`,
         html: buildOrderEmailHtml({
           heading: `Thank you, ${customerName}!`,
-          intro: "Your order has been confirmed and our artisans are preparing it for dispatch. We'll send delivery updates on WhatsApp too.",
+          intro: isCod
+            ? "Your order is confirmed and our artisans are preparing it for dispatch. Please keep the amount below ready in cash for the delivery partner. We'll send delivery updates on WhatsApp too."
+            : "Your order has been confirmed and our artisans are preparing it for dispatch. We'll send delivery updates on WhatsApp too.",
           orderId,
           customerName,
           customerPhone,
@@ -829,6 +855,8 @@ async function sendOrderEmails(params: {
           includeRefundPolicy: true,
           categoryDiscounts,
           invoiceUrl: `${SITE_URL}/success?order_id=${encodeURIComponent(orderId)}`,
+          codFee,
+          isCod,
         }),
       })
     );

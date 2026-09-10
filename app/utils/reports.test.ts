@@ -94,6 +94,50 @@ describe("buildOrderReportRow", () => {
     expect(r.taxableValue + r.gstAmount).toBeCloseTo(900, 2);
   });
 
+  it("prepaid orders carry no COD fee and keep the plain discount inference", () => {
+    const r = buildOrderReportRow(order({ amount: 900 }));
+    expect(r.codFee).toBe(0);
+    expect(r.discount).toBe(100);
+  });
+
+  it("COD: the flat fee is its own column, non-taxable, and out of the discount inference", () => {
+    // ₹1000 of items, no discount, ₹150 COD fee => amount 1150.
+    const r = buildOrderReportRow(
+      order({ amount: 1150, payment_method: "cod", cod_fee: 150 })
+    );
+    expect(r.codFee).toBe(150);
+    expect(r.discount).toBe(0); // NOT max(0, 1000 - 1150) territory
+    expect(r.totalPaid).toBe(1150);
+    // GST is priced on the goods only (₹1000 incl. 5%), the fee sits outside.
+    expect(r.taxableValue).toBeCloseTo(952.38, 2);
+    expect(r.gstAmount).toBeCloseTo(47.62, 2);
+    expect(r.taxableValue + r.gstAmount + r.codFee).toBeCloseTo(1150, 2);
+  });
+
+  it("COD + a real discount: reports the true discount, not discount minus fee", () => {
+    // ₹2000 of items, ₹200 real discount, ₹150 COD fee => amount 1950.
+    // The old maths inferred 2000 - 1950 = ₹50 and overstated taxable value.
+    const r = buildOrderReportRow(
+      order({
+        amount: 1950,
+        payment_method: "cod",
+        cod_fee: 150,
+        items: [{ name: "Idol", price: 2000, quantity: 1, gstRate: 5 }],
+      })
+    );
+    expect(r.codFee).toBe(150);
+    expect(r.discount).toBe(200);
+    // taxable priced on the discounted goods total ₹1800 incl. 5%
+    expect(r.taxableValue).toBeCloseTo(1714.29, 2);
+    expect(r.gstAmount).toBeCloseTo(85.71, 2);
+    expect(r.taxableValue + r.gstAmount + r.codFee).toBeCloseTo(1950, 2);
+  });
+
+  it("case-insensitive on payment_method; a stray cod_fee on a prepaid row is ignored", () => {
+    expect(buildOrderReportRow(order({ amount: 1150, payment_method: "COD", cod_fee: "150" })).codFee).toBe(150);
+    expect(buildOrderReportRow(order({ amount: 1000, payment_method: "razorpay", cod_fee: 150 })).codFee).toBe(0);
+  });
+
   it("flattens customer + address + items", () => {
     const r = buildOrderReportRow(
       order({
@@ -144,6 +188,25 @@ describe("buildReport", () => {
     expect(rep.ordersTotals.orders).toBe(1); // cancelled excluded
     expect(rep.ordersTotals.totalPaid).toBeCloseTo(1050, 2);
     expect(rep.gstTotals.taxableValue).toBeCloseTo(1000, 2);
+  });
+
+  it("sums COD fees into ordersTotals and keeps a cancelled COD order's fee out", () => {
+    const rep = buildReport(
+      [
+        order({ status: "delivered", amount: 1150, payment_method: "cod", cod_fee: 150, items: [{ price: 1000, quantity: 1, gstRate: 5 }] }),
+        order({ status: "processing", amount: 1050, payment_method: "cod", cod_fee: 50, items: [{ price: 1000, quantity: 1, gstRate: 5 }] }),
+        order({ status: "cancelled", amount: 1150, payment_method: "cod", cod_fee: 150, items: [{ price: 1000, quantity: 1, gstRate: 5 }] }),
+      ],
+      period
+    );
+    expect(rep.ordersTotals.codFee).toBeCloseTo(200, 2); // 150 + 50, cancelled excluded
+    expect(rep.ordersTotals.orders).toBe(2);
+    // GST is on the goods only -- 2 orders x ₹1000 incl. 5% => taxable ₹1904.76
+    expect(rep.gstTotals.taxableValue).toBeCloseTo(1904.76, 2);
+    expect(rep.ordersTotals.taxableValue + rep.ordersTotals.gstAmount + rep.ordersTotals.codFee).toBeCloseTo(
+      rep.ordersTotals.totalPaid,
+      2
+    );
   });
 
   it("aggregates multiple GST rates within one order", () => {

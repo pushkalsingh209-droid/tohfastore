@@ -12,6 +12,25 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### COD fee → own report column + on the confirmation email — 2026-09-10 IST
+- **Report (`reports.ts` + `/api/admin/reports`):** Orders sheet gains a **COD fee** column (between GST
+  and Total paid). The report now reads `orders.payment_method` + `orders.cod_fee`; for a COD row the
+  discount is inferred from `subtotal − (amount − cod_fee)` (matching `fulfilOrder`). The old
+  `subtotal − amount` was wrong whenever a COD order *also* had a real discount — e.g. ₹2,000 goods,
+  ₹200 off, ₹150 fee → reported ₹50 discount and an **overstated taxable value / GST**. Fee-only COD
+  orders were already clamped to ₹0 discount (money vanished, tax didn't). Owner's accountant: a COD
+  convenience fee is **not a taxable supply** — carried beside taxable value, so
+  taxable + GST + COD fee reconciles to Total paid. The COD batch's change-log claimed all three
+  subtract-to-derive sites were fixed; `reports.ts` was the missed one.
+- **Confirmation email (`fulfilOrder.ts`):** COD emails now show a "Cash on Delivery fee" row and a
+  "To pay on delivery" total of `gst.totalPrice + codFee` (was labelled "Total" and omitted the fee),
+  plus COD-appropriate intro copy on the business + customer copies. Prepaid emails render identical.
+  WhatsApp already showed the fee + collect-on-delivery total — unchanged.
+- Verified: `tsc` clean · `eslint` changed files clean · `npm test` 329/330 (reports.test.ts +5, 17
+  total: fee-only COD, COD + discount, case-insensitive `payment_method`, totals aggregation,
+  cancelled-COD exclusion, prepaid unchanged) · `next build` exit 0, 145/145. Live Resend send not
+  exercised — email HTML change is a conditional row + label mirroring the shipped `/success` invoice.
+
 ### Theming series PR 5 — admin panel → tokens (series complete) — 2026-09-10 IST
 - `app/admin/**` + `app/components/admin/**` (15 files, ~1400 colour-class occurrences) converted to the
   semantic tokens. Admin was light-only (0 `dark:` variants) so this was a straight bare-class sweep:
@@ -1567,12 +1586,6 @@ care, land behind tests, never "blind".
    (six ₹2,900 items = a ₹17,400 COD parcel), and RTO cost tracks the parcel, not the line. A second
    setting on the same path (`checkCodEligibility` already takes an options object) would close it.
    Not invented unasked; raise it only if real COD carts start clustering high.
-
-6. **COD fee not itemised in the GST/Excel report.** ~~`cod_collected_at` unwritten~~ — done, see the
-   Mark-cash-collected entry in Done. What remains: the report does not break `cod_fee` out as its own
-   column. The discount arithmetic is correct (the fee is subtracted before inferring a discount), but the
-   fee is not shown separately — and whether a COD convenience fee is itself taxable is a question for the
-   owner's accountant, not a guess to encode.
 
 ## Active — Tier 2 (security / hardening)
 

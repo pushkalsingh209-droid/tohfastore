@@ -159,6 +159,12 @@ export interface ReportOrderInput {
   customer_details?: unknown;
   shipping_address?: unknown;
   items?: unknown;
+  // COD orders: `amount` already includes this flat convenience fee. It is
+  // NOT a taxable supply (owner's accountant: a COD charge is outside GST),
+  // so it's carried as its own column and kept out of taxable value / the
+  // discount inference -- prepaid rows leave these null and are unaffected.
+  payment_method?: string | null;
+  cod_fee?: number | string | null;
 }
 
 export interface OrderReportRow {
@@ -175,9 +181,10 @@ export interface OrderReportRow {
   itemCount: number;
   itemsSubtotal: number; // gross, GST-inclusive
   discount: number;
+  codFee: number; // COD convenience fee, non-taxable; 0 for prepaid
   taxableValue: number;
   gstAmount: number;
-  totalPaid: number;
+  totalPaid: number; // what the customer pays in full -- incl. codFee for COD
   status: string;
   courier: string;
   awb: string;
@@ -204,7 +211,15 @@ export function buildOrderReportRow(o: ReportOrderInput): OrderReportRow {
   const { raw, li } = lineItems(o);
   const itemsSubtotal = round2(li.reduce((s, i) => s + i.price * i.quantity, 0));
   const totalPaid = round2(num(o.amount));
-  const discount = round2(Math.max(0, itemsSubtotal - totalPaid));
+  // COD: `amount` bundles the flat fee, so infer the discount from what was
+  // paid for the *goods* (totalPaid - codFee). Without this a discounted COD
+  // order reports `realDiscount - codFee` and its taxable value/GST come out
+  // overstated. Mirrors fulfilOrder.ts's own discount inference.
+  const codFee =
+    String(o.payment_method ?? "").trim().toLowerCase() === "cod"
+      ? round2(Math.max(0, num(o.cod_fee)))
+      : 0;
+  const discount = round2(Math.max(0, itemsSubtotal - (totalPaid - codFee)));
   const gst = calculateOrderGstBreakdown(li, discount);
   return {
     date: o.created_at,
@@ -220,6 +235,7 @@ export function buildOrderReportRow(o: ReportOrderInput): OrderReportRow {
     itemCount: raw.reduce((s, i) => s + num(i.quantity), 0),
     itemsSubtotal,
     discount,
+    codFee,
     taxableValue: gst.basePrice,
     gstAmount: gst.gstAmount,
     totalPaid,
@@ -262,6 +278,7 @@ export interface OrdersGrandTotals {
   orders: number; // non-cancelled
   itemsSubtotal: number;
   discount: number;
+  codFee: number;
   taxableValue: number;
   gstAmount: number;
   totalPaid: number;
@@ -286,6 +303,7 @@ export function buildReport(orders: ReportOrderInput[], period: ResolvedPeriod):
     orders: 0,
     itemsSubtotal: 0,
     discount: 0,
+    codFee: 0,
     taxableValue: 0,
     gstAmount: 0,
     totalPaid: 0,
@@ -298,6 +316,7 @@ export function buildReport(orders: ReportOrderInput[], period: ResolvedPeriod):
     ordersTotals.orders += 1;
     ordersTotals.itemsSubtotal = round2(ordersTotals.itemsSubtotal + row.itemsSubtotal);
     ordersTotals.discount = round2(ordersTotals.discount + row.discount);
+    ordersTotals.codFee = round2(ordersTotals.codFee + row.codFee);
     ordersTotals.taxableValue = round2(ordersTotals.taxableValue + row.taxableValue);
     ordersTotals.gstAmount = round2(ordersTotals.gstAmount + row.gstAmount);
     ordersTotals.totalPaid = round2(ordersTotals.totalPaid + row.totalPaid);
