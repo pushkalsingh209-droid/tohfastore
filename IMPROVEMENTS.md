@@ -12,6 +12,25 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Thumbnails on the last three full-res image surfaces (#9a) — 2026-09-10 IST
+- Follow-up to the 2026-09-01 Storage-egress batch — no owner action, just effort.
+- `HeroProductRotator`, `BestsellersStrip`, `CategorySlider` rendered `product.image_url` (the full
+  ~1600px original) directly — they bypass `getProductCardGallery`, so the 2026-09-01 thumbnail switch
+  never reached them. All three are homepage surfaces every visitor loads, drawing the photo in a
+  144–220px box.
+- `getBestsellers`/`getRelatedProducts`/`getViewedTogether` already attach `thumb_url`, so
+  `BestsellersStrip` was a one-line `thumb_url || image_url`. `getCategorySliderItems` (feeds both
+  `CategorySlider` and `HeroProductRotator`) now resolves `getThumbUrl` for its one pick per category, in
+  parallel — `getThumbUrl` is cached per URL (24h) so no new Storage round trip after warmup. Falls back
+  to `image_url` for products predating thumbnails.
+- Also: `scripts/migrate-product-images.mjs`'s two `.upload()` calls now set an explicit 1-year
+  `cacheControl` (was the SDK's 1-hour default), matching `/api/admin/upload`.
+- Verified: `tsc --noEmit` clean; `eslint` 0 on all 5 files; `npm test` 298/299 (1 pre-existing
+  live-only skip, unchanged); `next build` exit 0, static-route count unchanged. Pure image-source swap
+  — no schema/route/payment-path change. Not browser-verified here — owner to eyeball the three homepage
+  strips after deploy (worst case on a missing thumb is no saving, not a broken image).
+- See `docs/HANDBOOK.html` Change log 2026-09-10 09:04.
+
 ### Close a third RLS gap — `orders_cancelled_archive` (0060) — 2026-09-09 IST — 🔒 security
 - Trigger: Supabase advisor email — "Table publicly accessible / `rls_disabled_in_public`" for project
   `tohfastore` (same lint that caught `site_settings` in 0047).
@@ -1476,14 +1495,10 @@ care, land behind tests, never "blind".
    Supabase Storage image transforms (`?width=`) are ruled out — they need the Pro plan (💰).
    No action until the free trigger; then just remove the flag.
 
-9a. **Extend thumbnail use to the remaining full-res image spots** (follow-up to the
-    2026-09-01 egress batch, no owner action needed — just effort). `HeroProductRotator`,
-    `BestsellersStrip`, and `CategorySlider` render `product.image_url` directly (they
-    don't go through `ProductGallery`/`getProductCardGallery`), and
-    `scripts/migrate-product-images.mjs` still calls `.upload()` without an explicit
-    `cacheControl` (defaults to the Supabase SDK's 1 hour). Lower priority than the grid
-    fix already shipped — these are homepage-only surfaces (rotator/bestsellers) or a
-    one-off migration script, much smaller traffic share than the catalog grid.
+9a. ~~**Extend thumbnail use to the remaining full-res image spots.**~~ — **done
+    (2026-09-10, see Done).** `HeroProductRotator` / `BestsellersStrip` / `CategorySlider`
+    now use `thumb_url || image_url`; `getCategorySliderItems` attaches the thumb;
+    `scripts/migrate-product-images.mjs` sets a 1-year `cacheControl` on both uploads.
 
 10. **`count: "exact"` on every catalog query** (`getCatalogPage`) is a full scan.
     Premature at ~140 products; revisit at scale with `count: "planned"` + a separately
@@ -1528,12 +1543,14 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 4 (maintainability / observability)
 
-16. ~~**`product_sales` reconcile check.**~~ — **done (2026-08-29, Batch A).**
+16. ~~**`product_sales` reconcile check.**~~ — **done + scheduled.**
     `/api/cron/product-sales-reconcile` (GET, `CRON_SECRET` bearer): recomputes the tally
     from every non-cancelled order (paged, via `tallyUnitsSold`), diffs against
     `product_sales`, WhatsApps the business on drift. `?heal=1` writes corrected values
-    back; default alert-only. Not in `vercel.json` (Hobby 2-cron cap) — **owner: add a
-    daily external schedule** (cron-job.org), same bearer as keepalive.
+    back; default alert-only. Not in `vercel.json` (Hobby 2-cron cap) — runs daily on
+    cron-job.org ("TOHFA product_sales reconcile", 3:00 AM), same bearer as keepalive.
+    **Owner confirmed the job is enabled and passing 2026-09-10** (alongside `rls-check`
+    4:00 AM and `review-reminder` 5:00 AM — 4 jobs total, 0 failed).
 
 13. **Error monitoring.** — *Sentry deferred by owner (2026-08-29); Green-API health card
     **done (2026-08-30)** — see Done.* Dozens of best-effort `console.error` (WhatsApp,

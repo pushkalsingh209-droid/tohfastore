@@ -8,7 +8,7 @@ import { categoryHref } from "@/app/utils/slug";
 
 interface CategorySliderItem {
   name: string;
-  product: { id: number; name: string; image_url: string };
+  product: { id: number; name: string; image_url: string; thumb_url?: string };
 }
 
 const AUTO_SCROLL_PX_PER_FRAME = 0.6;
@@ -119,7 +119,7 @@ export default function CategorySlider({
             className="group relative flex-shrink-0 w-36 sm:w-44 aspect-[3/4] rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900"
           >
             <Image
-              src={item.product.image_url}
+              src={item.product.thumb_url || item.product.image_url}
               alt={item.product.name}
               priority={priorityFirst && index === 0}
               fill

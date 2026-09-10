@@ -15,7 +15,7 @@ import { categoryHref } from "@/app/utils/slug";
 
 interface HeroRotatorItem {
   name: string;
-  product: { id: number; name: string; image_url: string };
+  product: { id: number; name: string; image_url: string; thumb_url?: string };
 }
 
 const ROTATE_INTERVAL_MS = 3500;
@@ -116,7 +116,7 @@ export default function HeroProductRotator({ items }: { items: HeroRotatorItem[]
       <div className="absolute inset-0 bg-amber-500/25 blur-3xl rounded-full scale-90 -z-10" aria-hidden="true"></div>
       <div className="relative aspect-square max-w-[160px] sm:max-w-[220px] md:max-w-sm mx-auto rounded-lg overflow-hidden border border-white/10 shadow-2xl">
         <Image
-          src={current.product.image_url}
+          src={current.product.thumb_url || current.product.image_url}
           alt={current.product.name}
           fill
           sizes="(max-width: 768px) 220px, 384px"
