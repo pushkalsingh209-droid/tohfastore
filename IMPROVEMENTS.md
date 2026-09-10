@@ -1606,11 +1606,13 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 3 (cost / performance — several are 💰)
 
-9. **💰 Re-enable Image Optimization** — **on hold, no-cost path only (owner, 2026-08-29).**
-   `images.unoptimized: true` stays until the Vercel quota cycle resets and it can be
-   dropped for free (tracked in auto-memory `vercel_image_optimization_unoptimized_flag.md`).
-   Supabase Storage image transforms (`?width=`) are ruled out — they need the Pro plan (💰).
-   No action until the free trigger; then just remove the flag.
+9. **💰 Re-enable Image Optimization — WON'T DO (owner, 2026-09-10).** "dont remove image
+   optimization flag .. it should not use it". `images.unoptimized: true` in `next.config.ts`
+   is **permanent** — the site must never route images through Vercel's optimizer (cost).
+   Supabase Storage transforms (`?width=`) also ruled out (Pro plan, 💰). This item is closed;
+   do not reopen without an explicit owner request. Any image-weight work is upload-time caps +
+   the pre-generated `thumb_url` (see 9a, done), never the optimizer. Tracked in auto-memory
+   `vercel_image_optimization_unoptimized_flag.md`.
 
 9a. ~~**Extend thumbnail use to the remaining full-res image spots.**~~ — **done
     (2026-09-10, see Done).** `HeroProductRotator` / `BestsellersStrip` / `CategorySlider`
