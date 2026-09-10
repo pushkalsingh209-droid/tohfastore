@@ -12,6 +12,22 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Theming series PR 1 of 8 — token foundation + swatch picker — 2026-09-10 IST
+- Owner asked for 9–10 user-selectable colour themes ("playful"); signed off `docs/DESIGN-theming.md` —
+  full semantic-token refactor, each theme its own fixed look, subtle swatch menu, 8 sequential PRs.
+- **PR 1 changes nothing visually** (either theme). New `app/utils/themes.ts` registry (`sand` = old light,
+  `ink` = old dark; `resolveThemeSlug`, `buildThemeInitScript`), semantic `:root[data-theme]` token blocks +
+  `@theme inline` map in `globals.css` (inert — nothing consumes them yet), rewritten pre-paint script
+  (sets `data-theme`, keeps a `.dark` shim for the ~970 unconverted `dark:` variants; behaviour identical
+  for every value `ThemeToggle` ever wrote), `ThemePicker.tsx` replacing `ThemeToggle.tsx` — mobile-first
+  (bottom sheet on phones with a backdrop / grab handle / 48px rows, dropdown from `sm:`).
+- Verified: `tsc` clean · `npm test` 319/320 (+21, incl. a globals.css cross-check and a sandbox that pins
+  the generated script to `resolveThemeSlug`) · `eslint` 0 errors, warnings net-neutral · `next build` exit 0.
+- **Owner to eyeball on the dev server** before merge: light/dark unchanged, swatch menu opens + switches,
+  choice persists on reload, first visit follows the OS setting.
+- See `docs/HANDBOOK.html` Change log 2026-09-10 09:37 and `docs/DESIGN-theming.md`.
+- **Remaining:** PRs 2–8 — see the Active item below.
+
 ### Thumbnails on the last three full-res image surfaces (#9a) — 2026-09-10 IST
 - Follow-up to the 2026-09-01 Storage-egress batch — no owner action, just effort.
 - `HeroProductRotator`, `BestsellersStrip`, `CategorySlider` rendered `product.image_url` (the full
@@ -1542,6 +1558,15 @@ care, land behind tests, never "blind".
       95 % earlier. Revisit only at ~10× traffic. `force-dynamic` on product pages stays.
 
 ## Active — Tier 4 (maintainability / observability)
+
+22. **Theming series — PRs 2–8** (plan: `docs/DESIGN-theming.md`; PR 1 shipped 2026-09-10, see Done).
+    One PR each, sequential: **2** shared chrome (layout/header/footer/buttons/banners) → **3** ProductCard +
+    catalog grid + PriceDisplay + gallery → **4** product page + homepage strips → **5** cart/checkout/
+    wishlist/success → **6** remaining pages (faq/guides/refer/policy/track/spotlight) → **7** drop the
+    `.dark` shim once `grep` shows 0 `dark:`/`stone-`/`amber-` left, then add themes 3–10 (CSS block +
+    registry row + swatch each) → **8** *(optional)* admin panel. Each PR: convert one cluster's `dark:`
+    variants to the semantic tokens, zero visual change until PR 7's palettes land, full verify gate +
+    docs. Order it after the COD-fee-report batch (Tier 1 #6) or before — owner's call.
 
 16. ~~**`product_sales` reconcile check.**~~ — **done + scheduled.**
     `/api/cron/product-sales-reconcile` (GET, `CRON_SECRET` bearer): recomputes the tally

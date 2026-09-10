@@ -7,7 +7,7 @@ import { useCart } from "@/app/context/CartContext";
 import { useWishlist } from "@/app/context/WishlistContext";
 import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
 import SearchBar from "@/app/components/SearchBar";
-import ThemeToggle from "@/app/components/ThemeToggle";
+import ThemePicker from "@/app/components/ThemePicker";
 import PageNavLinks from "@/app/components/PageNavLinks";
 import GoogleTranslateWidget from "@/app/components/GoogleTranslateWidget";
 import { categoryHref } from "@/app/utils/slug";
@@ -92,7 +92,7 @@ export default function HeaderNavbar() {
           </Link>
 
           <div className="flex items-center gap-1 md:hidden">
-            <ThemeToggle />
+            <ThemePicker />
             <Link
               href="/wishlist"
               className="relative p-2 text-stone-800 dark:text-stone-200 hover:text-rose-600 transition"
@@ -132,7 +132,7 @@ export default function HeaderNavbar() {
           <Link href="/" className="hover:text-amber-700 dark:hover:text-amber-500 transition">Collections</Link>
           <Link href="/guides" className="hover:text-amber-700 dark:hover:text-amber-500 transition">Gift Guides</Link>
 
-          <ThemeToggle />
+          <ThemePicker />
 
           <Link
             href="/wishlist"

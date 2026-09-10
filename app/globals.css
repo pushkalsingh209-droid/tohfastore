@@ -13,11 +13,79 @@
   --foreground: #171717;
 }
 
+/* ============================================================
+   Semantic colour tokens -- the theme layer.
+   PR 1 of the theming series (docs/DESIGN-theming.md). Every theme is one
+   :root[data-theme="<slug>"] block; the pre-paint script in app/layout.tsx
+   sets data-theme before first paint (see app/utils/themes.ts). `sand` and
+   `ink` reproduce today's light and dark palette exactly, so nothing
+   changes visually yet -- NOTHING consumes these `--color-*` utilities
+   (bg-bg, text-fg, border-border, bg-accent, ...) at this point. Later PRs
+   replace the Tailwind `dark:` variants with them, one component cluster at
+   a time; the last PR adds the remaining palettes. Keep every theme block's
+   token set identical -- themes.test.ts enforces it.
+   ============================================================ */
+:root,
+:root[data-theme="sand"] {
+  --bg: #fff0cf; /* == --background, today's light page background */
+  --surface: #ffffff;
+  --surface-2: #faf5e6;
+  --fg: #292524; /* stone-800, today's default body text */
+  --muted: #57534e; /* stone-600 */
+  --faint: #78716c; /* stone-500 */
+  --border: #e7e5e4; /* stone-200 */
+  --border-strong: #d6d3d1; /* stone-300 */
+  --accent: #b45309; /* amber-700 -- also the focus-ring colour below */
+  --accent-fg: #ffffff;
+  --accent-hover: #92400e; /* amber-800 */
+  --accent-soft: #fef3c7; /* amber-100 */
+  --scrim: rgba(28, 25, 23, 0.85); /* stone-900/85 -- CategorySlider bottom fade */
+  --success: #047857; /* emerald-700 */
+  --danger: #b91c1c; /* red-700 */
+}
+
+:root[data-theme="ink"] {
+  --bg: #0c0a09; /* stone-950, today's dark:bg-stone-950 */
+  --surface: #1c1917; /* stone-900 */
+  --surface-2: #292524; /* stone-800 */
+  --fg: #e7e5e4; /* stone-200, today's dark:text-stone-200 */
+  --muted: #a8a29e; /* stone-400 */
+  --faint: #78716c; /* stone-500 */
+  --border: #292524; /* stone-800 */
+  --border-strong: #44403c; /* stone-700 */
+  --accent: #f59e0b; /* amber-500 */
+  --accent-fg: #1c1917;
+  --accent-hover: #fbbf24; /* amber-400 */
+  --accent-soft: #451a03; /* amber-950 */
+  --scrim: rgba(0, 0, 0, 0.85);
+  --success: #10b981; /* emerald-500 */
+  --danger: #ef4444; /* red-500 */
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Semantic theme tokens -> Tailwind colour utilities. Consumed from PR 2
+     on; harmless to declare now (Tailwind v4 only emits a utility when it's
+     actually used in the source). */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-scrim: var(--scrim);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
 }
 
 /* Guards against any one element's accidental horizontal bleed (e.g. a

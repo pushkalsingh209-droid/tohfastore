@@ -19,6 +19,7 @@ import ResourceHints from "@/app/components/ResourceHints";
 import MetaPixel from "@/app/components/MetaPixel";
 import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 import { APPLE_SPLASH_SCREENS } from "@/app/utils/appleSplashScreens";
+import { buildThemeInitScript } from "@/app/utils/themes";
 import "./globals.css"; // Imports your global styling configurations
 
 const SITE_URL = "https://tohfaonline.com";
@@ -89,19 +90,14 @@ const websiteJsonLd = {
   url: SITE_URL,
 };
 
-// Runs before paint so the page never flashes the wrong theme: reads a
-// saved preference, or falls back to the OS-level preference on first
-// visit. Kept as a plain inline script (not a component) so it executes
+// Runs before paint so the page never flashes the wrong theme: reads the
+// saved preference (migrating the old 'light'/'dark' values to the new
+// theme slugs), or falls back to the OS-level preference on first visit,
+// and sets data-theme on <html>. Built from the single theme registry in
+// app/utils/themes.ts so the slug list can't drift from the ThemePicker.
+// Kept as a plain inline script (not a component) so it executes
 // synchronously in <head>, ahead of any client-side hydration.
-const themeInitScript = `
-(function() {
-  try {
-    var stored = localStorage.getItem('theme');
-    var isDark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (isDark) document.documentElement.classList.add('dark');
-  } catch (e) {}
-})();
-`;
+const themeInitScript = buildThemeInitScript();
 
 export default async function RootLayout({
   children,
