@@ -12,6 +12,30 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Checkout: verify at Review, not step 1 (#4) + COD order-total ceiling (#5) — 2026-09-10 IST — ⚠️ payment path
+- **Owner approved doing both in one PR, overriding the "wait for InitiateCheckout data" hold on #4.**
+- **#4 — WhatsApp OTP verification moved from step 1 to step 3 (Review).** Cold traffic now fills
+  name/email/phone → address → **sees the real total** before being asked for a phone code. The OTP UI is a
+  new `PhoneVerification.tsx` (JSX lifted near-verbatim from ContactStep's old OTP block), rendered above
+  the policy consent in `ReviewStep`. Machine (`useCheckoutMachine.ts`): `GO_DELIVERY` from contact no
+  longer needs `verified`; OTP sub-state rides contact/delivery/review; **`SUBMIT_PAYMENT` is the gate —
+  only fires from a verified review**; `VERIFICATION_EXPIRED` drops back to Review (re-verify inline) not
+  step 1. `CheckoutSheet` footer stays disabled on step 3 until `contactVerified && agreedToPolicy`.
+  Server is unchanged — `/api/razorpay` + `/api/orders/cod` still re-verify the OTP token before minting
+  an order, so the fraud posture is identical. 24 machine unit tests rewritten for the new flow.
+- **#5 — `cod_max_order_total` setting.** `checkCodEligibility` gained `maxOrderTotal` + `orderTotal` opts
+  (the caller passes the subtotal it already has — client cart total, server re-priced subtotal). Caps the
+  whole parcel, because RTO loss tracks the parcel not the line. **Default 0 = no limit** (an unset row
+  never starts blocking); owner turns it on in Settings → COD only if high-value COD carts appear. Wired
+  through `getBootstrapData` / `useCodSettings`, `/api/admin/settings` (validate), and both eligibility
+  call sites. No migration — absent row parses to 0.
+- Verified: `tsc` clean · `eslint` changed files clean · `npm test` 337/338 (machine 24, codSettings 33) ·
+  `next build` exit 0, 145/145. Step 1 screenshotted (3 fields, no OTP, new copy). **End-to-end screenshot
+  of the step-3 verification block not captured** — the walkthrough automation stalled on step-2 form-fill
+  detection (harness bug, not the app); the machine + types + prop wiring are verified. **Owner: click
+  through checkout once on the deploy preview before merging.**
+- Docs: `docs/DESIGN-extract-checkout-machine.md`, `docs/DESIGN-cod.md`, HANDBOOK.html + Change log.
+
 ### COD fee → own report column + on the confirmation email — 2026-09-10 IST
 - **Report (`reports.ts` + `/api/admin/reports`):** Orders sheet gains a **COD fee** column (between GST
   and Total paid). The report now reads `orders.payment_method` + `orders.cod_fee`; for a COD row the
@@ -1565,27 +1589,6 @@ care, land behind tests, never "blind".
    catches the same thing more directly: whatever the policies are, can the anon key
    actually reach what it shouldn't.) **Left:** the Docker-gated `db pull`/`push` migration
    workflow.
-
-4. **⚠️ Checkout is OTP-first — the hardest ask is the first ask.** `useCheckoutMachine`'s
-   `GO_DELIVERY` only advances when `state.verified` is set, so a shopper cannot see the
-   address form, the shipping line or the payment button until they've handed over a phone
-   number, waited for a WhatsApp code and typed it in. For cold traffic (the increased
-   Instagram/organic reach) that's a large, unearned commitment before any price certainty
-   — the leading hypothesis for "reach up, sales flat". **Proposed:** collect
-   name/email/phone, let them complete the address and see the real total, then verify the
-   phone at the review step (or only when they opt into WhatsApp updates) — same fraud
-   posture, the ask lands after they're invested. **Blocked on data, deliberately:** the
-   `InitiateCheckout` pixel event shipped 2026-09-07 measures the pre-OTP side for the
-   first time; give it ~1 week of traffic and compare against `checkout_started` (post-OTP)
-   before touching checkout. If the gap is large this is the highest-value change on the
-   list; if it's small, the leak is elsewhere and this stays shut. Payment-path adjacent —
-   land behind the existing `useCheckoutMachine` tests, never blind.
-
-5. **⚠️ COD order-total ceiling (the documented gap).** `cod_max_item_price` caps each *item*
-   at ₹3,000, which is what was asked for — but a cart of many cheaper pieces still totals far above it
-   (six ₹2,900 items = a ₹17,400 COD parcel), and RTO cost tracks the parcel, not the line. A second
-   setting on the same path (`checkCodEligibility` already takes an options object) would close it.
-   Not invented unasked; raise it only if real COD carts start clustering high.
 
 ## Active — Tier 2 (security / hardening)
 

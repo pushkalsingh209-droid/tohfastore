@@ -89,7 +89,7 @@ a `notes` blob, or a webhook body. That boundary is what makes it reusable.
 | Decision | Choice | Consequence |
 | --- | --- | --- |
 | COD fee | **Flat, admin-configurable** (`cod_fee`, e.g. ₹50) | New line on the invoice; must flow through the GST breakdown |
-| Value cap | **Superseded 2026-09-07** | Originally "no cap". The owner then asked to exclude expensive and fragile items outright, so eligibility became three independent vetoes: `cod_max_item_price` (₹3,000, per **item**), `products.cod_disabled`, `categories.cod_disabled`. Any one ineligible line makes the whole cart prepaid-only. Caveat: the ceiling is per item, not per order — see `IMPROVEMENTS.md` |
+| Value cap | **Superseded 2026-09-07; extended 2026-09-10** | Originally "no cap". The owner then asked to exclude expensive and fragile items outright, so eligibility became independent vetoes: `cod_max_item_price` (₹3,000, per **item**), `products.cod_disabled`, `categories.cod_disabled`. Any one ineligible line makes the whole cart prepaid-only. **2026-09-10 (#5):** added `cod_max_order_total` — a whole-**bag** ceiling (RTO loss tracks the parcel, not the line). Default **0 = no limit**; an unset `site_settings` row parses to 0, so it stays inert until the owner sets it in Settings → COD. Enforced in `checkCodEligibility` (new `maxOrderTotal` / `orderTotal` opts), client + server. |
 | Abuse guard | **OTP (existing) + one open COD order per phone** | A phone with an undelivered COD order can't place another. Blocks bulk fake orders cheaply |
 | Discounts on COD | **Prepaid only** | COD forfeits the Spend & Save tier discount *and* coupons |
 

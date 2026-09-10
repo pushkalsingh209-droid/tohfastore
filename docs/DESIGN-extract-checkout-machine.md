@@ -15,6 +15,40 @@ old `CartDrawer` body). This doc is now historical reference; no open work.
 
 ---
 
+## Update 2026-09-10 (#4) — verification moved from step 1 to step 3
+
+Everything below describes the **original** flow, where the WhatsApp OTP was
+the step-1 gate. That was the leading hypothesis for "Instagram reach up,
+sales flat": cold traffic had to hand over a phone + a code before it could
+see the address form or the real total. IMPROVEMENTS.md #4, owner-approved.
+
+**What changed:**
+
+- **Step 1 (`ContactStep`) is now just name / email / phone.** No OTP block,
+  no `✓ Verified` card, no `contactVerified` gate on `Continue`. Title
+  renamed "Contact & Verify" → "Your Details".
+- **The OTP block is its own component, `steps/PhoneVerification.tsx`**
+  (JSX lifted near-verbatim from the old `ContactStep` OTP region), rendered
+  inside `ReviewStep` immediately above the Cancellation & Refund consent.
+- **Machine (`useCheckoutMachine.ts`):**
+  - `contact` / `delivery` / `review` all carry `otp: OtpState` now (verify
+    can happen on review); `paying` / `razorpayOpen` carry `{ verified }`.
+  - `GO_DELIVERY` from `contact` no longer requires `verified`.
+  - OTP actions (`SEND_OTP` … `OTP_VERIFIED`, `TICK`) act on any
+    pre-payment phase; nav actions carry `otp` + `verified` forward.
+  - **`SUBMIT_PAYMENT` is the gate** — it only advances from
+    `phase === "review" && state.verified`.
+  - `VERIFICATION_EXPIRED` → back to `review` (verification cleared, re-verify
+    inline), **not** a fresh `contact`.
+  - `CheckoutSheet` footer on step 3 is disabled until
+    `contactVerified && agreedToPolicy`.
+- **Server is untouched.** `/api/razorpay` and `/api/orders/cod` still
+  re-verify the OTP token before minting an order — the fraud posture is
+  identical, the ask just lands later in the funnel.
+- `useCheckoutMachine.test.ts` rewritten for the new flow (24 cases).
+
+---
+
 ## 1. Current shape
 
 - `app/components/CartDrawer.tsx` — **1,159 lines, 26 `useState`, 8 `useEffect`.**

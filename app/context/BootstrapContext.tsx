@@ -91,6 +91,12 @@ export function useCategoryWhatsappNumber(category: string | null | undefined): 
  * layout shift. NOT authoritative -- /api/orders/cod re-reads the settings
  * and re-computes the total; this only decides what the UI offers.
  */
-export function useCodSettings(): { enabled: boolean; fee: number; maxItemPrice: number; disabledCategories: string[] } {
+export function useCodSettings(): {
+  enabled: boolean;
+  fee: number;
+  maxItemPrice: number;
+  maxOrderTotal: number;
+  disabledCategories: string[];
+} {
   return useBootstrap().cod;
 }

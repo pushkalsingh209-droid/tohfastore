@@ -14,6 +14,9 @@ import {
   validateCodMaxItemPrice,
   checkCodEligibility,
   DEFAULT_COD_MAX_ITEM_PRICE,
+  parseCodMaxOrderTotal,
+  validateCodMaxOrderTotal,
+  DEFAULT_COD_MAX_ORDER_TOTAL,
 } from "./codSettings";
 
 describe("parseCodEnabled", () => {
@@ -185,13 +188,65 @@ describe("checkCodEligibility", () => {
     expect(r.eligible).toBe(false);
   });
 
-  // The documented gap: the ceiling is per item, not per order.
-  it("does NOT block a high-value cart made of cheap items (known, documented)", () => {
+  // Per-item ceiling alone still lets a cart of cheap pieces add up high --
+  // that's what maxOrderTotal is for.
+  it("per-item ceiling alone does not block a high-value cart of cheap items", () => {
     const many = Array.from({ length: 6 }, () => ({ name: "Mid", price: 2900 }));
     expect(checkCodEligibility(many, { maxItemPrice: 3000 })).toEqual({ eligible: true });
   });
 
+  it("maxOrderTotal blocks a bag whose goods total exceeds the ceiling", () => {
+    const many = Array.from({ length: 6 }, () => ({ name: "Mid", price: 2900 }));
+    const r = checkCodEligibility(many, { maxItemPrice: 3000, maxOrderTotal: 10000, orderTotal: 17400 });
+    expect(r.eligible).toBe(false);
+    if (!r.eligible) expect(r.reason).toMatch(/orders over ₹10,000/);
+  });
+
+  it("maxOrderTotal is exclusive-above and inert at 0 / without orderTotal", () => {
+    // exactly at the ceiling: allowed
+    expect(checkCodEligibility([cheap], { maxItemPrice: 3000, maxOrderTotal: 5000, orderTotal: 5000 })).toEqual({ eligible: true });
+    // 0 ceiling = no limit
+    expect(checkCodEligibility([cheap], { maxItemPrice: 3000, maxOrderTotal: 0, orderTotal: 999999 })).toEqual({ eligible: true });
+    // ceiling set but caller passed no orderTotal -> can't evaluate, don't block
+    expect(checkCodEligibility([cheap], { maxItemPrice: 3000, maxOrderTotal: 5000 })).toEqual({ eligible: true });
+  });
+
+  it("a per-item veto still fires before the order-total check is reached", () => {
+    const r = checkCodEligibility(
+      [{ name: "Pricey", price: 9000 }],
+      { maxItemPrice: 3000, maxOrderTotal: 100000, orderTotal: 9000 }
+    );
+    expect(r.eligible).toBe(false);
+    if (!r.eligible) expect(r.reason).toMatch(/is over the ₹3,000/);
+  });
+
   it("is unfazed by a missing/NaN price", () => {
     expect(checkCodEligibility([{ name: "Odd", price: Number.NaN }], { maxItemPrice: 3000 })).toEqual({ eligible: true });
+  });
+});
+
+describe("parseCodMaxOrderTotal", () => {
+  it("reads a number, falls back to 0 (no limit) on anything unusable", () => {
+    expect(parseCodMaxOrderTotal("25000")).toBe(25000);
+    expect(parseCodMaxOrderTotal("")).toBe(DEFAULT_COD_MAX_ORDER_TOTAL);
+    expect(DEFAULT_COD_MAX_ORDER_TOTAL).toBe(0);
+    expect(parseCodMaxOrderTotal(null)).toBe(0);
+    expect(parseCodMaxOrderTotal("lots")).toBe(0);
+    expect(parseCodMaxOrderTotal("-5")).toBe(0);
+    expect(parseCodMaxOrderTotal("0")).toBe(0);
+  });
+});
+
+describe("validateCodMaxOrderTotal", () => {
+  it("accepts a whole number >= 0", () => {
+    expect(validateCodMaxOrderTotal(0)).toEqual({ value: 0 });
+    expect(validateCodMaxOrderTotal(25000)).toEqual({ value: 25000 });
+  });
+  it("rejects the shapes an empty admin field sends", () => {
+    expect(validateCodMaxOrderTotal(null)).toHaveProperty("error");
+    expect(validateCodMaxOrderTotal("")).toHaveProperty("error");
+    expect(validateCodMaxOrderTotal(true)).toHaveProperty("error");
+    expect(validateCodMaxOrderTotal(12.5)).toHaveProperty("error");
+    expect(validateCodMaxOrderTotal(-1)).toHaveProperty("error");
   });
 });

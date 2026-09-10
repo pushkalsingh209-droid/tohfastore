@@ -1,10 +1,16 @@
 // app/components/checkout/useCheckoutMachine.ts
 // The checkout state machine (#17). `phase` IS the current step of the
 // 3-step flow:
-//   1. contact  -- name / email / phone + WhatsApp OTP (verify inline)
+//   1. contact  -- name / email / phone (NO verification here anymore)
 //   2. delivery -- pincode-first address
-//   3. review   -- order summary + coupon + "Pay ₹X"
+//   3. review   -- order summary + coupon + WhatsApp OTP verify + "Pay ₹X"
 // then paying / razorpayOpen while Razorpay is up.
+//
+// Verification moved from step 1 to step 3 (IMPROVEMENTS #4, 2026-09-10):
+// cold traffic can now see the address form and the real total before being
+// asked to hand over a phone number and a WhatsApp code -- the ask lands
+// after they're invested, not as the first gate. The server still re-checks
+// the OTP token before it mints an order, so the fraud posture is unchanged.
 //
 // This reducer is PURE and holds ONLY: the phase, the OTP sub-state, the
 // resend cooldown, and the { token, phone } pair once verified. The typed
@@ -23,12 +29,21 @@ export type OtpState =
   | { s: "verifying" }
   | { s: "error"; message: string };
 
+type Creds = { token: string; phone: string };
+
 export type CheckoutState =
-  | { phase: "contact"; otp: OtpState; verified?: { token: string; phone: string } }
-  | { phase: "delivery"; token: string; phone: string }
-  | { phase: "review"; token: string; phone: string }
-  | { phase: "paying"; token: string; phone: string }
-  | { phase: "razorpayOpen"; token: string; phone: string };
+  | { phase: "contact"; otp: OtpState; verified?: Creds }
+  | { phase: "delivery"; otp: OtpState; verified?: Creds }
+  | { phase: "review"; otp: OtpState; verified?: Creds }
+  | { phase: "paying"; verified: Creds }
+  | { phase: "razorpayOpen"; verified: Creds };
+
+// The three pre-payment phases all carry the OTP sub-state (verification can
+// happen on the review step now); paying/razorpayOpen don't.
+type PrePaymentState = Extract<CheckoutState, { otp: OtpState }>;
+function hasOtp(state: CheckoutState): state is PrePaymentState {
+  return "otp" in state;
+}
 
 export type CheckoutAction =
   | { t: "SEND_OTP" }
@@ -37,10 +52,10 @@ export type CheckoutAction =
   | { t: "VERIFY_OTP" }
   | { t: "OTP_VERIFIED"; token: string; phone: string }
   | { t: "PHONE_CHANGED" } // clears any verification, back to a fresh contact step
-  | { t: "GO_CONTACT" } // Back from delivery -- keeps the verification
-  | { t: "GO_DELIVERY" } // Continue from contact (needs verified) OR Back from review
+  | { t: "GO_CONTACT" } // Back from delivery/review -- keeps the verification
+  | { t: "GO_DELIVERY" } // Continue from contact OR Back from review
   | { t: "GO_REVIEW" } // Continue from delivery
-  | { t: "SUBMIT_PAYMENT" } // review -> paying
+  | { t: "SUBMIT_PAYMENT" } // review -> paying (REQUIRES a verified OTP)
   | { t: "RAZORPAY_OPENED" } // paying -> razorpayOpen
   | { t: "PAYMENT_DISMISSED" } // razorpayOpen -> review
   | { t: "VERIFICATION_EXPIRED" } // /api/razorpay said code:"verification_required"
@@ -57,76 +72,79 @@ export function checkoutReducer(state: CheckoutState, action: CheckoutAction): C
       return freshContact();
 
     case "VERIFICATION_EXPIRED":
-      // From anywhere -- the OTP token is stale. Back to step 1, no
-      // verification. The component keeps every typed field.
-      return freshContact();
+      // The OTP token went stale mid-payment. Drop back to the review step
+      // with verification cleared -- the shopper re-verifies inline there
+      // (right where the prompt now lives) without redoing the address.
+      // Every typed field stays in the component.
+      return { phase: "review", otp: { s: "idle" } };
 
     case "PHONE_CHANGED":
-      // Only meaningful on the contact step; elsewhere the phone input
-      // isn't shown. Drops verification + any in-flight OTP state.
+      // The phone input only exists on the contact step. Editing it drops
+      // any verification + in-flight OTP state.
       return state.phase === "contact" ? freshContact() : state;
 
     case "SEND_OTP":
-      return state.phase === "contact" ? { ...state, otp: { s: "sending" } } : state;
+      return hasOtp(state) ? { ...state, otp: { s: "sending" } } : state;
 
     case "OTP_SENT":
-      return state.phase === "contact"
+      return hasOtp(state)
         ? { ...state, otp: { s: "sent", cooldown: OTP_RESEND_COOLDOWN_SECONDS } }
         : state;
 
     case "OTP_FAILED":
-      return state.phase === "contact" ? { ...state, otp: { s: "error", message: action.message } } : state;
+      return hasOtp(state) ? { ...state, otp: { s: "error", message: action.message } } : state;
 
     case "VERIFY_OTP":
-      return state.phase === "contact" ? { ...state, otp: { s: "verifying" } } : state;
+      return hasOtp(state) ? { ...state, otp: { s: "verifying" } } : state;
 
     case "OTP_VERIFIED":
-      // Stay on the contact step (name/email still editable); the footer
-      // "Continue" button unlocks via `verified`.
-      return state.phase === "contact"
-        ? { phase: "contact", otp: { s: "idle" }, verified: { token: action.token, phone: action.phone } }
+      // Stay on whatever step the verify happened on (review, normally);
+      // the footer "Pay" button unlocks via `verified`.
+      return hasOtp(state)
+        ? { ...state, otp: { s: "idle" }, verified: { token: action.token, phone: action.phone } }
         : state;
 
     case "TICK":
-      if (state.phase === "contact" && state.otp.s === "sent") {
+      if (hasOtp(state) && state.otp.s === "sent") {
         return { ...state, otp: { s: "sent", cooldown: Math.max(0, state.otp.cooldown - 1) } };
       }
       return state;
 
     case "GO_DELIVERY":
-      // Continue from contact (requires a verified OTP), or Back from review.
-      if (state.phase === "contact" && state.verified) {
-        return { phase: "delivery", token: state.verified.token, phone: state.verified.phone };
-      }
-      if (state.phase === "review") {
-        return { phase: "delivery", token: state.token, phone: state.phone };
+      // Continue from contact (no verification needed now), or Back from review.
+      if (state.phase === "contact" || state.phase === "review") {
+        return { phase: "delivery", otp: state.otp, verified: state.verified };
       }
       return state;
 
     case "GO_REVIEW":
-      return state.phase === "delivery" ? { phase: "review", token: state.token, phone: state.phone } : state;
+      return state.phase === "delivery"
+        ? { phase: "review", otp: state.otp, verified: state.verified }
+        : state;
 
     case "GO_CONTACT":
-      // Back from delivery/review -- still verified (token/phone carried
-      // through), so returning to step 1 doesn't force a re-verify. Only
+      // Back from delivery/review -- carry the OTP sub-state + any
+      // verification through, so returning to step 1 doesn't lose it. Only
       // PHONE_CHANGED / VERIFICATION_EXPIRED drop the verification.
       if (state.phase === "delivery" || state.phase === "review") {
-        return { phase: "contact", otp: { s: "idle" }, verified: { token: state.token, phone: state.phone } };
+        return { phase: "contact", otp: state.otp, verified: state.verified };
       }
       return state;
 
     case "SUBMIT_PAYMENT":
-      return state.phase === "review" ? { phase: "paying", token: state.token, phone: state.phone } : state;
+      // The verification gate. Pay is only reachable from a verified review.
+      return state.phase === "review" && state.verified
+        ? { phase: "paying", verified: state.verified }
+        : state;
 
     case "RAZORPAY_OPENED":
-      return state.phase === "paying" ? { phase: "razorpayOpen", token: state.token, phone: state.phone } : state;
+      return state.phase === "paying" ? { phase: "razorpayOpen", verified: state.verified } : state;
 
     case "PAYMENT_DISMISSED":
       // Modal closed without paying, OR the submit failed before the modal
-      // even opened (network error / non-orderId response) -- either way
-      // back to Review to retry, NOT back to contact.
+      // even opened -- back to Review to retry, still verified.
       return state.phase === "razorpayOpen" || state.phase === "paying"
-        ? { phase: "review", token: state.token, phone: state.phone }
+        ? { phase: "review", otp: { s: "idle" }, verified: state.verified }
         : state;
 
     default:
@@ -144,9 +162,9 @@ export function stepIndex(state: CheckoutState): 1 | 2 | 3 {
 export const TOTAL_STEPS = 3;
 
 // The verified WhatsApp token + phone, wherever we are past verification.
-export function verifiedCredentials(state: CheckoutState): { token: string; phone: string } | null {
-  if (state.phase === "contact") return state.verified ?? null;
-  return { token: state.token, phone: state.phone };
+export function verifiedCredentials(state: CheckoutState): Creds | null {
+  if (state.phase === "paying" || state.phase === "razorpayOpen") return state.verified;
+  return state.verified ?? null;
 }
 
 export function isContactVerified(state: CheckoutState): boolean {
@@ -157,7 +175,7 @@ export interface CheckoutMachine {
   state: CheckoutState;
   step: 1 | 2 | 3;
   contactVerified: boolean;
-  credentials: { token: string; phone: string } | null;
+  credentials: Creds | null;
   dispatch: (action: CheckoutAction) => void;
   // typed dispatch helpers
   sendOtp: () => void;
@@ -180,9 +198,9 @@ export function useCheckoutMachine(): CheckoutMachine {
   const [state, dispatch] = useReducer(checkoutReducer, initialCheckoutState);
 
   // Resend cooldown tick -- runs only while an OTP was just sent and the
-  // counter is above zero. Same "1/sec, floor at 0" behaviour as the old
-  // inline effect in CartDrawer.
-  const ticking = state.phase === "contact" && state.otp.s === "sent" && state.otp.cooldown > 0;
+  // counter is above zero. Same "1/sec, floor at 0" behaviour as before,
+  // just no longer tied to the contact step specifically.
+  const ticking = hasOtp(state) && state.otp.s === "sent" && state.otp.cooldown > 0;
   useEffect(() => {
     if (!ticking) return;
     const id = setInterval(() => dispatch({ t: "TICK" }), 1000);

@@ -25,8 +25,10 @@ import {
   COD_ENABLED_KEY,
   COD_FEE_KEY,
   COD_MAX_ITEM_PRICE_KEY,
+  COD_MAX_ORDER_TOTAL_KEY,
   validateCodFee,
   validateCodMaxItemPrice,
+  validateCodMaxOrderTotal,
 } from "@/app/utils/codSettings";
 
 const MIN_PAGE_SIZE = 1;
@@ -306,6 +308,14 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: checked.error }, { status: 400 });
       }
       updates.push({ key: COD_MAX_ITEM_PRICE_KEY, value: String(checked.value) });
+    }
+
+    if (body.cod_max_order_total !== undefined) {
+      const checked = validateCodMaxOrderTotal(body.cod_max_order_total);
+      if ("error" in checked) {
+        return NextResponse.json({ error: checked.error }, { status: 400 });
+      }
+      updates.push({ key: COD_MAX_ORDER_TOTAL_KEY, value: String(checked.value) });
     }
 
     if (body.cod_fee !== undefined) {

@@ -133,6 +133,42 @@ export function validateCodMaxItemPrice(input: unknown): { value: number } | { e
   return { value: n };
 }
 
+export const COD_MAX_ORDER_TOTAL_KEY = "cod_max_order_total";
+/**
+ * No COD order whose goods total exceeds this. `cod_max_item_price` caps a
+ * single line; this caps the parcel, because return-to-origin loss tracks
+ * the parcel, not the line (a cart of many cheaper pieces can still add up
+ * to a large COD exposure). 0 = no ceiling, and 0 is the DEFAULT -- this is
+ * an opt-in guard the owner turns on only if high-value COD carts appear;
+ * an unset row must not start blocking orders.
+ */
+export const DEFAULT_COD_MAX_ORDER_TOTAL = 0;
+export const MAX_COD_ORDER_TOTAL_LIMIT = 10000000;
+
+/** Lenient read. Falls back to the default (0 = no limit). */
+export function parseCodMaxOrderTotal(raw: string | null | undefined): number {
+  const text = String(raw ?? "").trim();
+  if (text === "") return DEFAULT_COD_MAX_ORDER_TOTAL;
+  const n = Number(text);
+  if (!Number.isFinite(n) || n < 0) return DEFAULT_COD_MAX_ORDER_TOTAL;
+  return Math.min(MAX_COD_ORDER_TOTAL_LIMIT, Math.round(n));
+}
+
+/** Strict check for the admin PATCH branch. */
+export function validateCodMaxOrderTotal(input: unknown): { value: number } | { error: string } {
+  if (input === null || input === undefined || typeof input === "boolean") {
+    return { error: "COD maximum order total must be a whole number (0 for no limit)." };
+  }
+  if (typeof input === "string" && input.trim() === "") {
+    return { error: "COD maximum order total must be a whole number (0 for no limit)." };
+  }
+  const n = Number(input);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > MAX_COD_ORDER_TOTAL_LIMIT) {
+    return { error: `COD maximum order total must be a whole number between 0 and ${MAX_COD_ORDER_TOTAL_LIMIT}.` };
+  }
+  return { value: n };
+}
+
 export interface CodEligibilityItem {
   name?: string | null;
   /** Unit price, not the line total. */
@@ -159,13 +195,21 @@ export type CodEligibility = { eligible: true } | { eligible: false; reason: str
  * piece -- "COD isn't available" with no explanation reads like a bug and
  * costs the order outright.
  *
- * NOTE: `maxItemPrice` bounds an INDIVIDUAL item (what the owner asked
- * for). A cart of many cheaper items can still total far above it; an
- * order-total ceiling would be a separate setting.
+ * `maxItemPrice` bounds an INDIVIDUAL item (the owner's first ask);
+ * `maxOrderTotal` bounds the whole parcel (the documented follow-up). Both
+ * are optional and inert at 0. `orderTotal` is the goods subtotal the
+ * caller already has (client: cart total; server: the re-priced subtotal) --
+ * passed in rather than summed here so this stays a pure rule over numbers
+ * the caller trusts.
  */
 export function checkCodEligibility(
   items: CodEligibilityItem[],
-  opts: { maxItemPrice: number; disabledCategories?: Iterable<string> }
+  opts: {
+    maxItemPrice: number;
+    disabledCategories?: Iterable<string>;
+    maxOrderTotal?: number;
+    orderTotal?: number;
+  }
 ): CodEligibility {
   const disabled = new Set(opts.disabledCategories ?? []);
   for (const item of items) {
@@ -183,6 +227,14 @@ export function checkCodEligibility(
         reason: `"${label}" is over the ₹${opts.maxItemPrice.toLocaleString("en-IN")} Cash on Delivery limit.`,
       };
     }
+  }
+  const cap = Number(opts.maxOrderTotal);
+  const total = Number(opts.orderTotal);
+  if (cap > 0 && Number.isFinite(total) && total > cap) {
+    return {
+      eligible: false,
+      reason: `Cash on Delivery isn't available for orders over ₹${cap.toLocaleString("en-IN")}.`,
+    };
   }
   return { eligible: true };
 }

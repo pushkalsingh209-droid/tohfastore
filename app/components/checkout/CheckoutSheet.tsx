@@ -18,7 +18,8 @@ import { checkCodEligibility } from "@/app/utils/codSettings";
 import { useCategoryDiscountMap } from "@/app/context/CategoryDiscountContext";
 import { INDIAN_STATES } from "@/app/utils/indianStates";
 import Stepper from "@/app/components/checkout/Stepper";
-import ContactStep, { type OtpUi } from "@/app/components/checkout/steps/ContactStep";
+import ContactStep from "@/app/components/checkout/steps/ContactStep";
+import { type OtpUi } from "@/app/components/checkout/steps/PhoneVerification";
 import DeliveryStep, { type PincodeLookupStatus } from "@/app/components/checkout/steps/DeliveryStep";
 import ReviewStep from "@/app/components/checkout/steps/ReviewStep";
 import { useCheckoutMachine } from "@/app/components/checkout/useCheckoutMachine";
@@ -121,7 +122,12 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
       category: i.category,
       codDisabled: i.cod_disabled,
     })),
-    { maxItemPrice: codSettings.maxItemPrice, disabledCategories: codSettings.disabledCategories }
+    {
+      maxItemPrice: codSettings.maxItemPrice,
+      disabledCategories: codSettings.disabledCategories,
+      maxOrderTotal: codSettings.maxOrderTotal,
+      orderTotal: cartTotal,
+    }
   );
   const codAvailable = codSettings.enabled && codEligibility.eligible;
   const codBlockedReason = codEligibility.eligible ? null : codEligibility.reason;
@@ -333,11 +339,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
       flagInvalid("phone");
       return false;
     }
-    if (!m.contactVerified) {
-      setValidationError("Please verify your WhatsApp number using the code sent to it before continuing.");
-      flagInvalid("phone");
-      return false;
-    }
+    // Verification is no longer a step-1 gate (#4) -- it happens on Review.
     return true;
   }
 
@@ -603,21 +605,20 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
     }
   };
 
-  // --- reducer -> UI adapters for ContactStep ---
+  // --- reducer -> UI adapters for the OTP block (now in ReviewStep) ---
+  const otpState = "otp" in m.state ? m.state.otp : null;
   const otpUi: OtpUi =
-    m.state.phase === "contact"
-      ? m.state.otp.s === "sending"
-        ? "sending"
-        : m.state.otp.s === "sent"
-        ? "sent"
-        : m.state.otp.s === "verifying"
-        ? "verifying"
-        : m.state.otp.s === "error"
-        ? "error"
-        : "idle"
+    otpState?.s === "sending"
+      ? "sending"
+      : otpState?.s === "sent"
+      ? "sent"
+      : otpState?.s === "verifying"
+      ? "verifying"
+      : otpState?.s === "error"
+      ? "error"
       : "idle";
-  const cooldown = m.state.phase === "contact" && m.state.otp.s === "sent" ? m.state.otp.cooldown : 0;
-  const otpErrorText = m.state.phase === "contact" && m.state.otp.s === "error" ? m.state.otp.message : "";
+  const cooldown = otpState?.s === "sent" ? otpState.cooldown : 0;
+  const otpErrorText = otpState?.s === "error" ? otpState.message : "";
 
   const handleBack = () => {
     if (m.step === 1) {
@@ -741,6 +742,12 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
       if (validateDelivery()) m.goReview();
       return;
     }
+    // Step 3: verification is the last gate before paying (#4).
+    if (!m.contactVerified) {
+      setValidationError("Please verify your WhatsApp number above to place the order.");
+      flagInvalid("phone");
+      return;
+    }
     if (isCodOrder) handleCodOrder();
     else handleRazorpayPayment();
   };
@@ -763,11 +770,13 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
       ? isCodOrder
         ? "Placing your order…"
         : "Starting secure payment…"
+      : !m.contactVerified
+      ? "Verify WhatsApp number to continue"
       : isCodOrder
       ? `Place Order · Pay ₹${Math.round(payTotal).toLocaleString("en-IN")} on delivery`
       : `Pay ₹${Math.round(payTotal).toLocaleString("en-IN")}`;
   const footerDisabled =
-    (m.step === 1 && !m.contactVerified) || (m.step === 3 && (loading || !agreedToPolicy));
+    m.step === 3 && (loading || !agreedToPolicy || !m.contactVerified);
 
   return (
     <div
@@ -781,7 +790,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
       <div className="flex-1 overflow-y-auto">
         <StepPane key={m.step}>
           <h3 id="checkout-step-heading" tabIndex={-1} className="sr-only">
-            {["Contact & Verify", "Delivery", "Review & Pay"][m.step - 1]}
+            {["Your Details", "Delivery", "Review & Pay"][m.step - 1]}
           </h3>
 
           {validationError && (
@@ -807,15 +816,6 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
                 fieldBorderClass,
                 whatsappCheckStatus,
                 whatsappCheckedPhone,
-                otpUi,
-                otpVerified: m.contactVerified,
-                otpCode,
-                setOtpCode,
-                otpError: otpErrorText,
-                cooldown,
-                onSendOtp: handleSendOtp,
-                onVerifyOtp: handleVerifyOtp,
-                onChangeDetails: () => m.phoneChanged(),
               }}
             />
           )}
@@ -847,6 +847,22 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
                 cart,
                 cartTotal,
                 categoryDiscounts,
+                verification: {
+                  customerName,
+                  customerEmail,
+                  customerPhone,
+                  whatsappCheckStatus,
+                  whatsappCheckedPhone,
+                  otpUi,
+                  otpVerified: m.contactVerified,
+                  otpCode,
+                  setOtpCode,
+                  otpError: otpErrorText,
+                  cooldown,
+                  onSendOtp: handleSendOtp,
+                  onVerifyOtp: handleVerifyOtp,
+                  onEditDetails: () => m.goContact(),
+                },
                 offerActive: offerRunning,
                 offerLabel: spendOffer?.label ?? null,
                 offerDiscount,
@@ -889,12 +905,17 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
         >
           {footerLabel}
         </button>
-        {m.step === 1 && !m.contactVerified && (
+        {m.step === 1 && (
           <p className="mt-2 text-[10px] text-faint text-center">
-            Enter your name, email, and a verified WhatsApp number to continue.
+            Enter your name, email, and WhatsApp number to continue. You&rsquo;ll verify the number at the last step.
           </p>
         )}
-        {m.step === 3 && !agreedToPolicy && (
+        {m.step === 3 && !m.contactVerified && (
+          <p className="mt-2 text-[10px] text-faint text-center">
+            Verify your WhatsApp number above to place the order.
+          </p>
+        )}
+        {m.step === 3 && m.contactVerified && !agreedToPolicy && (
           <p className="mt-2 text-[10px] text-faint text-center">
             Tick the Cancellation &amp; Refund Policy above to enable payment.
           </p>
