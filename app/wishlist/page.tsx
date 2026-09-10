@@ -88,15 +88,15 @@ export default function WishlistPage() {
                       price={Number(product.price)}
                       category={product.category}
                       className="text-link font-mono font-bold text-xs sm:text-sm"
-                      originalClassName="text-faint dark:text-stone-500 line-through font-mono text-[9px]"
-                      badgeClassName="text-emerald-700 dark:text-emerald-500 text-[8px] font-bold uppercase"
+                      originalClassName="text-faint line-through font-mono text-[9px]"
+                      badgeClassName="text-success text-[8px] font-bold uppercase"
                     />
                   </div>
                   <div className="flex gap-1.5">
                     <button
                       type="button"
                       onClick={() => addToCart(product)}
-                      className="flex-grow text-[10px] uppercase tracking-wider font-semibold bg-stone-900 hover:bg-accent text-accent-fg px-2 py-2 rounded transition"
+                      className="flex-grow text-[10px] uppercase tracking-wider font-semibold bg-fg text-bg hover:bg-accent hover:text-accent-fg px-2 py-2 rounded transition"
                     >
                       Add to Bag
                     </button>
@@ -104,7 +104,7 @@ export default function WishlistPage() {
                       type="button"
                       onClick={() => removeFromWishlist(product.id)}
                       aria-label="Remove from wishlist"
-                      className="flex-shrink-0 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded px-2.5 py-2 transition"
+                      className="flex-shrink-0 text-danger hover:bg-danger-soft border border-danger-border rounded px-2.5 py-2 transition"
                     >
                       ✕
                     </button>

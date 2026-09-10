@@ -530,19 +530,19 @@ export default async function ProductDetailPage({
       <CategorySlider items={categorySliderItems} />
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}
-      <footer className="bg-stone-900 text-faint text-xs py-8 border-t border-stone-800">
+      <footer className="bg-footer-bg text-footer-fg text-xs py-8 border-t border-white/10">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
-            <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-stone-500 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
+            <p className="font-serif text-white tracking-widest text-sm font-bold">TOHFA</p>
+            <p className="text-[10px] text-footer-fg/70 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
-          <div className="flex flex-wrap justify-center gap-6 text-[11px] uppercase tracking-wider font-medium text-stone-400">
-            <a href="/terms" className="hover:text-amber-400 transition">Terms &amp; Conditions</a>
-            <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
-            <a href="/refunds" className="hover:text-amber-400 transition">Refund &amp; Cancellation</a>
-            <a href="/contact" className="hover:text-amber-400 transition">Contact Us</a>
-            <a href="/faq" className="hover:text-amber-400 transition">FAQ</a>
-            <a href="/track" className="hover:text-amber-400 transition">Track Your Order</a>
+          <div className="flex flex-wrap justify-center gap-6 text-[11px] uppercase tracking-wider font-medium text-footer-fg">
+            <a href="/terms" className="hover:text-footer-accent transition">Terms &amp; Conditions</a>
+            <a href="/privacy" className="hover:text-footer-accent transition">Privacy Policy</a>
+            <a href="/refunds" className="hover:text-footer-accent transition">Refund &amp; Cancellation</a>
+            <a href="/contact" className="hover:text-footer-accent transition">Contact Us</a>
+            <a href="/faq" className="hover:text-footer-accent transition">FAQ</a>
+            <a href="/track" className="hover:text-footer-accent transition">Track Your Order</a>
           </div>
         </div>
       </footer>

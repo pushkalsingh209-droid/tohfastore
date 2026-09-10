@@ -60,7 +60,7 @@ export default function PromoBanner({ coupons }: { coupons: PublicCoupon[] }) {
   const durationSec = Math.max(24, coupons.length * 8);
 
   const pillClass =
-    "inline-flex items-center gap-1.5 whitespace-nowrap text-link-hover border border-amber-200 dark:border-stone-700 rounded-full px-3 py-1 transition";
+    "inline-flex items-center gap-1.5 whitespace-nowrap text-link-hover border border-accent-soft-border rounded-full px-3 py-1 transition";
 
   // One copy of the scrolling content. `dup` is the seamless-loop twin --
   // aria-hidden and non-interactive (no duplicate copy buttons for AT or
@@ -75,9 +75,9 @@ export default function PromoBanner({ coupons }: { coupons: PublicCoupon[] }) {
               Use code <span className="font-mono font-semibold">{coupon.code}</span> for {couponOffer(coupon)}
             </span>
             {urgency && (
-              <span className="text-[10px] uppercase font-bold text-rose-600 dark:text-rose-400">{urgency}</span>
+              <span className="text-[10px] uppercase font-bold text-danger">{urgency}</span>
             )}
-            <span className="text-[10px] uppercase font-medium text-amber-600 dark:text-amber-500">
+            <span className="text-[10px] uppercase font-medium text-accent">
               {copiedCode === coupon.code ? "Copied!" : "Copy"}
             </span>
           </>
@@ -91,7 +91,7 @@ export default function PromoBanner({ coupons }: { coupons: PublicCoupon[] }) {
             key={coupon.code}
             type="button"
             onClick={() => handleCopy(coupon.code)}
-            className={`${pillClass} hover:bg-amber-100 dark:hover:bg-stone-800`}
+            className={`${pillClass} hover:bg-accent-soft`}
             title="Tap to copy code"
           >
             {body}

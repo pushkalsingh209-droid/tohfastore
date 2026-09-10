@@ -76,10 +76,10 @@ export default function DeliveryStep({ bag }: { bag: DeliveryBag }) {
           <span className="text-[9px] text-faint block mt-1">Looking up city/state&hellip;</span>
         )}
         {b.pincodeLookupStatus === "done" && b.city && b.addressState && (
-          <span className="text-[9px] text-emerald-600 dark:text-emerald-500 block mt-1">&#10003; {b.city}, {b.addressState} &mdash; edit below if needed.</span>
+          <span className="text-[9px] text-success block mt-1">&#10003; {b.city}, {b.addressState} &mdash; edit below if needed.</span>
         )}
         {b.pincodeLookupStatus === "error" && (
-          <span className="text-[9px] text-rose-500 block mt-1">Couldn&rsquo;t find that PIN &mdash; enter city/state below.</span>
+          <span className="text-[9px] text-danger block mt-1">Couldn&rsquo;t find that PIN &mdash; enter city/state below.</span>
         )}
       </div>
 

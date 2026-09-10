@@ -1,7 +1,8 @@
 # DESIGN — user-selectable colour themes
 
-Status: **PR 1 shipped and merged 2026-09-10** (token layer + `themes.ts` registry +
-`ThemePicker` + `sand`/`ink`, no visual change). PRs 2–4 remaining — see the phasing table.
+Status: **PRs 1–4 shipped 2026-09-10 — all 10 themes are live.** The storefront is fully
+token-driven: 0 `dark:` variants, 0 stray `stone-*`/`amber-*` colour classes outside the
+documented deliberate keeps. Only PR 5 (optional admin-panel conversion) remains.
 Owner brief (2026-09-10): "add 9–10 colour themes (light, dark, dusk, …) the user can
 choose, make it playful." Decisions taken via clarifying questions:
 
@@ -102,7 +103,8 @@ list; a transparent full-screen tap-scrim on small screens so an outside tap dis
 reliably. One swatch + name per theme, the active one marked. Click → set `data-theme` +
 toggle `.dark` + `localStorage.setItem("theme", slug)`. It's a menu, not a modal form, so
 deliberately **not** a bottom sheet (that pattern is `EnquirySheet` / the Notify dialog).
-Per-browser persistence, exactly like the old dark-mode toggle.
+Click → set `data-theme` + `localStorage.setItem("theme", slug)` (no `.dark` class since
+PR 4). Per-browser persistence, exactly like the old dark-mode toggle.
 
 ---
 
@@ -137,7 +139,7 @@ work. The original 8-slice plan is folded into 4 (+ an optional admin one):
 | **1** ✅ *(merged 2026-09-10)* | Token layer + Tailwind mappings; `[data-theme="sand"]` / `["ink"]` reproducing today's light/dark exactly; new blocking script (+ legacy `.dark` shim); `themes.ts` registry + tests; `ThemePicker` (anchored dropdown) with the 2 swatches. | **none** — `sand` & `ink` render pixel-identical to current light & dark |
 | **2** ✅ *(shipped 2026-09-10)* | **Chrome + product surfaces.** `layout.tsx` (body/skip-link), `headerNavbar`, `PromoBanner`, `PriceDisplay`; `ProductCard`, `CatalogSection`, `BestsellersStrip`, `CategorySlider`, `TestimonialsStrip`, `product/[id]`; the buy-box buttons (`AddToCartButton`, `StickyAddToCartBar`, `WishlistButton`, `EnquireToBuyButton`, `ShareButtons`, `StockStatusBadge`, `NotifyWhenInStockButton`, `RecentlyViewedStrip`). ~350 `dark:`/`stone-`/`amber-` class occurrences → semantic tokens. Token values re-pinned to the exact stone/amber hex each pair produced (`--link`/`--link-hover` split out so `ink` can keep accent text brighter than accent fills). **Deferred to PR 4** (genuinely distinct, not sub-perceptual): the always-dark footer blocks (`layout.tsx` + `product/[id]`), the warm-amber pills (Categories menu, coupon pills, flip-bar gradient), disabled-button greys, the inverted MRP-strike greys, and `rose`/`emerald`/`red` status colours. | **none** — verified: CDP computed-style probe shows every token resolves to the exact replaced hex in both `sand` and `ink`; homepage + PDP screenshots match `main` in both themes |
 | **3** ✅ *(shipped 2026-09-10)* | **Cart / checkout / remaining pages.** `CartDrawer`, `CheckoutSheet` + `ContactStep`/`DeliveryStep`/`ReviewStep` + `Stepper`, `CartSuggestions`, `EnquirySheet`, `/wishlist`, `/wishlist/shared`, `/success` (invoice `bg-white` kept for print), `/faq`, `/guides` + `[slug]`, `/refer`, `/corporate`, `/about`, `/contact`, `/privacy`, `/terms`, `/refunds`, `/catalogue`, `/track`, `/spotlight`, `not-found`, plus `ContactForm` / `ReviewForm` / `TrustBadges` / `Breadcrumbs` / `PageNavLinks` / `CatalogPagination` / `JumpToPage` / `CatalogFilters` / `BackToCollectionsLink` / `SpotlightCountdown`. ~530 class occurrences → tokens (859 → 329 non-admin `dark:`). Same PR-4 deferrals as PR 2 (always-dark footer block on every page, emerald/rose/amber info-panel callouts, warm badges). | **none** — `/about` + `/track` screenshots (both themes) match `main` |
-| **4** | **`grep` gate** — resolve every remaining hardcoded colour (the PR-2/3 deferrals above included): give the footer / warm pills / disabled states / MRP greys / status colours their own tokens or a deliberate keep, until 0 `dark:` / `stone-` / `amber-` remain in the storefront. Delete the `.dark` shim from the blocking script + `ThemePicker`. **Add the 8 remaining palettes** (`dusk`, `brass`, `forest`, `rose`, `midnight`, `marigold`, `slate`, `peacock`) as one `:root[data-theme]` CSS block + a `THEMES` row + a swatch each, tuned for WCAG AA body-text contrast. | **the 10 themes go live** |
+| **4** ✅ *(shipped 2026-09-10)* | **`grep` gate + palettes.** Every remaining `dark:` / stray `stone-*`/`amber-*` class in the storefront converted or given a documented keep (non-admin `dark:` 329 → **0**). New **derived-token** block: `--accent-hover`, `--link`, `--accent-soft(-border)`, `--success-soft/-border`, `--danger-soft/-border`, `--disabled`, `--footer-*`, `--scrim` are all `color-mix()` off the 14 primitives, so a new palette only picks 14 values. `@custom-variant dark` + the `.dark` class shim **deleted** (`themes.ts`, `ThemePicker`, blocking script). `--scrim` is now a solid `#0c0a09` (fixed on every theme; `/NN` opacity modifiers). Primary CTA buttons → `bg-fg text-bg` (inverted, accent-on-hover) so they stay legible on dark themes. `StorefrontPage` wrapper `bg-[var(--background)]` → `bg-bg` (the legacy var is not per-theme). **Added the 8 palettes** — `dusk`, `brass`, `forest`, `rose`, `midnight`, `marigold`, `slate`, `peacock` — each a 14-primitive `:root[data-theme]` block + a `THEMES` row + swatch. | **the 10 themes went live** — verified: homepage/PDP/track screenshotted in all 10, every one legible & coherent |
 | **5** *(optional)* | Admin panel (`app/admin/**`) — internal tool; convert only if wanted. | none |
 
 Each PR: `tsc --noEmit` clean · `eslint` no new errors vs. the `main` baseline · `npm test`
@@ -151,9 +153,12 @@ one PR open at a time.
 
 - **Arbitrary-value colours** (`from-stone-900/85`, `bg-black/70`, `text-amber-600/80`)
   need explicit tokens (`--scrim`, `--accent` with an alpha). Catch these per-cluster.
-- **Deliberately-fixed colours** stay hardcoded with a comment: focus-ring, `success`/
-  `danger` states, the `SAVE ₹X` emerald badge, star-rating gold — unless a theme
-  genuinely needs them themable.
+- **Deliberately-fixed colours** (kept hardcoded across every theme, on purpose):
+  the WhatsApp buttons (`bg-emerald-600`), the wishlist heart (`fill-rose-600`), the
+  star-rating gold (`text-amber-500`), the maroon "Spend & Save" / hero gradient band
+  and `/success`'s gradient strip, the `.spec-plate` brass-nameplate, the `bg-amber-950`
+  "Direct Procurement" panel on `/about`, and the near-black footer band (`--footer-*`).
+  `--scrim` is fixed too. Everything else themes.
 - `docs/HANDBOOK.html` has its own self-contained styles — untouched, stays CDN-free.
 - `catalogueGenerator.ts` (PDF) has its own inline style object — out of scope.
 - Meta `themeColor` in `layout.tsx` (browser chrome colour) — set it from the active

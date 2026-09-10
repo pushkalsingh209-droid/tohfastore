@@ -131,13 +131,13 @@ export default function CheckoutSuccessPage() {
         <div className="w-full max-w-md space-y-6">
           
           {/* SUCCESS CARD */}
-          <div className="bg-surface border border-amber-200 dark:border-amber-800 rounded-lg p-6 sm:p-10 md:p-12 text-center shadow-sm relative overflow-hidden">
+          <div className="bg-surface border border-accent-soft-border rounded-lg p-6 sm:p-10 md:p-12 text-center shadow-sm relative overflow-hidden">
 
             {/* Subtle decorative background accent matching Tohfa luxury styling */}
             <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-amber-500 via-amber-700 to-amber-900" />
 
             {/* Decorative Success Ring Icon */}
-            <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-sm select-none">
+            <div className="w-16 h-16 bg-success-soft text-success border border-success-border rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-sm select-none">
               ✓
             </div>
 
@@ -152,12 +152,12 @@ export default function CheckoutSuccessPage() {
             {/* Core Explanatory Copy */}
             <div className="text-muted text-xs sm:text-sm font-light space-y-4 max-w-xs mx-auto mb-8 border-y border-border py-6 leading-relaxed">
               <p>
-                Thank you for purchasing from <span className="font-medium text-accent-hover dark:text-amber-500 font-serif tracking-wider">TOHFA</span>.
+                Thank you for purchasing from <span className="font-medium text-accent-hover font-serif tracking-wider">TOHFA</span>.
               </p>
               <p>
                 Your payment via Razorpay has cleared successfully. Our regional Indian artisans are already packing your handcrafted premium brass artifacts for delivery.
               </p>
-              <p className="text-accent-hover dark:text-amber-500 font-medium">
+              <p className="text-accent-hover font-medium">
                 📱 We’ll send your order confirmation and delivery updates on WhatsApp only, to the number you entered at checkout.
               </p>
             </div>
@@ -165,7 +165,7 @@ export default function CheckoutSuccessPage() {
             {/* Return Call-To-Action Control Key */}
             <Link
               href="/"
-              className="inline-block w-full bg-stone-950 hover:bg-accent text-white font-medium text-xs uppercase tracking-widest py-4 rounded shadow transition duration-150 active:scale-[0.99] text-center"
+              className="inline-block w-full bg-fg text-bg hover:bg-accent hover:text-accent-fg font-medium text-xs uppercase tracking-widest py-4 rounded shadow transition duration-150 active:scale-[0.99] text-center"
             >
               Return To Collections
             </Link>
@@ -173,15 +173,15 @@ export default function CheckoutSuccessPage() {
             {/* Referral nudge -- the personal FRIEND... code is only minted
                 once the order is Delivered, so this points at /refer where
                 the customer can pull it up (phone-verified) any time after. */}
-            <p className="text-[11px] text-faint dark:text-stone-500 mt-4">
-              Love it? <Link href="/refer" className="underline hover:text-amber-600 dark:hover:text-amber-500">Share TOHFA with a friend</Link> — they save on their first order, you earn a reward.
+            <p className="text-[11px] text-faint mt-4">
+              Love it? <Link href="/refer" className="underline hover:text-link">Share TOHFA with a friend</Link> — they save on their first order, you earn a reward.
             </p>
           </div>
 
           {/* CANCELLATION & REFUND POLICY REMINDER -- bilingual, mirrors the
               consent note shown at checkout, so the return-window/unboxing-
               video terms stay visible right after the order is placed too. */}
-          <div className="bg-surface border border-amber-100 dark:border-amber-800 rounded-lg p-6 shadow-sm print:hidden space-y-2">
+          <div className="bg-surface border border-accent-soft-border rounded-lg p-6 shadow-sm print:hidden space-y-2">
             <h2 className="text-xs uppercase tracking-wider text-faint font-bold font-serif mb-1">
               Return &amp; Replacement Policy
             </h2>
@@ -215,16 +215,16 @@ export default function CheckoutSuccessPage() {
                 placeholder="10-digit phone number"
                 className="w-full px-4 py-3 rounded border border-border-strong text-sm font-mono focus:outline-none focus:border-accent bg-surface-2 text-fg"
               />
-              {recoverError && <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">{recoverError}</p>}
+              {recoverError && <p className="text-xs text-danger font-medium">{recoverError}</p>}
               <button
                 type="submit"
                 disabled={recovering}
-                className="w-full bg-stone-950 dark:bg-amber-700 hover:bg-accent-hover dark:hover:bg-amber-600 disabled:opacity-60 text-white font-medium text-xs uppercase tracking-widest py-3 rounded shadow transition active:scale-[0.99]"
+                className="w-full bg-fg text-bg hover:bg-accent hover:text-accent-fg disabled:opacity-60 font-medium text-xs uppercase tracking-widest py-3 rounded shadow transition active:scale-[0.99]"
               >
                 {recovering ? "Loading..." : "View Invoice"}
               </button>
               <p className="text-[10px] text-faint text-center">
-                You can also track this order any time at <a href="/track" className="underline hover:text-amber-600">/track</a>.
+                You can also track this order any time at <a href="/track" className="underline hover:text-link">/track</a>.
               </p>
             </form>
           )}
@@ -256,7 +256,7 @@ export default function CheckoutSuccessPage() {
               </div>
 
               {(order.courierName || order.awbNumber) && (
-                <div className="text-[11px] text-muted bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded px-3 py-2 mb-6 space-y-0.5">
+                <div className="text-[11px] text-muted bg-accent-soft border border-accent-soft-border rounded px-3 py-2 mb-6 space-y-0.5">
                   {order.courierName && (
                     <div className="flex justify-between">
                       <span className="text-faint uppercase tracking-wide">Delivery partner</span>
@@ -290,7 +290,7 @@ export default function CheckoutSuccessPage() {
                         <td className="py-2 text-center text-faint">{item.quantity}</td>
                         <td className="py-2 text-right font-mono text-fg">
                           {slashed && (
-                            <span className="block text-faint dark:text-stone-500 line-through text-[10px]">
+                            <span className="block text-faint line-through text-[10px]">
                               ₹{slashed.originalPrice.toLocaleString("en-IN")}
                             </span>
                           )}
@@ -316,9 +316,9 @@ export default function CheckoutSuccessPage() {
                     <>
                       <div className="flex justify-between">
                         <span>MRP Subtotal</span>
-                        <span className="font-mono line-through text-faint dark:text-stone-500">₹{mrpSubtotal.toLocaleString("en-IN")}</span>
+                        <span className="font-mono line-through text-faint">₹{mrpSubtotal.toLocaleString("en-IN")}</span>
                       </div>
-                      <div className="flex justify-between text-emerald-700 dark:text-emerald-500">
+                      <div className="flex justify-between text-success">
                         <span>You Saved</span>
                         <span className="font-mono">₹{(mrpSubtotal - order.subtotal).toLocaleString("en-IN")} ({savingsPercent}% off)</span>
                       </div>
@@ -330,7 +330,7 @@ export default function CheckoutSuccessPage() {
                   <span className="font-mono">₹{order.subtotal.toLocaleString("en-IN")}</span>
                 </div>
                 {order.discount > 0 && (
-                  <div className="flex justify-between text-emerald-700 dark:text-emerald-500">
+                  <div className="flex justify-between text-success">
                     <span>Discount {order.couponCode ? `(${order.couponCode})` : order.offerLabel ? `(${order.offerLabel})` : ""}</span>
                     <span className="font-mono">&minus;₹{order.discount.toLocaleString("en-IN")}</span>
                   </div>
@@ -369,7 +369,7 @@ export default function CheckoutSuccessPage() {
                 <span className="text-sm font-serif font-medium text-fg">
                   {isCod ? "To pay on delivery" : "Total Paid"}
                 </span>
-                <span className="text-lg font-mono font-bold text-accent-hover dark:text-amber-500">
+                <span className="text-lg font-mono font-bold text-accent-hover">
                   ₹{(gst.totalPrice + codFee).toLocaleString("en-IN")}
                 </span>
               </div>
@@ -434,21 +434,21 @@ export default function CheckoutSuccessPage() {
       </div>
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}
-      <footer className="bg-stone-900 text-faint text-xs py-8 border-t border-stone-800 w-full mt-auto">
+      <footer className="bg-footer-bg text-footer-fg text-xs py-8 border-t border-white/10 w-full mt-auto">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
-            <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-faint mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
+            <p className="font-serif text-white tracking-widest text-sm font-bold">TOHFA</p>
+            <p className="text-[10px] text-footer-fg/70 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
           
           {/* Public links verified during gateway inspections */}
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-wider font-medium text-faint">
-            <a href="/terms" className="hover:text-amber-400 transition">Terms & Conditions</a>
-            <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
-            <a href="/refunds" className="hover:text-amber-400 transition">Refund & Cancellation</a>
-            <a href="/contact" className="hover:text-amber-400 transition">Contact Us</a>
-            <a href="/faq" className="hover:text-amber-400 transition">FAQ</a>
-            <a href="/track" className="hover:text-amber-400 transition">Track Your Order</a>
+            <a href="/terms" className="hover:text-footer-accent transition">Terms & Conditions</a>
+            <a href="/privacy" className="hover:text-footer-accent transition">Privacy Policy</a>
+            <a href="/refunds" className="hover:text-footer-accent transition">Refund & Cancellation</a>
+            <a href="/contact" className="hover:text-footer-accent transition">Contact Us</a>
+            <a href="/faq" className="hover:text-footer-accent transition">FAQ</a>
+            <a href="/track" className="hover:text-footer-accent transition">Track Your Order</a>
           </div>
         </div>
       </footer>

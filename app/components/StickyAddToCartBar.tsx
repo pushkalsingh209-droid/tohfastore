@@ -30,8 +30,8 @@ export default function StickyAddToCartBar({ product }: { product: StoreProduct 
               price={Number(product.price)}
               category={product.category}
               className="text-link font-bold font-mono text-base"
-              originalClassName="text-stone-400 dark:text-stone-500 line-through font-mono text-[10px]"
-              badgeClassName="text-emerald-700 dark:text-emerald-500 text-[8px] font-bold uppercase"
+              originalClassName="text-faint line-through font-mono text-[10px]"
+              badgeClassName="text-success text-[8px] font-bold uppercase"
             />
           </div>
           <div className="flex-grow">

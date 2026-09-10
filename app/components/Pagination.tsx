@@ -24,14 +24,14 @@ export default function Pagination({
   const clampedPage = Math.min(Math.max(1, page), totalPages);
 
   return (
-    <div className="space-y-3 pt-6 mt-6 border-t border-stone-100">
+    <div className="space-y-3 pt-6 mt-6 border-t border-border">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-xs text-stone-500">
+        <div className="flex items-center gap-2 text-xs text-faint">
           <span>Show</span>
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="border border-stone-200 rounded px-2 py-1.5 bg-stone-50 text-xs font-mono focus:outline-none focus:border-amber-600"
+            className="border border-border rounded px-2 py-1.5 bg-surface-2 text-xs font-mono focus:outline-none focus:border-accent"
           >
             {PAGE_SIZE_OPTIONS.map((size) => (
               <option key={size} value={size}>
@@ -47,18 +47,18 @@ export default function Pagination({
             type="button"
             onClick={() => onPageChange(clampedPage - 1)}
             disabled={clampedPage <= 1}
-            className="w-8 h-8 rounded border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            className="w-8 h-8 rounded border border-border-strong flex items-center justify-center font-bold text-muted hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
             &lsaquo;
           </button>
-          <span className="text-xs font-mono text-stone-600 px-2 whitespace-nowrap">
+          <span className="text-xs font-mono text-muted px-2 whitespace-nowrap">
             Page {clampedPage} of {totalPages}
           </span>
           <button
             type="button"
             onClick={() => onPageChange(clampedPage + 1)}
             disabled={clampedPage >= totalPages}
-            className="w-8 h-8 rounded border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            className="w-8 h-8 rounded border border-border-strong flex items-center justify-center font-bold text-muted hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
             &rsaquo;
           </button>

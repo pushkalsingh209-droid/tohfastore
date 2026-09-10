@@ -15,7 +15,7 @@ export default function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
         {items.map((item, index) => (
           <li key={index} className="flex items-center gap-1.5">
             {index > 0 && (
-              <span aria-hidden="true" className="text-stone-300 dark:text-stone-700">
+              <span aria-hidden="true" className="text-faint">
                 /
               </span>
             )}

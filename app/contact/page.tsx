@@ -69,7 +69,7 @@ export default function ContactUsPage() {
               <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-faint font-bold mb-1">
                 Registered Operational Hub
               </h3>
-              <p className="text-fg dark:text-stone-300 font-light leading-relaxed text-xs sm:text-sm">
+              <p className="text-fg font-light leading-relaxed text-xs sm:text-sm">
                 TOHFA,<br />
                 Dehradun, Uttarakhand,<br />
                 India - 248001
@@ -109,21 +109,21 @@ export default function ContactUsPage() {
       </div>
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}
-      <footer className="bg-stone-900 text-faint text-xs py-8 border-t border-stone-800 w-full mt-auto">
+      <footer className="bg-footer-bg text-footer-fg text-xs py-8 border-t border-white/10 w-full mt-auto">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
-            <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-faint mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
+            <p className="font-serif text-white tracking-widest text-sm font-bold">TOHFA</p>
+            <p className="text-[10px] text-footer-fg/70 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
           
           {/* Public links verified during gateway inspections */}
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-wider font-medium text-faint">
-            <a href="/terms" className="hover:text-amber-400 transition">Terms & Conditions</a>
-            <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
-            <a href="/refunds" className="hover:text-amber-400 transition">Refund & Cancellation</a>
-            <a href="/contact" className="hover:text-amber-400 transition font-semibold text-amber-400">Contact Us</a>
-            <a href="/faq" className="hover:text-amber-400 transition">FAQ</a>
-            <a href="/track" className="hover:text-amber-400 transition">Track Your Order</a>
+            <a href="/terms" className="hover:text-footer-accent transition">Terms & Conditions</a>
+            <a href="/privacy" className="hover:text-footer-accent transition">Privacy Policy</a>
+            <a href="/refunds" className="hover:text-footer-accent transition">Refund & Cancellation</a>
+            <a href="/contact" className="hover:text-footer-accent transition font-semibold text-footer-accent">Contact Us</a>
+            <a href="/faq" className="hover:text-footer-accent transition">FAQ</a>
+            <a href="/track" className="hover:text-footer-accent transition">Track Your Order</a>
           </div>
         </div>
       </footer>

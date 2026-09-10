@@ -54,7 +54,7 @@ export default function HeaderNavbar() {
   }
 
   return (
-    <header className="border-b border-amber-200 dark:border-stone-800 bg-white dark:bg-stone-950 sticky top-0 z-40 shadow-sm transition-colors">
+    <header className="border-b border-accent-soft-border bg-surface sticky top-0 z-40 shadow-sm transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 md:h-20 flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
 
         <div className="flex items-center justify-between md:justify-start md:gap-8">
@@ -102,7 +102,7 @@ export default function HeaderNavbar() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-7.5-4.6-10-9.1C.3 8.4 2 5 5.5 5c2 0 3.5 1.2 4.5 2.7C11 6.2 12.5 5 14.5 5 18 5 19.7 8.4 22 11.9 19.5 16.4 12 21 12 21z" />
               </svg>
               {wishlistCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] font-bold font-mono w-5 h-5 rounded-full flex items-center justify-center shadow-md">
+                <span className="absolute -top-1 -right-1 bg-accent text-accent-fg text-[10px] font-bold font-mono w-5 h-5 rounded-full flex items-center justify-center shadow-md">
                   {wishlistCount}
                 </span>
               )}
@@ -143,7 +143,7 @@ export default function HeaderNavbar() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-7.5-4.6-10-9.1C.3 8.4 2 5 5.5 5c2 0 3.5 1.2 4.5 2.7C11 6.2 12.5 5 14.5 5 18 5 19.7 8.4 22 11.9 19.5 16.4 12 21 12 21z" />
             </svg>
             {wishlistCount > 0 && (
-              <span className="absolute -top-1 -right-2 bg-rose-600 text-white text-[10px] font-bold font-mono w-5 h-5 rounded-full flex items-center justify-center shadow-md">
+              <span className="absolute -top-1 -right-2 bg-accent text-accent-fg text-[10px] font-bold font-mono w-5 h-5 rounded-full flex items-center justify-center shadow-md">
                 {wishlistCount}
               </span>
             )}
@@ -181,7 +181,7 @@ export default function HeaderNavbar() {
                 onClick={() => setCategoryMenuOpen((open) => !open)}
                 aria-expanded={categoryMenuOpen}
                 aria-controls="category-menu-panel"
-                className="relative flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold text-link-hover bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 rounded pl-2.5 pr-3 py-1.5 shadow-sm transition active:scale-95 flex-shrink-0"
+                className="relative flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold text-link-hover bg-accent-soft hover:bg-accent-soft border border-accent-soft-border rounded pl-2.5 pr-3 py-1.5 shadow-sm transition active:scale-95 flex-shrink-0"
               >
                 {/* Everything else in this bar is plain text (contact info)
                     or already a filled pill (Chat) -- giving this the same
@@ -192,8 +192,8 @@ export default function HeaderNavbar() {
                     this one genuinely has content nowhere else on the page. */}
                 {!categoryMenuOpen && (
                   <>
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping motion-reduce:hidden" aria-hidden="true" />
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500" aria-hidden="true" />
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-accent animate-ping motion-reduce:hidden" aria-hidden="true" />
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-accent" aria-hidden="true" />
                   </>
                 )}
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -204,7 +204,7 @@ export default function HeaderNavbar() {
                   )}
                 </svg>
                 Categories
-                <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-amber-600 dark:bg-amber-500 text-white dark:text-stone-950 text-[9px] font-bold">
+                <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-accent text-accent-fg text-[9px] font-bold">
                   {menuCategories.length}
                 </span>
               </button>
@@ -215,13 +215,13 @@ export default function HeaderNavbar() {
             {/* Contact info -- desktop only, centered between Categories and Menu */}
             <div className="hidden md:flex items-center gap-6 text-[11px] text-faint">
               <span className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="uppercase tracking-wider font-semibold text-stone-400 dark:text-stone-500">Email:</span>
+                <span className="uppercase tracking-wider font-semibold text-faint">Email:</span>
                 <a href="mailto:contact@tohfaonline.com" className="text-link-hover font-mono hover:underline">
                   contact@tohfaonline.com
                 </a>
               </span>
               <span className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="uppercase tracking-wider font-semibold text-stone-400 dark:text-stone-500">Call/WhatsApp:</span>
+                <span className="uppercase tracking-wider font-semibold text-faint">Call/WhatsApp:</span>
                 <span className="font-mono text-fg">+91 6302672351</span>
               </span>
               <a

@@ -47,7 +47,7 @@ export default function EnquireToBuyButton({
         className="w-full min-h-[48px] flex flex-col items-center justify-center rounded bg-accent hover:bg-accent-hover active:scale-95 px-5 py-2.5 text-accent-fg shadow-sm transition duration-200"
       >
         <span className="text-xs uppercase tracking-wider font-medium">Enquire to Buy</span>
-        <span className="text-[10px] font-normal text-amber-100 leading-tight">Not shipped &middot; we&rsquo;ll message you</span>
+        <span className="text-[10px] font-normal text-accent-fg leading-tight">Not shipped &middot; we&rsquo;ll message you</span>
       </button>
 
       <EnquirySheet

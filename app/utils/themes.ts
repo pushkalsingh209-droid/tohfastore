@@ -9,15 +9,11 @@
 // matching :root[data-theme="<slug>"] block for every slug with the same
 // token set.
 //
-// PR 1 of the theming series (docs/DESIGN-theming.md): ships the token layer
-// + picker with exactly TWO themes -- `sand` (today's light) and `ink`
-// (today's dark) -- reproducing the current look with no visual change. The
-// only visible difference is the header control itself (the sun/moon toggle
-// becomes a swatch menu). Later PRs convert the ~970 Tailwind `dark:`
-// variants to the semantic tokens and then add the remaining palettes.
-// Until that conversion is finished, the pre-paint script and the picker
-// also toggle the legacy `.dark` class whenever a dark theme is active so
-// the not-yet-converted variants keep working.
+// The theming series (docs/DESIGN-theming.md) is complete: 10 themes, each a
+// 14-primitive :root[data-theme] block in globals.css, the rest derived once
+// via color-mix(). The picker just flips the data-theme attribute -- there
+// is no `.dark` class and no `dark:` variant left anywhere (that shim was
+// dropped in PR 4). `sand` = the old light look, `ink` = the old dark look.
 
 export interface Theme {
   slug: string;
@@ -27,13 +23,24 @@ export interface Theme {
   emoji: string;
   /** A representative colour for the picker's swatch dot (the theme's accent). */
   swatch: string;
-  /** When true, the pre-paint script / picker also add the legacy `.dark` class. */
+  /** Whether this theme reads as dark. Only used to pick the OS-dark fallback
+   *  (DARK_THEME_SLUGS[0]) and for picker copy -- there is no `.dark` class. */
   isDark: boolean;
 }
 
+// `swatch` is the theme's accent (the dot in the picker), except `ink` shows
+// its brighter `--link` value. Order here is the order shown in the menu.
 export const THEMES: readonly Theme[] = [
   { slug: "sand", name: "Sand", emoji: "☀️", swatch: "#b45309", isDark: false },
   { slug: "ink", name: "Ink", emoji: "🌙", swatch: "#f59e0b", isDark: true },
+  { slug: "dusk", name: "Dusk", emoji: "🌆", swatch: "#f0b45c", isDark: true },
+  { slug: "brass", name: "Brass", emoji: "🔔", swatch: "#9a6a2f", isDark: false },
+  { slug: "forest", name: "Forest", emoji: "🌿", swatch: "#2f6b3d", isDark: false },
+  { slug: "rose", name: "Rose", emoji: "🌸", swatch: "#b3532f", isDark: false },
+  { slug: "midnight", name: "Midnight", emoji: "🌌", swatch: "#22d3ee", isDark: true },
+  { slug: "marigold", name: "Marigold", emoji: "🪔", swatch: "#e0620d", isDark: false },
+  { slug: "slate", name: "Slate", emoji: "🪨", swatch: "#3b6ea5", isDark: false },
+  { slug: "peacock", name: "Peacock", emoji: "🦚", swatch: "#2bb8a0", isDark: true },
 ] as const;
 
 export const DEFAULT_THEME_SLUG = "sand";
@@ -52,6 +59,10 @@ export function isKnownThemeSlug(value: string | null | undefined): boolean {
 
 export function isDarkThemeSlug(slug: string): boolean {
   return DARK_THEME_SLUGS.includes(slug);
+}
+
+export function themeBySlug(slug: string): Theme | undefined {
+  return THEMES.find((t) => t.slug === slug);
 }
 
 // The exact resolution the pre-paint script performs -- kept here so it can
@@ -73,11 +84,10 @@ export function resolveThemeSlug(stored: string | null | undefined, prefersDark:
 // mirrors resolveThemeSlug() line for line, so there is no independent copy
 // of the logic to keep in step (themes.test.ts runs this string in a
 // sandbox and checks it against resolveThemeSlug for a spread of inputs).
-// It sets data-theme on <html> and, while a dark theme is active, adds the
-// legacy `.dark` class (removed in a later PR once no `dark:` variants
-// remain). It never writes back to localStorage -- the migration is a cheap
-// map lookup on each load, and the picker writes the canonical slug on the
-// next interaction.
+// It only sets data-theme on <html> -- the whole palette comes from the
+// :root[data-theme] token blocks in globals.css. It never writes back to
+// localStorage: the legacy-value migration is a cheap map lookup per load,
+// and the picker writes the canonical slug on the next interaction.
 export function buildThemeInitScript(): string {
   const SLUGS = JSON.stringify(THEME_SLUGS);
   const DARK = JSON.stringify(DARK_THEME_SLUGS);
@@ -89,8 +99,7 @@ export function buildThemeInitScript(): string {
     "var s=localStorage.getItem('theme');" +
     "if(s&&Object.prototype.hasOwnProperty.call(LEGACY,s))s=LEGACY[s];" +
     `var t=(s&&SLUGS.indexOf(s)>-1)?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?(DARK[0]||${FALLBACK}):${FALLBACK});` +
-    "var e=document.documentElement;e.setAttribute('data-theme',t);" +
-    "if(DARK.indexOf(t)>-1)e.classList.add('dark');else e.classList.remove('dark');" +
+    "document.documentElement.setAttribute('data-theme',t);" +
     "}catch(e){}})();"
   );
 }

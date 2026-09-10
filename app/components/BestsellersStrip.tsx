@@ -57,8 +57,8 @@ export default function BestsellersStrip({
               price={Number(product.price)}
               category={product.category}
               className="text-[11px] text-link font-mono font-bold"
-              originalClassName="text-stone-400 dark:text-stone-500 line-through font-mono text-[9px]"
-              badgeClassName="text-emerald-700 dark:text-emerald-500 text-[8px] font-bold uppercase"
+              originalClassName="text-faint line-through font-mono text-[9px]"
+              badgeClassName="text-success text-[8px] font-bold uppercase"
             />
           </Link>
         ))}

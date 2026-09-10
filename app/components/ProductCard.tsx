@@ -145,7 +145,7 @@ export default function ProductCard({
     <TempleCardFrame>
     <div className="card-flip-perspective">
     <div className={`card-flip-inner ${cardFlipped ? "is-flipped" : ""} ${cardFlip3dLive ? "flip-3d-live" : ""}`}>
-    <div className="card-flip-face-front bg-surface rounded-lg overflow-hidden group shadow-sm hover:shadow-md dark:shadow-stone-950/50 transition duration-300">
+    <div className="card-flip-face-front bg-surface rounded-lg overflow-hidden group shadow-sm hover:shadow-md transition duration-300">
       <Link
         href={productHref(product)}
         className="block relative touch-manipulation"
@@ -160,7 +160,7 @@ export default function ProductCard({
             category. Opposite corner from the wishlist heart so neither
             overlaps the other. */}
         {product.label && (
-          <span className="absolute top-2 left-2 z-10 bg-amber-700/90 dark:bg-amber-600/90 text-white text-[9px] uppercase tracking-wider font-bold px-2 py-1 rounded shadow-sm pointer-events-none">
+          <span className="absolute top-2 left-2 z-10 bg-accent/90 text-white text-[9px] uppercase tracking-wider font-bold px-2 py-1 rounded shadow-sm pointer-events-none">
             {product.label}
           </span>
         )}
@@ -178,7 +178,7 @@ export default function ProductCard({
           className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-surface/90 shadow-sm flex items-center justify-center hover:scale-110 transition"
         >
           <svg
-            className={`w-4 h-4 transition ${isWishlisted(product.id) ? "fill-rose-600 text-rose-600" : "fill-none text-stone-500"}`}
+            className={`w-4 h-4 transition ${isWishlisted(product.id) ? "fill-rose-600 text-rose-600" : "fill-none text-faint"}`}
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth="2"
@@ -190,20 +190,20 @@ export default function ProductCard({
         {/* Opposite corner from the label badge (top-left) and the
             wishlist heart (top-right) so neither ever collides with this. */}
         {isNewArrival && (
-          <span className="absolute bottom-2 left-2 z-10 bg-emerald-600/90 text-white text-[9px] uppercase tracking-wider font-bold px-2 py-1 rounded shadow-sm pointer-events-none">
+          <span className="absolute bottom-2 left-2 z-10 bg-success/90 text-white text-[9px] uppercase tracking-wider font-bold px-2 py-1 rounded shadow-sm pointer-events-none">
             New
           </span>
         )}
 
         {!isDesktop && active && (
-          <span className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-stone-900/80 text-white text-[10px] uppercase tracking-wider px-3 py-1 rounded-full pointer-events-none">
+          <span className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-scrim/80 text-white text-[10px] uppercase tracking-wider px-3 py-1 rounded-full pointer-events-none">
             Double-tap for details
           </span>
         )}
       </Link>
 
       {dimensionsLine && (
-        <p className="px-6 pt-2 text-[10px] text-stone-400 dark:text-stone-500 text-center line-clamp-2">
+        <p className="px-6 pt-2 text-[10px] text-faint text-center line-clamp-2">
           {dimensionsLine}
         </p>
       )}
@@ -237,8 +237,8 @@ export default function ProductCard({
               enquireOnly
                 ? "bg-accent hover:bg-accent-hover text-accent-fg active:scale-95"
                 : addToCartDisabled
-                ? "bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-500 cursor-not-allowed"
-                : "bg-stone-900 hover:bg-accent text-accent-fg active:scale-95"
+                ? "bg-disabled text-faint cursor-not-allowed"
+                : "bg-fg text-bg hover:bg-accent hover:text-accent-fg active:scale-95"
             }`}
           >
             {enquireOnly ? "Enquire to Buy" : outOfStock ? "Sold Out" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
@@ -286,7 +286,7 @@ export default function ProductCard({
         type="button"
         onClick={handleFlipOpen}
         aria-label="Flip card to see full details"
-        className={`w-full py-2 bg-gradient-to-r from-amber-50 via-amber-100 to-amber-200 hover:brightness-95 transition cursor-pointer flex items-center justify-center gap-1.5 text-stone-900 text-[10px] uppercase tracking-wider font-bold ${
+        className={`w-full py-2 bg-accent-soft hover:brightness-95 transition cursor-pointer flex items-center justify-center gap-1.5 text-fg text-[10px] uppercase tracking-wider font-bold ${
           showFlipHint ? "flip-hint" : ""
         }`}
       >
@@ -298,7 +298,7 @@ export default function ProductCard({
       </button>
     </div>
 
-    <div className="card-flip-face-back rounded-lg overflow-hidden bg-surface shadow-sm dark:shadow-stone-950/50 flex flex-col">
+    <div className="card-flip-face-back rounded-lg overflow-hidden bg-surface shadow-sm flex flex-col">
       {/* Not wrapped in a Link this time -- the Description/Specifications
           boxes below are <details> elements a visitor needs to be able to
           tap without navigating away. Getting to the product page from here
@@ -338,8 +338,8 @@ export default function ProductCard({
               enquireOnly
                 ? "bg-accent hover:bg-accent-hover text-accent-fg active:scale-95"
                 : addToCartDisabled
-                ? "bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-500 cursor-not-allowed"
-                : "bg-stone-900 hover:bg-accent text-accent-fg active:scale-95"
+                ? "bg-disabled text-faint cursor-not-allowed"
+                : "bg-fg text-bg hover:bg-accent hover:text-accent-fg active:scale-95"
             }`}
           >
             {enquireOnly ? "Enquire to Buy" : outOfStock ? "Sold Out" : atMaxInCart ? "Max Stock in Cart" : "Add To Cart"}
@@ -397,7 +397,7 @@ export default function ProductCard({
         type="button"
         onClick={() => setCardFlipped(false)}
         aria-label="Flip back"
-        className="w-full py-2 bg-gradient-to-r from-amber-50 via-amber-100 to-amber-200 hover:brightness-95 transition cursor-pointer flex items-center justify-center gap-1.5 text-stone-900 text-[10px] uppercase tracking-wider font-bold flex-shrink-0"
+        className="w-full py-2 bg-accent-soft hover:brightness-95 transition cursor-pointer flex items-center justify-center gap-1.5 text-fg text-[10px] uppercase tracking-wider font-bold flex-shrink-0"
       >
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5" />

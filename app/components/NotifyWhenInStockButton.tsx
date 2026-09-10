@@ -59,7 +59,7 @@ export default function NotifyWhenInStockButton({
 
   if (status === "done") {
     return (
-      <p className="text-center text-xs text-emerald-700 dark:text-emerald-500 font-medium py-2">
+      <p className="text-center text-xs text-success font-medium py-2">
         &#10003; We&rsquo;ll WhatsApp you the moment this is back in stock.
       </p>
     );
@@ -92,12 +92,12 @@ export default function NotifyWhenInStockButton({
         <button
           type="submit"
           disabled={status === "submitting" || phone.length !== 10}
-          className="px-4 py-2.5 text-xs uppercase tracking-wider font-semibold rounded bg-stone-900 hover:bg-accent text-accent-fg transition disabled:opacity-50"
+          className="px-4 py-2.5 text-xs uppercase tracking-wider font-semibold rounded bg-fg text-bg hover:bg-accent hover:text-accent-fg transition disabled:opacity-50"
         >
           {status === "submitting" ? "Saving..." : "Notify Me"}
         </button>
       </div>
-      {error && <p className="text-[11px] text-rose-600 mt-1">{error}</p>}
+      {error && <p className="text-[11px] text-danger mt-1">{error}</p>}
     </form>
   );
 }

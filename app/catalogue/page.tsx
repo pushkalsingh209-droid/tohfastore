@@ -52,7 +52,7 @@ export default function CataloguePage() {
 
         {sent ? (
           <div className="bg-surface border border-border rounded-lg p-6 sm:p-8 shadow-sm text-center space-y-3">
-            <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-full flex items-center justify-center text-xl font-bold mx-auto">
+            <div className="w-12 h-12 bg-success-soft text-success border border-success-border rounded-full flex items-center justify-center text-xl font-bold mx-auto">
               &#10003;
             </div>
             <p className="text-sm text-muted font-medium">Your download should start automatically.</p>
@@ -104,12 +104,12 @@ export default function CataloguePage() {
               />
             </div>
 
-            {error && <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">{error}</p>}
+            {error && <p className="text-xs text-danger font-medium">{error}</p>}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-stone-950 dark:bg-amber-700 hover:bg-accent-hover dark:hover:bg-amber-600 disabled:opacity-60 text-white font-medium text-xs uppercase tracking-widest py-3.5 rounded shadow transition active:scale-[0.99]"
+              className="w-full bg-fg text-bg hover:bg-accent hover:text-accent-fg disabled:opacity-60 font-medium text-xs uppercase tracking-widest py-3.5 rounded shadow transition active:scale-[0.99]"
             >
               {loading ? "Preparing..." : "Get the Catalogue"}
             </button>
@@ -118,18 +118,18 @@ export default function CataloguePage() {
         )}
       </div>
 
-      <footer className="bg-stone-900 text-faint text-xs py-8 border-t border-stone-800">
+      <footer className="bg-footer-bg text-footer-fg text-xs py-8 border-t border-white/10">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
-            <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-faint mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
+            <p className="font-serif text-white tracking-widest text-sm font-bold">TOHFA</p>
+            <p className="text-[10px] text-footer-fg/70 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
-          <div className="flex flex-wrap justify-center gap-6 text-[11px] uppercase tracking-wider font-medium text-faint">
-            <a href="/terms" className="hover:text-amber-400 transition">Terms &amp; Conditions</a>
-            <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
-            <a href="/refunds" className="hover:text-amber-400 transition">Refund &amp; Cancellation</a>
-            <a href="/contact" className="hover:text-amber-400 transition">Contact Us</a>
-            <a href="/faq" className="hover:text-amber-400 transition">FAQ</a>
+          <div className="flex flex-wrap justify-center gap-6 text-[11px] uppercase tracking-wider font-medium text-footer-fg">
+            <a href="/terms" className="hover:text-footer-accent transition">Terms &amp; Conditions</a>
+            <a href="/privacy" className="hover:text-footer-accent transition">Privacy Policy</a>
+            <a href="/refunds" className="hover:text-footer-accent transition">Refund &amp; Cancellation</a>
+            <a href="/contact" className="hover:text-footer-accent transition">Contact Us</a>
+            <a href="/faq" className="hover:text-footer-accent transition">FAQ</a>
           </div>
         </div>
       </footer>

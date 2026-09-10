@@ -21,7 +21,7 @@ export default function FloatingContactButtons() {
       <a
         href="mailto:contact@tohfaonline.com"
         aria-label="Email TOHFA"
-        className="w-11 h-11 rounded-full bg-stone-900 dark:bg-amber-700 hover:bg-stone-800 dark:hover:bg-amber-600 text-white flex items-center justify-center shadow-lg active:scale-95 transition"
+        className="w-11 h-11 rounded-full bg-fg text-bg hover:bg-accent hover:text-accent-fg flex items-center justify-center shadow-lg active:scale-95 transition"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16v12H4z" />

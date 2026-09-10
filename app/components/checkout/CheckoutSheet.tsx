@@ -242,7 +242,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
 
   function fieldBorderClass(isInvalid: boolean) {
     return isInvalid
-      ? "border-rose-400 dark:border-rose-700 focus:border-rose-500 ring-1 ring-rose-200 dark:ring-rose-900"
+      ? "border-danger-border focus:border-danger ring-1 ring-danger-border"
       : "border-border focus:border-accent";
   }
 
@@ -787,7 +787,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
           {validationError && (
             <div
               ref={validationErrorRef}
-              className="mb-3 p-3 text-[11px] font-medium bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 text-rose-800 dark:text-rose-400 rounded"
+              className="mb-3 p-3 text-[11px] font-medium bg-danger-soft border border-danger-border text-danger rounded"
             >
               ⚠️ {validationError}
             </div>
@@ -885,7 +885,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
           type="button"
           onClick={handleFooter}
           disabled={footerDisabled}
-          className="w-full py-3 rounded-lg bg-stone-950 dark:bg-amber-700 text-white font-semibold text-sm uppercase tracking-wider shadow hover:bg-accent-hover dark:hover:bg-amber-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full py-3 rounded-lg bg-fg text-bg hover:bg-accent hover:text-accent-fg font-semibold text-sm uppercase tracking-wider shadow transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {footerLabel}
         </button>

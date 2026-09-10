@@ -39,7 +39,7 @@ export default function ContactForm() {
 
   if (sent) {
     return (
-      <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-6 text-center text-sm text-emerald-800 dark:text-emerald-400 font-medium">
+      <div className="bg-success-soft border border-success-border rounded-lg p-6 text-center text-sm text-success font-medium">
         Thanks — your message has been sent. We&rsquo;ll get back to you soon.
       </div>
     );
@@ -100,12 +100,12 @@ export default function ContactForm() {
         className="absolute -left-[9999px] w-px h-px opacity-0"
       />
 
-      {error && <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">{error}</p>}
+      {error && <p className="text-xs text-danger font-medium">{error}</p>}
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-stone-950 dark:bg-amber-700 hover:bg-accent-hover dark:hover:bg-amber-600 disabled:opacity-60 text-white font-medium text-xs uppercase tracking-widest py-3.5 rounded shadow transition active:scale-[0.99]"
+        className="w-full bg-fg text-bg hover:bg-accent hover:text-accent-fg disabled:opacity-60 font-medium text-xs uppercase tracking-widest py-3.5 rounded shadow transition active:scale-[0.99]"
       >
         {loading ? "Sending..." : "Send Message"}
       </button>

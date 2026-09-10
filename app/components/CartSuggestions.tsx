@@ -68,7 +68,7 @@ export default function CartSuggestions({ excludeIds }: { excludeIds: Array<stri
                 price={Number(product.price)}
                 category={product.category}
                 className="text-[10.5px] text-link font-bold font-mono"
-                originalClassName="text-faint dark:text-stone-500 line-through font-mono text-[9px]"
+                originalClassName="text-faint line-through font-mono text-[9px]"
                 showBadge={false}
               />
               <button

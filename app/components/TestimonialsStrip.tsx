@@ -17,7 +17,7 @@ export default function TestimonialsStrip({ items, title = "What Customers Are S
           <Link
             key={t.id}
             href={productHref({ id: t.productId, name: t.productName })}
-            className="group flex-shrink-0 w-64 sm:w-72 p-4 rounded-lg border border-border bg-surface hover:border-amber-600 transition flex flex-col"
+            className="group flex-shrink-0 w-64 sm:w-72 p-4 rounded-lg border border-border bg-surface hover:border-accent transition flex flex-col"
           >
             <span className="text-amber-500 text-xs leading-none mb-2">
               {"★".repeat(t.rating)}

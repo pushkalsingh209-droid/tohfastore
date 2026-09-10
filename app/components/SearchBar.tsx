@@ -159,7 +159,7 @@ export default function SearchBar() {
     <div ref={containerRef} className="relative w-full">
       <div className="relative">
         <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none"
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -180,7 +180,7 @@ export default function SearchBar() {
           onKeyDown={handleKeyDown}
           placeholder={listening ? "Listening..." : "Search brass artifacts..."}
           aria-label="Search products"
-          className={`w-full pl-9 py-2.5 rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-sm text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-600 focus:bg-white dark:focus:bg-stone-800 transition ${
+          className={`w-full pl-9 py-2.5 rounded border border-border bg-surface-2 text-sm text-fg focus:outline-none focus:border-accent focus:bg-white transition ${
             voiceSupported ? "pr-16" : "pr-3"
           }`}
         />
@@ -195,7 +195,7 @@ export default function SearchBar() {
               onChange={(e) => setVoiceLang(e.target.value)}
               aria-label="Voice search language"
               title="Voice search language"
-              className="absolute right-9 top-1/2 -translate-y-1/2 text-[9px] font-semibold text-stone-400 bg-transparent border-none focus:outline-none cursor-pointer"
+              className="absolute right-9 top-1/2 -translate-y-1/2 text-[9px] font-semibold text-faint bg-transparent border-none focus:outline-none cursor-pointer"
             >
               {VOICE_SEARCH_LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code}>
@@ -209,7 +209,7 @@ export default function SearchBar() {
               aria-label={listening ? "Stop voice search" : "Search by voice"}
               aria-pressed={listening}
               className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full transition ${
-                listening ? "text-red-600 animate-pulse" : "text-stone-400 hover:text-amber-700 dark:hover:text-amber-500"
+                listening ? "text-red-600 animate-pulse" : "text-faint hover:text-link"
               }`}
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -228,13 +228,13 @@ export default function SearchBar() {
       </div>
 
       {isOpen && trimmedQuery.length > 0 && (
-        <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded shadow-lg z-50 max-h-72 overflow-y-auto">
+        <div className="absolute left-0 right-0 mt-1 bg-surface border border-border rounded shadow-lg z-50 max-h-72 overflow-y-auto">
           {results.length === 0 ? (
-            <p className="px-4 py-3 text-xs text-stone-400">No artifacts found.</p>
+            <p className="px-4 py-3 text-xs text-faint">No artifacts found.</p>
           ) : (
             <>
               {noExactMatches && (
-                <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-stone-400">
+                <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-faint">
                   Did you mean:
                 </p>
               )}
@@ -244,7 +244,7 @@ export default function SearchBar() {
                   type="button"
                   onClick={() => goToProduct(p)}
                   className={`block w-full text-left px-4 py-2.5 text-sm transition ${
-                    idx === activeIndex ? "bg-amber-50 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400" : "hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300"
+                    idx === activeIndex ? "bg-accent-soft text-link-hover" : "hover:bg-surface-2 text-muted"
                   }`}
                 >
                   {p.name}

@@ -96,10 +96,10 @@ export default async function GiftGuidePage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }}
       />
 
-      <nav className="text-[11px] text-faint dark:text-stone-500 mb-8" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-amber-600">Home</Link>
+      <nav className="text-[11px] text-faint mb-8" aria-label="Breadcrumb">
+        <Link href="/" className="hover:text-link">Home</Link>
         <span className="mx-2">/</span>
-        <Link href="/guides" className="hover:text-amber-600">Gift Guides</Link>
+        <Link href="/guides" className="hover:text-link">Gift Guides</Link>
         <span className="mx-2">/</span>
         <span className="text-faint">{guide.title}</span>
       </nav>
@@ -128,7 +128,7 @@ export default async function GiftGuidePage({
           </p>
           <Link
             href="/"
-            className="inline-block px-6 py-3 rounded bg-stone-950 dark:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider shadow hover:bg-accent-hover dark:hover:bg-amber-600 transition"
+            className="inline-block px-6 py-3 rounded bg-fg text-bg hover:bg-accent hover:text-accent-fg text-xs font-semibold uppercase tracking-wider shadow transition"
           >
             Shop the full collection
           </Link>
@@ -157,8 +157,8 @@ export default async function GiftGuidePage({
 
       <div className="text-center mt-6 border-t border-border pt-12">
         <p className="text-sm text-faint mb-5">
-          Gifting in numbers? See our <Link href="/corporate" className="text-link underline hover:text-amber-600">corporate &amp; bulk gifting</Link> page, or
-          browse <Link href="/guides" className="text-link underline hover:text-amber-600">the other guides</Link>.
+          Gifting in numbers? See our <Link href="/corporate" className="text-link underline hover:text-link">corporate &amp; bulk gifting</Link> page, or
+          browse <Link href="/guides" className="text-link underline hover:text-link">the other guides</Link>.
         </p>
         <Link
           href="/"

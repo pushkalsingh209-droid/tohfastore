@@ -44,7 +44,7 @@ function NoActiveSpotlight() {
       <p className="text-sm text-faint mb-8">Check back soon -- in the meantime, explore the full collection.</p>
       <Link
         href="/"
-        className="inline-block px-6 py-3 rounded bg-stone-950 dark:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider shadow hover:bg-accent-hover dark:hover:bg-amber-600 transition"
+        className="inline-block px-6 py-3 rounded bg-fg text-bg hover:bg-accent hover:text-accent-fg text-xs font-semibold uppercase tracking-wider shadow transition"
       >
         Shop the full collection
       </Link>
