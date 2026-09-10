@@ -5,7 +5,9 @@ import Link from "next/link";
 
 // Small hamburger-style toggle for the Home/About links shown in each page's
 // secondary brand bar, matching the same collapse pattern used for the
-// header's Categories menu.
+// header's Categories menu. Renders at every width (no `hidden` class), so
+// this is the ONLY place "Gift Guides" is reachable on mobile -- the
+// desktop top-nav that also links it is `hidden md:flex`.
 export default function PageNavLinks() {
   const [open, setOpen] = useState(false);
 
@@ -39,6 +41,13 @@ export default function PageNavLinks() {
             className="px-4 py-2 hover:text-link hover:bg-surface-2 transition"
           >
             Home
+          </Link>
+          <Link
+            href="/guides"
+            onClick={() => setOpen(false)}
+            className="px-4 py-2 hover:text-link hover:bg-surface-2 transition"
+          >
+            Gift Guides
           </Link>
           <a
             href="/about"
