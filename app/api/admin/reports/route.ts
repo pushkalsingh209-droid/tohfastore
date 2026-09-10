@@ -54,7 +54,7 @@ export async function GET(req: Request) {
     const { data, error } = await supabase
       .from("orders")
       .select(
-        "order_id, payment_id, amount, status, created_at, awb_number, courier_name, customer_details, shipping_address, items"
+        "order_id, payment_id, amount, status, created_at, awb_number, courier_name, customer_details, shipping_address, items, payment_method, cod_fee"
       )
       .gte("created_at", period.from.toISOString())
       .lt("created_at", period.to.toISOString())
@@ -85,13 +85,16 @@ export async function GET(req: Request) {
       { header: "Discount", key: "discount", width: 12 },
       { header: "Taxable value", key: "taxableValue", width: 14 },
       { header: "GST", key: "gstAmount", width: 12 },
+      // COD convenience fee -- non-taxable, already inside "Total paid". Its
+      // own column so taxable value + GST + COD fee reconciles to Total paid.
+      { header: "COD fee", key: "codFee", width: 10 },
       { header: "Total paid", key: "totalPaid", width: 14 },
       { header: "Status", key: "status", width: 12 },
       { header: "Courier", key: "courier", width: 16 },
       { header: "AWB", key: "awb", width: 18 },
     ];
     for (const r of report.orderRows) os.addRow({ ...r, date: istStamp(r.date) });
-    for (const key of ["itemsSubtotal", "discount", "taxableValue", "gstAmount", "totalPaid"]) {
+    for (const key of ["itemsSubtotal", "discount", "taxableValue", "gstAmount", "codFee", "totalPaid"]) {
       os.getColumn(key).numFmt = CURRENCY_FMT;
     }
     os.getRow(1).font = { bold: true };
@@ -102,6 +105,7 @@ export async function GET(req: Request) {
       discount: ot.discount,
       taxableValue: ot.taxableValue,
       gstAmount: ot.gstAmount,
+      codFee: ot.codFee,
       totalPaid: ot.totalPaid,
     });
     otRow.font = { bold: true };
@@ -110,7 +114,7 @@ export async function GET(req: Request) {
     const gs = wb.addWorksheet("GST summary");
     gs.addRow([`TOHFA — GST summary — ${period.label}`]).font = { bold: true, size: 13 };
     gs.addRow([
-      `GSTIN ${BUSINESS_GSTIN}   ·   ${SELLER_STATE} = CGST + SGST, other states = IGST   ·   cancelled orders excluded`,
+      `GSTIN ${BUSINESS_GSTIN}   ·   ${SELLER_STATE} = CGST + SGST, other states = IGST   ·   cancelled orders excluded   ·   COD convenience fee is not a taxable supply (see the Orders sheet's COD fee column)`,
     ]);
     gs.addRow([]);
     const gsHead = gs.addRow(["GST rate %", "Taxable value", "CGST", "SGST", "IGST", "Total tax", "Orders"]);
