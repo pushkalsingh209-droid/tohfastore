@@ -243,7 +243,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
   function fieldBorderClass(isInvalid: boolean) {
     return isInvalid
       ? "border-rose-400 dark:border-rose-700 focus:border-rose-500 ring-1 ring-rose-200 dark:ring-rose-900"
-      : "border-stone-200 dark:border-stone-700 focus:border-amber-700";
+      : "border-border focus:border-accent";
   }
 
   // Flag a field as invalid and scroll the error banner into view. The
@@ -774,7 +774,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
       role="dialog"
       aria-modal="true"
       aria-label="Checkout"
-      className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-stone-900 sm:absolute sm:inset-y-0 sm:right-0 sm:left-auto sm:w-screen sm:max-w-md sm:shadow-xl"
+      className="fixed inset-0 z-50 flex flex-col bg-surface sm:absolute sm:inset-y-0 sm:right-0 sm:left-auto sm:w-screen sm:max-w-md sm:shadow-xl"
     >
       <Stepper step={m.step} onBack={handleBack} backLabel={m.step === 1 ? "Back to bag" : "Back"} />
 
@@ -880,22 +880,22 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
         </StepPane>
       </div>
 
-      <div className="sticky bottom-0 z-10 bg-white dark:bg-stone-900 border-t border-stone-100 dark:border-stone-800 p-4">
+      <div className="sticky bottom-0 z-10 bg-surface border-t border-border p-4">
         <button
           type="button"
           onClick={handleFooter}
           disabled={footerDisabled}
-          className="w-full py-3 rounded-lg bg-stone-950 dark:bg-amber-700 text-white font-semibold text-sm uppercase tracking-wider shadow hover:bg-amber-800 dark:hover:bg-amber-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full py-3 rounded-lg bg-stone-950 dark:bg-amber-700 text-white font-semibold text-sm uppercase tracking-wider shadow hover:bg-accent-hover dark:hover:bg-amber-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {footerLabel}
         </button>
         {m.step === 1 && !m.contactVerified && (
-          <p className="mt-2 text-[10px] text-stone-400 text-center">
+          <p className="mt-2 text-[10px] text-faint text-center">
             Enter your name, email, and a verified WhatsApp number to continue.
           </p>
         )}
         {m.step === 3 && !agreedToPolicy && (
-          <p className="mt-2 text-[10px] text-stone-400 text-center">
+          <p className="mt-2 text-[10px] text-faint text-center">
             Tick the Cancellation &amp; Refund Policy above to enable payment.
           </p>
         )}

@@ -11,7 +11,7 @@ const SORT_OPTIONS = [
 ];
 
 const SELECT_CLASSES =
-  "w-full sm:w-auto border border-stone-200 dark:border-stone-700 rounded px-2 py-1.5 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono focus:outline-none focus:border-amber-600";
+  "w-full sm:w-auto border border-border rounded px-2 py-1.5 bg-surface text-fg text-xs font-mono focus:outline-none focus:border-accent";
 
 // Label stacks above its control on mobile (three narrow columns fit one
 // line without crowding), then sits inline beside it from sm up. Each
@@ -43,7 +43,7 @@ function InStockToggle({
         }`}
       >
         <span
-          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-surface shadow transition-transform ${
             inStockOnly ? "translate-x-[18px]" : "translate-x-1"
           }`}
         />
@@ -72,7 +72,7 @@ export default function CatalogFilters({
   if (categories.length === 0) {
     // No categorized products yet -- only offer sorting + stock toggle.
     return (
-      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between text-xs text-stone-700 dark:text-stone-400">
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between text-xs text-muted dark:text-stone-400">
         <div className={GROUP_LEFT}>
           <span>Sort</span>
           <select value={sort} onChange={(e) => onFilterChange({ sort: e.target.value })} className={SELECT_CLASSES}>
@@ -89,7 +89,7 @@ export default function CatalogFilters({
   }
 
   return (
-    <div className={`grid ${labels.length > 0 ? "grid-cols-2" : "grid-cols-3"} gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between text-xs text-stone-700 dark:text-stone-400`}>
+    <div className={`grid ${labels.length > 0 ? "grid-cols-2" : "grid-cols-3"} gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between text-xs text-muted dark:text-stone-400`}>
       <div className={GROUP_LEFT}>
         <span>Category</span>
         <select value={category} onChange={(e) => onFilterChange({ category: e.target.value })} className={SELECT_CLASSES}>

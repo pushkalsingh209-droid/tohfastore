@@ -49,8 +49,8 @@ export default function ReviewForm({ productId }: { productId: number }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 p-4 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-900">
-      <h4 className="text-xs font-serif font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">Write a Review</h4>
+    <form onSubmit={handleSubmit} className="space-y-3 p-4 border border-border rounded-lg bg-surface-2">
+      <h4 className="text-xs font-serif font-bold text-fg uppercase tracking-wider">Write a Review</h4>
 
       {error && (
         <div className="p-2.5 text-[11px] font-medium bg-rose-50 border border-rose-100 text-rose-800 rounded">
@@ -82,7 +82,7 @@ export default function ReviewForm({ productId }: { productId: number }) {
         placeholder="Your name"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-600"
+        className="w-full px-3 py-2 border border-border rounded text-xs bg-surface dark:bg-stone-800 text-fg focus:outline-none focus:border-accent"
       />
 
       <textarea
@@ -90,13 +90,13 @@ export default function ReviewForm({ productId }: { productId: number }) {
         placeholder="Share your experience (optional)"
         value={reviewText}
         onChange={(e) => setReviewText(e.target.value)}
-        className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-600"
+        className="w-full px-3 py-2 border border-border rounded text-xs bg-surface dark:bg-stone-800 text-fg focus:outline-none focus:border-accent"
       />
 
       <button
         type="submit"
         disabled={submitting}
-        className="text-xs uppercase tracking-wider font-semibold px-5 py-2.5 rounded bg-stone-900 hover:bg-amber-700 text-white transition disabled:opacity-50"
+        className="text-xs uppercase tracking-wider font-semibold px-5 py-2.5 rounded bg-stone-900 hover:bg-accent text-accent-fg transition disabled:opacity-50"
       >
         {submitting ? "Submitting..." : "Submit Review"}
       </button>

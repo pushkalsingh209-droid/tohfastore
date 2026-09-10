@@ -88,7 +88,7 @@ export default function ContactStep({ bag }: { bag: ContactBag }) {
             Change
           </button>
         </div>
-        <p className="text-[11px] text-stone-400">Tap <strong>Continue</strong> below to enter your delivery address.</p>
+        <p className="text-[11px] text-faint">Tap <strong>Continue</strong> below to enter your delivery address.</p>
       </div>
     );
   }
@@ -100,7 +100,7 @@ export default function ContactStep({ bag }: { bag: ContactBag }) {
       </div>
 
       <div>
-        <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">Full Name</label>
+        <label className="block text-[10px] uppercase tracking-wide text-faint mb-1">Full Name</label>
         <input
           ref={nameRef}
           type="text"
@@ -111,11 +111,11 @@ export default function ContactStep({ bag }: { bag: ContactBag }) {
             if (b.invalidField === "name") b.clearInvalid();
           }}
           placeholder="e.g., Pushkal Singh"
-          className={`w-full px-3 py-2 border rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none ${b.fieldBorderClass(b.invalidField === "name")}`}
+          className={`w-full px-3 py-2 border rounded text-xs bg-surface-2 text-fg focus:outline-none ${b.fieldBorderClass(b.invalidField === "name")}`}
         />
       </div>
       <div>
-        <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">Email Address</label>
+        <label className="block text-[10px] uppercase tracking-wide text-faint mb-1">Email Address</label>
         <input
           ref={emailRef}
           type="email"
@@ -126,11 +126,11 @@ export default function ContactStep({ bag }: { bag: ContactBag }) {
             if (b.invalidField === "email") b.clearInvalid();
           }}
           placeholder="e.g., contact@tohfaonline.com"
-          className={`w-full px-3 py-2 border rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none ${b.fieldBorderClass(b.invalidField === "email")}`}
+          className={`w-full px-3 py-2 border rounded text-xs bg-surface-2 text-fg focus:outline-none ${b.fieldBorderClass(b.invalidField === "email")}`}
         />
       </div>
       <div>
-        <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">WhatsApp Number</label>
+        <label className="block text-[10px] uppercase tracking-wide text-faint mb-1">WhatsApp Number</label>
         <input
           ref={phoneRef}
           type="tel"
@@ -142,13 +142,13 @@ export default function ContactStep({ bag }: { bag: ContactBag }) {
             if (b.invalidField === "phone") b.clearInvalid();
           }}
           placeholder="e.g., 9999999999"
-          className={`w-full px-3 py-2 border rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none font-mono tracking-wide ${b.fieldBorderClass(
+          className={`w-full px-3 py-2 border rounded text-xs bg-surface-2 text-fg focus:outline-none font-mono tracking-wide ${b.fieldBorderClass(
             b.invalidField === "phone" || (b.whatsappCheckStatus === "invalid" && b.whatsappCheckedPhone === b.customerPhone)
           )}`}
         />
-        <span className="text-[9px] text-stone-400 block mt-1">Enter your active WhatsApp number (10 digits, no country code or spaces) &mdash; this is where we&rsquo;ll send order updates.</span>
+        <span className="text-[9px] text-faint block mt-1">Enter your active WhatsApp number (10 digits, no country code or spaces) &mdash; this is where we&rsquo;ll send order updates.</span>
         {b.whatsappCheckStatus === "checking" && (
-          <span className="text-[9px] text-stone-400 block mt-1">Checking WhatsApp&hellip;</span>
+          <span className="text-[9px] text-faint block mt-1">Checking WhatsApp&hellip;</span>
         )}
 
         {b.invalidField === "phone" && b.customerPhone === "" && b.whatsappCheckStatus === "invalid" && (
@@ -164,7 +164,7 @@ export default function ContactStep({ bag }: { bag: ContactBag }) {
               <button
                 type="button"
                 onClick={b.onSendOtp}
-                className="w-full px-3 py-2 text-[11px] uppercase tracking-wider font-semibold border border-amber-300 dark:border-amber-700 rounded text-amber-800 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
+                className="w-full px-3 py-2 text-[11px] uppercase tracking-wider font-semibold border border-amber-300 dark:border-amber-700 rounded text-link-hover hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
               >
                 Send Verification Code
               </button>
@@ -181,13 +181,13 @@ export default function ContactStep({ bag }: { bag: ContactBag }) {
                     value={b.otpCode}
                     onChange={(e) => b.setOtpCode(e.target.value.replace(/\D/g, ""))}
                     placeholder="6-digit code"
-                    className="flex-grow px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700 font-mono tracking-widest text-center"
+                    className="flex-grow px-3 py-2 border border-border rounded text-xs bg-surface-2 text-fg focus:outline-none focus:border-accent font-mono tracking-widest text-center"
                   />
                   <button
                     type="button"
                     onClick={b.onVerifyOtp}
                     disabled={b.otpUi === "verifying" || b.otpCode.length !== 6}
-                    className="px-4 py-2 text-[11px] uppercase tracking-wider font-semibold rounded bg-stone-900 hover:bg-amber-700 text-white transition disabled:opacity-50"
+                    className="px-4 py-2 text-[11px] uppercase tracking-wider font-semibold rounded bg-stone-900 hover:bg-accent text-accent-fg transition disabled:opacity-50"
                   >
                     {b.otpUi === "verifying" ? "Verifying..." : "Verify"}
                   </button>
@@ -196,7 +196,7 @@ export default function ContactStep({ bag }: { bag: ContactBag }) {
                   type="button"
                   onClick={b.onSendOtp}
                   disabled={b.cooldown > 0}
-                  className="text-[10px] text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 disabled:hover:text-stone-400 transition"
+                  className="text-[10px] text-faint hover:text-link disabled:hover:text-stone-400 transition"
                 >
                   {b.cooldown > 0 ? `Resend code in ${b.cooldown}s` : "Resend code"}
                 </button>

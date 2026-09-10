@@ -39,23 +39,23 @@ export default function WishlistPage() {
   }
 
   return (
-    <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen py-12 md:py-16 px-4 sm:px-6 transition-colors">
+    <div className="bg-bg min-h-screen py-12 md:py-16 px-4 sm:px-6 transition-colors">
       <div className="max-w-4xl mx-auto">
-        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-stone-200 dark:border-stone-800 pb-4 mb-8">
-          <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 dark:text-stone-100">Your Wishlist</h1>
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4 mb-8">
+          <h1 className="text-2xl sm:text-3xl font-serif text-fg">Your Wishlist</h1>
           {wishlist.length > 0 && (
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleShareWishlist}
-                className="text-[11px] uppercase tracking-wider font-semibold px-3 py-2 rounded border border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+                className="text-[11px] uppercase tracking-wider font-semibold px-3 py-2 rounded border border-border-strong text-muted hover:bg-surface-2 transition"
               >
                 Share Wishlist
               </button>
               <button
                 type="button"
                 onClick={handleCopyShareLink}
-                className="text-[11px] uppercase tracking-wider font-semibold px-3 py-2 rounded border border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+                className="text-[11px] uppercase tracking-wider font-semibold px-3 py-2 rounded border border-border-strong text-muted hover:bg-surface-2 transition"
               >
                 {linkCopied ? "Link Copied!" : "Copy Link"}
               </button>
@@ -64,22 +64,22 @@ export default function WishlistPage() {
         </div>
 
         {wishlist.length === 0 ? (
-          <div className="text-center py-16 border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900">
-            <p className="text-stone-500 dark:text-stone-400 font-serif mb-2">Your wishlist is empty.</p>
-            <Link href="/" className="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-500 hover:underline">
+          <div className="text-center py-16 border-2 border-dashed border-border rounded-lg bg-surface">
+            <p className="text-faint font-serif mb-2">Your wishlist is empty.</p>
+            <Link href="/" className="text-xs uppercase tracking-wider text-link hover:underline">
               Browse Our Collection
             </Link>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
             {wishlist.map((product) => (
-              <div key={product.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden shadow-sm">
-                <Link href={productHref(product)} className="block relative w-full h-32 sm:h-36 bg-stone-50">
+              <div key={product.id} className="bg-surface border border-border rounded-lg overflow-hidden shadow-sm">
+                <Link href={productHref(product)} className="block relative w-full h-32 sm:h-36 bg-surface-2">
                   <Image src={product.thumb_url || product.image_url || ""} alt={product.name ?? ""} fill sizes="180px" className="object-cover" />
                 </Link>
                 <div className="p-3">
                   <Link href={productHref(product)}>
-                    <h3 className="font-serif text-xs sm:text-sm text-stone-900 dark:text-stone-100 line-clamp-2 mb-1 hover:text-amber-700 dark:hover:text-amber-500 transition">
+                    <h3 className="font-serif text-xs sm:text-sm text-fg line-clamp-2 mb-1 hover:text-link transition">
                       {product.name}
                     </h3>
                   </Link>
@@ -87,8 +87,8 @@ export default function WishlistPage() {
                     <PriceDisplay
                       price={Number(product.price)}
                       category={product.category}
-                      className="text-amber-700 dark:text-amber-500 font-mono font-bold text-xs sm:text-sm"
-                      originalClassName="text-stone-400 dark:text-stone-500 line-through font-mono text-[9px]"
+                      className="text-link font-mono font-bold text-xs sm:text-sm"
+                      originalClassName="text-faint dark:text-stone-500 line-through font-mono text-[9px]"
                       badgeClassName="text-emerald-700 dark:text-emerald-500 text-[8px] font-bold uppercase"
                     />
                   </div>
@@ -96,7 +96,7 @@ export default function WishlistPage() {
                     <button
                       type="button"
                       onClick={() => addToCart(product)}
-                      className="flex-grow text-[10px] uppercase tracking-wider font-semibold bg-stone-900 hover:bg-amber-700 text-white px-2 py-2 rounded transition"
+                      className="flex-grow text-[10px] uppercase tracking-wider font-semibold bg-stone-900 hover:bg-accent text-accent-fg px-2 py-2 rounded transition"
                     >
                       Add to Bag
                     </button>

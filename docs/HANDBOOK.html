@@ -3013,6 +3013,41 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-09-10<br>11:00</code></td>
+  <td><strong>Theming PR 3 of ~4: convert cart / checkout / remaining pages to tokens</strong><br>(same mechanical <code>dark:</code> &rarr; token pass as PR 2, across the rest of the storefront; no visual change)</td>
+  <td>
+    ~530 <code>dark:</code> / bare <code>stone-</code>/<code>amber-</code> class occurrences &rarr; the
+    PR-1 semantic-token utilities, across: <code>CartDrawer</code>, <code>CheckoutSheet</code> +
+    <code>ContactStep</code>/<code>DeliveryStep</code>/<code>ReviewStep</code>/<code>Stepper</code>,
+    <code>CartSuggestions</code>, <code>EnquirySheet</code>; <code>/wishlist</code>,
+    <code>/wishlist/shared</code>, <code>/success</code>; <code>/faq</code>, <code>/guides</code> (+
+    <code>[slug]</code>), <code>/refer</code>, <code>/corporate</code>, <code>/about</code>,
+    <code>/contact</code>, <code>/privacy</code>, <code>/terms</code>, <code>/refunds</code>,
+    <code>/catalogue</code>, <code>/track</code>, <code>/spotlight</code>, <code>not-found</code>; plus
+    <code>ContactForm</code> / <code>ReviewForm</code> / <code>TrustBadges</code> / <code>Breadcrumbs</code>
+    / <code>PageNavLinks</code> / <code>CatalogPagination</code> / <code>JumpToPage</code> /
+    <code>CatalogFilters</code> / <code>BackToCollectionsLink</code> / <code>SpotlightCountdown</code>.
+    Non-admin <code>dark:</code> count 859 &rarr; 329.
+    <br><br>
+    Page wrappers <code>bg-[var(--background)]&nbsp;dark:bg-stone-950</code> &rarr; <code>bg-bg</code>. The
+    <code>/success</code> invoice keeps its literal <code>bg-white</code> (it prints on white). Same
+    deferrals to PR 4 as PR 2: the always-dark compliance footer (on every page), the emerald / rose /
+    amber info-panel callouts (delivery confirmation, offer box, OTP-verified), warm badges, disabled-state
+    greys, MRP-strike greys, and the deferred widgets (Ganesha popup, cookie consent, install prompt,
+    brand spinner, catalog-loading overlay, search bar, translate widget, the Insta post/reel tools).
+  </td>
+  <td>
+    <em>edited:</em> the ~35 files above; <code>docs/DESIGN-theming.md</code>, this handbook,
+    <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint .</code> 33 problems / <strong>0 errors</strong>
+    (= <code>main</code> baseline) &middot; <code>npm test</code> 319 / 1 skip &middot; <code>next build</code>
+    exit 0, 145/145 static. <strong>No visual change</strong> &mdash; the token layer is unchanged from PR 2
+    (its CDP <code>getComputedStyle</code> proof still holds), and <code>/about</code> + <code>/track</code>
+    screenshots in both <code>sand</code> and <code>ink</code> (headless Chrome, <code>preferredColorScheme</code>
+    toggled) match <code>main</code>. Not a schema / payment-path change.</td>
+</tr>
+<tr>
   <td><code>2026-09-10<br>10:39</code></td>
   <td><strong>Theming PR 2 of ~4: convert chrome + product surfaces to tokens</strong><br>(mechanical <code>dark:</code>-variant &rarr; semantic-token pass; no visual change &mdash; see <code>docs/DESIGN-theming.md</code>)</td>
   <td>

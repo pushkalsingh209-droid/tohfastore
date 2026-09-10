@@ -121,29 +121,29 @@ export default function EnquirySheet({
       />
 
       <div
-        className="relative w-full sm:max-w-sm bg-white dark:bg-stone-900 border-t sm:border border-stone-200 dark:border-stone-700 rounded-t-2xl sm:rounded-xl shadow-xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5"
+        className="relative w-full sm:max-w-sm bg-surface border-t sm:border border-border rounded-t-2xl sm:rounded-xl shadow-xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5"
         onClick={(e) => e.stopPropagation()}
       >
         {/* grab handle -- phones only; signals "drag/tap away to dismiss" */}
         <div className="sm:hidden mx-auto mb-4 h-1 w-10 rounded-full bg-stone-300 dark:bg-stone-600" />
 
-        <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">
+        <h2 className="text-base font-semibold text-fg">
           We&rsquo;ll reply on WhatsApp
         </h2>
         {product.name && (
-          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-            About: <span className="font-medium text-stone-700 dark:text-stone-300">{product.name}</span>
+          <p className="mt-1 text-xs text-faint">
+            About: <span className="font-medium text-muted">{product.name}</span>
           </p>
         )}
 
         <label
           htmlFor="enquiry-phone"
-          className="mt-4 block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400"
+          className="mt-4 block text-[10px] uppercase tracking-wide text-faint"
         >
           Your WhatsApp number
         </label>
         <div className="mt-1 flex items-center gap-2">
-          <span className="text-sm font-mono text-stone-500 dark:text-stone-400">+91</span>
+          <span className="text-sm font-mono text-faint">+91</span>
           <input
             ref={inputRef}
             id="enquiry-phone"
@@ -159,7 +159,7 @@ export default function EnquirySheet({
             placeholder="10-digit mobile"
             /* text-base (16px) on purpose: anything smaller makes iOS Safari
                zoom the whole page when the field is focused. */
-            className="flex-1 min-w-0 px-3 py-3 border rounded text-base sm:text-sm bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-stone-300 dark:border-stone-600 focus:outline-none focus:border-amber-600"
+            className="flex-1 min-w-0 px-3 py-3 border rounded text-base sm:text-sm bg-surface-2 text-fg border-border-strong focus:outline-none focus:border-accent"
           />
         </div>
         {error && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{error}</p>}
@@ -181,14 +181,14 @@ export default function EnquirySheet({
           }}
           className={`mt-4 flex min-h-[48px] w-full items-center justify-center rounded px-5 text-xs font-medium uppercase tracking-wider transition ${
             valid
-              ? "bg-stone-900 text-white hover:bg-amber-700 active:scale-[0.98]"
-              : "bg-stone-200 dark:bg-stone-700 text-stone-400 dark:text-stone-500"
+              ? "bg-stone-900 text-white hover:bg-accent active:scale-[0.98]"
+              : "bg-stone-200 dark:bg-stone-700 text-faint dark:text-stone-500"
           }`}
         >
           Continue to WhatsApp
         </a>
 
-        <p className="mt-2 text-center text-[11px] text-stone-400 dark:text-stone-500">
+        <p className="mt-2 text-center text-[11px] text-faint dark:text-stone-500">
           We&rsquo;ll message you about this piece. No spam.
         </p>
 
@@ -201,7 +201,7 @@ export default function EnquirySheet({
             handoff();
             onClose();
           }}
-          className="mt-3 block min-h-[44px] pt-3 text-center text-xs text-stone-500 dark:text-stone-400 underline hover:text-stone-700 dark:hover:text-stone-200"
+          className="mt-3 block min-h-[44px] pt-3 text-center text-xs text-faint underline hover:text-stone-700 dark:hover:text-stone-200"
         >
           Just open WhatsApp
         </a>

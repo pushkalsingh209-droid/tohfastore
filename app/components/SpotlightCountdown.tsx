@@ -40,7 +40,7 @@ export default function SpotlightCountdown({ endsAt }: { endsAt: string }) {
   const ended = msRemaining <= 0;
 
   return (
-    <p className="text-xs uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-500">
+    <p className="text-xs uppercase tracking-wider font-semibold text-link">
       {ended ? (
         "This spotlight has ended"
       ) : (

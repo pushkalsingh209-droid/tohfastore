@@ -96,26 +96,26 @@ export default async function GiftGuidePage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }}
       />
 
-      <nav className="text-[11px] text-stone-400 dark:text-stone-500 mb-8" aria-label="Breadcrumb">
+      <nav className="text-[11px] text-faint dark:text-stone-500 mb-8" aria-label="Breadcrumb">
         <Link href="/" className="hover:text-amber-600">Home</Link>
         <span className="mx-2">/</span>
         <Link href="/guides" className="hover:text-amber-600">Gift Guides</Link>
         <span className="mx-2">/</span>
-        <span className="text-stone-500 dark:text-stone-400">{guide.title}</span>
+        <span className="text-faint">{guide.title}</span>
       </nav>
 
       <header className="max-w-2xl mb-10 sm:mb-14">
-        <span className="text-amber-700 dark:text-amber-500 uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block mb-3">
+        <span className="text-link uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block mb-3">
           {guide.eyebrow}
         </span>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-stone-900 dark:text-stone-100 tracking-wide mb-4">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-fg tracking-wide mb-4">
           {guide.title}
         </h1>
-        <p className="text-base sm:text-lg text-stone-700 dark:text-stone-300 font-light leading-relaxed mb-4">
+        <p className="text-base sm:text-lg text-muted font-light leading-relaxed mb-4">
           {guide.intro}
         </p>
         {guide.body.map((para, i) => (
-          <p key={i} className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed mb-3">
+          <p key={i} className="text-sm text-faint leading-relaxed mb-3">
             {para}
           </p>
         ))}
@@ -123,12 +123,12 @@ export default async function GiftGuidePage({
 
       {populated.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-sm text-stone-500 dark:text-stone-400 mb-6">
+          <p className="text-sm text-faint mb-6">
             These picks are between restocks right now — the full collection is still open.
           </p>
           <Link
             href="/"
-            className="inline-block px-6 py-3 rounded bg-stone-950 dark:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider shadow hover:bg-amber-800 dark:hover:bg-amber-600 transition"
+            className="inline-block px-6 py-3 rounded bg-stone-950 dark:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider shadow hover:bg-accent-hover dark:hover:bg-amber-600 transition"
           >
             Shop the full collection
           </Link>
@@ -136,16 +136,16 @@ export default async function GiftGuidePage({
       ) : (
         populated.map((section) => (
           <section key={section.category} className="mb-14 sm:mb-16">
-            <div className="flex items-baseline justify-between gap-4 mb-2 border-b border-stone-200 dark:border-stone-800 pb-3">
-              <h2 className="text-xl sm:text-2xl font-serif text-stone-900 dark:text-stone-100">{section.heading}</h2>
+            <div className="flex items-baseline justify-between gap-4 mb-2 border-b border-border pb-3">
+              <h2 className="text-xl sm:text-2xl font-serif text-fg">{section.heading}</h2>
               <Link
                 href={categoryHref(section.category)}
-                className="shrink-0 text-[11px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-500 hover:underline"
+                className="shrink-0 text-[11px] uppercase tracking-wider font-semibold text-link hover:underline"
               >
                 Shop all &rarr;
               </Link>
             </div>
-            <p className="text-sm text-stone-500 dark:text-stone-400 mb-6">{section.blurb}</p>
+            <p className="text-sm text-faint mb-6">{section.blurb}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {section.products.map((product, i) => (
                 <ProductCard key={product.id} product={product} priority={i < 2} />
@@ -155,14 +155,14 @@ export default async function GiftGuidePage({
         ))
       )}
 
-      <div className="text-center mt-6 border-t border-stone-200 dark:border-stone-800 pt-12">
-        <p className="text-sm text-stone-500 dark:text-stone-400 mb-5">
-          Gifting in numbers? See our <Link href="/corporate" className="text-amber-700 dark:text-amber-500 underline hover:text-amber-600">corporate &amp; bulk gifting</Link> page, or
-          browse <Link href="/guides" className="text-amber-700 dark:text-amber-500 underline hover:text-amber-600">the other guides</Link>.
+      <div className="text-center mt-6 border-t border-border pt-12">
+        <p className="text-sm text-faint mb-5">
+          Gifting in numbers? See our <Link href="/corporate" className="text-link underline hover:text-amber-600">corporate &amp; bulk gifting</Link> page, or
+          browse <Link href="/guides" className="text-link underline hover:text-amber-600">the other guides</Link>.
         </p>
         <Link
           href="/"
-          className="inline-block px-6 py-3 rounded border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold uppercase tracking-wider hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+          className="inline-block px-6 py-3 rounded border border-border-strong text-muted text-xs font-semibold uppercase tracking-wider hover:bg-surface-2 transition"
         >
           Explore the full collection
         </Link>

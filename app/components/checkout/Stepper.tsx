@@ -18,13 +18,13 @@ export default function Stepper({
 }) {
   const title = TITLES[step - 1];
   return (
-    <div className="sticky top-0 z-10 bg-white dark:bg-stone-900 border-b border-stone-100 dark:border-stone-800 px-5 pt-4 pb-3">
+    <div className="sticky top-0 z-10 bg-surface border-b border-border px-5 pt-4 pb-3">
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onBack}
           aria-label={backLabel}
-          className="-ml-1 p-1 rounded text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+          className="-ml-1 p-1 rounded text-faint hover:text-stone-900 dark:hover:text-stone-100 hover:bg-surface-2 transition"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
@@ -32,7 +32,7 @@ export default function Stepper({
         </button>
         <h2
           tabIndex={-1}
-          className="flex-grow text-sm font-serif font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider outline-none"
+          className="flex-grow text-sm font-serif font-bold text-fg uppercase tracking-wider outline-none"
         >
           {title}
         </h2>
@@ -48,7 +48,7 @@ export default function Stepper({
           />
         ))}
       </div>
-      <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+      <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wider text-faint">
         Step {step} of {TOTAL_STEPS} · {title}
       </p>
     </div>

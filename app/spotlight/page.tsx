@@ -40,11 +40,11 @@ export async function generateMetadata(): Promise<Metadata> {
 function NoActiveSpotlight() {
   return (
     <div className="max-w-2xl mx-auto text-center py-20 px-4">
-      <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 dark:text-stone-100 mb-3">No spotlight running right now</h1>
-      <p className="text-sm text-stone-500 dark:text-stone-400 mb-8">Check back soon -- in the meantime, explore the full collection.</p>
+      <h1 className="text-2xl sm:text-3xl font-serif text-fg mb-3">No spotlight running right now</h1>
+      <p className="text-sm text-faint mb-8">Check back soon -- in the meantime, explore the full collection.</p>
       <Link
         href="/"
-        className="inline-block px-6 py-3 rounded bg-stone-950 dark:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider shadow hover:bg-amber-800 dark:hover:bg-amber-600 transition"
+        className="inline-block px-6 py-3 rounded bg-stone-950 dark:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider shadow hover:bg-accent-hover dark:hover:bg-amber-600 transition"
       >
         Shop the full collection
       </Link>
@@ -62,14 +62,14 @@ export default async function SpotlightPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
       <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
-        <span className="text-amber-700 dark:text-amber-500 uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block mb-3">
+        <span className="text-link uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block mb-3">
           Featured
         </span>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-stone-900 dark:text-stone-100 tracking-wide mb-3">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-fg tracking-wide mb-3">
           {campaign.title}
         </h1>
         {campaign.description && (
-          <p className="text-sm sm:text-base text-stone-600 dark:text-stone-400 mb-4">{campaign.description}</p>
+          <p className="text-sm sm:text-base text-muted mb-4">{campaign.description}</p>
         )}
         {campaign.endsAt && <SpotlightCountdown endsAt={campaign.endsAt} />}
       </div>
@@ -83,7 +83,7 @@ export default async function SpotlightPage() {
       <div className="text-center mt-14">
         <Link
           href="/"
-          className="inline-block px-6 py-3 rounded border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold uppercase tracking-wider hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+          className="inline-block px-6 py-3 rounded border border-border-strong text-muted text-xs font-semibold uppercase tracking-wider hover:bg-surface-2 transition"
         >
           Explore the full collection
         </Link>

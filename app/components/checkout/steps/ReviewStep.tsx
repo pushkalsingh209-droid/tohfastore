@@ -107,48 +107,48 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
   return (
     <div className="space-y-4">
       {/* --- Order summary (collapsible) --- */}
-      <details open className="group rounded-lg border border-stone-200 dark:border-stone-700 overflow-hidden">
-        <summary className="flex items-center justify-between cursor-pointer select-none px-3 py-2.5 bg-stone-50 dark:bg-stone-800/60 text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+      <details open className="group rounded-lg border border-border overflow-hidden">
+        <summary className="flex items-center justify-between cursor-pointer select-none px-3 py-2.5 bg-surface-2/60 text-[11px] font-bold uppercase tracking-wider text-muted">
           <span>Order Summary · {b.cart.reduce((n, i) => n + i.quantity, 0)} item{b.cart.reduce((n, i) => n + i.quantity, 0) === 1 ? "" : "s"}</span>
-          <span className="font-mono text-stone-500 group-open:hidden">₹{finalTotal.toLocaleString("en-IN")}</span>
+          <span className="font-mono text-faint group-open:hidden">₹{finalTotal.toLocaleString("en-IN")}</span>
           <svg className="w-4 h-4 hidden group-open:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M18 15l-6-6-6 6" />
           </svg>
         </summary>
 
-        <div className="divide-y divide-stone-100 dark:divide-stone-800">
+        <div className="divide-y divide-border">
           {b.cart.map((item) => (
             <div key={item.id} className="flex items-center gap-3 px-3 py-2.5">
-              <div className="relative w-10 h-10 rounded overflow-hidden border border-stone-200 dark:border-stone-700 bg-stone-50 flex-shrink-0">
+              <div className="relative w-10 h-10 rounded overflow-hidden border border-border bg-surface-2 flex-shrink-0">
                 {(item.thumb_url || item.image_url) && (
                   <Image src={item.thumb_url || item.image_url || ""} alt={item.name ?? ""} fill sizes="40px" className="object-cover" />
                 )}
               </div>
               <div className="flex-grow min-w-0">
-                <p className="font-serif text-xs font-medium text-stone-900 dark:text-stone-100 line-clamp-1">{item.name}</p>
-                <p className="text-[10px] text-stone-400 font-mono">Qty {item.quantity}</p>
+                <p className="font-serif text-xs font-medium text-fg line-clamp-1">{item.name}</p>
+                <p className="text-[10px] text-faint font-mono">Qty {item.quantity}</p>
               </div>
               <PriceDisplay
                 price={(Number(item.price) || 0) * item.quantity}
                 category={item.category}
-                className="text-xs text-amber-800 dark:text-amber-500 font-bold font-mono"
-                originalClassName="text-stone-400 dark:text-stone-500 line-through font-mono text-[10px]"
+                className="text-xs text-accent-hover dark:text-amber-500 font-bold font-mono"
+                originalClassName="text-faint dark:text-stone-500 line-through font-mono text-[10px]"
                 badgeClassName="text-emerald-700 dark:text-emerald-500 text-[8px] font-bold uppercase"
               />
             </div>
           ))}
         </div>
 
-        <div className="px-3 py-3 space-y-1.5 bg-stone-50 dark:bg-stone-950">
+        <div className="px-3 py-3 space-y-1.5 bg-surface-2 dark:bg-stone-950">
           {hasMrpSavings && (
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-stone-500 dark:text-stone-400 font-medium">MRP Subtotal:</span>
-              <span className="font-mono text-stone-400 dark:text-stone-500 line-through">₹{mrpSubtotal.toLocaleString("en-IN")}</span>
+              <span className="text-faint font-medium">MRP Subtotal:</span>
+              <span className="font-mono text-faint dark:text-stone-500 line-through">₹{mrpSubtotal.toLocaleString("en-IN")}</span>
             </div>
           )}
           <div className="flex items-center justify-between text-sm">
-            <span className="text-stone-600 dark:text-stone-400 font-medium">Subtotal:</span>
-            <span className={`font-mono font-bold text-stone-900 dark:text-stone-100 ${showDiscountRow ? "text-sm" : "text-base"}`}>₹{b.cartTotal.toLocaleString("en-IN")}</span>
+            <span className="text-muted font-medium">Subtotal:</span>
+            <span className={`font-mono font-bold text-fg ${showDiscountRow ? "text-sm" : "text-base"}`}>₹{b.cartTotal.toLocaleString("en-IN")}</span>
           </div>
           {hasMrpSavings && (
             <div className="flex items-center justify-between text-[11px]">
@@ -164,13 +164,13 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
                 <span className="text-emerald-700 dark:text-emerald-400 font-medium">{discountLabel}:</span>
                 <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">&minus;₹{discountAmount.toLocaleString("en-IN")}</span>
               </div>
-              <div className="flex items-center justify-between text-sm border-t border-stone-200 dark:border-stone-700 pt-1.5">
-                <span className="text-stone-600 dark:text-stone-400 font-medium">Total:</span>
-                <span className="text-base font-mono font-bold text-stone-900 dark:text-stone-100">₹{finalTotal.toLocaleString("en-IN")}</span>
+              <div className="flex items-center justify-between text-sm border-t border-border pt-1.5">
+                <span className="text-muted font-medium">Total:</span>
+                <span className="text-base font-mono font-bold text-fg">₹{finalTotal.toLocaleString("en-IN")}</span>
               </div>
             </>
           )}
-          <div className="flex items-center justify-between text-[11px] text-stone-400 border-t border-stone-200 dark:border-stone-700 pt-1.5 mt-1">
+          <div className="flex items-center justify-between text-[11px] text-faint border-t border-border pt-1.5 mt-1">
             <span>Base Price + GST ({GST_RATE * 100}%, inclusive):</span>
             <span className="font-mono">₹{gst.basePrice.toLocaleString("en-IN")} + ₹{gst.gstAmount.toLocaleString("en-IN")}</span>
           </div>
@@ -183,7 +183,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           there's nothing to choose between -- straight to the coupon UI. */}
       {b.codEnabled && (
         <div role="radiogroup" aria-label="Payment method" className="space-y-2">
-          <p className="text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400">How would you like to pay?</p>
+          <p className="text-[10px] uppercase tracking-wide text-faint">How would you like to pay?</p>
 
           <button
             type="button"
@@ -193,18 +193,18 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
             className={`w-full text-left p-3 rounded border transition ${
               !isCod
                 ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
-                : "border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800"
+                : "border-border hover:bg-surface-2"
             }`}
           >
             <span className="flex items-baseline justify-between gap-2">
-              <span className="text-xs font-bold text-stone-800 dark:text-stone-100">Pay Online</span>
+              <span className="text-xs font-bold text-fg">Pay Online</span>
               {codSavings > 0 && (
                 <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
                   Save ₹{codSavings.toLocaleString("en-IN")}
                 </span>
               )}
             </span>
-            <span className="block text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+            <span className="block text-[11px] text-faint mt-0.5">
               UPI &middot; Card &middot; Netbanking &middot; Wallet
             </span>
             {/* Only claim a discount this cart actually earns -- otherwise
@@ -214,9 +214,9 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
                 &#10003; {discountLabel} &minus;₹{discountAmount.toLocaleString("en-IN")}
               </span>
             )}
-            <span className="flex items-baseline justify-between gap-2 mt-1.5 pt-1.5 border-t border-stone-200 dark:border-stone-700">
-              <span className="text-[11px] text-stone-500 dark:text-stone-400">You pay</span>
-              <span className="text-sm font-mono font-bold text-stone-900 dark:text-stone-100">
+            <span className="flex items-baseline justify-between gap-2 mt-1.5 pt-1.5 border-t border-border">
+              <span className="text-[11px] text-faint">You pay</span>
+              <span className="text-sm font-mono font-bold text-fg">
                 ₹{prepaidTotal.toLocaleString("en-IN")}
               </span>
             </span>
@@ -230,35 +230,35 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
             disabled={!b.codAvailable}
             className={`w-full text-left p-3 rounded border transition ${
               !b.codAvailable
-                ? "border-stone-200 dark:border-stone-700 opacity-60 cursor-not-allowed"
+                ? "border-border opacity-60 cursor-not-allowed"
                 : isCod
                 ? "border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20"
-                : "border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800"
+                : "border-border hover:bg-surface-2"
             }`}
           >
             <span className="flex items-baseline justify-between gap-2">
-              <span className="text-xs font-bold text-stone-800 dark:text-stone-100">Cash on Delivery</span>
-              <span className="text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+              <span className="text-xs font-bold text-fg">Cash on Delivery</span>
+              <span className="text-[10px] font-bold uppercase tracking-wide text-accent dark:text-amber-400">
                 + ₹{b.codFee.toLocaleString("en-IN")} fee
               </span>
             </span>
-            <span className="block text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+            <span className="block text-[11px] text-faint mt-0.5">
               Pay the courier when it arrives
             </span>
             {b.codAvailable ? (
-              <span className="block text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+              <span className="block text-[11px] text-accent dark:text-amber-400 mt-1">
                 &#10007; Offers &amp; coupons don&rsquo;t apply
               </span>
             ) : (
               /* Naming the offending piece matters: an unexplained
                  "unavailable" reads as a bug and costs the order. */
-              <span className="block text-[11px] text-stone-500 dark:text-stone-400 mt-1">
+              <span className="block text-[11px] text-faint mt-1">
                 {b.codBlockedReason ?? "Not available for this bag."}
               </span>
             )}
-            <span className="flex items-baseline justify-between gap-2 mt-1.5 pt-1.5 border-t border-stone-200 dark:border-stone-700">
-              <span className="text-[11px] text-stone-500 dark:text-stone-400">You pay</span>
-              <span className="text-sm font-mono font-bold text-stone-900 dark:text-stone-100">
+            <span className="flex items-baseline justify-between gap-2 mt-1.5 pt-1.5 border-t border-border">
+              <span className="text-[11px] text-faint">You pay</span>
+              <span className="text-sm font-mono font-bold text-fg">
                 ₹{codTotal.toLocaleString("en-IN")}
               </span>
             </span>
@@ -286,11 +286,11 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
               className={`text-left p-2.5 rounded border text-xs transition ${
                 !usingCoupon
                   ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
-                  : "border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800"
+                  : "border-border hover:bg-surface-2"
               }`}
             >
-              <span className="block font-bold text-stone-800 dark:text-stone-100">Use offer</span>
-              <span className="block text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+              <span className="block font-bold text-fg">Use offer</span>
+              <span className="block text-[11px] text-faint mt-0.5">
                 {b.offerDiscount > 0 ? <>{b.offerLabel} &middot; &minus;₹{b.offerDiscount.toLocaleString("en-IN")}</> : b.offerLabel}
               </span>
             </button>
@@ -302,11 +302,11 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
               className={`text-left p-2.5 rounded border text-xs transition ${
                 usingCoupon
                   ? "border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
-                  : "border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800"
+                  : "border-border hover:bg-surface-2"
               }`}
             >
-              <span className="block font-bold text-stone-800 dark:text-stone-100">Use a coupon</span>
-              <span className="block text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+              <span className="block font-bold text-fg">Use a coupon</span>
+              <span className="block text-[11px] text-faint mt-0.5">
                 {b.appliedCoupon ? (
                   <>{b.appliedCoupon.code} &middot; &minus;₹{b.appliedCoupon.discount.toLocaleString("en-IN")}</>
                 ) : (
@@ -323,7 +323,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
                   🎉 {b.offerLabel}: &minus;₹{b.offerDiscount.toLocaleString("en-IN")} off your order
                 </p>
               ) : (
-                <p className="text-xs font-medium text-stone-700 dark:text-stone-300">
+                <p className="text-xs font-medium text-muted">
                   <span className="font-bold text-emerald-800 dark:text-emerald-300">{b.offerLabel}</span> is live
                   {b.nextTier ? "." : " — add more to your bag to unlock a discount."}
                 </p>
@@ -398,7 +398,7 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           />
           <span>
             I have read and agree to the above Cancellation &amp; Refund Policy. / मैंने उपरोक्त रद्दीकरण और धनवापसी नीति पढ़ ली है और सहमत हूं। (
-            <a href="/refunds" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-amber-700 dark:hover:text-amber-400">
+            <a href="/refunds" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-accent dark:hover:text-amber-400">
               full policy
             </a>
             )
@@ -432,13 +432,13 @@ function CouponPanel({ b, suggestions }: { b: ReviewBag; suggestions: AvailableC
               value={b.couponInput}
               onChange={(e) => b.setCouponInput(e.target.value.toUpperCase())}
               placeholder="Coupon code"
-              className="flex-grow px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700 font-mono"
+              className="flex-grow px-3 py-2 border border-border rounded text-xs bg-surface-2 text-fg focus:outline-none focus:border-accent font-mono"
             />
             <button
               type="button"
               onClick={b.onApplyCoupon}
               disabled={b.applyingCoupon}
-              className="px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded border border-stone-300 dark:border-stone-600 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition disabled:opacity-50"
+              className="px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded border border-border-strong text-muted hover:bg-surface-2 transition disabled:opacity-50"
             >
               {b.applyingCoupon ? "Checking..." : "Apply"}
             </button>
@@ -446,7 +446,7 @@ function CouponPanel({ b, suggestions }: { b: ReviewBag; suggestions: AvailableC
 
           {suggestions.length > 0 && (
             <div className="mt-2 space-y-1.5">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-stone-400">Available coupons</p>
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-faint">Available coupons</p>
               {suggestions.map((c) => {
                 const urgency = couponUrgencyText(c);
                 const off = c.discount_type === "percent" ? `${c.discount_value}% off` : `₹${c.discount_value} off`;
@@ -460,10 +460,10 @@ function CouponPanel({ b, suggestions }: { b: ReviewBag; suggestions: AvailableC
                   >
                     <span className="min-w-0">
                       <span className="font-mono font-bold text-xs text-amber-900 dark:text-amber-300">{c.code}</span>
-                      <span className="text-[11px] text-amber-800 dark:text-amber-400"> &middot; {off}</span>
+                      <span className="text-[11px] text-link-hover"> &middot; {off}</span>
                       {urgency && <span className="ml-1 text-[9px] uppercase font-bold text-rose-600 dark:text-rose-400">{urgency}</span>}
                     </span>
-                    <span className="text-[10px] uppercase font-bold text-amber-700 dark:text-amber-500 flex-shrink-0">Apply</span>
+                    <span className="text-[10px] uppercase font-bold text-link flex-shrink-0">Apply</span>
                   </button>
                 );
               })}

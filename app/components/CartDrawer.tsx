@@ -48,44 +48,44 @@ export default function CartDrawer() {
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm" onClick={closeDrawer} />
       <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-white dark:bg-stone-900 shadow-xl flex flex-col h-full">
+        <div className="w-screen max-w-md bg-surface shadow-xl flex flex-col h-full">
 
-          <div className="p-6 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
-            <h2 className="text-lg font-serif text-stone-900 dark:text-stone-100 font-bold tracking-wide">Your Shopping Bag</h2>
-            <button onClick={closeDrawer} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-sm font-medium">✕ Close</button>
+          <div className="p-6 border-b border-border flex items-center justify-between">
+            <h2 className="text-lg font-serif text-fg font-bold tracking-wide">Your Shopping Bag</h2>
+            <button onClick={closeDrawer} className="text-faint hover:text-stone-600 dark:hover:text-stone-200 text-sm font-medium">✕ Close</button>
           </div>
 
           <div className="flex-grow overflow-y-auto p-6 space-y-4">
             {cart.length === 0 ? (
-              <p className="text-stone-400 text-sm font-light text-center py-12">Your shopping bag is empty.</p>
+              <p className="text-faint text-sm font-light text-center py-12">Your shopping bag is empty.</p>
             ) : (
               <>
                 <div className="space-y-4 max-h-[35vh] overflow-y-auto border-b dark:border-stone-800 pb-4">
                   {cart.map((item) => (
                     <div key={item.id} className="flex items-center gap-4 pb-2">
-                      <div className="relative w-12 h-12 rounded overflow-hidden border dark:border-stone-700 bg-stone-50 flex-shrink-0">
+                      <div className="relative w-12 h-12 rounded overflow-hidden border dark:border-stone-700 bg-surface-2 flex-shrink-0">
                         {(item.thumb_url || item.image_url) && (
                           <Image src={item.thumb_url || item.image_url || ""} alt={item.name ?? ""} fill sizes="48px" className="object-cover" />
                         )}
                       </div>
                       <div className="flex-grow">
-                        <h4 className="font-serif text-xs font-medium text-stone-900 dark:text-stone-100 line-clamp-1">{item.name}</h4>
+                        <h4 className="font-serif text-xs font-medium text-fg line-clamp-1">{item.name}</h4>
                         <div className="flex items-center gap-1.5 mt-1">
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, -1)}
                             aria-label="Decrease quantity"
-                            className="w-6 h-6 flex items-center justify-center rounded border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition font-bold text-xs leading-none"
+                            className="w-6 h-6 flex items-center justify-center rounded border border-border text-muted hover:bg-surface-2 transition font-bold text-xs leading-none"
                           >
                             &minus;
                           </button>
-                          <span className="text-xs font-mono text-stone-700 dark:text-stone-300 w-5 text-center">{item.quantity}</span>
+                          <span className="text-xs font-mono text-muted w-5 text-center">{item.quantity}</span>
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, 1)}
                             disabled={item.quantity >= (Number(item.inventory) || 0)}
                             aria-label="Increase quantity"
-                            className="w-6 h-6 flex items-center justify-center rounded border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition font-bold text-xs leading-none"
+                            className="w-6 h-6 flex items-center justify-center rounded border border-border text-muted hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition font-bold text-xs leading-none"
                           >
                             +
                           </button>
@@ -94,13 +94,13 @@ export default function CartDrawer() {
                           <PriceDisplay
                             price={(Number(item.price) || 0) * item.quantity}
                             category={item.category}
-                            className="text-xs text-amber-800 dark:text-amber-500 font-bold font-mono"
-                            originalClassName="text-stone-400 dark:text-stone-500 line-through font-mono text-[10px]"
+                            className="text-xs text-accent-hover dark:text-amber-500 font-bold font-mono"
+                            originalClassName="text-faint dark:text-stone-500 line-through font-mono text-[10px]"
                             badgeClassName="text-emerald-700 dark:text-emerald-500 text-[8px] font-bold uppercase"
                           />
                         </div>
                       </div>
-                      <button onClick={() => removeFromCart(item.id)} className="text-stone-400 hover:text-rose-600 text-[11px] self-start">Remove</button>
+                      <button onClick={() => removeFromCart(item.id)} className="text-faint hover:text-rose-600 text-[11px] self-start">Remove</button>
                     </div>
                   ))}
                 </div>
@@ -128,21 +128,21 @@ export default function CartDrawer() {
           {/* The checkout entry point. Opening <CheckoutSheet> replaces the
               whole drawer (see the early return above). */}
           {cart.length > 0 && (
-            <div className="p-6 border-t border-stone-100 dark:border-stone-800 bg-stone-50 dark:bg-stone-950 space-y-3">
+            <div className="p-6 border-t border-border bg-surface-2 dark:bg-stone-950 space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-stone-600 dark:text-stone-400 font-medium">Subtotal:</span>
-                <span className="text-lg font-mono font-bold text-stone-900 dark:text-stone-100">
+                <span className="text-muted font-medium">Subtotal:</span>
+                <span className="text-lg font-mono font-bold text-fg">
                   &#8377;{cartTotal.toLocaleString("en-IN")}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setCheckingOut(true)}
-                className="w-full bg-amber-700 hover:bg-amber-800 text-white text-xs uppercase tracking-widest py-4 rounded shadow font-semibold transition"
+                className="w-full bg-accent hover:bg-accent-hover text-accent-fg text-xs uppercase tracking-widest py-4 rounded shadow font-semibold transition"
               >
                 Proceed to Checkout &rarr;
               </button>
-              <p className="text-[10px] text-stone-400 text-center -mt-1">
+              <p className="text-[10px] text-faint text-center -mt-1">
                 Contact &amp; WhatsApp verification, delivery address, then payment &mdash; 3 quick steps.
               </p>
             </div>
