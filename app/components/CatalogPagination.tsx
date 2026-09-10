@@ -39,13 +39,13 @@ export default function CatalogPagination({
   const panelId = `catalog-pagination-${position}-controls`;
 
   return (
-    <div className="pt-3 mt-2 border-t border-stone-200 dark:border-stone-800 space-y-4">
+    <div className="pt-3 mt-2 border-t border-border space-y-4">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         aria-controls={panelId}
-        className="w-full flex items-center justify-between gap-3 text-xs text-stone-500 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition"
+        className="w-full flex items-center justify-between gap-3 text-xs text-faint hover:text-link transition"
       >
         <span className="font-mono">
           Page {page} of {totalPages} &middot; {totalItems} artifacts &middot; {pageSize}/page
@@ -65,13 +65,13 @@ export default function CatalogPagination({
       </button>
 
       {expanded && (
-        <div id={panelId} className="flex flex-wrap items-center justify-center gap-3 text-xs text-stone-500 dark:text-stone-400">
+        <div id={panelId} className="flex flex-wrap items-center justify-center gap-3 text-xs text-faint">
           <div className="flex flex-wrap items-center gap-2">
             <span>Show</span>
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="border border-stone-200 dark:border-stone-700 rounded px-2 py-1.5 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono focus:outline-none focus:border-amber-600"
+              className="border border-border rounded px-2 py-1.5 bg-surface text-fg text-xs font-mono focus:outline-none focus:border-accent"
             >
               {PAGE_SIZE_OPTIONS.map((size) => (
                 <option key={size} value={size}>
@@ -86,7 +86,7 @@ export default function CatalogPagination({
             <button
               type="button"
               onClick={() => onPageChange(page - 1)}
-              className="h-9 px-3 rounded border border-stone-300 dark:border-stone-700 flex items-center justify-center font-bold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition flex-shrink-0"
+              className="h-9 px-3 rounded border border-border-strong flex items-center justify-center font-bold text-muted hover:bg-surface-2 transition flex-shrink-0"
             >
               &lsaquo; Previous
             </button>
@@ -102,7 +102,7 @@ export default function CatalogPagination({
             <button
               type="button"
               onClick={() => onPageChange(page + 1)}
-              className="h-9 px-3 rounded border border-stone-300 dark:border-stone-700 flex items-center justify-center font-bold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition flex-shrink-0"
+              className="h-9 px-3 rounded border border-border-strong flex items-center justify-center font-bold text-muted hover:bg-surface-2 transition flex-shrink-0"
             >
               Next &rsaquo;
             </button>
@@ -112,7 +112,7 @@ export default function CatalogPagination({
             <button
               type="button"
               onClick={onScrollBottom}
-              className="h-9 px-3 rounded border border-stone-300 dark:border-stone-700 flex items-center justify-center gap-1 text-[11px] uppercase tracking-wide font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition flex-shrink-0"
+              className="h-9 px-3 rounded border border-border-strong flex items-center justify-center gap-1 text-[11px] uppercase tracking-wide font-semibold text-muted hover:bg-surface-2 transition flex-shrink-0"
             >
               &darr; Scroll Down
             </button>
@@ -120,7 +120,7 @@ export default function CatalogPagination({
             <button
               type="button"
               onClick={onScrollTop}
-              className="h-9 px-3 rounded border border-stone-300 dark:border-stone-700 flex items-center justify-center gap-1 text-[11px] uppercase tracking-wide font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition flex-shrink-0"
+              className="h-9 px-3 rounded border border-border-strong flex items-center justify-center gap-1 text-[11px] uppercase tracking-wide font-semibold text-muted hover:bg-surface-2 transition flex-shrink-0"
             >
               &uarr; Scroll Up
             </button>

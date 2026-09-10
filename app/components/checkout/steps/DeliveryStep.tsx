@@ -57,7 +57,7 @@ export default function DeliveryStep({ bag }: { bag: DeliveryBag }) {
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">PIN Code</label>
+        <label className="block text-[10px] uppercase tracking-wide text-faint mb-1">PIN Code</label>
         <input
           ref={pincodeRef}
           type="text"
@@ -70,10 +70,10 @@ export default function DeliveryStep({ bag }: { bag: DeliveryBag }) {
             if (b.invalidField === "pincode") b.clearInvalid();
           }}
           placeholder="e.g., 500001"
-          className={`w-full px-3 py-2 border rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none font-mono tracking-wide ${b.fieldBorderClass(b.invalidField === "pincode")}`}
+          className={`w-full px-3 py-2 border rounded text-xs bg-surface-2 text-fg focus:outline-none font-mono tracking-wide ${b.fieldBorderClass(b.invalidField === "pincode")}`}
         />
         {b.pincodeLookupStatus === "loading" && (
-          <span className="text-[9px] text-stone-400 block mt-1">Looking up city/state&hellip;</span>
+          <span className="text-[9px] text-faint block mt-1">Looking up city/state&hellip;</span>
         )}
         {b.pincodeLookupStatus === "done" && b.city && b.addressState && (
           <span className="text-[9px] text-emerald-600 dark:text-emerald-500 block mt-1">&#10003; {b.city}, {b.addressState} &mdash; edit below if needed.</span>
@@ -84,7 +84,7 @@ export default function DeliveryStep({ bag }: { bag: DeliveryBag }) {
       </div>
 
       <div>
-        <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">Address (House/Flat No., Street, Area)</label>
+        <label className="block text-[10px] uppercase tracking-wide text-faint mb-1">Address (House/Flat No., Street, Area)</label>
         <textarea
           ref={addressRef}
           required
@@ -95,24 +95,24 @@ export default function DeliveryStep({ bag }: { bag: DeliveryBag }) {
             if (b.invalidField === "address") b.clearInvalid();
           }}
           placeholder="e.g., Flat 4B, Green Residency, MG Road"
-          className={`w-full px-3 py-2 border rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none resize-none ${b.fieldBorderClass(b.invalidField === "address")}`}
+          className={`w-full px-3 py-2 border rounded text-xs bg-surface-2 text-fg focus:outline-none resize-none ${b.fieldBorderClass(b.invalidField === "address")}`}
         />
       </div>
 
       <div>
-        <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">Landmark <span className="normal-case text-stone-400">(optional)</span></label>
+        <label className="block text-[10px] uppercase tracking-wide text-faint mb-1">Landmark <span className="normal-case text-faint">(optional)</span></label>
         <input
           type="text"
           value={b.landmark}
           onChange={(e) => b.setLandmark(e.target.value)}
           placeholder="e.g., Near City Hospital"
-          className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700"
+          className="w-full px-3 py-2 border border-border rounded text-xs bg-surface-2 text-fg focus:outline-none focus:border-accent"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">City</label>
+          <label className="block text-[10px] uppercase tracking-wide text-faint mb-1">City</label>
           <input
             ref={cityRef}
             type="text"
@@ -123,11 +123,11 @@ export default function DeliveryStep({ bag }: { bag: DeliveryBag }) {
               if (b.invalidField === "city") b.clearInvalid();
             }}
             placeholder="Auto-fills from PIN"
-            className={`w-full px-3 py-2 border rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none ${b.fieldBorderClass(b.invalidField === "city")}`}
+            className={`w-full px-3 py-2 border rounded text-xs bg-surface-2 text-fg focus:outline-none ${b.fieldBorderClass(b.invalidField === "city")}`}
           />
         </div>
         <div>
-          <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">State</label>
+          <label className="block text-[10px] uppercase tracking-wide text-faint mb-1">State</label>
           <select
             ref={stateRef}
             required
@@ -136,7 +136,7 @@ export default function DeliveryStep({ bag }: { bag: DeliveryBag }) {
               b.setAddressState(e.target.value);
               if (b.invalidField === "state") b.clearInvalid();
             }}
-            className={`w-full px-3 py-2 border rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none ${b.fieldBorderClass(b.invalidField === "state")}`}
+            className={`w-full px-3 py-2 border rounded text-xs bg-surface-2 text-fg focus:outline-none ${b.fieldBorderClass(b.invalidField === "state")}`}
           >
             <option value="">Select State</option>
             {INDIAN_STATES.map((s) => (
@@ -147,8 +147,8 @@ export default function DeliveryStep({ bag }: { bag: DeliveryBag }) {
       </div>
 
       <div>
-        <label className="block text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">
-          Receiver&rsquo;s Phone Number <span className="normal-case text-stone-400">(optional &mdash; only if this is a gift for someone else)</span>
+        <label className="block text-[10px] uppercase tracking-wide text-faint mb-1">
+          Receiver&rsquo;s Phone Number <span className="normal-case text-faint">(optional &mdash; only if this is a gift for someone else)</span>
         </label>
         <input
           type="tel"
@@ -156,9 +156,9 @@ export default function DeliveryStep({ bag }: { bag: DeliveryBag }) {
           value={b.recipientPhone}
           onChange={(e) => b.setRecipientPhone(e.target.value)}
           placeholder="If different from your own number"
-          className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:outline-none focus:border-amber-700"
+          className="w-full px-3 py-2 border border-border rounded text-xs bg-surface-2 text-fg focus:outline-none focus:border-accent"
         />
-        <p className="text-[9px] text-stone-400 mt-1">So the courier can reach them if you&rsquo;re not the one receiving it.</p>
+        <p className="text-[9px] text-faint mt-1">So the courier can reach them if you&rsquo;re not the one receiving it.</p>
       </div>
     </div>
   );

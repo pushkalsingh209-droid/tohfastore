@@ -3,7 +3,7 @@
 
 export default function AboutUsPage() {
   return (
-    <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+    <div className="bg-bg min-h-screen flex flex-col justify-between transition-colors">
 
       {/* BRAND CONTENT MAIN WRAPPER SECTION */}
       <div className="flex-grow py-12 md:py-16 px-4 sm:px-6">
@@ -11,19 +11,19 @@ export default function AboutUsPage() {
 
           {/* Brand Narrative Presentation */}
           <div className="text-center space-y-3">
-            <span className="text-amber-700 dark:text-amber-500 uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block">
+            <span className="text-link uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block">
               Our Heritage & Craft
             </span>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-stone-900 dark:text-stone-100 tracking-wide">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-fg tracking-wide">
               About TOHFA
             </h1>
             <div className="w-16 h-0.5 bg-amber-600 mx-auto mt-4" />
           </div>
 
           {/* Editorial Story Elements */}
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-5 sm:p-8 md:p-12 shadow-sm space-y-6 text-stone-700 dark:text-stone-300 font-sans text-xs sm:text-sm md:text-base leading-relaxed font-light">
+          <div className="bg-surface border border-border rounded-lg p-5 sm:p-8 md:p-12 shadow-sm space-y-6 text-muted font-sans text-xs sm:text-sm md:text-base leading-relaxed font-light">
             <p>
-              Welcome to <span className="font-medium text-stone-900 dark:text-stone-100 font-serif">TOHFA</span> (tohfaonline.com), where timeless Indian heritage meets master metal craftsmanship. We curate and engineer premium lightweight brass art pieces, luxury corporate gift boxes, and statement interior decor artifacts designed to last for generations.
+              Welcome to <span className="font-medium text-fg font-serif">TOHFA</span> (tohfaonline.com), where timeless Indian heritage meets master metal craftsmanship. We curate and engineer premium lightweight brass art pieces, luxury corporate gift boxes, and statement interior decor artifacts designed to last for generations.
             </p>
             <p>
               Every artifact in our collection is cast in pure brass by skilled regional artisans. By blending ancestral sand-casting mold blueprints with modern design revisions, we capture intricate hand-carved textures and heavy weight profiles that distinguish genuine statement art from mass-produced replicas.
@@ -32,25 +32,25 @@ export default function AboutUsPage() {
             {/* Core Values Information Matrix Table (With horizontal mobile scrolling protect wrapper) */}
             <div className="pt-4 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0">
               <div className="inline-block min-w-full align-middle">
-                <table className="min-w-full text-left border-collapse border border-stone-200 dark:border-stone-700">
+                <table className="min-w-full text-left border-collapse border border-border">
                   <thead>
-                    <tr className="bg-stone-50 dark:bg-stone-800 font-serif font-bold text-stone-900 dark:text-stone-100 border-b border-stone-200 dark:border-stone-700 text-[11px] sm:text-xs md:text-sm">
-                      <th className="p-3 border-r border-stone-200 dark:border-stone-700 whitespace-nowrap w-1/3">Core Pillar</th>
+                    <tr className="bg-surface-2 font-serif font-bold text-fg border-b border-border text-[11px] sm:text-xs md:text-sm">
+                      <th className="p-3 border-r border-border whitespace-nowrap w-1/3">Core Pillar</th>
                       <th className="p-3">Our Commitment</th>
                     </tr>
                   </thead>
                   <tbody className="text-[11px] sm:text-xs md:text-sm font-light leading-normal">
-                    <tr className="border-b border-stone-200 dark:border-stone-700">
-                      <td className="p-3 font-medium text-stone-900 dark:text-stone-100 border-r border-stone-200 dark:border-stone-700 font-serif">Material Integrity</td>
-                      <td className="p-3 text-stone-600 dark:text-stone-400">We exclusively process pure lightweight brass allocations, completely free from cheap pot metals or zinc structural dilutes.</td>
+                    <tr className="border-b border-border">
+                      <td className="p-3 font-medium text-fg border-r border-border font-serif">Material Integrity</td>
+                      <td className="p-3 text-muted">We exclusively process pure lightweight brass allocations, completely free from cheap pot metals or zinc structural dilutes.</td>
                     </tr>
-                    <tr className="border-b border-stone-200 dark:border-stone-700">
-                      <td className="p-3 font-medium text-stone-900 dark:text-stone-100 border-r border-stone-200 dark:border-stone-700 font-serif">Artisan Support</td>
-                      <td className="p-3 text-stone-600 dark:text-stone-400">We partner directly with traditional metal smithing families, securing fair wage frameworks and keeping ancient crafts alive.</td>
+                    <tr className="border-b border-border">
+                      <td className="p-3 font-medium text-fg border-r border-border font-serif">Artisan Support</td>
+                      <td className="p-3 text-muted">We partner directly with traditional metal smithing families, securing fair wage frameworks and keeping ancient crafts alive.</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-medium text-stone-900 dark:text-stone-100 border-r border-stone-200 dark:border-stone-700 font-serif">Corporate Customization</td>
-                      <td className="p-3 text-stone-600 dark:text-stone-400">Providing bespoke custom logo laser engravings, structural velvet box modifications, and premium heavy assembly configurations.</td>
+                      <td className="p-3 font-medium text-fg border-r border-border font-serif">Corporate Customization</td>
+                      <td className="p-3 text-muted">Providing bespoke custom logo laser engravings, structural velvet box modifications, and premium heavy assembly configurations.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -59,22 +59,22 @@ export default function AboutUsPage() {
           </div>
 
           {/* Founder Story */}
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-5 sm:p-8 md:p-12 shadow-sm space-y-4 text-stone-700 dark:text-stone-300 font-sans text-xs sm:text-sm md:text-base leading-relaxed font-light">
+          <div className="bg-surface border border-border rounded-lg p-5 sm:p-8 md:p-12 shadow-sm space-y-4 text-muted font-sans text-xs sm:text-sm md:text-base leading-relaxed font-light">
             <div className="text-center space-y-1 pb-2">
-              <span className="text-amber-700 dark:text-amber-500 uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block">
+              <span className="text-link uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block">
                 Meet the Founder
               </span>
-              <h2 className="text-xl sm:text-2xl font-serif text-stone-900 dark:text-stone-100 tracking-wide">
+              <h2 className="text-xl sm:text-2xl font-serif text-fg tracking-wide">
                 Sakshi Singh
               </h2>
             </div>
             <p>
-              TOHFA is founded and led by <span className="font-medium text-stone-900 dark:text-stone-100 font-serif">Sakshi Singh</span> (born Sakshi Verma), a self-taught resin artist now based in Dehradun, originally from Gorakhpur. Handicrafts were never the family trade &mdash; her father built his career in agricultural seed trading, and her brother runs a clothing retail business &mdash; but Sakshi charted an entirely new path of her own, starting the handicraft business from the ground up with TOHFA.
+              TOHFA is founded and led by <span className="font-medium text-fg font-serif">Sakshi Singh</span> (born Sakshi Verma), a self-taught resin artist now based in Dehradun, originally from Gorakhpur. Handicrafts were never the family trade &mdash; her father built his career in agricultural seed trading, and her brother runs a clothing retail business &mdash; but Sakshi charted an entirely new path of her own, starting the handicraft business from the ground up with TOHFA.
             </p>
             <p>
               With no formal training and no family precedent in the craft to draw on, she taught herself the art of resin work and has built TOHFA into what it is today through hands-on learning and sheer persistence. Her driving belief is simple: handcrafted artifacts like these deserve to be seen and celebrated widely, and she has made it her mission to take them to a wider audience, one collection at a time.
             </p>
-            <p className="text-stone-600 dark:text-stone-400">
+            <p className="text-muted">
               She is married to Pushkal Singh, an alumnus of IIT Kharagpur.
             </p>
           </div>
@@ -104,7 +104,7 @@ export default function AboutUsPage() {
                 href="mailto:contact@tohfaonline.com"
                 className="w-full sm:w-auto bg-stone-900 hover:bg-stone-800 text-stone-200 text-xs font-mono px-5 py-3.5 rounded border border-stone-800 transition shadow-sm text-center tracking-wide flex items-center justify-center gap-1.5 break-all active:scale-[0.99]"
               >
-                <span className="uppercase font-sans font-semibold tracking-wider text-[10px] text-stone-400">Email:</span> 
+                <span className="uppercase font-sans font-semibold tracking-wider text-[10px] text-faint">Email:</span> 
                 contact@tohfaonline.com
               </a>
             </div>
@@ -114,15 +114,15 @@ export default function AboutUsPage() {
       </div>
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}
-      <footer className="bg-stone-900 text-stone-400 text-xs py-8 border-t border-stone-800 w-full mt-auto">
+      <footer className="bg-stone-900 text-faint text-xs py-8 border-t border-stone-800 w-full mt-auto">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
             <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-stone-500 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
+            <p className="text-[10px] text-faint mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
           
           {/* Public links verified during gateway inspections */}
-          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-wider font-medium text-stone-400">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-wider font-medium text-faint">
             <a href="/terms" className="hover:text-amber-400 transition">Terms & Conditions</a>
             <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
             <a href="/refunds" className="hover:text-amber-400 transition">Refund & Cancellation</a>

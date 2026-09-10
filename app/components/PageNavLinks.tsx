@@ -16,7 +16,7 @@ export default function PageNavLinks() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls="page-nav-links-panel"
-        className="flex items-center gap-1.5 text-[11px] md:text-xs uppercase tracking-wider font-semibold text-stone-600 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition"
+        className="flex items-center gap-1.5 text-[11px] md:text-xs uppercase tracking-wider font-semibold text-muted hover:text-link transition"
       >
         <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           {open ? (
@@ -31,47 +31,47 @@ export default function PageNavLinks() {
       {open && (
         <div
           id="page-nav-links-panel"
-          className="absolute right-0 top-full mt-2 z-50 min-w-[140px] flex flex-col bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded shadow-md py-1.5 text-[11px] md:text-xs uppercase tracking-wider font-medium text-stone-600 dark:text-stone-400"
+          className="absolute right-0 top-full mt-2 z-50 min-w-[140px] flex flex-col bg-surface border border-border rounded shadow-md py-1.5 text-[11px] md:text-xs uppercase tracking-wider font-medium text-muted"
         >
           <Link
             href="/"
             onClick={() => setOpen(false)}
-            className="px-4 py-2 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+            className="px-4 py-2 hover:text-link hover:bg-surface-2 transition"
           >
             Home
           </Link>
           <a
             href="/about"
             onClick={() => setOpen(false)}
-            className="px-4 py-2 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+            className="px-4 py-2 hover:text-link hover:bg-surface-2 transition"
           >
             About us
           </a>
           <a
             href="/track"
             onClick={() => setOpen(false)}
-            className="px-4 py-2 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+            className="px-4 py-2 hover:text-link hover:bg-surface-2 transition"
           >
             Track Order
           </a>
           <a
             href="/contact"
             onClick={() => setOpen(false)}
-            className="px-4 py-2 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+            className="px-4 py-2 hover:text-link hover:bg-surface-2 transition"
           >
             Reach Us
           </a>
           <a
             href="/catalogue"
             onClick={() => setOpen(false)}
-            className="px-4 py-2 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+            className="px-4 py-2 hover:text-link hover:bg-surface-2 transition"
           >
             Download Catalogue
           </a>
           <a
             href="/corporate"
             onClick={() => setOpen(false)}
-            className="px-4 py-2 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+            className="px-4 py-2 hover:text-link hover:bg-surface-2 transition"
           >
             Corporate Gifting
           </a>

@@ -12,6 +12,25 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Theming series PR 3 of ~4 — convert cart/checkout + all remaining pages to tokens — 2026-09-10 IST
+- Same mechanical `dark:` / bare-`stone-`/`amber-` → semantic-token pass as PR 2, across the rest of the
+  storefront: `CartDrawer`, `CheckoutSheet` + `ContactStep`/`DeliveryStep`/`ReviewStep`/`Stepper`,
+  `CartSuggestions`, `EnquirySheet`; `/wishlist`, `/wishlist/shared`, `/success`; `/faq`, `/guides` (+
+  `[slug]`), `/refer`, `/corporate`, `/about`, `/contact`, `/privacy`, `/terms`, `/refunds`,
+  `/catalogue`, `/track`, `/spotlight`, `not-found`; plus `ContactForm`, `ReviewForm`, `TrustBadges`,
+  `Breadcrumbs`, `PageNavLinks`, `CatalogPagination`, `JumpToPage`, `CatalogFilters`,
+  `BackToCollectionsLink`, `SpotlightCountdown`. ~530 class occurrences; non-admin `dark:` 859 → 329.
+- Page wrappers `bg-[var(--background)] dark:bg-stone-950` → `bg-bg`. `/success` invoice `bg-white` left
+  literal on purpose (prints on white). Same PR-4 deferrals as PR 2: the always-dark compliance footer
+  (on every page), emerald/rose/amber info-panel callouts, warm badges, disabled greys, MRP-strike greys.
+- No visual change — `/about` and `/track` screenshots in both `sand` and `ink` match `main` (headless
+  Chrome, `preferredColorScheme` toggled); token layer unchanged from PR 2 so its CDP-probe proof still
+  holds.
+- Verified: `tsc` clean · `eslint .` 33 problems / 0 errors (= `main` baseline) · `npm test` 319/320 ·
+  `next build` exit 0, 145/145 static.
+- See `docs/HANDBOOK.html` Change log 2026-09-10 and `docs/DESIGN-theming.md`. **Remaining: PR 4** — the
+  grep gate + drop the `.dark` shim + the 8 palettes → 10 themes live (Active #22).
+
 ### Theming series PR 2 of ~4 — convert chrome + product surfaces to tokens — 2026-09-10 IST
 - ~350 `dark:` / `stone-` / `amber-` class occurrences across ~19 files → the semantic tokens from PR 1
   (`bg-surface`, `text-fg`, `text-muted`, `text-faint`, `border-border`, `text-link`, `bg-accent`, …).
@@ -1587,15 +1606,18 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 4 (maintainability / observability)
 
-22. **Theming series — PRs 3–4** (plan: `docs/DESIGN-theming.md`; PRs 1 & 2 merged 2026-09-10, see Done).
-    ~4-PR plan: ~~**2** chrome + product surfaces~~ (shipped — ~350 class occurrences → tokens, verified
-    no visual change via CDP probe + screenshot diff; footer/warm-pills/disabled/MRP-grey/status colours
-    deferred to PR 4). **3** cart/checkout + remaining pages (CartDrawer/CheckoutSheet + wishlist/success/
-    faq/guides/refer/corporate/policy/track/spotlight/not-found). **4** `grep` gate to 0 `dark:` left
-    (resolves the PR-2 deferrals) → drop the `.dark` shim → add the 8 palettes (`dusk`, `brass`, `forest`,
-    `rose`, `midnight`, `marigold`, `slate`, `peacock`) as CSS block + registry row + swatch each, tuned
-    for AA contrast → **10 themes live**. **5** *(optional)* admin panel. Sequence vs. the COD-fee-report
-    batch (Tier 1 #6) — owner's call.
+22. **Theming series — PR 4** (plan: `docs/DESIGN-theming.md`; PRs 1–3 merged 2026-09-10, see Done).
+    ~~**2** chrome + product surfaces~~ · ~~**3** cart/checkout + remaining pages~~ — both shipped, no
+    visual change (~880 class occurrences → tokens; 859 → 329 non-admin `dark:` remaining). **PR 4:**
+    `grep` gate to 0 `dark:`/`stone-`/`amber-` in the storefront — resolve the PR-2/3 deferrals (the
+    always-dark compliance footer on every page, emerald/rose/amber info-panel callouts, warm badges,
+    disabled greys, MRP-strike greys) each with a token or a deliberate keep; the deferred widgets
+    (`WelcomeGaneshaPopup`, `AbandonedCartNudge`, `CookieConsent`, `InstallPrompt`, `BrandSpinner`,
+    `CatalogLoadingOverlay`, `SearchBar`, `GoogleTranslateWidget`, `InstagramPost/ReelGenerator`) too →
+    drop the `.dark` shim from the blocking script + `ThemePicker` → **add the 8 palettes** (`dusk`,
+    `brass`, `forest`, `rose`, `midnight`, `marigold`, `slate`, `peacock`) as CSS block + `THEMES` row +
+    swatch each, tuned for AA contrast → **10 themes live**. **5** *(optional)* admin panel. Sequence
+    vs. the COD-fee-report batch (Tier 1 #6) — owner's call.
 
 16. ~~**`product_sales` reconcile check.**~~ — **done + scheduled.**
     `/api/cron/product-sales-reconcile` (GET, `CRON_SECRET` bearer): recomputes the tally

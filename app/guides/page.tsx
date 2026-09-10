@@ -41,13 +41,13 @@ export default function GiftGuidesIndexPage() {
       />
 
       <div className="text-center max-w-2xl mx-auto mb-12">
-        <span className="text-amber-700 dark:text-amber-500 uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block mb-3">
+        <span className="text-link uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block mb-3">
           Gift Guides
         </span>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-stone-900 dark:text-stone-100 tracking-wide mb-4">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-fg tracking-wide mb-4">
           What to Give, by Occasion
         </h1>
-        <p className="text-sm sm:text-base text-stone-600 dark:text-stone-400 font-light">
+        <p className="text-sm sm:text-base text-muted font-light">
           Short, honest picks in handcrafted brass — idols, diyas, lamps, pocket temples and deity frames —
           for the occasions people actually shop for.
         </p>
@@ -58,14 +58,14 @@ export default function GiftGuidesIndexPage() {
           <Link
             key={g.slug}
             href={`/guides/${g.slug}`}
-            className="block bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-6 shadow-sm hover:border-amber-400 dark:hover:border-amber-700 hover:shadow transition"
+            className="block bg-surface border border-border rounded-lg p-6 shadow-sm hover:border-amber-400 dark:hover:border-amber-700 hover:shadow transition"
           >
-            <span className="text-amber-700 dark:text-amber-500 uppercase tracking-widest text-[10px] font-semibold block mb-2">
+            <span className="text-link uppercase tracking-widest text-[10px] font-semibold block mb-2">
               {g.eyebrow}
             </span>
-            <h2 className="text-lg font-serif text-stone-900 dark:text-stone-100 mb-2">{g.title}</h2>
-            <p className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">{g.intro}</p>
-            <span className="inline-block mt-4 text-[11px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-500">
+            <h2 className="text-lg font-serif text-fg mb-2">{g.title}</h2>
+            <p className="text-sm text-faint leading-relaxed">{g.intro}</p>
+            <span className="inline-block mt-4 text-[11px] uppercase tracking-wider font-semibold text-link">
               Read the guide &rarr;
             </span>
           </Link>

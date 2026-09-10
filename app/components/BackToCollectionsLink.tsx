@@ -26,7 +26,7 @@ export default function BackToCollectionsLink() {
     <Link
       href="/"
       onClick={handleClick}
-      className="inline-block text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition mb-6"
+      className="inline-block text-xs uppercase tracking-wider text-faint hover:text-link transition mb-6"
     >
       &larr; Back to Collections
     </Link>

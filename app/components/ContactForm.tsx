@@ -48,7 +48,7 @@ export default function ContactForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-xs uppercase tracking-wider text-stone-600 dark:text-stone-400 font-semibold mb-2">
+        <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
           Name
         </label>
         <input
@@ -57,11 +57,11 @@ export default function ContactForm() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Your name"
-          className="w-full px-4 py-3 rounded border border-stone-300 dark:border-stone-700 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200"
+          className="w-full px-4 py-3 rounded border border-border-strong text-sm font-mono focus:outline-none focus:border-accent bg-surface-2 text-fg"
         />
       </div>
       <div>
-        <label className="block text-xs uppercase tracking-wider text-stone-600 dark:text-stone-400 font-semibold mb-2">
+        <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
           Email
         </label>
         <input
@@ -70,11 +70,11 @@ export default function ContactForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
-          className="w-full px-4 py-3 rounded border border-stone-300 dark:border-stone-700 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200"
+          className="w-full px-4 py-3 rounded border border-border-strong text-sm font-mono focus:outline-none focus:border-accent bg-surface-2 text-fg"
         />
       </div>
       <div>
-        <label className="block text-xs uppercase tracking-wider text-stone-600 dark:text-stone-400 font-semibold mb-2">
+        <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
           Message
         </label>
         <textarea
@@ -83,7 +83,7 @@ export default function ContactForm() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="How can we help?"
-          className="w-full px-4 py-3 rounded border border-stone-300 dark:border-stone-700 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 resize-none"
+          className="w-full px-4 py-3 rounded border border-border-strong text-sm font-mono focus:outline-none focus:border-accent bg-surface-2 text-fg resize-none"
         />
       </div>
 
@@ -105,7 +105,7 @@ export default function ContactForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-stone-950 dark:bg-amber-700 hover:bg-amber-800 dark:hover:bg-amber-600 disabled:opacity-60 text-white font-medium text-xs uppercase tracking-widest py-3.5 rounded shadow transition active:scale-[0.99]"
+        className="w-full bg-stone-950 dark:bg-amber-700 hover:bg-accent-hover dark:hover:bg-amber-600 disabled:opacity-60 text-white font-medium text-xs uppercase tracking-widest py-3.5 rounded shadow transition active:scale-[0.99]"
       >
         {loading ? "Sending..." : "Send Message"}
       </button>

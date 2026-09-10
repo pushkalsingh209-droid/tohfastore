@@ -8,46 +8,46 @@ const MAPS_EMBED_SRC = "https://www.google.com/maps?cid=12485361541231429484&out
 
 export default function ContactUsPage() {
   return (
-    <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+    <div className="bg-bg min-h-screen flex flex-col justify-between transition-colors">
 
       {/* MAIN POLICY CONTENT BODY */}
-      <div className="flex-grow py-12 md:py-16 px-4 sm:px-6 font-sans text-stone-700 dark:text-stone-300">
-        <div className="max-w-2xl mx-auto bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-6 sm:p-8 md:p-12 shadow-sm space-y-8 text-xs sm:text-sm font-light">
+      <div className="flex-grow py-12 md:py-16 px-4 sm:px-6 font-sans text-muted">
+        <div className="max-w-2xl mx-auto bg-surface border border-border rounded-lg p-6 sm:p-8 md:p-12 shadow-sm space-y-8 text-xs sm:text-sm font-light">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 dark:text-stone-100 font-medium tracking-wide">
+            <h1 className="text-2xl sm:text-3xl font-serif text-fg font-medium tracking-wide">
               Contact Us
             </h1>
-            <p className="text-stone-500 text-[11px] sm:text-xs font-mono">Official corporate compliance channels for TOHFA</p>
-            <hr className="border-stone-100 dark:border-stone-800 mt-4" />
+            <p className="text-faint text-[11px] sm:text-xs font-mono">Official corporate compliance channels for TOHFA</p>
+            <hr className="border-border mt-4" />
           </div>
 
           <div className="space-y-6">
             <div>
-              <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-stone-400 font-bold mb-1">
+              <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-faint font-bold mb-1">
                 Corporate Identity
               </h3>
-              <p className="text-stone-900 dark:text-stone-100 font-medium font-serif text-base">
+              <p className="text-fg font-medium font-serif text-base">
                 TOHFA &nbsp;(tohfaonline.com)
               </p>
             </div>
 
             <div>
-              <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-stone-400 font-bold mb-1">
+              <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-faint font-bold mb-1">
                 Electronic Mail Service
               </h3>
               <a 
                 href="mailto:contact@tohfaonline.com" 
-                className="text-amber-800 font-mono font-medium hover:underline text-xs sm:text-sm break-all"
+                className="text-accent-hover font-mono font-medium hover:underline text-xs sm:text-sm break-all"
               >
                 contact@tohfaonline.com
               </a>
             </div>
 
             <div>
-              <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-stone-400 font-bold mb-2">
+              <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-faint font-bold mb-2">
                 Mobile / WhatsApp Communication Node
               </h3>
-              <p className="text-stone-900 dark:text-stone-100 font-medium font-mono text-xs sm:text-sm mb-3">
+              <p className="text-fg font-medium font-mono text-xs sm:text-sm mb-3">
                 +91 6302672351
               </p>
               <div className="pt-1">
@@ -66,10 +66,10 @@ export default function ContactUsPage() {
             </div>
 
             <div>
-              <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-stone-400 font-bold mb-1">
+              <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-faint font-bold mb-1">
                 Registered Operational Hub
               </h3>
-              <p className="text-stone-800 dark:text-stone-300 font-light leading-relaxed text-xs sm:text-sm">
+              <p className="text-fg dark:text-stone-300 font-light leading-relaxed text-xs sm:text-sm">
                 TOHFA,<br />
                 Dehradun, Uttarakhand,<br />
                 India - 248001
@@ -77,10 +77,10 @@ export default function ContactUsPage() {
             </div>
 
             <div>
-              <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-stone-400 font-bold mb-2">
+              <h3 className="text-[10px] sm:text-xs uppercase tracking-wider text-faint font-bold mb-2">
                 Find Us
               </h3>
-              <div className="w-full aspect-video sm:aspect-[16/9] rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800">
+              <div className="w-full aspect-video sm:aspect-[16/9] rounded-lg overflow-hidden border border-border">
                 <iframe
                   src={MAPS_EMBED_SRC}
                   width="100%"
@@ -94,30 +94,30 @@ export default function ContactUsPage() {
             </div>
           </div>
 
-          <div className="pt-6 border-t border-stone-100 dark:border-stone-800 text-[10px] sm:text-[11px] text-stone-400 text-center leading-relaxed">
+          <div className="pt-6 border-t border-border text-[10px] sm:text-[11px] text-faint text-center leading-relaxed">
             Operational customer assistance tickets are monitored and processed directly by our logistics desk from Monday through Saturday, between 10:00 AM and 6:00 PM IST.
           </div>
         </div>
 
-        <div className="max-w-2xl mx-auto bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-6 sm:p-8 md:p-12 shadow-sm mt-6">
-          <h2 className="text-xl sm:text-2xl font-serif text-stone-900 dark:text-stone-100 font-medium tracking-wide mb-1">
+        <div className="max-w-2xl mx-auto bg-surface border border-border rounded-lg p-6 sm:p-8 md:p-12 shadow-sm mt-6">
+          <h2 className="text-xl sm:text-2xl font-serif text-fg font-medium tracking-wide mb-1">
             Send Us a Message
           </h2>
-          <p className="text-stone-500 text-[11px] sm:text-xs font-mono mb-6">We reply by email, usually within one business day.</p>
+          <p className="text-faint text-[11px] sm:text-xs font-mono mb-6">We reply by email, usually within one business day.</p>
           <ContactForm />
         </div>
       </div>
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}
-      <footer className="bg-stone-900 text-stone-400 text-xs py-8 border-t border-stone-800 w-full mt-auto">
+      <footer className="bg-stone-900 text-faint text-xs py-8 border-t border-stone-800 w-full mt-auto">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
             <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-stone-500 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
+            <p className="text-[10px] text-faint mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
           
           {/* Public links verified during gateway inspections */}
-          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-wider font-medium text-stone-400">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-wider font-medium text-faint">
             <a href="/terms" className="hover:text-amber-400 transition">Terms & Conditions</a>
             <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
             <a href="/refunds" className="hover:text-amber-400 transition">Refund & Cancellation</a>

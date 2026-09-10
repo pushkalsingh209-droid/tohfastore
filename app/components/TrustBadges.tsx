@@ -44,7 +44,7 @@ const BADGES = [
 export default function TrustBadges({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
-      <div className="flex items-center justify-center gap-4 text-[9px] text-stone-500 dark:text-stone-400 leading-none">
+      <div className="flex items-center justify-center gap-4 text-[9px] text-faint leading-none">
         {BADGES.map((badge) => {
           const content = (
             <span className="flex items-center gap-1">
@@ -55,7 +55,7 @@ export default function TrustBadges({ compact = false }: { compact?: boolean }) 
             </span>
           );
           return badge.href ? (
-            <Link key={badge.label} href={badge.href} className="hover:text-amber-700 dark:hover:text-amber-500 transition">
+            <Link key={badge.label} href={badge.href} className="hover:text-link transition">
               {content}
             </Link>
           ) : (
@@ -67,20 +67,20 @@ export default function TrustBadges({ compact = false }: { compact?: boolean }) 
   }
 
   return (
-    <div className="grid grid-cols-3 gap-1 text-center py-3 border-y border-stone-100 dark:border-stone-800">
+    <div className="grid grid-cols-3 gap-1 text-center py-3 border-y border-border">
       {BADGES.map((badge) => {
         const inner = (
           <>
-            <svg className="w-5 h-5 text-stone-500 dark:text-stone-400 group-hover:text-amber-700 dark:group-hover:text-amber-500 transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+            <svg className="w-5 h-5 text-faint group-hover:text-link transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
               {badge.icon}
             </svg>
-            <span className="text-[10px] text-stone-500 dark:text-stone-400 group-hover:text-amber-700 dark:group-hover:text-amber-500 transition leading-tight">
+            <span className="text-[10px] text-faint group-hover:text-link transition leading-tight">
               {badge.label}
             </span>
           </>
         );
         return badge.href ? (
-          <Link key={badge.label} href={badge.href} className="flex flex-col items-center gap-1 px-1 hover:text-amber-700 dark:hover:text-amber-500 transition group">
+          <Link key={badge.label} href={badge.href} className="flex flex-col items-center gap-1 px-1 hover:text-link transition group">
             {inner}
           </Link>
         ) : (

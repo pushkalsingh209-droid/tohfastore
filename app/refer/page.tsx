@@ -96,31 +96,31 @@ export default function ReferPage() {
   }
 
   const inputClass =
-    "w-full px-4 py-3 rounded border border-stone-300 dark:border-stone-700 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200";
+    "w-full px-4 py-3 rounded border border-border-strong text-sm font-mono focus:outline-none focus:border-accent bg-surface-2 text-fg";
   const buttonClass =
-    "w-full bg-stone-950 dark:bg-amber-700 hover:bg-amber-800 dark:hover:bg-amber-600 disabled:opacity-60 text-white font-medium text-xs uppercase tracking-widest py-3.5 rounded shadow transition active:scale-[0.99]";
+    "w-full bg-stone-950 dark:bg-amber-700 hover:bg-accent-hover dark:hover:bg-amber-600 disabled:opacity-60 text-white font-medium text-xs uppercase tracking-widest py-3.5 rounded shadow transition active:scale-[0.99]";
 
   return (
-    <div className="bg-[var(--background)] dark:bg-stone-950 min-h-screen flex flex-col justify-between transition-colors">
+    <div className="bg-bg min-h-screen flex flex-col justify-between transition-colors">
       <div className="flex-grow max-w-lg mx-auto w-full px-4 sm:px-6 py-12 md:py-16">
         <div className="text-center mb-10">
-          <span className="text-amber-700 dark:text-amber-500 uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block mb-3">
+          <span className="text-link uppercase tracking-[0.3em] text-[10px] sm:text-xs font-semibold block mb-3">
             Refer a Friend
           </span>
-          <h1 className="text-3xl sm:text-4xl font-serif text-stone-900 dark:text-stone-100 tracking-wide">
+          <h1 className="text-3xl sm:text-4xl font-serif text-fg tracking-wide">
             Your Referral Code
           </h1>
-          <p className="text-stone-500 dark:text-stone-400 text-sm font-light mt-3">
+          <p className="text-faint text-sm font-light mt-3">
             Share TOHFA with a friend — they get a discount on their first order, and you get a thank-you
             reward when they buy. Verify the phone number from your order to see your code.
           </p>
         </div>
 
-        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-6 sm:p-8 shadow-sm">
+        <div className="bg-surface border border-border rounded-lg p-6 sm:p-8 shadow-sm">
           {phase === "phone" && (
             <form onSubmit={sendCode} className="space-y-4">
               <div>
-                <label className="block text-xs uppercase tracking-wider text-stone-600 dark:text-stone-400 font-semibold mb-2">
+                <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
                   WhatsApp Number (used at checkout)
                 </label>
                 <input
@@ -142,7 +142,7 @@ export default function ReferPage() {
           {phase === "code" && (
             <form onSubmit={verifyAndLookup} className="space-y-4">
               <div>
-                <label className="block text-xs uppercase tracking-wider text-stone-600 dark:text-stone-400 font-semibold mb-2">
+                <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
                   Enter the 6-digit code sent to {phone}
                 </label>
                 <input
@@ -167,7 +167,7 @@ export default function ReferPage() {
                   setCode("");
                   setError("");
                 }}
-                className="w-full text-xs text-stone-500 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-500 transition"
+                className="w-full text-xs text-faint hover:text-link transition"
               >
                 Use a different number
               </button>
@@ -178,11 +178,11 @@ export default function ReferPage() {
             <div className="space-y-5 text-center">
               {result.enabled && result.code ? (
                 <>
-                  <p className="text-sm text-stone-600 dark:text-stone-400">
-                    Your friends get <span className="font-semibold text-stone-900 dark:text-stone-100">{result.discountPercent}% off</span> their first order with:
+                  <p className="text-sm text-muted">
+                    Your friends get <span className="font-semibold text-fg">{result.discountPercent}% off</span> their first order with:
                   </p>
                   <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-800 rounded-lg py-5">
-                    <span className="font-mono text-2xl font-bold tracking-widest text-amber-800 dark:text-amber-400">
+                    <span className="font-mono text-2xl font-bold tracking-widest text-link-hover">
                       {result.code}
                     </span>
                   </div>
@@ -190,14 +190,14 @@ export default function ReferPage() {
                     <button
                       type="button"
                       onClick={() => copy("code")}
-                      className="flex-1 border border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 text-xs uppercase tracking-widest font-medium py-3 rounded transition"
+                      className="flex-1 border border-border-strong hover:bg-surface-2 text-muted text-xs uppercase tracking-widest font-medium py-3 rounded transition"
                     >
                       {copied === "code" ? "Copied!" : "Copy code"}
                     </button>
                     <button
                       type="button"
                       onClick={() => copy("message")}
-                      className="flex-1 border border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 text-xs uppercase tracking-widest font-medium py-3 rounded transition"
+                      className="flex-1 border border-border-strong hover:bg-surface-2 text-muted text-xs uppercase tracking-widest font-medium py-3 rounded transition"
                     >
                       {copied === "message" ? "Copied!" : "Copy message"}
                     </button>
@@ -210,20 +210,20 @@ export default function ReferPage() {
                   >
                     Share on WhatsApp
                   </a>
-                  <p className="text-[11px] text-stone-400 dark:text-stone-500 leading-relaxed">
+                  <p className="text-[11px] text-faint dark:text-stone-500 leading-relaxed">
                     You&rsquo;ll get a one-time thank-you reward code on WhatsApp the moment a friend places
                     their first order using yours.
                   </p>
                 </>
               ) : !result.enabled ? (
-                <p className="text-sm text-stone-600 dark:text-stone-400 py-4">
+                <p className="text-sm text-muted py-4">
                   The referral programme is paused right now. Check back soon.
                 </p>
               ) : (
                 <>
-                  <p className="text-sm text-stone-600 dark:text-stone-400 py-2">
+                  <p className="text-sm text-muted py-2">
                     You don&rsquo;t have a referral code yet — it unlocks automatically once your first order
-                    has been <span className="font-semibold text-stone-900 dark:text-stone-100">delivered</span>.
+                    has been <span className="font-semibold text-fg">delivered</span>.
                   </p>
                   <Link href="/" className={`${buttonClass} block text-center`}>
                     Browse the shop
@@ -235,13 +235,13 @@ export default function ReferPage() {
         </div>
       </div>
 
-      <footer className="bg-stone-900 text-stone-400 text-xs py-8 border-t border-stone-800">
+      <footer className="bg-stone-900 text-faint text-xs py-8 border-t border-stone-800">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
             <p className="font-serif text-stone-200 tracking-widest text-sm font-bold">TOHFA</p>
-            <p className="text-[10px] text-stone-500 mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
+            <p className="text-[10px] text-faint mt-1">© 2026 tohfaonline.com. All Rights Reserved.</p>
           </div>
-          <div className="flex flex-wrap justify-center gap-6 text-[11px] uppercase tracking-wider font-medium text-stone-400">
+          <div className="flex flex-wrap justify-center gap-6 text-[11px] uppercase tracking-wider font-medium text-faint">
             <a href="/terms" className="hover:text-amber-400 transition">Terms &amp; Conditions</a>
             <a href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</a>
             <a href="/refunds" className="hover:text-amber-400 transition">Refund &amp; Cancellation</a>

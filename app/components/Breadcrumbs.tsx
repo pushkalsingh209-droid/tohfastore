@@ -10,7 +10,7 @@ export interface BreadcrumbItem {
 
 export default function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
   return (
-    <nav aria-label="Breadcrumb" className="mb-4 text-xs text-stone-500 dark:text-stone-400">
+    <nav aria-label="Breadcrumb" className="mb-4 text-xs text-faint">
       <ol className="flex flex-wrap items-center gap-1.5">
         {items.map((item, index) => (
           <li key={index} className="flex items-center gap-1.5">
@@ -20,11 +20,11 @@ export default function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
               </span>
             )}
             {item.href ? (
-              <Link href={item.href} className="hover:text-amber-700 dark:hover:text-amber-500 transition">
+              <Link href={item.href} className="hover:text-link transition">
                 {item.label}
               </Link>
             ) : (
-              <span aria-current="page" className="text-stone-700 dark:text-stone-300 font-medium line-clamp-1">
+              <span aria-current="page" className="text-muted font-medium line-clamp-1">
                 {item.label}
               </span>
             )}
