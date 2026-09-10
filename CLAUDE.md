@@ -53,9 +53,10 @@ wired up) — the two base tables (`products`, `orders`) have no migration file.
 - **5xx bodies are generic.** Use `serverErrorResponse` from `app/utils/apiError.ts`;
   log the real error, don't echo it. (4xx validation messages are user-facing and fine.)
 - TypeScript strict; path alias `@/*` → repo root (mirrored in `vitest.config.ts`).
-- Tailwind v4; themes are a `data-theme` attribute on `<html>` set by a blocking script in `layout.tsx`
-  (registry: `app/utils/themes.ts`) — currently `sand`/`ink` (= the old light/dark), with a legacy `.dark`
-  class shim while the `dark:` variants are migrated to semantic tokens (`docs/DESIGN-theming.md`).
+- Tailwind v4; **10 colour themes**, each a `:root[data-theme="<slug>"]` block of 14 semantic tokens in
+  `globals.css` (the rest `color-mix()`-derived), set as `data-theme` on `<html>` by a blocking script in
+  `layout.tsx` (registry: `app/utils/themes.ts`). `sand`/`ink` = the old light/dark. No `.dark` class and
+  no `dark:` variants anywhere — storefront and admin (`docs/DESIGN-theming.md`).
 - **Docs are self-contained.** `docs/HANDBOOK.html` must stay CDN-free — system
   fonts, inline SVG, no `<script>`, no external assets.
 

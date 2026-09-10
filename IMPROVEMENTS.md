@@ -12,6 +12,21 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Theming series PR 5 — admin panel → tokens (series complete) — 2026-09-10 IST
+- `app/admin/**` + `app/components/admin/**` (15 files, ~1400 colour-class occurrences) converted to the
+  semantic tokens. Admin was light-only (0 `dark:` variants) so this was a straight bare-class sweep:
+  `stone-*` greys → `surface`/`surface-2`/`fg`/`muted`/`faint`/`border`/`border-strong`; `bg-white` →
+  `bg-surface`; `amber-*` → `accent` family; `emerald-*` → `success`; `rose-*`/`red-*` → `danger`; the
+  `sky`/`indigo`/`violet`/`orange` notice accents folded into `accent` (no separate info token). Primary
+  buttons → `bg-fg text-bg` + `hover:bg-accent hover:text-accent-fg` (storefront's inverted pattern);
+  shell wrapper `bg-[var(--background)]` → `bg-bg`; native `accent-amber-*` → `accent-[var(--accent)]`.
+  Order-status badges keep green/red/accent/grey semantics. Class strings only — no logic change.
+- Verified: `tsc` clean · `eslint` changed files 0 errors (3 pre-existing warnings) · `npm test`
+  324/325 · `next build` exit 0, 145/145 · admin login shell + Products + Orders tabs screenshotted in
+  `sand`/`ink`/`midnight` (TOTP login automated) — all legible.
+- **Theming series is now complete** (PRs 1–5, all 2026-09-10). Whole app is token-driven; see
+  `docs/DESIGN-theming.md` and `docs/HANDBOOK.html` Change log.
+
 ### Theming series PR 4 of ~4 — grep gate + drop the `.dark` shim + 8 palettes → 10 themes live — 2026-09-10 IST
 - **10 user-selectable colour themes are live.** Storefront is fully token-driven: non-admin `dark:`
   329 → **0**; every stray `stone-*`/`amber-*`/`emerald-*`/`rose-*` class resolved or given a documented
@@ -1631,11 +1646,6 @@ care, land behind tests, never "blind".
       95 % earlier. Revisit only at ~10× traffic. `force-dynamic` on product pages stays.
 
 ## Active — Tier 4 (maintainability / observability)
-
-22. **Theming series — PR 5 (optional).** ~~PRs 1–4~~ all shipped & merged 2026-09-10 (see Done) —
-    **10 themes are live**, storefront 100 % token-driven, 0 `dark:` variants. Only remaining slice:
-    convert `app/admin/**` (internal tool) to the same tokens so the admin panel also themes — purely
-    cosmetic, do it only if wanted. Otherwise this item is complete.
 
 16. ~~**`product_sales` reconcile check.**~~ — **done + scheduled.**
     `/api/cron/product-sales-reconcile` (GET, `CRON_SECRET` bearer): recomputes the tally

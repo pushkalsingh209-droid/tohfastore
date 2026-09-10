@@ -191,16 +191,16 @@ function AdminDashboard() {
 
   return (
     <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, coupons, setCoupons, orders, setOrders, loadingOrders, notificationLog, setNotificationLog, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, abandonedCheckoutStale, reviewReminderStale, settings, setSettings, chatLabelPresets, setChatLabelPresets, products, setProducts, categories, setCategories, labels, setLabels, colors, setColors, materials, setMaterials, whatsappNumbers, setWhatsappNumbers, orderNotificationNumbers, setOrderNotificationNumbers, refetch: fetchData }}>
-    <div className="bg-[var(--background)] min-h-screen py-12">
+    <div className="bg-bg min-h-screen py-12">
       <div className="max-w-5xl mx-auto px-6 space-y-12">
 
         {/* HEADER BRAND WORKSPACE HEADER */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-stone-200 pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-6">
           <div>
-            <h1 className="text-3xl font-serif text-stone-900 tracking-wide">Tohfa Admin Workspace</h1>
-            <p className="text-stone-500 text-xs mt-1">Central management command layer for items, inventory balances, and client orders.</p>
+            <h1 className="text-3xl font-serif text-fg tracking-wide">Tohfa Admin Workspace</h1>
+            <p className="text-faint text-xs mt-1">Central management command layer for items, inventory balances, and client orders.</p>
           </div>
-          <button type="button" onClick={handleLogout} className="px-4 py-2 text-xs uppercase tracking-wider font-semibold border border-stone-300 rounded text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition">
+          <button type="button" onClick={handleLogout} className="px-4 py-2 text-xs uppercase tracking-wider font-semibold border border-border-strong rounded text-muted hover:bg-surface-2 hover:text-fg transition">
             Exit Workspace
           </button>
         </div>
@@ -224,8 +224,8 @@ function AdminDashboard() {
               onClick={() => setActiveTab(tab.key as AdminTab)}
               className={`sm:flex-shrink-0 px-3 py-2.5 rounded text-[11px] sm:text-xs uppercase tracking-wider font-semibold text-center transition ${
                 activeTab === tab.key
-                  ? "bg-amber-600 text-white shadow-sm"
-                  : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                  ? "bg-accent text-accent-fg shadow-sm"
+                  : "bg-surface-2 text-muted hover:bg-disabled"
               }`}
             >
               {tab.label}

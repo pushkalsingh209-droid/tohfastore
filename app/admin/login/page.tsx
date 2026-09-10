@@ -31,15 +31,15 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="bg-[var(--background)] min-h-screen flex items-center justify-center px-6 py-12">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-6 border border-stone-200 rounded-lg p-8 bg-white">
+    <div className="bg-bg min-h-screen flex items-center justify-center px-6 py-12">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-6 border border-border rounded-lg p-8 bg-surface">
         <div>
-          <h1 className="text-2xl font-serif text-stone-900 tracking-wide">Tohfa Admin Workspace</h1>
-          <p className="text-stone-500 text-xs mt-1">Sign in with the admin password and your authenticator code (or a backup code).</p>
+          <h1 className="text-2xl font-serif text-fg tracking-wide">Tohfa Admin Workspace</h1>
+          <p className="text-faint text-xs mt-1">Sign in with the admin password and your authenticator code (or a backup code).</p>
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs uppercase tracking-wider font-semibold text-stone-600">Password</label>
+          <label className="text-xs uppercase tracking-wider font-semibold text-muted">Password</label>
           <input
             type="password"
             value={password}
@@ -47,12 +47,12 @@ export default function AdminLoginPage() {
             autoComplete="current-password"
             autoFocus
             required
-            className="w-full border border-stone-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-stone-500"
+            className="w-full border border-border-strong rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-border-strong"
           />
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs uppercase tracking-wider font-semibold text-stone-600">Authenticator or backup code</label>
+          <label className="text-xs uppercase tracking-wider font-semibold text-muted">Authenticator or backup code</label>
           <input
             type="text"
             autoCapitalize="characters"
@@ -61,16 +61,16 @@ export default function AdminLoginPage() {
             autoComplete="one-time-code"
             required
             placeholder="6-digit code or XXXXX-XXXXX"
-            className="w-full border border-stone-300 rounded px-3 py-2 text-sm tracking-[0.15em] focus:outline-none focus:ring-1 focus:ring-stone-500"
+            className="w-full border border-border-strong rounded px-3 py-2 text-sm tracking-[0.15em] focus:outline-none focus:ring-1 focus:ring-border-strong"
           />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
 
         <button
           type="submit"
           disabled={submitting}
-          className="w-full px-4 py-2.5 text-xs uppercase tracking-wider font-semibold rounded bg-stone-900 text-white hover:bg-stone-800 transition disabled:opacity-50"
+          className="w-full px-4 py-2.5 text-xs uppercase tracking-wider font-semibold rounded bg-fg text-bg hover:bg-accent-hover hover:text-accent-fg transition disabled:opacity-50"
         >
           {submitting ? "Verifying..." : "Enter Workspace"}
         </button>

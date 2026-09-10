@@ -61,13 +61,13 @@ export default function ImageUploadField({
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-grow px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="flex-grow px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         />
         <label
           className={`flex items-center px-3 py-3 rounded border text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition ${
             disabled || uploading
-              ? "border-stone-200 text-stone-400 cursor-not-allowed"
-              : "border-amber-300 text-amber-700 hover:bg-amber-50 cursor-pointer"
+              ? "border-border text-faint cursor-not-allowed"
+              : "border-accent-soft-border text-accent hover:bg-accent-soft cursor-pointer"
           }`}
         >
           {uploading ? "Uploading..." : "Upload"}
@@ -81,7 +81,7 @@ export default function ImageUploadField({
           />
         </label>
       </div>
-      {error && <p className="text-[11px] text-rose-600 mt-1">{error}</p>}
+      {error && <p className="text-[11px] text-danger mt-1">{error}</p>}
     </div>
   );
 }
