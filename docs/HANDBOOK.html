@@ -2482,7 +2482,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>FloatingContactButtons</code> &mdash; mobile WhatsApp/email shortcut</li>
 <li><code>DeferredWidgets</code> &mdash; CookieConsent, InstallPrompt, AbandonedCartNudge, WelcomeGaneshaPopup</li>
 <li><code>ResourceHints</code>, <code>CatalogLoadingOverlay</code>, <code>BrandSpinner</code></li>
-<li><code>ThemePicker</code> (header theme menu &mdash; a bottom sheet on phones, a dropdown from <code>sm:</code> up; sets <code>data-theme</code> + persists to <code>localStorage.theme</code>; replaced the old <code>ThemeToggle</code> sun/moon button), <code>GoogleTranslateWidget</code>, <code>MetaPixel</code></li>
+<li><code>ThemePicker</code> (header theme menu &mdash; an anchored dropdown right under the trigger on every screen size, left-aligned on the mobile header row / right-aligned in the desktop nav, height-capped + scrolls; sets <code>data-theme</code> + persists to <code>localStorage.theme</code>; replaced the old <code>ThemeToggle</code> sun/moon button), <code>GoogleTranslateWidget</code>, <code>MetaPixel</code></li>
 <li><code>PromoBanner</code>, <code>PageNavLinks</code>, <code>Breadcrumbs</code>, <code>Pagination</code>, <code>JumpToPage</code></li>
 </ul>
 <h4>Checkout / forms</h4>
@@ -3013,8 +3013,30 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-09-10<br>09:59</code></td>
+  <td><strong>Theming &mdash; <code>ThemePicker</code>: bottom sheet &rarr; anchored dropdown</strong><br>(follow-up to PR 1, merged the same day; owner: on mobile the trigger is top-left and the sheet opened at the bottom of the screen)</td>
+  <td>
+    PR 1 shipped the theme menu as a bottom sheet on phones, matching <code>EnquirySheet</code> / the admin
+    Notify dialog. But those are <em>modal forms</em> (an input + keyboard); a theme picker is a plain menu,
+    and a bottom sheet there means &ldquo;tap the icon top-left, then look at the bottom of the screen to
+    choose&rdquo;. Switched to an <strong>anchored dropdown on every screen size</strong> &mdash; opens
+    directly under the trigger (left-aligned on the mobile header's top row, right-aligned in the desktop
+    nav), same pattern as the header's own category menu. Height-capped (<code>max-h-[60vh]</code>) and
+    scrolls once there are many themes; a transparent full-screen tap-scrim on small screens makes an
+    outside tap dismiss reliably (touch &ldquo;outside click&rdquo; can miss inert targets); 44px rows.
+    No logic change &mdash; same <code>pick()</code> / outside-click / Escape behaviour.
+  </td>
+  <td><em>edited:</em> <code>app/components/ThemePicker.tsx</code>, this handbook, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> 0 errors (the one
+    <code>set-state-in-effect</code> warning is the intentional hydrate-on-mount, unchanged) &middot;
+    <code>npm test</code> 319 passed / 1 skip (unchanged &mdash; presentational) &middot;
+    <code>next build</code> exit 0, 145/145 static. Not browser-verified here &mdash; owner to confirm the
+    dropdown opens under the icon on a phone, isn't clipped by the sticky header, and dismisses on an
+    outside tap.</td>
+</tr>
+<tr>
   <td><code>2026-09-10<br>09:37</code></td>
-  <td><strong>Theming series &mdash; PR 1 of 8: token foundation + theme picker</strong><br>(owner signed off <code>docs/DESIGN-theming.md</code>: 10 named themes, each its own fixed look, subtle swatch menu &mdash; full plan in that doc)</td>
+  <td><strong>Theming series &mdash; PR 1 of ~4: token foundation + theme picker</strong><br>(owner signed off <code>docs/DESIGN-theming.md</code>: 10 named themes, each its own fixed look, subtle swatch menu; conversion compressed to ~4 PRs &mdash; full plan in that doc)</td>
   <td>
     <strong>This PR changes nothing visually</strong> in either theme &mdash; it lays the plumbing the next
     seven PRs build on. The only visible difference is the header control: the sun/moon toggle becomes a
