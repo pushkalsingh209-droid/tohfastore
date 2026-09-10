@@ -19,7 +19,8 @@ care, land behind tests, never "blind".
   `ink` = old dark; `resolveThemeSlug`, `buildThemeInitScript`), semantic `:root[data-theme]` token blocks +
   `@theme inline` map in `globals.css` (inert — nothing consumes them yet), rewritten pre-paint script
   (sets `data-theme`, keeps a `.dark` shim for the ~970 unconverted `dark:` variants; behaviour identical
-  for every value `ThemeToggle` ever wrote), `ThemePicker.tsx` replacing `ThemeToggle.tsx`.
+  for every value `ThemeToggle` ever wrote), `ThemePicker.tsx` replacing `ThemeToggle.tsx` — mobile-first
+  (bottom sheet on phones with a backdrop / grab handle / 48px rows, dropdown from `sm:`).
 - Verified: `tsc` clean · `npm test` 319/320 (+21, incl. a globals.css cross-check and a sandbox that pins
   the generated script to `resolveThemeSlug`) · `eslint` 0 errors, warnings net-neutral · `next build` exit 0.
 - **Owner to eyeball on the dev server** before merge: light/dark unchanged, swatch menu opens + switches,

@@ -2482,7 +2482,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>FloatingContactButtons</code> &mdash; mobile WhatsApp/email shortcut</li>
 <li><code>DeferredWidgets</code> &mdash; CookieConsent, InstallPrompt, AbandonedCartNudge, WelcomeGaneshaPopup</li>
 <li><code>ResourceHints</code>, <code>CatalogLoadingOverlay</code>, <code>BrandSpinner</code></li>
-<li><code>ThemePicker</code> (header swatch menu that sets <code>data-theme</code> + persists to <code>localStorage.theme</code>; replaced the old <code>ThemeToggle</code> sun/moon button), <code>GoogleTranslateWidget</code>, <code>MetaPixel</code></li>
+<li><code>ThemePicker</code> (header theme menu &mdash; a bottom sheet on phones, a dropdown from <code>sm:</code> up; sets <code>data-theme</code> + persists to <code>localStorage.theme</code>; replaced the old <code>ThemeToggle</code> sun/moon button), <code>GoogleTranslateWidget</code>, <code>MetaPixel</code></li>
 <li><code>PromoBanner</code>, <code>PageNavLinks</code>, <code>Breadcrumbs</code>, <code>Pagination</code>, <code>JumpToPage</code></li>
 </ul>
 <h4>Checkout / forms</h4>
@@ -3049,10 +3049,13 @@ Newest first.</p>
     <br><br>
     <strong>New <code>ThemePicker.tsx</code></strong> replaces <code>ThemeToggle.tsx</code> (deleted; only the
     header imported it). The trigger button keeps the old toggle's exact classes/size so the header doesn't
-    shift; clicking opens a small menu with a swatch + name per theme. Picking one sets <code>data-theme</code>,
-    toggles <code>.dark</code>, and writes the slug to <code>localStorage.theme</code>. Mount-effect hydrates
-    the active row from the <code>&lt;html&gt;</code> attribute the blocking script set &mdash; the same
-    <code>set-state-in-effect</code> pattern (a warning, on purpose) the old toggle used.
+    shift. <strong>Mobile-first</strong>: the menu is a full-width bottom sheet on phones (backdrop, grab
+    handle, safe-area padding, 48px rows) and a compact dropdown anchored to the button from <code>sm:</code>
+    up &mdash; the same shape as <code>EnquirySheet</code> / the admin &ldquo;Notify customer&rdquo; dialog.
+    Picking a swatch sets <code>data-theme</code>, toggles <code>.dark</code>, and writes the slug to
+    <code>localStorage.theme</code>. Mount-effect hydrates the active row from the <code>&lt;html&gt;</code>
+    attribute the blocking script set &mdash; the same <code>set-state-in-effect</code> pattern (a warning, on
+    purpose) the old toggle used.
   </td>
   <td>
     <em>new:</em> <code>app/utils/themes.ts</code> (+ <code>.test.ts</code>),
