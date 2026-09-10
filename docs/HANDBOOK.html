@@ -492,8 +492,9 @@
       image-optimization meter. Small-thumbnail contexts (cart, wishlist, admin list) use a build-time
       <code>-thumb.webp</code> variant via <code>attachThumbUrls</code> instead.</li>
     </ul>
-    <p>Both are reversible one-liners <em>if</em> the plan changes for good &mdash; but the default is
-    Hobby-ready.</p>
+    <p>The <code>force-dynamic</code> choice is a reversible one-liner if the plan ever changes; the
+    <code>unoptimized</code> flag is <strong>not</strong> &mdash; owner 2026-09-10 ruled the site must never use
+    Vercel Image Optimization (IMPROVEMENTS.md #9, won&rsquo;t-do). The default is Hobby-ready either way.</p>
   </div>
 
   <div class="card">
@@ -1870,11 +1871,14 @@ recompute covers, not a product whose every order is now cancelled; those need t
       live products table points at migrated copies.</li>
 </ul>
 <div class="note warn">
-<p><strong>Image Optimization is currently disabled.</strong> <code>next.config.ts</code> sets
-<code>images.unoptimized = true</code> as a temporary safety net (Vercel free-tier ~5,000 transforms/month was at
-75%). Photos serve as their original file from Supabase. <code>deviceSizes</code>/<code>imageSizes</code> were
-also trimmed to the widths the <code>sizes</code> props actually resolve to. Remove after the billing cycle
-resets and verify steady-state usage stays under cap.</p>
+<p><strong>Image Optimization is disabled &mdash; permanently, by owner decision (2026-09-10).</strong>
+<code>next.config.ts</code> sets <code>images.unoptimized = true</code>. It went on 2026-08-02 as a quota safety
+net (Vercel free-tier ~5,000 transforms/month was at 75%); the owner has since ruled that the site must
+<strong>never</strong> route images through Vercel&rsquo;s optimizer (cost). Photos serve as their original file
+from Supabase. <code>deviceSizes</code>/<code>imageSizes</code> were also trimmed to the widths the
+<code>sizes</code> props actually resolve to. <strong>Do not remove this flag</strong> or propose re-enabling
+optimization; image-weight work is upload-time caps + the pre-generated <code>thumb_url</code>, never the
+optimizer. (IMPROVEMENTS.md #9 is closed as won&rsquo;t-do.)</p>
 </div>
 
 <h2 id="routing">Routing &amp; URL design</h2>
@@ -2373,7 +2377,7 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       Hobby quota. Under <code>force-dynamic</code> a <code>revalidateTag</code> just busts the Data Cache
       (one refetch), not 156 page regenerations, so admin edits still show instantly with zero ISR cost.</li>
   <li>Thumbnails (<code>imageThumb.ts</code>) so cart/wishlist/admin/strips don&rsquo;t download the full 1600px photo.</li>
-  <li><code>images.unoptimized = true</code> + trimmed <code>deviceSizes</code>/<code>imageSizes</code> (temporary).</li>
+  <li><code>images.unoptimized = true</code> + trimmed <code>deviceSizes</code>/<code>imageSizes</code> (permanent &mdash; owner 2026-09-10: never use Vercel Image Optimization).</li>
   <li><code>CatalogSection</code> progressively mounts cards in batches of <code>catalog_reveal_batch_size</code>
       (&ge; 8) via <code>IntersectionObserver</code>.</li>
   <li>Code-splitting: <code>LazyCartDrawer</code>, <code>DeferredWidgets</code> (cookie consent, install prompt,
@@ -2671,8 +2675,8 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
 
 <h2 id="gotchas">Known constraints &amp; gotchas</h2>
 <ul class="tight">
-  <li><strong>Image Optimization is off</strong> (<code>images.unoptimized = true</code>) as a temporary quota
-      safety net. Re-enable and re-check after the billing cycle resets.</li>
+  <li><strong>Image Optimization is off</strong> (<code>images.unoptimized = true</code>) &mdash; <strong>permanent</strong>
+      (owner 2026-09-10: the site must never use Vercel Image Optimization). Do not re-enable.</li>
   <li><strong>Every route streams</strong> because of the root <code>app/loading.tsx</code>; that&rsquo;s why
       <code>proxy.ts</code> exists to emit real HTTP status codes. Remove <code>loading.tsx</code> and the
       page-level <code>redirect()</code>/<code>notFound()</code> calls become sufficient on their own.</li>
@@ -3012,6 +3016,21 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-10<br>13:30</code></td>
+  <td><strong>Docs: <code>images.unoptimized</code> is permanent, not temporary</strong><br>(owner decision &mdash; no code change)</td>
+  <td>
+    Owner: &ldquo;dont remove image optimization flag .. it should not use it&rdquo; and &ldquo;do anything
+    without causing any cost implication&rdquo;. Every place that called <code>images.unoptimized = true</code>
+    a &ldquo;temporary safety net&rdquo; / &ldquo;remove after the billing cycle resets&rdquo; now states it is
+    <strong>permanent</strong> &mdash; the site must never route images through Vercel Image Optimization.
+    IMPROVEMENTS.md #9 moved from &ldquo;on hold&rdquo; to <strong>won&rsquo;t-do</strong>. Auto-memory
+    <code>vercel_image_optimization_unoptimized_flag.md</code> updated to match. No <code>next.config.ts</code>
+    change &mdash; the flag was already on and stays on.
+  </td>
+  <td><em>edited:</em> <code>docs/HANDBOOK.html</code> (6 spots), <code>IMPROVEMENTS.md</code>. Docs only &mdash;
+    <code>tsc</code>/<code>test</code>/<code>build</code> unaffected (no source touched).</td>
+</tr>
 <tr>
   <td><code>2026-09-10<br>13:05</code></td>
   <td><strong>COD fee: its own column in the Excel report + shown on the confirmation email</strong><br>(closes IMPROVEMENTS #6; fixes a latent discount-inference bug for discounted COD orders)</td>
@@ -6777,9 +6796,9 @@ Newest first.</p>
     verified live via the checkout OTP send.<br>
     &bull; <strong>Log retention (T2 #8):</strong> deferred by owner &mdash; <code>leads</code> and
     <code>whatsapp_enquiries</code> stay unbounded (small; the latter feeds all-time analytics). No auto-prune.<br>
-    &bull; <strong>Image optimization (T3 #9):</strong> no-cost path only &mdash; <code>images.unoptimized: true</code>
-    holds until the Vercel quota resets and the flag can be dropped for free. Supabase transforms (Pro-only) ruled
-    out.<br>
+    &bull; <strong>Image optimization (T3 #9):</strong> <strong>closed as won&rsquo;t-do</strong> (owner 2026-09-10:
+    &ldquo;it should not use it&rdquo;). <code>images.unoptimized: true</code> is permanent; the site must never use
+    Vercel Image Optimization. Supabase transforms (Pro-only) also ruled out.<br>
     &bull; <strong>T1 #1:</strong> stale &ldquo;owner owes a live test payment&rdquo; line removed &mdash; the
     <code>0041</code> RPC path was verified by a live test-mode payment earlier the same day. Only the (not-started)
     stock-reservation design remains under that item.
