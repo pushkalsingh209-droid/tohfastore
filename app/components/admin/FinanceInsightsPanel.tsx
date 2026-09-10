@@ -114,17 +114,17 @@ export default function FinanceInsightsPanel({ orders, products }: { orders: Adm
       <div className="space-y-2">
         {rows.map((row) => (
           <div key={row.key} className="flex items-center gap-2">
-            <span className="w-20 sm:w-24 flex-shrink-0 truncate text-[11px] text-stone-600" title={row.key}>
+            <span className="w-20 sm:w-24 flex-shrink-0 truncate text-[11px] text-muted" title={row.key}>
               {row.key}
             </span>
-            <div className="flex-1 bg-stone-100 rounded-full h-4 overflow-hidden">
+            <div className="flex-1 bg-surface-2 rounded-full h-4 overflow-hidden">
               <div
                 className={`h-full ${colorClass} rounded-full transition-all`}
                 style={{ width: `${Math.max(4, (row.revenue / max) * 100)}%` }}
                 title={`₹${Math.round(row.revenue).toLocaleString("en-IN")}`}
               />
             </div>
-            <span className="w-20 flex-shrink-0 text-right text-[11px] font-mono text-stone-700">
+            <span className="w-20 flex-shrink-0 text-right text-[11px] font-mono text-muted">
               ₹{Math.round(row.revenue).toLocaleString("en-IN")}
             </span>
           </div>
@@ -141,9 +141,9 @@ export default function FinanceInsightsPanel({ orders, products }: { orders: Adm
           const heightPct = Math.max(4, (m[key] / max) * 100);
           return (
             <div key={m.label} className="flex-1 flex flex-col items-center justify-end h-full">
-              <span className="text-[9px] font-mono text-stone-500 mb-1">{m[key] > 0 ? `₹${Math.round(m[key] / 1000)}k` : ""}</span>
+              <span className="text-[9px] font-mono text-faint mb-1">{m[key] > 0 ? `₹${Math.round(m[key] / 1000)}k` : ""}</span>
               <div className={`w-full ${colorClass} rounded-t transition-all`} style={{ height: `${heightPct}%` }} />
-              <span className="text-[10px] text-stone-400 mt-1.5 whitespace-nowrap">{m.label}</span>
+              <span className="text-[10px] text-faint mt-1.5 whitespace-nowrap">{m.label}</span>
             </div>
           );
         })}
@@ -152,11 +152,11 @@ export default function FinanceInsightsPanel({ orders, products }: { orders: Adm
   };
 
   return (
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-serif text-stone-900">Finance Insights</h2>
-          <p className="text-stone-500 text-xs mt-1">
+          <h2 className="text-xl font-serif text-fg">Finance Insights</h2>
+          <p className="text-faint text-xs mt-1">
             Reconstructed from order history -- no order stores GST or discount directly, so both are derived the same way the checkout invoice itself computes them. Excludes cancelled orders. Revenue by Label uses each product&rsquo;s current label, which may differ from what it was at the time of an older sale.
           </p>
         </div>
@@ -164,36 +164,36 @@ export default function FinanceInsightsPanel({ orders, products }: { orders: Adm
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-          <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Total GST Collected</p>
-          <p className="text-xl font-mono font-bold text-stone-900">₹{Math.round(stats.totalGstCollected).toLocaleString("en-IN")}</p>
+        <div className="bg-surface-2 border border-border rounded-lg p-4">
+          <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Total GST Collected</p>
+          <p className="text-xl font-mono font-bold text-fg">₹{Math.round(stats.totalGstCollected).toLocaleString("en-IN")}</p>
         </div>
-        <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-          <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Total Discounts Given</p>
-          <p className="text-xl font-mono font-bold text-stone-900">₹{Math.round(stats.totalDiscountGiven).toLocaleString("en-IN")}</p>
+        <div className="bg-surface-2 border border-border rounded-lg p-4">
+          <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Total Discounts Given</p>
+          <p className="text-xl font-mono font-bold text-fg">₹{Math.round(stats.totalDiscountGiven).toLocaleString("en-IN")}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div>
-          <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">GST Collected — Last 6 Months</h3>
-          {renderMonthlyBars("gst", "bg-amber-600")}
+          <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">GST Collected — Last 6 Months</h3>
+          {renderMonthlyBars("gst", "bg-accent")}
         </div>
         <div>
-          <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">Discounts Given — Last 6 Months</h3>
-          {renderMonthlyBars("discount", "bg-rose-500")}
+          <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">Discounts Given — Last 6 Months</h3>
+          {renderMonthlyBars("discount", "bg-danger")}
         </div>
       </div>
 
       {(stats.categoryRows.length > 0 || stats.labelRows.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div>
-            <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">Revenue by Category</h3>
-            {renderBarList(stats.categoryRows, "bg-emerald-600")}
+            <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">Revenue by Category</h3>
+            {renderBarList(stats.categoryRows, "bg-success")}
           </div>
           <div>
-            <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">Revenue by Label</h3>
-            {renderBarList(stats.labelRows, "bg-indigo-600")}
+            <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">Revenue by Label</h3>
+            {renderBarList(stats.labelRows, "bg-accent")}
           </div>
         </div>
       )}

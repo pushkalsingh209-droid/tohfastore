@@ -102,19 +102,19 @@ export default function OverviewTab() {
         sheet + a GSTR-style GST summary (CGST/SGST vs IGST by place of
         supply) + GST-by-state. Cancelled orders are in the Orders sheet
         but out of every GST total. */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-6 mb-6">
-      <p className="text-[10px] uppercase tracking-wider font-semibold mb-1 text-stone-500">Reports</p>
-      <p className="text-xs text-stone-500 mb-3">
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-6 mb-6">
+      <p className="text-[10px] uppercase tracking-wider font-semibold mb-1 text-faint">Reports</p>
+      <p className="text-xs text-faint mb-3">
         Excel workbook &mdash; Orders + a GST summary (taxable value, CGST/SGST/IGST by place of supply) + GST
         by state. IST-bounded; cancelled orders excluded from GST totals.
       </p>
       <div className="flex flex-col sm:flex-row sm:items-end gap-2">
         <div className="flex-1 min-w-0">
-          <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">Period</label>
+          <label className="block text-[11px] uppercase tracking-wider text-muted font-semibold mb-1">Period</label>
           <select
             value={reportPeriod}
             onChange={(e) => setReportPeriod(e.target.value)}
-            className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+            className="w-full px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
           >
             {REPORT_PERIODS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
@@ -124,21 +124,21 @@ export default function OverviewTab() {
         {reportPeriod === "custom" && (
           <>
             <div>
-              <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">From</label>
+              <label className="block text-[11px] uppercase tracking-wider text-muted font-semibold mb-1">From</label>
               <input
                 type="date"
                 value={reportFrom}
                 onChange={(e) => setReportFrom(e.target.value)}
-                className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+                className="w-full px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
               />
             </div>
             <div>
-              <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">To</label>
+              <label className="block text-[11px] uppercase tracking-wider text-muted font-semibold mb-1">To</label>
               <input
                 type="date"
                 value={reportTo}
                 onChange={(e) => setReportTo(e.target.value)}
-                className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+                className="w-full px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
               />
             </div>
           </>
@@ -147,12 +147,12 @@ export default function OverviewTab() {
           type="button"
           onClick={downloadReport}
           disabled={reportBusy || (reportPeriod === "custom" && (!reportFrom || !reportTo))}
-          className="px-5 py-2 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider whitespace-nowrap disabled:opacity-50"
+          className="px-5 py-2 rounded bg-fg hover:bg-accent hover:text-accent-fg text-bg text-xs font-semibold uppercase tracking-wider whitespace-nowrap disabled:opacity-50"
         >
           {reportBusy ? "Building…" : "Download Excel"}
         </button>
       </div>
-      {reportError && <p className="text-[11px] text-rose-600 mt-2">{reportError}</p>}
+      {reportError && <p className="text-[11px] text-danger mt-2">{reportError}</p>}
     </div>
 
     {/* SYSTEM HEALTH: keepalive heartbeat. /api/keepalive stamps
@@ -165,15 +165,15 @@ export default function OverviewTab() {
     {settings.last_keepalive_at && (
       <div
         className={`rounded-lg border p-4 mb-6 flex items-center justify-between gap-4 ${
-          keepaliveStale ? "bg-amber-50 border-amber-300" : "bg-stone-50 border-stone-200"
+          keepaliveStale ? "bg-accent-soft border-accent-soft-border" : "bg-surface-2 border-border"
         }`}
       >
         <div>
-          <p className="text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-stone-500">Keepalive heartbeat</p>
-          <p className={`text-sm font-mono ${keepaliveStale ? "text-amber-800 font-semibold" : "text-stone-700"}`}>
+          <p className="text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-faint">Keepalive heartbeat</p>
+          <p className={`text-sm font-mono ${keepaliveStale ? "text-accent font-semibold" : "text-muted"}`}>
             Last ran {new Date(settings.last_keepalive_at).toLocaleString("en-IN")}
           </p>
-          <p className="text-[10px] text-stone-400 mt-0.5">
+          <p className="text-[10px] text-faint mt-0.5">
             {keepaliveStale
               ? "Over 90 min ago — the external scheduler (cron-job.org) may be down."
               : "The external scheduler should hit /api/keepalive every 15–30 min."}
@@ -182,8 +182,8 @@ export default function OverviewTab() {
         <span
           className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full border ${
             keepaliveStale
-              ? "bg-amber-100 text-amber-800 border-amber-300"
-              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              ? "bg-accent-soft text-accent border-accent-soft-border"
+              : "bg-success-soft text-success border-success-border"
           }`}
         >
           {keepaliveStale ? "Check" : "OK"}
@@ -201,15 +201,15 @@ export default function OverviewTab() {
     {settings.last_abandoned_checkout_run_at && (
       <div
         className={`rounded-lg border p-4 mb-6 flex items-center justify-between gap-4 ${
-          abandonedCheckoutStale ? "bg-amber-50 border-amber-300" : "bg-stone-50 border-stone-200"
+          abandonedCheckoutStale ? "bg-accent-soft border-accent-soft-border" : "bg-surface-2 border-border"
         }`}
       >
         <div>
-          <p className="text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-stone-500">Abandoned-checkout cron</p>
-          <p className={`text-sm font-mono ${abandonedCheckoutStale ? "text-amber-800 font-semibold" : "text-stone-700"}`}>
+          <p className="text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-faint">Abandoned-checkout cron</p>
+          <p className={`text-sm font-mono ${abandonedCheckoutStale ? "text-accent font-semibold" : "text-muted"}`}>
             Last ran {new Date(settings.last_abandoned_checkout_run_at).toLocaleString("en-IN")}
           </p>
-          <p className="text-[10px] text-stone-400 mt-0.5">
+          <p className="text-[10px] text-faint mt-0.5">
             {abandonedCheckoutStale
               ? "Over 3h ago — the external scheduler may be down; abandoned-cart nudges aren't going out."
               : "The external scheduler should hit /api/cron/abandoned-checkout every 30–60 min."}
@@ -218,8 +218,8 @@ export default function OverviewTab() {
         <span
           className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full border ${
             abandonedCheckoutStale
-              ? "bg-amber-100 text-amber-800 border-amber-300"
-              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              ? "bg-accent-soft text-accent border-accent-soft-border"
+              : "bg-success-soft text-success border-success-border"
           }`}
         >
           {abandonedCheckoutStale ? "Check" : "OK"}
@@ -235,15 +235,15 @@ export default function OverviewTab() {
     {settings.last_review_reminder_run_at && (
       <div
         className={`rounded-lg border p-4 mb-6 flex items-center justify-between gap-4 ${
-          reviewReminderStale ? "bg-amber-50 border-amber-300" : "bg-stone-50 border-stone-200"
+          reviewReminderStale ? "bg-accent-soft border-accent-soft-border" : "bg-surface-2 border-border"
         }`}
       >
         <div>
-          <p className="text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-stone-500">Review-reminder cron</p>
-          <p className={`text-sm font-mono ${reviewReminderStale ? "text-amber-800 font-semibold" : "text-stone-700"}`}>
+          <p className="text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-faint">Review-reminder cron</p>
+          <p className={`text-sm font-mono ${reviewReminderStale ? "text-accent font-semibold" : "text-muted"}`}>
             Last ran {new Date(settings.last_review_reminder_run_at).toLocaleString("en-IN")}
           </p>
-          <p className="text-[10px] text-stone-400 mt-0.5">
+          <p className="text-[10px] text-faint mt-0.5">
             {reviewReminderStale
               ? "Over 30h ago — the external scheduler may be down; review nudges aren't going out."
               : "The external scheduler should hit /api/cron/review-reminder daily."}
@@ -252,8 +252,8 @@ export default function OverviewTab() {
         <span
           className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full border ${
             reviewReminderStale
-              ? "bg-amber-100 text-amber-800 border-amber-300"
-              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              ? "bg-accent-soft text-accent border-accent-soft-border"
+              : "bg-success-soft text-success border-success-border"
           }`}
         >
           {reviewReminderStale ? "Check" : "OK"}
@@ -273,15 +273,15 @@ export default function OverviewTab() {
       return (
         <div
           className={`rounded-lg border p-4 mb-6 flex items-center justify-between gap-4 ${
-            healthy ? "bg-stone-50 border-stone-200" : "bg-amber-50 border-amber-300"
+            healthy ? "bg-surface-2 border-border" : "bg-accent-soft border-accent-soft-border"
           }`}
         >
           <div>
-            <p className="text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-stone-500">WhatsApp (Green API) session</p>
-            <p className={`text-sm font-mono ${healthy ? "text-stone-700" : "text-amber-800 font-semibold"}`}>
+            <p className="text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-faint">WhatsApp (Green API) session</p>
+            <p className={`text-sm font-mono ${healthy ? "text-muted" : "text-accent font-semibold"}`}>
               {healthy ? "authorized" : state}
             </p>
-            <p className="text-[10px] text-stone-400 mt-0.5">
+            <p className="text-[10px] text-faint mt-0.5">
               {healthy
                 ? "Session is live — order updates, dispatch alerts and checkout OTPs are sending."
                 : state === "error"
@@ -292,8 +292,8 @@ export default function OverviewTab() {
           <span
             className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full border ${
               healthy
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                : "bg-amber-100 text-amber-800 border-amber-300"
+                ? "bg-success-soft text-success border-success-border"
+                : "bg-accent-soft text-accent border-accent-soft-border"
             }`}
           >
             {healthy ? "OK" : "Check"}
@@ -315,81 +315,81 @@ export default function OverviewTab() {
         at /engineering (the redacted counterpart -- same architecture/
         caching/security/process notes, none of the sensitive specifics).
         Plain links, not fetched/rendered data. */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-6 mb-6">
-      <p className="text-[10px] uppercase tracking-wider font-semibold mb-3 text-stone-500">Documentation</p>
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-6 mb-6">
+      <p className="text-[10px] uppercase tracking-wider font-semibold mb-3 text-faint">Documentation</p>
       <div className="flex flex-wrap gap-3">
         <a
           href="/handbook"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 min-w-[220px] rounded-lg border border-stone-200 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition p-4"
+          className="flex-1 min-w-[220px] rounded-lg border border-border bg-surface-2 hover:border-accent-soft-border hover:bg-accent-soft transition p-4"
         >
-          <p className="text-sm font-semibold text-stone-900">Engineering Handbook</p>
-          <p className="text-[11px] text-stone-500 mt-0.5">Schema, migrations, API routes, checkout flow, caching, gotchas &amp; the dated Change Log. Public URL, unlisted (noindex) &mdash; contains sensitive details, only share this link deliberately.</p>
+          <p className="text-sm font-semibold text-fg">Engineering Handbook</p>
+          <p className="text-[11px] text-faint mt-0.5">Schema, migrations, API routes, checkout flow, caching, gotchas &amp; the dated Change Log. Public URL, unlisted (noindex) &mdash; contains sensitive details, only share this link deliberately.</p>
         </a>
         <a
           href="/story"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 min-w-[220px] rounded-lg border border-stone-200 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition p-4"
+          className="flex-1 min-w-[220px] rounded-lg border border-border bg-surface-2 hover:border-accent-soft-border hover:bg-accent-soft transition p-4"
         >
-          <p className="text-sm font-semibold text-stone-900">Project Showcase</p>
-          <p className="text-[11px] text-stone-500 mt-0.5">The shareable page — what TOHFA is and how it&rsquo;s built. Public, no sign-in needed.</p>
+          <p className="text-sm font-semibold text-fg">Project Showcase</p>
+          <p className="text-[11px] text-faint mt-0.5">The shareable page — what TOHFA is and how it&rsquo;s built. Public, no sign-in needed.</p>
         </a>
         <a
           href="/engineering"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 min-w-[220px] rounded-lg border border-stone-200 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition p-4"
+          className="flex-1 min-w-[220px] rounded-lg border border-border bg-surface-2 hover:border-accent-soft-border hover:bg-accent-soft transition p-4"
         >
-          <p className="text-sm font-semibold text-stone-900">Engineering Overview</p>
-          <p className="text-[11px] text-stone-500 mt-0.5">The redacted, shareable write-up of the architecture, caching, security &amp; process. Public, no sign-in needed.</p>
+          <p className="text-sm font-semibold text-fg">Engineering Overview</p>
+          <p className="text-[11px] text-faint mt-0.5">The redacted, shareable write-up of the architecture, caching, security &amp; process. Public, no sign-in needed.</p>
         </a>
       </div>
     </div>
 
     {/* SECTION OVERVIEW: BUSINESS ANALYTICS */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="text-xl font-serif text-stone-900">Business Overview</h2>
-        <p className="text-stone-500 text-xs mt-1">Computed from your order history. Visitor-to-order conversion rate isn&rsquo;t shown here yet -- it needs Google Analytics&rsquo; Data API connected, which isn&rsquo;t set up.</p>
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Business Overview</h2>
+        <p className="text-faint text-xs mt-1">Computed from your order history. Visitor-to-order conversion rate isn&rsquo;t shown here yet -- it needs Google Analytics&rsquo; Data API connected, which isn&rsquo;t set up.</p>
       </div>
 
       {!analytics ? (
-        <p className="text-stone-400 text-sm text-center py-6">Loading analytics...</p>
+        <p className="text-faint text-sm text-center py-6">Loading analytics...</p>
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-              <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Total Orders</p>
-              <p className="text-xl font-mono font-bold text-stone-900">{analytics.totalOrders}</p>
+            <div className="bg-surface-2 border border-border rounded-lg p-4">
+              <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Total Orders</p>
+              <p className="text-xl font-mono font-bold text-fg">{analytics.totalOrders}</p>
             </div>
-            <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-              <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Total Revenue</p>
-              <p className="text-xl font-mono font-bold text-stone-900">₹{Math.round(analytics.totalRevenue).toLocaleString("en-IN")}</p>
+            <div className="bg-surface-2 border border-border rounded-lg p-4">
+              <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Total Revenue</p>
+              <p className="text-xl font-mono font-bold text-fg">₹{Math.round(analytics.totalRevenue).toLocaleString("en-IN")}</p>
             </div>
-            <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-              <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Avg. Order Value</p>
-              <p className="text-xl font-mono font-bold text-stone-900">₹{Math.round(analytics.averageOrderValue).toLocaleString("en-IN")}</p>
+            <div className="bg-surface-2 border border-border rounded-lg p-4">
+              <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Avg. Order Value</p>
+              <p className="text-xl font-mono font-bold text-fg">₹{Math.round(analytics.averageOrderValue).toLocaleString("en-IN")}</p>
             </div>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <p className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">Repeat Purchase Rate</p>
-              <p className="text-xl font-mono font-bold text-amber-800">{analytics.repeatPurchaseRate.toFixed(1)}%</p>
-              <p className="text-[10px] text-amber-600 mt-0.5">{analytics.repeatCustomers} of {analytics.totalCustomers} customers</p>
+            <div className="bg-accent-soft border border-accent-soft-border rounded-lg p-4">
+              <p className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">Repeat Purchase Rate</p>
+              <p className="text-xl font-mono font-bold text-accent">{analytics.repeatPurchaseRate.toFixed(1)}%</p>
+              <p className="text-[10px] text-accent mt-0.5">{analytics.repeatCustomers} of {analytics.totalCustomers} customers</p>
             </div>
           </div>
 
           <div>
-            <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">Revenue &mdash; Last 6 Months</h3>
+            <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">Revenue &mdash; Last 6 Months</h3>
             <div className="flex items-end gap-3 h-32">
               {analytics.monthlyTrend.map((m) => {
                 const max = Math.max(...analytics.monthlyTrend.map((x) => x.revenue), 1);
                 const heightPct = Math.max(4, (m.revenue / max) * 100);
                 return (
                   <div key={m.label} className="flex-1 flex flex-col items-center justify-end h-full">
-                    <span className="text-[9px] font-mono text-stone-500 mb-1">{m.revenue > 0 ? `₹${Math.round(m.revenue / 1000)}k` : ""}</span>
-                    <div className="w-full bg-amber-600 rounded-t transition-all" style={{ height: `${heightPct}%` }} />
-                    <span className="text-[10px] text-stone-400 mt-1.5 whitespace-nowrap">{m.label}</span>
+                    <span className="text-[9px] font-mono text-faint mb-1">{m.revenue > 0 ? `₹${Math.round(m.revenue / 1000)}k` : ""}</span>
+                    <div className="w-full bg-accent rounded-t transition-all" style={{ height: `${heightPct}%` }} />
+                    <span className="text-[10px] text-faint mt-1.5 whitespace-nowrap">{m.label}</span>
                   </div>
                 );
               })}
@@ -403,58 +403,58 @@ export default function OverviewTab() {
     <FinanceInsightsPanel orders={orders} products={products} />
 
     {/* SECTION OVERVIEW: WHATSAPP ENQUIRIES */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="text-xl font-serif text-stone-900">WhatsApp Enquiries</h2>
-        <p className="text-stone-500 text-xs mt-1">Logged whenever a visitor taps a &ldquo;Chat on WhatsApp&rdquo; button on a product card or product page &mdash; counts intent, not confirmed replies.</p>
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">WhatsApp Enquiries</h2>
+        <p className="text-faint text-xs mt-1">Logged whenever a visitor taps a &ldquo;Chat on WhatsApp&rdquo; button on a product card or product page &mdash; counts intent, not confirmed replies.</p>
       </div>
 
       {!enquiryAnalytics ? (
-        <p className="text-stone-400 text-sm text-center py-6">Loading analytics...</p>
+        <p className="text-faint text-sm text-center py-6">Loading analytics...</p>
       ) : enquiryAnalytics.totalEnquiries === 0 ? (
-        <p className="text-stone-400 text-sm text-center py-6">No WhatsApp enquiries logged yet.</p>
+        <p className="text-faint text-sm text-center py-6">No WhatsApp enquiries logged yet.</p>
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
-            <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-              <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Total Enquiries</p>
-              <p className="text-xl font-mono font-bold text-stone-900">{enquiryAnalytics.totalEnquiries}</p>
+            <div className="bg-surface-2 border border-border rounded-lg p-4">
+              <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Total Enquiries</p>
+              <p className="text-xl font-mono font-bold text-fg">{enquiryAnalytics.totalEnquiries}</p>
             </div>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <p className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">Out-of-Stock Enquiries</p>
-              <p className="text-xl font-mono font-bold text-amber-800">{enquiryAnalytics.outOfStockEnquiries}</p>
-              <p className="text-[10px] text-amber-600 mt-0.5">
+            <div className="bg-accent-soft border border-accent-soft-border rounded-lg p-4">
+              <p className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">Out-of-Stock Enquiries</p>
+              <p className="text-xl font-mono font-bold text-accent">{enquiryAnalytics.outOfStockEnquiries}</p>
+              <p className="text-[10px] text-accent mt-0.5">
                 {enquiryAnalytics.totalEnquiries > 0 ? ((enquiryAnalytics.outOfStockEnquiries / enquiryAnalytics.totalEnquiries) * 100).toFixed(1) : "0"}% of total
               </p>
             </div>
-            <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-              <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Top Category</p>
-              <p className="text-base font-serif font-bold text-stone-900 truncate">{enquiryAnalytics.byCategory[0]?.category || "--"}</p>
-              <p className="text-[10px] text-stone-400 mt-0.5">{enquiryAnalytics.byCategory[0]?.count || 0} enquiries</p>
+            <div className="bg-surface-2 border border-border rounded-lg p-4">
+              <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Top Category</p>
+              <p className="text-base font-serif font-bold text-fg truncate">{enquiryAnalytics.byCategory[0]?.category || "--"}</p>
+              <p className="text-[10px] text-faint mt-0.5">{enquiryAnalytics.byCategory[0]?.count || 0} enquiries</p>
             </div>
-            <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-              <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Top Product</p>
-              <p className="text-base font-serif font-bold text-stone-900 truncate">{enquiryAnalytics.topProducts[0]?.productName || "--"}</p>
-              <p className="text-[10px] text-stone-400 mt-0.5">{enquiryAnalytics.topProducts[0]?.count || 0} enquiries</p>
+            <div className="bg-surface-2 border border-border rounded-lg p-4">
+              <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Top Product</p>
+              <p className="text-base font-serif font-bold text-fg truncate">{enquiryAnalytics.topProducts[0]?.productName || "--"}</p>
+              <p className="text-[10px] text-faint mt-0.5">{enquiryAnalytics.topProducts[0]?.count || 0} enquiries</p>
             </div>
-            <div className="bg-sky-50 border border-sky-200 rounded-lg p-4">
-              <p className="text-[10px] uppercase tracking-wider text-sky-700 font-semibold mb-1">Notify-on-Enquiry Sends</p>
-              <p className="text-xl font-mono font-bold text-sky-800">{enquiryAnalytics.enquiryNotifySends}</p>
-              <p className="text-[10px] text-sky-600 mt-0.5">across {enquiryAnalytics.enquiriesWithNotify} enquiries</p>
+            <div className="bg-accent-soft border border-accent-soft-border rounded-lg p-4">
+              <p className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">Notify-on-Enquiry Sends</p>
+              <p className="text-xl font-mono font-bold text-accent">{enquiryAnalytics.enquiryNotifySends}</p>
+              <p className="text-[10px] text-accent mt-0.5">across {enquiryAnalytics.enquiriesWithNotify} enquiries</p>
             </div>
           </div>
 
           <div className="mb-8">
-            <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">Enquiries &mdash; Last 14 Days</h3>
+            <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">Enquiries &mdash; Last 14 Days</h3>
             <div className="flex items-end gap-1.5 h-28">
               {enquiryAnalytics.dailyTrend.map((d) => {
                 const max = Math.max(...enquiryAnalytics.dailyTrend.map((x) => x.count), 1);
                 const heightPct = Math.max(4, (d.count / max) * 100);
                 return (
                   <div key={d.label} className="flex-1 flex flex-col items-center justify-end h-full">
-                    <span className="text-[9px] font-mono text-stone-500 mb-1">{d.count > 0 ? d.count : ""}</span>
-                    <div className="w-full bg-emerald-600 rounded-t transition-all" style={{ height: `${heightPct}%` }} />
-                    <span className="text-[8px] text-stone-400 mt-1.5 whitespace-nowrap">{d.label}</span>
+                    <span className="text-[9px] font-mono text-faint mb-1">{d.count > 0 ? d.count : ""}</span>
+                    <div className="w-full bg-success rounded-t transition-all" style={{ height: `${heightPct}%` }} />
+                    <span className="text-[8px] text-faint mt-1.5 whitespace-nowrap">{d.label}</span>
                   </div>
                 );
               })}
@@ -463,23 +463,23 @@ export default function OverviewTab() {
 
           <div className="grid sm:grid-cols-2 gap-6">
             <div>
-              <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">By Category</h3>
+              <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">By Category</h3>
               <div className="space-y-2">
                 {enquiryAnalytics.byCategory.map((c) => (
                   <div key={c.category} className="flex items-center justify-between text-xs gap-2">
-                    <span className="text-stone-600 truncate">{c.category}</span>
-                    <span className="font-mono font-bold text-stone-900 bg-stone-100 rounded px-2 py-0.5 flex-shrink-0">{c.count}</span>
+                    <span className="text-muted truncate">{c.category}</span>
+                    <span className="font-mono font-bold text-fg bg-surface-2 rounded px-2 py-0.5 flex-shrink-0">{c.count}</span>
                   </div>
                 ))}
               </div>
             </div>
             <div>
-              <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">Top Products</h3>
+              <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">Top Products</h3>
               <div className="space-y-2">
                 {enquiryAnalytics.topProducts.map((p) => (
                   <div key={String(p.productId)} className="flex items-center justify-between text-xs gap-2">
-                    <span className="text-stone-600 truncate">{p.productName}</span>
-                    <span className="font-mono font-bold text-stone-900 bg-stone-100 rounded px-2 py-0.5 flex-shrink-0">{p.count}</span>
+                    <span className="text-muted truncate">{p.productName}</span>
+                    <span className="font-mono font-bold text-fg bg-surface-2 rounded px-2 py-0.5 flex-shrink-0">{p.count}</span>
                   </div>
                 ))}
               </div>
@@ -488,25 +488,25 @@ export default function OverviewTab() {
 
           <div className="grid sm:grid-cols-2 gap-6 mt-6">
             <div>
-              <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">By WhatsApp Number</h3>
+              <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">By WhatsApp Number</h3>
               <div className="space-y-2">
                 {enquiryAnalytics.byNumber.map((n) => (
                   <div key={n.whatsappNumber} className="flex items-center justify-between text-xs gap-2">
-                    <span className="text-stone-600 font-mono truncate">{n.whatsappNumber === "unknown" ? "Unknown" : `+${n.whatsappNumber}`}</span>
-                    <span className="font-mono font-bold text-stone-900 bg-stone-100 rounded px-2 py-0.5 flex-shrink-0">{n.count}</span>
+                    <span className="text-muted font-mono truncate">{n.whatsappNumber === "unknown" ? "Unknown" : `+${n.whatsappNumber}`}</span>
+                    <span className="font-mono font-bold text-fg bg-surface-2 rounded px-2 py-0.5 flex-shrink-0">{n.count}</span>
                   </div>
                 ))}
               </div>
             </div>
             <div>
-              <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">By Source</h3>
+              <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">By Source</h3>
               <div className="space-y-2">
                 {enquiryAnalytics.bySource.map((s) => (
                   <div key={s.source} className="flex items-center justify-between text-xs gap-2">
-                    <span className="text-stone-600 truncate">
+                    <span className="text-muted truncate">
                       {s.source === "card_front" ? "Product Card (Front)" : s.source === "card_back" ? "Product Card (Flipped)" : s.source === "product_detail" ? "Product Detail Page" : s.source}
                     </span>
-                    <span className="font-mono font-bold text-stone-900 bg-stone-100 rounded px-2 py-0.5 flex-shrink-0">{s.count}</span>
+                    <span className="font-mono font-bold text-fg bg-surface-2 rounded px-2 py-0.5 flex-shrink-0">{s.count}</span>
                   </div>
                 ))}
               </div>
@@ -517,28 +517,28 @@ export default function OverviewTab() {
     </div>
 
     {/* SECTION OVERVIEW: LEADS */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6 flex items-center justify-between flex-wrap gap-3">
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-xl font-serif text-stone-900">Leads</h2>
-          <p className="text-stone-500 text-xs mt-1">
+          <h2 className="text-xl font-serif text-fg">Leads</h2>
+          <p className="text-faint text-xs mt-1">
             Captured from the /catalogue download form, the /corporate gifting inquiry form, and shoppers who verify their
             WhatsApp number at checkout but haven&rsquo;t completed the order yet (a completed order moves to the Orders
             section instead).
           </p>
         </div>
-        <span className="text-xs font-mono font-bold text-stone-500 bg-stone-100 border border-stone-200 rounded px-3 py-1.5 whitespace-nowrap">
+        <span className="text-xs font-mono font-bold text-faint bg-surface-2 border border-border rounded px-3 py-1.5 whitespace-nowrap">
           {leads.length} lead{leads.length === 1 ? "" : "s"}
         </span>
       </div>
 
       {leads.length === 0 ? (
-        <p className="text-stone-400 text-sm text-center py-6">No leads captured yet.</p>
+        <p className="text-faint text-sm text-center py-6">No leads captured yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="bg-stone-50 text-stone-700 uppercase font-semibold text-[10px] tracking-wider border-b border-stone-200">
+              <tr className="bg-surface-2 text-muted uppercase font-semibold text-[10px] tracking-wider border-b border-border">
                 <th className="p-3">Name</th>
                 <th className="p-3">Contact</th>
                 <th className="p-3">Source</th>
@@ -548,24 +548,24 @@ export default function OverviewTab() {
                 <th className="p-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-border">
               {leads.map((lead) => (
                 <tr key={lead.id}>
-                  <td className="p-3 font-medium text-stone-900 whitespace-nowrap">{lead.name}</td>
-                  <td className="p-3 text-stone-600">
+                  <td className="p-3 font-medium text-fg whitespace-nowrap">{lead.name}</td>
+                  <td className="p-3 text-muted">
                     {lead.email && <div>{lead.email}</div>}
-                    {lead.phone && <div className="text-stone-400 font-mono">{lead.phone}</div>}
+                    {lead.phone && <div className="text-faint font-mono">{lead.phone}</div>}
                   </td>
                   <td className="p-3">
                     <span
                       className={`px-2 py-1 rounded text-[10px] uppercase font-semibold whitespace-nowrap ${
                         lead.source === "corporate_gifting"
-                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                          ? "bg-accent-soft text-accent border border-accent-soft-border"
                           : lead.source === "checkout_started"
-                          ? "bg-sky-50 text-sky-700 border border-sky-200"
+                          ? "bg-accent-soft text-accent border border-accent-soft-border"
                           : lead.source === "product_enquiry"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : "bg-stone-100 text-stone-600 border border-stone-200"
+                          ? "bg-success-soft text-success border border-success-border"
+                          : "bg-surface-2 text-muted border border-border"
                       }`}
                     >
                       {lead.source === "corporate_gifting"
@@ -577,23 +577,23 @@ export default function OverviewTab() {
                         : "Catalogue"}
                     </span>
                   </td>
-                  <td className="p-3 text-stone-500 max-w-[240px]">
+                  <td className="p-3 text-faint max-w-[240px]">
                     {lead.details && (
                       <div className="space-y-0.5">
                         {/* A product enquiry only ever has a phone number, so
                             the product it was about is the whole context the
                             admin needs before replying. */}
                         {lead.details.productName && (
-                          <div className="font-medium text-stone-700">Asked about: {lead.details.productName}</div>
+                          <div className="font-medium text-muted">Asked about: {lead.details.productName}</div>
                         )}
                         {lead.details.productName && lead.details.outOfStock && (
-                          <div className="text-amber-700">Was out of stock when they asked</div>
+                          <div className="text-accent">Was out of stock when they asked</div>
                         )}
                         {lead.details.company && <div>Company: {lead.details.company}</div>}
                         {lead.details.quantity && <div>Qty: {lead.details.quantity}</div>}
                         {lead.details.occasion && <div>Occasion: {lead.details.occasion}</div>}
                         {lead.details.message && (
-                          <div className="text-stone-400 italic line-clamp-2">&ldquo;{lead.details.message}&rdquo;</div>
+                          <div className="text-faint italic line-clamp-2">&ldquo;{lead.details.message}&rdquo;</div>
                         )}
                         {Array.isArray(lead.details.cartItems) && lead.details.cartItems.length > 0 && (
                           <div>
@@ -601,7 +601,7 @@ export default function OverviewTab() {
                               {lead.details.cartItems.map((i) => `${i.name} x${i.quantity}`).join(", ")}
                             </div>
                             {typeof lead.details.cartTotal === "number" && (
-                              <div className="font-mono text-stone-600">Cart: ₹{lead.details.cartTotal.toLocaleString("en-IN")}</div>
+                              <div className="font-mono text-muted">Cart: ₹{lead.details.cartTotal.toLocaleString("en-IN")}</div>
                             )}
                           </div>
                         )}
@@ -610,7 +610,7 @@ export default function OverviewTab() {
                   </td>
                   <td className="p-3 whitespace-nowrap">
                     {lead.contacted ? (
-                      <span className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-green-50 text-green-700 border border-green-200">
+                      <span className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-success-soft text-success border border-success-border">
                         Contacted{lead.contacted_at ? ` · ${new Date(lead.contacted_at).toLocaleDateString("en-IN")}` : ""}
                       </span>
                     ) : (
@@ -619,7 +619,7 @@ export default function OverviewTab() {
                           <button
                             type="button"
                             onClick={() => handleLeadFollowUp(lead.id, false)}
-                            className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-amber-600 text-white hover:bg-amber-700 transition"
+                            className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-accent text-accent-fg hover:bg-accent transition"
                           >
                             Send WhatsApp
                           </button>
@@ -627,14 +627,14 @@ export default function OverviewTab() {
                         <button
                           type="button"
                           onClick={() => handleLeadFollowUp(lead.id, true)}
-                          className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-stone-100 text-stone-600 border border-stone-200 hover:bg-stone-200 transition"
+                          className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-surface-2 text-muted border border-border hover:bg-disabled transition"
                         >
                           Mark done
                         </button>
                       </div>
                     )}
                   </td>
-                  <td className="p-3 text-right text-stone-400 font-mono whitespace-nowrap">
+                  <td className="p-3 text-right text-faint font-mono whitespace-nowrap">
                     {new Date(lead.created_at).toLocaleDateString("en-IN")}
                   </td>
                   <td className="p-3 text-right whitespace-nowrap">
@@ -642,7 +642,7 @@ export default function OverviewTab() {
                       type="button"
                       onClick={() => handleDeleteLead(lead.id, lead.name)}
                       aria-label={`Delete lead from ${lead.name}`}
-                      className="px-2 py-1 rounded text-[10px] uppercase font-semibold text-rose-700 border border-rose-200 hover:bg-rose-50 transition"
+                      className="px-2 py-1 rounded text-[10px] uppercase font-semibold text-danger border border-danger-border hover:bg-danger-soft transition"
                     >
                       Delete
                     </button>

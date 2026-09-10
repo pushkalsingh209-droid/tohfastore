@@ -377,7 +377,7 @@
     <thead><tr><th>Layer</th><th>Choice</th><th>Notes</th></tr></thead>
     <tbody>
       <tr><td>Framework</td><td>Next.js 16 (App Router, Turbopack)</td><td>React 19, TypeScript <strong>strict</strong>. Breaking changes vs older Next &mdash; check <code>node_modules/next/dist/docs/</code> before writing route/convention code.</td></tr>
-      <tr><td>Styling</td><td>Tailwind v4</td><td><strong>10 colour themes</strong>, each a <code>:root[data-theme="&hellip;"]</code> block of 14 semantic tokens in <code>globals.css</code> (the rest <code>color-mix()</code>-derived), set as <code>data-theme</code> on <code>&lt;html&gt;</code> by a blocking script in <code>layout.tsx</code> before first paint (registry: <code>app/utils/themes.ts</code>). <code>sand</code> = the old light, <code>ink</code> = the old dark. No <code>.dark</code> class and no <code>dark:</code> variants &mdash; the picker just flips the attribute (<code>docs/DESIGN-theming.md</code>).</td></tr>
+      <tr><td>Styling</td><td>Tailwind v4</td><td><strong>10 colour themes</strong>, each a <code>:root[data-theme="&hellip;"]</code> block of 14 semantic tokens in <code>globals.css</code> (the rest <code>color-mix()</code>-derived), set as <code>data-theme</code> on <code>&lt;html&gt;</code> by a blocking script in <code>layout.tsx</code> before first paint (registry: <code>app/utils/themes.ts</code>). <code>sand</code> = the old light, <code>ink</code> = the old dark. No <code>.dark</code> class and no <code>dark:</code> variants anywhere (storefront <strong>and</strong> the admin panel) &mdash; the picker just flips the attribute (<code>docs/DESIGN-theming.md</code>).</td></tr>
       <tr><td>Data</td><td>Supabase (Postgres + Storage)</td><td>Migrations are hand-run SQL in <code>supabase/migrations/</code> (no CLI wired). The two base tables (<code>products</code>, <code>orders</code>) have no migration file.</td></tr>
       <tr><td>Payments</td><td>Razorpay &mdash; <strong>LIVE keys only</strong></td><td>No test keys on this project. Payment-path changes are proposals until watched against real orders.</td></tr>
       <tr><td>Messaging</td><td>WhatsApp via Green API</td><td>Order confirmations, business alerts, back-in-stock, status updates, checkout OTP. Free tier has a monthly distinct-chat cap.</td></tr>
@@ -1360,7 +1360,7 @@ takes a second arg.</p>
 <tbody>
 <tr><td>Framework</td><td>Next.js <code>16.2.7</code> App Router</td><td>React <code>19.2.4</code>, RSC + Route Handlers. Node runtime where <code>crypto</code> is needed.</td></tr>
 <tr><td>Language</td><td>TypeScript 5, <code>strict</code></td><td>Path alias <code>@/*</code> &rarr; repo root. <code>target ES2017</code>, <code>moduleResolution bundler</code>.</td></tr>
-<tr><td>Styling</td><td>Tailwind CSS v4</td><td><strong>10 colour themes</strong>, selected via <code>ThemePicker</code> in the header. Each is a <code>data-theme</code> attribute on <code>&lt;html&gt;</code>, set before first paint by a blocking script in <code>layout.tsx</code> built from the registry in <code>app/utils/themes.ts</code> (<code>buildThemeInitScript</code>). <code>sand</code> = the old light, <code>ink</code> = the old dark; the others: <code>dusk</code>, <code>brass</code>, <code>forest</code>, <code>rose</code>, <code>midnight</code>, <code>marigold</code>, <code>slate</code>, <code>peacock</code>. Each theme is one <code>:root[data-theme="&hellip;"]</code> block of <strong>14 primitive tokens</strong> in <code>globals.css</code>; everything else (<code>--accent-hover</code>, <code>--link</code>, <code>--*-soft</code>/<code>-border</code>, <code>--disabled</code>, <code>--footer-*</code>, <code>--scrim</code>) is derived once via <code>color-mix()</code> in a bare <code>:root</code> block, so it re-resolves per theme. Mapped to Tailwind utilities via <code>@theme inline</code> (<code>--color-bg</code>, <code>--color-fg</code>, <code>--color-accent</code>, <code>--color-link</code>, <code>--color-surface</code>&hellip;). <strong>No <code>.dark</code> class and no <code>dark:</code> variants anywhere</strong> &mdash; the picker just flips the attribute (the <code>@custom-variant dark</code> + <code>.dark</code>-toggle shim was removed once the last <code>dark:</code> utility became a token; theming PR 4, 2026-09-10). The old single <code>--background</code>/<code>--foreground</code> pair is kept only for the <code>&lt;body&gt;</code>&rsquo;s legacy class; page code uses <code>bg-bg</code>/<code>text-fg</code>. Plan + phasing in <code>docs/DESIGN-theming.md</code>.</td></tr>
+<tr><td>Styling</td><td>Tailwind CSS v4</td><td><strong>10 colour themes</strong>, selected via <code>ThemePicker</code> in the header. Each is a <code>data-theme</code> attribute on <code>&lt;html&gt;</code>, set before first paint by a blocking script in <code>layout.tsx</code> built from the registry in <code>app/utils/themes.ts</code> (<code>buildThemeInitScript</code>). <code>sand</code> = the old light, <code>ink</code> = the old dark; the others: <code>dusk</code>, <code>brass</code>, <code>forest</code>, <code>rose</code>, <code>midnight</code>, <code>marigold</code>, <code>slate</code>, <code>peacock</code>. Each theme is one <code>:root[data-theme="&hellip;"]</code> block of <strong>14 primitive tokens</strong> in <code>globals.css</code>; everything else (<code>--accent-hover</code>, <code>--link</code>, <code>--*-soft</code>/<code>-border</code>, <code>--disabled</code>, <code>--footer-*</code>, <code>--scrim</code>) is derived once via <code>color-mix()</code> in a bare <code>:root</code> block, so it re-resolves per theme. Mapped to Tailwind utilities via <code>@theme inline</code> (<code>--color-bg</code>, <code>--color-fg</code>, <code>--color-accent</code>, <code>--color-link</code>, <code>--color-surface</code>&hellip;). <strong>No <code>.dark</code> class and no <code>dark:</code> variants anywhere</strong> &mdash; storefront and the admin panel both (theming PRs 1&ndash;5, 2026-09-10); the picker just flips the attribute (the <code>@custom-variant dark</code> + <code>.dark</code>-toggle shim was removed with the last <code>dark:</code> utility in PR 4). The old single <code>--background</code>/<code>--foreground</code> pair is kept only for the <code>&lt;body&gt;</code>&rsquo;s legacy class; page code uses <code>bg-bg</code>/<code>text-fg</code>. Plan + phasing in <code>docs/DESIGN-theming.md</code>.</td></tr>
 <tr><td>Database</td><td>Supabase Postgres</td><td>Project ref <code>gxlervcazzddqcoagewy</code>. Migrations are hand-run SQL in <code>supabase/migrations/*.sql</code>.</td></tr>
 <tr><td>Supabase SDK</td><td><code>@supabase/ssr</code> 0.10, <code>@supabase/supabase-js</code> 2.107</td><td>Four client factories (&sect;8). Storefront reads use the service-role key server-side.</td></tr>
 <tr><td>Payments</td><td><code>razorpay</code> 2.9</td><td>Server SDK for order creation + payment/order fetch in the webhook. Client loads <code>checkout.razorpay.com/v1/checkout.js</code>.</td></tr>
@@ -3012,6 +3012,34 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-10<br>12:42</code></td>
+  <td><strong>Theming PR 5: admin panel &rarr; tokens</strong><br>(the optional final slice &mdash; the admin panel now themes with the storefront)</td>
+  <td>
+    <code>app/admin/**</code> + <code>app/components/admin/**</code> (15 files, ~1400 colour-class
+    occurrences) converted to the semantic tokens. Admin was light-only (0 <code>dark:</code> variants),
+    so this was a straight bare-class sweep: <code>stone-*</code> greys &rarr;
+    <code>bg-surface</code>/<code>bg-surface-2</code>/<code>text-fg</code>/<code>text-muted</code>/<code>text-faint</code>/<code>border-border</code>/<code>border-border-strong</code>;
+    <code>bg-white</code> &rarr; <code>bg-surface</code>; <code>amber-*</code> &rarr; the <code>accent</code> family;
+    <code>emerald-*</code> &rarr; <code>success</code>, <code>rose-*</code>/<code>red-*</code> &rarr; <code>danger</code>;
+    the <code>sky</code>/<code>indigo</code>/<code>violet</code>/<code>orange</code> notice accents folded into
+    <code>accent</code> (no separate info token). Primary buttons &rarr; <code>bg-fg text-bg</code> +
+    <code>hover:bg-accent hover:text-accent-fg</code> (same inverted pattern as the storefront); the shell
+    wrapper <code>bg-[var(--background)]</code> &rarr; <code>bg-bg</code>; native <code>accent-amber-*</code>
+    (checkbox tint) &rarr; <code>accent-[var(--accent)]</code>. Order-status badges keep their
+    green / red / accent / grey semantics. No logic change &mdash; class strings only.
+  </td>
+  <td>
+    <em>edited:</em> <code>app/admin/page.tsx</code>, <code>app/admin/login/page.tsx</code>,
+    <code>app/admin/tabs/*.tsx</code> (7), <code>app/components/admin/*.tsx</code> (5);
+    <code>docs/DESIGN-theming.md</code>, this handbook, <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> (changed files) <strong>0 errors</strong>
+    (3 pre-existing warnings) &middot; <code>npm test</code> 324 / 1 skip &middot; <code>next build</code>
+    exit 0, 145/145 static &middot; admin login shell + Products + Orders tabs screenshotted in
+    <code>sand</code> / <code>ink</code> / <code>midnight</code> (TOTP login automated) &mdash; all legible.
+    Internal tool; not a schema / payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-10<br>12:08</code></td>
   <td><strong>Theming PR 4 of ~4: grep gate + drop the <code>.dark</code> shim + 8 palettes &mdash; 10 themes live</strong><br>(the mechanical conversion is finished; the 8 new palettes are the visual change)</td>

@@ -31,8 +31,8 @@ export default function GroupStatsPanel({
   rows,
   totals,
   lowStockThreshold,
-  valueBarColorClass = "bg-amber-600",
-  unitsBarColorClass = "bg-sky-600",
+  valueBarColorClass = "bg-accent",
+  unitsBarColorClass = "bg-accent",
 }: {
   title: string;
   groupLabel: string;
@@ -57,11 +57,11 @@ export default function GroupStatsPanel({
   };
 
   return (
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-serif text-stone-900">{title}</h2>
-          <p className="text-stone-500 text-xs mt-1">
+          <h2 className="text-xl font-serif text-fg">{title}</h2>
+          <p className="text-faint text-xs mt-1">
             &ldquo;Value&rdquo; is stock &times; selling price -- working capital tied up at retail price, not profit margin. Computed live from the full catalog, not just the current search/filter below.
           </p>
         </div>
@@ -69,48 +69,48 @@ export default function GroupStatsPanel({
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-        <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-          <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Total Products</p>
-          <p className="text-xl font-mono font-bold text-stone-900">{totals.productCount}</p>
+        <div className="bg-surface-2 border border-border rounded-lg p-4">
+          <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Total Products</p>
+          <p className="text-xl font-mono font-bold text-fg">{totals.productCount}</p>
         </div>
-        <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-          <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Units In Stock</p>
-          <p className="text-xl font-mono font-bold text-stone-900">{totals.totalUnits.toLocaleString("en-IN")}</p>
+        <div className="bg-surface-2 border border-border rounded-lg p-4">
+          <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Units In Stock</p>
+          <p className="text-xl font-mono font-bold text-fg">{totals.totalUnits.toLocaleString("en-IN")}</p>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <p className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">Total Inventory Value</p>
-          <p className="text-xl font-mono font-bold text-amber-800">₹{Math.round(totals.totalValue).toLocaleString("en-IN")}</p>
+        <div className="bg-accent-soft border border-accent-soft-border rounded-lg p-4">
+          <p className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">Total Inventory Value</p>
+          <p className="text-xl font-mono font-bold text-accent">₹{Math.round(totals.totalValue).toLocaleString("en-IN")}</p>
         </div>
-        <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
-          <p className="text-[10px] uppercase tracking-wider text-rose-700 font-semibold mb-1">Out of Stock</p>
-          <p className="text-xl font-mono font-bold text-rose-800">{totals.outOfStockCount}</p>
+        <div className="bg-danger-soft border border-danger-border rounded-lg p-4">
+          <p className="text-[10px] uppercase tracking-wider text-danger font-semibold mb-1">Out of Stock</p>
+          <p className="text-xl font-mono font-bold text-danger">{totals.outOfStockCount}</p>
         </div>
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <p className="text-[10px] uppercase tracking-wider text-orange-700 font-semibold mb-1">Low Stock (&le;{lowStockThreshold})</p>
-          <p className="text-xl font-mono font-bold text-orange-800">{totals.lowStockCount}</p>
+        <div className="bg-accent-soft border border-accent-soft-border rounded-lg p-4">
+          <p className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">Low Stock (&le;{lowStockThreshold})</p>
+          <p className="text-xl font-mono font-bold text-accent">{totals.lowStockCount}</p>
         </div>
       </div>
 
       {rows.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <div>
-            <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">Inventory Value by {groupLabel}</h3>
+            <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">Inventory Value by {groupLabel}</h3>
             <div className="space-y-2">
               {(() => {
                 const maxValue = Math.max(...rows.map((r) => r.value), 1);
                 return rows.map((row) => (
                   <div key={row.key} className="flex items-center gap-2">
-                    <span className="w-20 sm:w-24 flex-shrink-0 truncate text-[11px] text-stone-600" title={row.key}>
+                    <span className="w-20 sm:w-24 flex-shrink-0 truncate text-[11px] text-muted" title={row.key}>
                       {row.key}
                     </span>
-                    <div className="flex-1 bg-stone-100 rounded-full h-4 overflow-hidden">
+                    <div className="flex-1 bg-surface-2 rounded-full h-4 overflow-hidden">
                       <div
                         className={`h-full ${valueBarColorClass} rounded-full transition-all`}
                         style={{ width: `${Math.max(4, (row.value / maxValue) * 100)}%` }}
                         title={`₹${Math.round(row.value).toLocaleString("en-IN")}`}
                       />
                     </div>
-                    <span className="w-20 flex-shrink-0 text-right text-[11px] font-mono text-stone-700">
+                    <span className="w-20 flex-shrink-0 text-right text-[11px] font-mono text-muted">
                       ₹{Math.round(row.value).toLocaleString("en-IN")}
                     </span>
                   </div>
@@ -120,23 +120,23 @@ export default function GroupStatsPanel({
           </div>
 
           <div>
-            <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">Units In Stock by {groupLabel}</h3>
+            <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">Units In Stock by {groupLabel}</h3>
             <div className="space-y-2">
               {(() => {
                 const maxUnits = Math.max(...rows.map((r) => r.units), 1);
                 return rows.map((row) => (
                   <div key={row.key} className="flex items-center gap-2">
-                    <span className="w-20 sm:w-24 flex-shrink-0 truncate text-[11px] text-stone-600" title={row.key}>
+                    <span className="w-20 sm:w-24 flex-shrink-0 truncate text-[11px] text-muted" title={row.key}>
                       {row.key}
                     </span>
-                    <div className="flex-1 bg-stone-100 rounded-full h-4 overflow-hidden">
+                    <div className="flex-1 bg-surface-2 rounded-full h-4 overflow-hidden">
                       <div
                         className={`h-full ${unitsBarColorClass} rounded-full transition-all`}
                         style={{ width: `${Math.max(4, (row.units / maxUnits) * 100)}%` }}
                         title={`${row.units.toLocaleString("en-IN")} units`}
                       />
                     </div>
-                    <span className="w-20 flex-shrink-0 text-right text-[11px] font-mono text-stone-700">
+                    <span className="w-20 flex-shrink-0 text-right text-[11px] font-mono text-muted">
                       {row.units.toLocaleString("en-IN")}
                     </span>
                   </div>
@@ -147,11 +147,11 @@ export default function GroupStatsPanel({
         </div>
       )}
 
-      <h3 className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-3">By {groupLabel}</h3>
+      <h3 className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-3">By {groupLabel}</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
-            <tr className="bg-stone-50 text-stone-700 uppercase font-semibold text-[10px] tracking-wider border-b border-stone-200">
+            <tr className="bg-surface-2 text-muted uppercase font-semibold text-[10px] tracking-wider border-b border-border">
               <th className="p-3">{groupLabel}</th>
               <th className="p-3 text-right">Products</th>
               <th className="p-3 text-right">Units In Stock</th>
@@ -160,15 +160,15 @@ export default function GroupStatsPanel({
               <th className="p-3 text-right">Low Stock</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-100">
+          <tbody className="divide-y divide-border">
             {rows.map((row) => (
               <tr key={row.key}>
-                <td className="p-3 text-stone-800 font-medium whitespace-nowrap">{row.key}</td>
-                <td className="p-3 text-right font-mono text-stone-700">{row.count}</td>
-                <td className="p-3 text-right font-mono text-stone-700">{row.units.toLocaleString("en-IN")}</td>
-                <td className="p-3 text-right font-mono text-stone-900 font-semibold">₹{Math.round(row.value).toLocaleString("en-IN")}</td>
-                <td className="p-3 text-right font-mono text-rose-600">{row.outOfStock || "—"}</td>
-                <td className="p-3 text-right font-mono text-orange-600">{row.lowStock || "—"}</td>
+                <td className="p-3 text-fg font-medium whitespace-nowrap">{row.key}</td>
+                <td className="p-3 text-right font-mono text-muted">{row.count}</td>
+                <td className="p-3 text-right font-mono text-muted">{row.units.toLocaleString("en-IN")}</td>
+                <td className="p-3 text-right font-mono text-fg font-semibold">₹{Math.round(row.value).toLocaleString("en-IN")}</td>
+                <td className="p-3 text-right font-mono text-danger">{row.outOfStock || "—"}</td>
+                <td className="p-3 text-right font-mono text-accent">{row.lowStock || "—"}</td>
               </tr>
             ))}
           </tbody>

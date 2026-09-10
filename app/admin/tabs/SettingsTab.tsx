@@ -804,13 +804,13 @@ export default function SettingsTab() {
   return (
     <>
     {/* SECTION D.0: STOREFRONT SETTINGS */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="text-xl font-serif text-stone-900">Storefront Settings</h2>
-        <p className="text-stone-500 text-xs mt-1">Controls what visitors see by default -- they can still change the page-size selector themselves at any time.</p>
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Storefront Settings</h2>
+        <p className="text-faint text-xs mt-1">Controls what visitors see by default -- they can still change the page-size selector themselves at any time.</p>
       </div>
       <div className="flex items-center gap-3 flex-wrap">
-        <label className="text-sm text-stone-700 font-medium">Default products per page (site-wide)</label>
+        <label className="text-sm text-muted font-medium">Default products per page (site-wide)</label>
         <input
           key={settings.default_page_size ?? ""}
           type="number"
@@ -821,11 +821,11 @@ export default function SettingsTab() {
             const next = e.target.value.trim();
             if (next && next !== settings.default_page_size) handleUpdateDefaultPageSize(next);
           }}
-          className="w-24 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-24 px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
         />
       </div>
       <div className="flex items-center gap-3 flex-wrap mt-4">
-        <label className="text-sm text-stone-700 font-medium">Cards loaded per scroll batch</label>
+        <label className="text-sm text-muted font-medium">Cards loaded per scroll batch</label>
         <input
           key={settings.catalog_reveal_batch_size ?? ""}
           type="number"
@@ -836,18 +836,18 @@ export default function SettingsTab() {
             const next = e.target.value.trim();
             if (next && next !== settings.catalog_reveal_batch_size) handleUpdateCatalogRevealBatchSize(next);
           }}
-          className="w-24 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-24 px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
         />
-        <span className="text-stone-400 text-xs w-full">
+        <span className="text-faint text-xs w-full">
           How many product cards mount at once as a shopper scrolls the catalog grid -- more load automatically as they get near the bottom of what’s already shown. Lower keeps scrolling smoother on long pages; minimum 8.
         </span>
       </div>
       <div className="flex items-center gap-3 flex-wrap mt-4">
-        <label className="text-sm text-stone-700 font-medium">Default product photo look</label>
+        <label className="text-sm text-muted font-medium">Default product photo look</label>
         <select
           value={settings.default_photo_filter ?? "Bright"}
           onChange={(e) => handleUpdateDefaultPhotoFilter(e.target.value)}
-          className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         >
           {PHOTO_FILTER_PRESETS.map((preset) => (
             <option key={preset.name} value={preset.name}>
@@ -855,33 +855,33 @@ export default function SettingsTab() {
             </option>
           ))}
         </select>
-        <span className="text-stone-400 text-xs">A visitor’s own tap on a photo’s filter icon always overrides this for their view.</span>
+        <span className="text-faint text-xs">A visitor’s own tap on a photo’s filter icon always overrides this for their view.</span>
       </div>
       <div className="flex items-center gap-3 flex-wrap mt-4">
-        <label className="text-sm text-stone-700 font-medium">Weight display unit</label>
+        <label className="text-sm text-muted font-medium">Weight display unit</label>
         <select
           value={settings.weight_unit ?? "g"}
           onChange={(e) => handleUpdateWeightUnit(e.target.value)}
-          className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         >
           {WEIGHT_UNITS.map((unit) => (
             <option key={unit} value={unit}>{unit}</option>
           ))}
         </select>
-        <label className="text-sm text-stone-700 font-medium ml-2">Dimension display unit</label>
+        <label className="text-sm text-muted font-medium ml-2">Dimension display unit</label>
         <select
           value={settings.dimension_unit ?? "cm"}
           onChange={(e) => handleUpdateDimensionUnit(e.target.value)}
-          className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         >
           {DIMENSION_UNITS.map((unit) => (
             <option key={unit} value={unit}>{unit}</option>
           ))}
         </select>
-        <span className="text-stone-400 text-xs w-full">Product weight/dimensions are always entered and stored in grams/centimeters above -- these only control the unit shown to visitors.</span>
+        <span className="text-faint text-xs w-full">Product weight/dimensions are always entered and stored in grams/centimeters above -- these only control the unit shown to visitors.</span>
       </div>
       <div className="flex items-center gap-3 flex-wrap mt-4">
-        <label className="text-sm text-stone-700 font-medium">Default Brass Rate (₹/kg)</label>
+        <label className="text-sm text-muted font-medium">Default Brass Rate (₹/kg)</label>
         <input
           type="number"
           min={0}
@@ -892,22 +892,22 @@ export default function SettingsTab() {
             const next = e.target.value.trim();
             if (next && next !== settings.brass_price_per_kg) handleUpdateBrassPricePerKg(next);
           }}
-          className="w-28 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-28 px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
         />
-        <span className="text-stone-400 text-xs w-full">
+        <span className="text-faint text-xs w-full">
           Used by the &ldquo;Lightweight Brass&rdquo; price calculator in the stock tracker (weight × rate × 1.20 margin). Raising this only changes the default offered to a product that doesn&rsquo;t have its own rate saved yet -- it never rewrites a product&rsquo;s already-saved rate or price.
         </span>
       </div>
-      <label className="flex items-center gap-2 text-sm text-stone-700 font-medium mt-4">
+      <label className="flex items-center gap-2 text-sm text-muted font-medium mt-4">
         <input
           type="checkbox"
           checked={parseCodEnabled(settings.cod_enabled)}
           onChange={(e) => handleUpdateCodEnabled(e.target.checked)}
-          className="accent-amber-700"
+          className="accent-[var(--accent)]"
         />
         Cash on Delivery is available
       </label>
-      <p className="text-stone-400 text-xs mt-1">
+      <p className="text-faint text-xs mt-1">
         Off (the default it ships with): checkout offers online payment only and{" "}
         <code className="font-mono">/api/orders/cod</code> refuses every request. On: shoppers see a
         prepaid-vs-COD comparison at Review, with the flat fee below added and{" "}
@@ -916,7 +916,7 @@ export default function SettingsTab() {
         phone may only have <strong>one undelivered COD order</strong> at a time.
       </p>
       <div className="flex flex-wrap items-center gap-3 mt-3">
-        <label className="text-sm text-stone-700 font-medium">COD fee (₹)</label>
+        <label className="text-sm text-muted font-medium">COD fee (₹)</label>
         <input
           type="number"
           min={0}
@@ -928,16 +928,16 @@ export default function SettingsTab() {
             const next = e.target.value.trim();
             if (next && next !== settings.cod_fee) handleUpdateCodFee(next);
           }}
-          className="w-28 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-28 px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
         />
-        <span className="text-stone-400 text-xs w-full">
+        <span className="text-faint text-xs w-full">
           Added to a COD order&rsquo;s total and stored on the order, so it shows on the invoice and in
           reports instead of being inferred from the totals. Whole rupees, 0&ndash;500. Only affects orders
           placed after the change.
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-3 mt-3">
-        <label className="text-sm text-stone-700 font-medium">COD limit per item (₹)</label>
+        <label className="text-sm text-muted font-medium">COD limit per item (₹)</label>
         <input
           type="number"
           min={0}
@@ -948,9 +948,9 @@ export default function SettingsTab() {
             const next = e.target.value.trim();
             if (next && next !== settings.cod_max_item_price) handleUpdateCodMaxItemPrice(next);
           }}
-          className="w-28 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-28 px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
         />
-        <span className="text-stone-400 text-xs w-full">
+        <span className="text-faint text-xs w-full">
           No <strong>single item</strong> priced above this may go COD &mdash; the guard against an expensive
           piece coming back damaged at your cost. <code className="font-mono">0</code> means no limit. You can
           also block COD per product (Products tab) or per category (below); <strong>any one ineligible item
@@ -960,16 +960,16 @@ export default function SettingsTab() {
           ₹17,400 COD parcel.
         </span>
       </div>
-      <label className="flex items-center gap-2 text-sm text-stone-700 font-medium mt-4">
+      <label className="flex items-center gap-2 text-sm text-muted font-medium mt-4">
         <input
           type="checkbox"
           checked={parseReferralProgramEnabled(settings.referral_program_enabled)}
           onChange={(e) => handleUpdateReferralProgramEnabled(e.target.checked)}
-          className="accent-amber-700"
+          className="accent-[var(--accent)]"
         />
         Referral program is running
       </label>
-      <p className="text-stone-400 text-xs mt-1">
+      <p className="text-faint text-xs mt-1">
         Off: no new <code className="font-mono">FRIEND…</code> share code is minted when an order is
         marked Delivered, and no <code className="font-mono">THANKS…</code> reward when a friend pays with
         one. Codes already issued stay valid and redeemable &mdash; deactivate those individually from the
@@ -977,7 +977,7 @@ export default function SettingsTab() {
       </p>
 
       <div className="flex items-center gap-3 flex-wrap mt-4">
-        <label className="text-sm text-stone-700 font-medium">Referral discount (%)</label>
+        <label className="text-sm text-muted font-medium">Referral discount (%)</label>
         <input
           type="number"
           min={1}
@@ -989,9 +989,9 @@ export default function SettingsTab() {
             const next = e.target.value.trim();
             if (next && next !== settings.referral_discount_percent) handleUpdateReferralDiscountPercent(next);
           }}
-          className="w-20 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-20 px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
         />
-        <label className="text-sm text-stone-700 font-medium ml-2">Valid for (days)</label>
+        <label className="text-sm text-muted font-medium ml-2">Valid for (days)</label>
         <input
           type="number"
           min={1}
@@ -1003,14 +1003,14 @@ export default function SettingsTab() {
             const next = e.target.value.trim();
             if (next && next !== settings.referral_coupon_valid_days) handleUpdateReferralValidDays(next);
           }}
-          className="w-20 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-20 px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
         />
-        <span className="text-stone-400 text-xs w-full">
+        <span className="text-faint text-xs w-full">
           A customer&rsquo;s personal referral coupon (minted automatically the first time their order is marked Delivered, see the Orders tab) uses whatever these two values are at that moment. Changing them here only affects coupons minted afterwards -- a customer who already has one keeps their original discount and expiry.
         </span>
       </div>
       <div className="flex items-center gap-3 flex-wrap mt-4">
-        <label className="text-sm text-stone-700 font-medium">Ganesha popup auto-shows</label>
+        <label className="text-sm text-muted font-medium">Ganesha popup auto-shows</label>
         <input
           type="number"
           min={1}
@@ -1022,9 +1022,9 @@ export default function SettingsTab() {
             const next = e.target.value.trim();
             if (next && next !== settings.ganesha_max_auto_shows) handleUpdateGaneshaMaxAutoShows(next);
           }}
-          className="w-20 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-20 px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
         />
-        <label className="text-sm text-stone-700 font-medium ml-2">Cooldown (minutes)</label>
+        <label className="text-sm text-muted font-medium ml-2">Cooldown (minutes)</label>
         <input
           type="number"
           min={5}
@@ -1036,9 +1036,9 @@ export default function SettingsTab() {
             const next = e.target.value.trim();
             if (next && next !== settings.ganesha_cooldown_minutes) handleUpdateGaneshaCooldownMinutes(next);
           }}
-          className="w-24 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-24 px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
         />
-        <label className="text-sm text-stone-700 font-medium ml-2">Trigger collapse delay (seconds)</label>
+        <label className="text-sm text-muted font-medium ml-2">Trigger collapse delay (seconds)</label>
         <input
           type="number"
           min={2}
@@ -1050,19 +1050,19 @@ export default function SettingsTab() {
             const next = e.target.value.trim();
             if (next && next !== settings.ganesha_collapse_delay_seconds) handleUpdateGaneshaCollapseDelaySeconds(next);
           }}
-          className="w-20 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-20 px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
         />
-        <span className="text-stone-400 text-xs w-full">
+        <span className="text-faint text-xs w-full">
           The mascot popup auto-shows on a visitor&rsquo;s 1st, 2nd, ... page load/reload up to the count above (1-10, default 2), then stays quiet for the cooldown length before the cycle repeats. A floating &ldquo;Show Ganesha&rdquo; button lets a visitor bring it back manually during the quiet window -- it collapses to a small arrow after the trigger delay above (2-60 seconds, default 5) and expands again on tap. Cooldown range: 5 minutes to 720 minutes (12 hours).
         </span>
       </div>
     </div>
 
     {/* SECTION D.0.2: SPEND & SAVE OFFER */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="text-xl font-serif text-stone-900">Spend &amp; Save Offer</h2>
-        <p className="text-stone-500 text-xs mt-1">
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Spend &amp; Save Offer</h2>
+        <p className="text-faint text-xs mt-1">
           A store-wide &ldquo;spend past a threshold, get a flat amount off the whole bill&rdquo; ladder.
           While it is switched on, coupon codes are paused for every shopper and the discount for
           the tier their cart clears is applied automatically at checkout &mdash; the shopper is
@@ -1073,50 +1073,50 @@ export default function SettingsTab() {
         </p>
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-stone-700 font-medium">
+      <label className="flex items-center gap-2 text-sm text-muted font-medium">
         <input
           type="checkbox"
           checked={offerDraft.enabled}
           onChange={(e) => setOfferDraft((d) => ({ ...d, enabled: e.target.checked }))}
-          className="accent-amber-700"
+          className="accent-[var(--accent)]"
         />
         Offer is running
       </label>
 
       <div className="flex items-center gap-3 flex-wrap mt-4">
-        <label className="text-sm text-stone-700 font-medium">Label shown to shoppers</label>
+        <label className="text-sm text-muted font-medium">Label shown to shoppers</label>
         <input
           type="text"
           maxLength={60}
           value={offerDraft.label}
           onChange={(e) => setOfferDraft((d) => ({ ...d, label: e.target.value }))}
-          className="w-64 px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-64 px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         />
       </div>
 
       <div className="flex items-center gap-3 flex-wrap mt-4">
-        <label className="text-sm text-stone-700 font-medium">Starts</label>
+        <label className="text-sm text-muted font-medium">Starts</label>
         <input
           type="datetime-local"
           value={offerDraft.startsAt}
           onChange={(e) => setOfferDraft((d) => ({ ...d, startsAt: e.target.value }))}
-          className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         />
-        <label className="text-sm text-stone-700 font-medium ml-2">Ends</label>
+        <label className="text-sm text-muted font-medium ml-2">Ends</label>
         <input
           type="datetime-local"
           value={offerDraft.endsAt}
           onChange={(e) => setOfferDraft((d) => ({ ...d, endsAt: e.target.value }))}
-          className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         />
-        <span className="text-stone-400 text-xs w-full">
+        <span className="text-faint text-xs w-full">
           Both optional. Leave blank for &ldquo;on until I switch it off&rdquo;. With a window set, the
           offer only applies between those times even while the switch is on.
         </span>
       </div>
 
       <div className="mt-5">
-        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-[11px] uppercase tracking-wider font-semibold text-stone-400 mb-1">
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-[11px] uppercase tracking-wider font-semibold text-faint mb-1">
           <span>Min cart subtotal (&#8377;)</span>
           <span>Discount off bill (&#8377;)</span>
           <span />
@@ -1129,7 +1129,7 @@ export default function SettingsTab() {
               step="any"
               value={t.minSubtotal}
               onChange={(e) => setOfferTier(i, "minSubtotal", e.target.value)}
-              className="px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+              className="px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
             />
             <input
               type="number"
@@ -1137,19 +1137,19 @@ export default function SettingsTab() {
               step="any"
               value={t.discount}
               onChange={(e) => setOfferTier(i, "discount", e.target.value)}
-              className="px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+              className="px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
             />
             <button
               type="button"
               onClick={() => removeOfferTier(i)}
-              className="px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded transition"
+              className="px-3 py-2 text-xs font-semibold text-danger hover:bg-danger-soft rounded transition"
             >
               Remove
             </button>
           </div>
         ))}
         {offerDraft.tiers.length < MAX_SPEND_TIERS && (
-          <button type="button" onClick={addOfferTier} className="text-xs font-semibold text-amber-700 hover:underline mt-1">
+          <button type="button" onClick={addOfferTier} className="text-xs font-semibold text-accent hover:underline mt-1">
             + Add tier
           </button>
         )}
@@ -1159,24 +1159,24 @@ export default function SettingsTab() {
         <button
           type="button"
           onClick={handleSaveSpendOffer}
-          className="px-5 py-2 rounded bg-stone-900 text-white text-xs font-semibold uppercase tracking-wider hover:bg-amber-700 transition"
+          className="px-5 py-2 rounded bg-fg text-bg text-xs font-semibold uppercase tracking-wider hover:bg-accent hover:text-accent-fg transition"
         >
           Save offer
         </button>
-        {offerStatus && <span className="text-xs text-stone-500">{offerStatus}</span>}
+        {offerStatus && <span className="text-xs text-faint">{offerStatus}</span>}
       </div>
 
       {/* Scrolling banner (SpendOfferBanner.tsx) display knobs -- these
           save on their own the moment you change them, separately from
           "Save offer" above (they don't touch pricing). */}
-      <div className="mt-8 pt-6 border-t border-stone-200">
-        <h3 className="text-sm font-semibold text-stone-800">Scrolling banner</h3>
-        <p className="text-stone-400 text-xs mt-1 mb-3">
+      <div className="mt-8 pt-6 border-t border-border">
+        <h3 className="text-sm font-semibold text-fg">Scrolling banner</h3>
+        <p className="text-faint text-xs mt-1 mb-3">
           While the offer is running, every tier above scrolls across a slim banner at the top of every
           page, lowest threshold first, so shoppers see the whole ladder &mdash; not just the first rung.
         </p>
         <div className="flex items-center gap-3 flex-wrap">
-          <label className="text-sm text-stone-700 font-medium">Scroll speed &mdash; seconds per tier</label>
+          <label className="text-sm text-muted font-medium">Scroll speed &mdash; seconds per tier</label>
           <input
             type="number"
             min={MIN_SPEND_MARQUEE_SECONDS_PER_TIER}
@@ -1189,27 +1189,27 @@ export default function SettingsTab() {
               if (next && next !== settings.spend_marquee_seconds_per_tier)
                 handleUpdateMarqueeSetting("spend_marquee_seconds_per_tier", Number(next), "marquee scroll speed");
             }}
-            className="w-20 px-3 py-2 rounded border border-stone-300 text-sm font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+            className="w-20 px-3 py-2 rounded border border-border-strong text-sm font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
           />
-          <label className="flex items-center gap-2 text-sm text-stone-700 font-medium ml-2">
+          <label className="flex items-center gap-2 text-sm text-muted font-medium ml-2">
             <input
               type="checkbox"
               defaultChecked={parseBoolSetting(settings.spend_marquee_pause_on_hover, DEFAULT_SPEND_MARQUEE_SETTINGS.pauseOnHover)}
               onChange={(e) => handleUpdateMarqueeSetting("spend_marquee_pause_on_hover", e.target.checked, "marquee pause-on-hover")}
-              className="accent-amber-700"
+              className="accent-[var(--accent)]"
             />
             Pause when the shopper hovers
           </label>
-          <label className="flex items-center gap-2 text-sm text-stone-700 font-medium ml-2">
+          <label className="flex items-center gap-2 text-sm text-muted font-medium ml-2">
             <input
               type="checkbox"
               defaultChecked={parseBoolSetting(settings.spend_marquee_show_countdown, DEFAULT_SPEND_MARQUEE_SETTINGS.showCountdown)}
               onChange={(e) => handleUpdateMarqueeSetting("spend_marquee_show_countdown", e.target.checked, "marquee countdown chip")}
-              className="accent-amber-700"
+              className="accent-[var(--accent)]"
             />
             Show &ldquo;days left&rdquo; when an end date is near
           </label>
-          <span className="text-stone-400 text-xs w-full">
+          <span className="text-faint text-xs w-full">
             Speed is {MIN_SPEND_MARQUEE_SECONDS_PER_TIER}&ndash;{MAX_SPEND_MARQUEE_SECONDS_PER_TIER} seconds each tier&rsquo;s
             slab takes to cross the banner (higher = slower; default {DEFAULT_SPEND_MARQUEE_SECONDS_PER_TIER}, easy for slow
             readers). The pace stays even however many tiers you add. Shoppers with &ldquo;reduce motion&rdquo; on see the
@@ -1220,10 +1220,10 @@ export default function SettingsTab() {
     </div>
 
     {/* SECTION D.0.3: FEATURED SPOTLIGHT */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="text-xl font-serif text-stone-900">Featured Spotlight</h2>
-        <p className="text-stone-500 text-xs mt-1">
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Featured Spotlight</h2>
+        <p className="text-faint text-xs mt-1">
           A time-boxed marketing page at <code className="font-mono">/spotlight</code> showing whichever
           products you&rsquo;ve flagged &ldquo;Feature&rdquo; from the Products tab&rsquo;s Live Storefront
           Catalog &amp; Stock Tracker (any number, any mix of categories) &mdash; with a countdown to the
@@ -1232,70 +1232,70 @@ export default function SettingsTab() {
         </p>
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-stone-700 font-medium">
+      <label className="flex items-center gap-2 text-sm text-muted font-medium">
         <input
           type="checkbox"
           checked={spotlightDraft.enabled}
           onChange={(e) => setSpotlightDraft((d) => ({ ...d, enabled: e.target.checked }))}
-          className="accent-amber-700"
+          className="accent-[var(--accent)]"
         />
         Spotlight is running
       </label>
 
       <div className="flex items-center gap-3 flex-wrap mt-4">
-        <label className="text-sm text-stone-700 font-medium">Title shown to shoppers</label>
+        <label className="text-sm text-muted font-medium">Title shown to shoppers</label>
         <input
           type="text"
           maxLength={80}
           value={spotlightDraft.title}
           onChange={(e) => setSpotlightDraft((d) => ({ ...d, title: e.target.value }))}
           placeholder="e.g. Diwali Picks"
-          className="w-64 px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-64 px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         />
       </div>
 
       <div className="mt-4">
-        <label className="block text-sm text-stone-700 font-medium mb-1">Description (optional)</label>
+        <label className="block text-sm text-muted font-medium mb-1">Description (optional)</label>
         <textarea
           maxLength={300}
           rows={2}
           value={spotlightDraft.description}
           onChange={(e) => setSpotlightDraft((d) => ({ ...d, description: e.target.value }))}
           placeholder="A short line shown under the title on the spotlight page."
-          className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50 resize-y"
+          className="w-full px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2 resize-y"
         />
       </div>
 
       <div className="flex items-center gap-3 flex-wrap mt-4">
-        <label className="text-sm text-stone-700 font-medium">Starts</label>
+        <label className="text-sm text-muted font-medium">Starts</label>
         <input
           type="datetime-local"
           value={spotlightDraft.startsAt}
           onChange={(e) => setSpotlightDraft((d) => ({ ...d, startsAt: e.target.value }))}
-          className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         />
-        <label className="text-sm text-stone-700 font-medium ml-2">Ends</label>
+        <label className="text-sm text-muted font-medium ml-2">Ends</label>
         <input
           type="datetime-local"
           value={spotlightDraft.endsAt}
           onChange={(e) => setSpotlightDraft((d) => ({ ...d, endsAt: e.target.value }))}
-          className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         />
-        <span className="text-stone-400 text-xs w-full">
+        <span className="text-faint text-xs w-full">
           Pick any window &mdash; a few days, a week, ten days, a month, whatever suits this campaign.
         </span>
       </div>
 
-      <div className="flex items-center justify-between flex-wrap gap-3 mt-6 pt-5 border-t border-stone-100">
-        <p className="text-xs text-stone-500">
-          <strong className="text-stone-800">{spotlightedProducts.length}</strong> product{spotlightedProducts.length === 1 ? "" : "s"} currently
+      <div className="flex items-center justify-between flex-wrap gap-3 mt-6 pt-5 border-t border-border">
+        <p className="text-xs text-faint">
+          <strong className="text-fg">{spotlightedProducts.length}</strong> product{spotlightedProducts.length === 1 ? "" : "s"} currently
           spotlighted &mdash; toggle &ldquo;Feature&rdquo; per product from the Products tab.
         </p>
         {spotlightedProducts.length > 0 && (
           <button
             type="button"
             onClick={handleClearSpotlight}
-            className="text-xs font-semibold text-rose-600 hover:underline"
+            className="text-xs font-semibold text-danger hover:underline"
           >
             Clear all
           </button>
@@ -1306,49 +1306,49 @@ export default function SettingsTab() {
         <button
           type="button"
           onClick={handleSaveSpotlight}
-          className="px-5 py-2 rounded bg-stone-900 text-white text-xs font-semibold uppercase tracking-wider hover:bg-amber-700 transition"
+          className="px-5 py-2 rounded bg-fg text-bg text-xs font-semibold uppercase tracking-wider hover:bg-accent hover:text-accent-fg transition"
         >
           Save spotlight
         </button>
-        {spotlightStatus && <span className="text-xs text-stone-500">{spotlightStatus}</span>}
+        {spotlightStatus && <span className="text-xs text-faint">{spotlightStatus}</span>}
       </div>
     </div>
 
     {/* SECTION D.0.5: WHATSAPP NUMBERS */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="text-xl font-serif text-stone-900">WhatsApp Numbers</h2>
-        <p className="text-stone-500 text-xs mt-1">
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">WhatsApp Numbers</h2>
+        <p className="text-faint text-xs mt-1">
           For customer product enquiries only (“Chat to Check Availability” / “Chat for More Info”) -- order and business
           notifications always go to +91 6302672351, unaffected by anything here.
         </p>
       </div>
 
       {whatsappNumbers.length === 0 ? (
-        <p className="text-stone-400 text-sm text-center py-4">
+        <p className="text-faint text-sm text-center py-4">
           No extra numbers added yet -- add one below, or from the product form&rsquo;s WhatsApp Number field.
         </p>
       ) : (
         <div className="overflow-x-auto mb-6">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="bg-stone-50 text-stone-700 uppercase font-semibold text-[10px] tracking-wider border-b border-stone-200">
+              <tr className="bg-surface-2 text-muted uppercase font-semibold text-[10px] tracking-wider border-b border-border">
                 <th className="p-3">Label</th>
                 <th className="p-3">Number</th>
                 <th className="p-3">Status</th>
                 <th className="p-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-border">
               {whatsappNumbers.map((n) => {
                 const isDefault = (settings.default_whatsapp_number || "") === n.phone_number;
                 return (
                   <tr key={n.id}>
-                    <td className="p-3 text-stone-700">{n.label || <span className="text-stone-300">—</span>}</td>
-                    <td className="p-3 font-mono text-stone-800">+{n.phone_number}</td>
+                    <td className="p-3 text-muted">{n.label || <span className="text-faint">—</span>}</td>
+                    <td className="p-3 font-mono text-fg">+{n.phone_number}</td>
                     <td className="p-3">
                       {isDefault && (
-                        <span className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                        <span className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-accent-soft text-accent border border-accent-soft-border">
                           ★ Default
                         </span>
                       )}
@@ -1358,7 +1358,7 @@ export default function SettingsTab() {
                         <button
                           type="button"
                           onClick={() => handleSetDefaultWhatsappNumber(n.phone_number)}
-                          className="text-[11px] uppercase font-semibold text-amber-700 hover:text-amber-800"
+                          className="text-[11px] uppercase font-semibold text-accent hover:text-accent"
                         >
                           Set as Default
                         </button>
@@ -1373,48 +1373,48 @@ export default function SettingsTab() {
       )}
 
       {settings.default_whatsapp_number && (
-        <p className="text-stone-500 text-xs mb-6">
+        <p className="text-faint text-xs mb-6">
           Current default for products with no number of their own: <strong>+{settings.default_whatsapp_number}</strong>.{" "}
-          <button type="button" onClick={() => handleSetDefaultWhatsappNumber("")} className="text-amber-700 hover:text-amber-800 underline">
+          <button type="button" onClick={() => handleSetDefaultWhatsappNumber("")} className="text-accent hover:text-accent underline">
             Reset to +91 6302672351
           </button>
         </p>
       )}
 
-      <div className="border-t border-stone-100 pt-6 mb-6 flex flex-col sm:flex-row sm:items-end gap-2">
+      <div className="border-t border-border pt-6 mb-6 flex flex-col sm:flex-row sm:items-end gap-2">
         <div className="flex-1">
-          <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">Label (optional)</label>
+          <label className="block text-[11px] uppercase tracking-wider text-muted font-semibold mb-1">Label (optional)</label>
           <input
             type="text"
             value={newWhatsappLabel}
             onChange={(e) => setNewWhatsappLabel(e.target.value)}
             placeholder="e.g. Sales team"
-            className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+            className="w-full px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
           />
         </div>
         <div className="flex-1">
-          <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">WhatsApp number</label>
+          <label className="block text-[11px] uppercase tracking-wider text-muted font-semibold mb-1">WhatsApp number</label>
           <input
             type="tel"
             value={newWhatsappNumber}
             onChange={(e) => setNewWhatsappNumber(e.target.value)}
             placeholder="10-digit number"
-            className="w-full px-3 py-2 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
+            className="w-full px-3 py-2 rounded border border-border-strong text-sm font-mono focus:outline-none focus:border-accent bg-surface-2"
           />
         </div>
         <button
           type="button"
           onClick={handleAddWhatsappNumber}
-          className="px-4 py-2 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
+          className="px-4 py-2 rounded bg-fg hover:bg-accent hover:text-accent-fg text-bg text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
         >
           Add number
         </button>
       </div>
-      {whatsappNumberStatus && <p className="text-[11px] text-stone-500 -mt-4 mb-6">{whatsappNumberStatus}</p>}
+      {whatsappNumberStatus && <p className="text-[11px] text-faint -mt-4 mb-6">{whatsappNumberStatus}</p>}
 
-      <div className="border-t border-stone-100 pt-6">
-        <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
-          Bulk switch <span className="text-stone-400 font-normal normal-case">(move a whole group of products over to another number, all at once)</span>
+      <div className="border-t border-border pt-6">
+        <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
+          Bulk switch <span className="text-faint font-normal normal-case">(move a whole group of products over to another number, all at once)</span>
         </label>
 
         <div className="flex gap-1.5 mb-3">
@@ -1422,7 +1422,7 @@ export default function SettingsTab() {
             type="button"
             onClick={() => setReassignMode("number")}
             className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold tracking-wider transition ${
-              reassignMode === "number" ? "bg-amber-600 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+              reassignMode === "number" ? "bg-accent text-accent-fg" : "bg-surface-2 text-muted hover:bg-disabled"
             }`}
           >
             By Current Number
@@ -1431,7 +1431,7 @@ export default function SettingsTab() {
             type="button"
             onClick={() => setReassignMode("category")}
             className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold tracking-wider transition ${
-              reassignMode === "category" ? "bg-amber-600 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+              reassignMode === "category" ? "bg-accent text-accent-fg" : "bg-surface-2 text-muted hover:bg-disabled"
             }`}
           >
             By Category
@@ -1440,22 +1440,22 @@ export default function SettingsTab() {
 
         <div className="flex flex-wrap items-center gap-2">
           {reassignMode === "number" ? (
-            <select value={reassignFrom} onChange={(e) => setReassignFrom(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+            <select value={reassignFrom} onChange={(e) => setReassignFrom(e.target.value)} className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2">
               <option value="">Products with no number set (default)</option>
               {whatsappNumbers.map((n) => (
                 <option key={n.id} value={n.phone_number}>{n.label ? `${n.label} — ` : ""}+{n.phone_number}</option>
               ))}
             </select>
           ) : (
-            <select value={reassignCategory} onChange={(e) => setReassignCategory(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+            <select value={reassignCategory} onChange={(e) => setReassignCategory(e.target.value)} className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2">
               <option value="">Choose a category...</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.name}>{c.name}</option>
               ))}
             </select>
           )}
-          <span className="text-stone-400 text-xs">&rarr;</span>
-          <select value={reassignTo} onChange={(e) => setReassignTo(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+          <span className="text-faint text-xs">&rarr;</span>
+          <select value={reassignTo} onChange={(e) => setReassignTo(e.target.value)} className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2">
             <option value="">Choose a number...</option>
             {whatsappNumbers.map((n) => (
               <option key={n.id} value={n.phone_number}>{n.label ? `${n.label} — ` : ""}+{n.phone_number}</option>
@@ -1465,20 +1465,20 @@ export default function SettingsTab() {
             type="button"
             disabled={!reassignTo || (reassignMode === "category" && !reassignCategory)}
             onClick={handleBulkReassignWhatsapp}
-            className="px-4 py-2 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
+            className="px-4 py-2 rounded bg-fg hover:bg-accent hover:text-accent-fg text-bg text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
           >
             Switch All
           </button>
         </div>
-        {reassignStatus && <p className="text-[11px] text-stone-500 mt-2">{reassignStatus}</p>}
+        {reassignStatus && <p className="text-[11px] text-faint mt-2">{reassignStatus}</p>}
       </div>
     </div>
 
     {/* SECTION D.0.5b: ORDER NOTIFICATION NUMBERS (suppliers) */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="text-xl font-serif text-stone-900">Order Notification Numbers</h2>
-        <p className="text-stone-500 text-xs mt-1">
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Order Notification Numbers</h2>
+        <p className="text-faint text-xs mt-1">
           Extra WhatsApp numbers (suppliers) that also receive order notifications. The main business number
           (+91&nbsp;6302672351) always gets everything &mdash; these are additional. Attach a number to specific
           products in the product form; then every notification for that product &mdash; new paid order,
@@ -1487,19 +1487,19 @@ export default function SettingsTab() {
       </div>
 
       {orderNotificationNumbers.length === 0 ? (
-        <p className="text-stone-400 text-sm py-2">No supplier numbers yet.</p>
+        <p className="text-faint text-sm py-2">No supplier numbers yet.</p>
       ) : (
-        <ul className="divide-y divide-stone-100 mb-5">
+        <ul className="divide-y divide-border mb-5">
           {orderNotificationNumbers.map((n) => (
             <li key={n.id} className="flex items-center justify-between gap-3 py-2.5">
               <div className="min-w-0">
-                <span className="text-sm text-stone-800">{n.label || <span className="text-stone-300">—</span>}</span>
-                <span className="block font-mono text-xs text-stone-500">+{n.phone_number}</span>
+                <span className="text-sm text-fg">{n.label || <span className="text-faint">—</span>}</span>
+                <span className="block font-mono text-xs text-faint">+{n.phone_number}</span>
               </div>
               <button
                 type="button"
                 onClick={() => handleDeleteOrderNotifNumber(n.id)}
-                className="text-[11px] uppercase font-semibold text-rose-600 hover:text-rose-700 flex-shrink-0"
+                className="text-[11px] uppercase font-semibold text-danger hover:text-danger flex-shrink-0"
               >
                 Remove
               </button>
@@ -1509,44 +1509,44 @@ export default function SettingsTab() {
       )}
 
       {orderNotificationNumbers.length < MAX_ORDER_NOTIFICATION_NUMBERS && (
-        <div className="border-t border-stone-100 pt-5 flex flex-col sm:flex-row sm:items-end gap-2">
+        <div className="border-t border-border pt-5 flex flex-col sm:flex-row sm:items-end gap-2">
           <div className="flex-1">
-            <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">Label</label>
+            <label className="block text-[11px] uppercase tracking-wider text-muted font-semibold mb-1">Label</label>
             <input
               type="text"
               value={newOrderNotifLabel}
               onChange={(e) => setNewOrderNotifLabel(e.target.value)}
               placeholder="e.g. Ramesh Brass Works"
-              className="w-full px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+              className="w-full px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
             />
           </div>
           <div className="flex-1">
-            <label className="block text-[11px] uppercase tracking-wider text-stone-600 font-semibold mb-1">WhatsApp number</label>
+            <label className="block text-[11px] uppercase tracking-wider text-muted font-semibold mb-1">WhatsApp number</label>
             <input
               type="tel"
               value={newOrderNotifNumber}
               onChange={(e) => setNewOrderNotifNumber(e.target.value)}
               placeholder="10-digit number"
-              className="w-full px-3 py-2 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
+              className="w-full px-3 py-2 rounded border border-border-strong text-sm font-mono focus:outline-none focus:border-accent bg-surface-2"
             />
           </div>
           <button
             type="button"
             onClick={handleAddOrderNotifNumber}
-            className="px-4 py-2 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
+            className="px-4 py-2 rounded bg-fg hover:bg-accent hover:text-accent-fg text-bg text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
           >
             Add number
           </button>
         </div>
       )}
-      {orderNotifStatus && <p className="text-[11px] text-stone-500 mt-2">{orderNotifStatus}</p>}
+      {orderNotifStatus && <p className="text-[11px] text-faint mt-2">{orderNotifStatus}</p>}
     </div>
 
     {/* SECTION D.0.6: CHAT BUTTON LABELS */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="text-xl font-serif text-stone-900">Chat Button Labels</h2>
-        <p className="text-stone-500 text-xs mt-1">
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Chat Button Labels</h2>
+        <p className="text-faint text-xs mt-1">
           The text on each product card&rsquo;s WhatsApp button (shown on the product detail page too). Save a few options
           per stock state below and switch the active one any time -- max {MAX_CHAT_LABEL_LENGTH} characters each.
         </p>
@@ -1558,10 +1558,10 @@ export default function SettingsTab() {
         const presets = chatLabelPresets.filter((l) => l.kind === kind);
         const draft = newChatLabelText[kind];
         return (
-          <div key={kind} className={kind === "out_of_stock" ? "mt-8 pt-8 border-t border-stone-100" : ""}>
-            <h3 className="text-sm font-semibold text-stone-700 mb-3">
+          <div key={kind} className={kind === "out_of_stock" ? "mt-8 pt-8 border-t border-border" : ""}>
+            <h3 className="text-sm font-semibold text-muted mb-3">
               {kind === "in_stock" ? "In-Stock Products" : "Out-of-Stock Products"}
-              <span className="ml-2 font-normal text-stone-400">
+              <span className="ml-2 font-normal text-faint">
                 currently: &ldquo;{activeLabel}&rdquo;
               </span>
             </h3>
@@ -1571,18 +1571,18 @@ export default function SettingsTab() {
                 {presets.map((l) => {
                   const isActive = activeLabel === l.label;
                   return (
-                    <div key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded bg-stone-50 border border-stone-100">
-                      <span className="text-xs text-stone-700">{l.label}</span>
+                    <div key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded bg-surface-2 border border-border">
+                      <span className="text-xs text-muted">{l.label}</span>
                       <div className="flex items-center gap-3 flex-shrink-0">
                         {isActive ? (
-                          <span className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          <span className="px-2 py-1 rounded text-[10px] uppercase font-semibold bg-accent-soft text-accent border border-accent-soft-border">
                             ★ Active
                           </span>
                         ) : (
                           <button
                             type="button"
                             onClick={() => handleSetActiveChatLabel(kind, l.label)}
-                            className="text-[11px] uppercase font-semibold text-amber-700 hover:text-amber-800"
+                            className="text-[11px] uppercase font-semibold text-accent hover:text-accent"
                           >
                             Use This
                           </button>
@@ -1591,7 +1591,7 @@ export default function SettingsTab() {
                           type="button"
                           onClick={() => handleDeleteChatLabel(l.id)}
                           aria-label={`Delete "${l.label}" preset`}
-                          className="text-stone-300 hover:text-red-600"
+                          className="text-faint hover:text-danger"
                         >
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
@@ -1611,14 +1611,14 @@ export default function SettingsTab() {
                 placeholder={`e.g. "${DEFAULT_CHAT_LABELS[kind]}"`}
                 value={draft}
                 onChange={(e) => setNewChatLabelText((prev) => ({ ...prev, [kind]: e.target.value.slice(0, MAX_CHAT_LABEL_LENGTH) }))}
-                className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50 w-60"
+                className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2 w-60"
               />
-              <span className="text-[11px] text-stone-400 font-mono w-12">{draft.length}/{MAX_CHAT_LABEL_LENGTH}</span>
+              <span className="text-[11px] text-faint font-mono w-12">{draft.length}/{MAX_CHAT_LABEL_LENGTH}</span>
               <button
                 type="button"
                 disabled={!draft.trim()}
                 onClick={() => handleAddChatLabel(kind)}
-                className="px-3 py-2 rounded bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
+                className="px-3 py-2 rounded bg-disabled hover:bg-border-strong text-muted text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
               >
                 Add
               </button>
@@ -1626,28 +1626,28 @@ export default function SettingsTab() {
           </div>
         );
       })}
-      {chatLabelStatus && <p className="text-[11px] text-stone-500 mt-4">{chatLabelStatus}</p>}
+      {chatLabelStatus && <p className="text-[11px] text-faint mt-4">{chatLabelStatus}</p>}
     </div>
 
     {/* SECTION D.0: PRODUCT LABELS */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="text-xl font-serif text-stone-900">Product Labels</h2>
-        <p className="text-stone-500 text-xs mt-1">
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Product Labels</h2>
+        <p className="text-faint text-xs mt-1">
           Manage the labels offered in the product form&rsquo;s dropdown and the storefront&rsquo;s category menu. Tag a whole group of products at once below instead of editing them one by one — e.g. every homepage product as &ldquo;Lightweight Brass&rdquo;, or every &ldquo;Board Games&rdquo; category product as &ldquo;Board Game&rdquo;. &ldquo;Lightweight Brass&rdquo; additionally unlocks the weight-based price calculator in the stock tracker below. Each label can also have its own <strong>photo look</strong> — a product with that label uses it instead of the site-wide default; a product with no label at all always shows the plain, unfiltered photo regardless of the default.
         </p>
       </div>
 
       <div className="space-y-2 mb-6">
         {labels.map((l) => (
-          <div key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded bg-stone-50 border border-stone-100">
-            <span className="text-xs font-semibold uppercase tracking-wide text-stone-700">{l.name}</span>
+          <div key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded bg-surface-2 border border-border">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted">{l.name}</span>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-[10px] uppercase tracking-wider text-stone-400">Photo look</span>
+              <span className="text-[10px] uppercase tracking-wider text-faint">Photo look</span>
               <select
                 value={l.photo_filter || ""}
                 onChange={(e) => handleUpdateLabelPhotoFilter(l.id, e.target.value)}
-                className="px-2 py-1.5 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-white"
+                className="px-2 py-1.5 rounded border border-border-strong text-xs focus:outline-none focus:border-accent bg-surface"
               >
                 <option value="">Site Default</option>
                 {PHOTO_FILTER_PRESETS.map((preset) => (
@@ -1657,17 +1657,17 @@ export default function SettingsTab() {
             </div>
           </div>
         ))}
-        {labels.length === 0 && <p className="text-stone-400 text-sm">No labels yet — add one below.</p>}
+        {labels.length === 0 && <p className="text-faint text-sm">No labels yet — add one below.</p>}
       </div>
       <div className="flex gap-2 mb-6">
-        <input type="text" placeholder="Add a new label..." value={newLabelName} onChange={(e) => setNewLabelName(e.target.value)} className="flex-grow px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
-        <button type="button" disabled={!newLabelName.trim()} onClick={handleAddLabel} className="px-4 py-2.5 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add Label</button>
+        <input type="text" placeholder="Add a new label..." value={newLabelName} onChange={(e) => setNewLabelName(e.target.value)} className="flex-grow px-3 py-2.5 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2" />
+        <button type="button" disabled={!newLabelName.trim()} onClick={handleAddLabel} className="px-4 py-2.5 rounded bg-fg hover:bg-accent hover:text-accent-fg text-bg text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add Label</button>
       </div>
-      {labelStatus && <p className="text-[11px] text-rose-600 -mt-4 mb-6">{labelStatus}</p>}
+      {labelStatus && <p className="text-[11px] text-danger -mt-4 mb-6">{labelStatus}</p>}
 
-      <div className="border-t border-stone-100 pt-6">
-        <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
-          Bulk-assign <span className="text-stone-400 font-normal normal-case">(tag a whole group of products with a label, all at once)</span>
+      <div className="border-t border-border pt-6">
+        <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
+          Bulk-assign <span className="text-faint font-normal normal-case">(tag a whole group of products with a label, all at once)</span>
         </label>
 
         <div className="flex gap-1.5 mb-3">
@@ -1675,7 +1675,7 @@ export default function SettingsTab() {
             type="button"
             onClick={() => setBulkLabelMode("home")}
             className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold tracking-wider transition ${
-              bulkLabelMode === "home" ? "bg-amber-600 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+              bulkLabelMode === "home" ? "bg-accent text-accent-fg" : "bg-surface-2 text-muted hover:bg-disabled"
             }`}
           >
             All Homepage Products
@@ -1684,7 +1684,7 @@ export default function SettingsTab() {
             type="button"
             onClick={() => setBulkLabelMode("category")}
             className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold tracking-wider transition ${
-              bulkLabelMode === "category" ? "bg-amber-600 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+              bulkLabelMode === "category" ? "bg-accent text-accent-fg" : "bg-surface-2 text-muted hover:bg-disabled"
             }`}
           >
             By Category
@@ -1694,16 +1694,16 @@ export default function SettingsTab() {
         <div className="flex flex-wrap items-center gap-2">
           {bulkLabelMode === "category" && (
             <>
-              <select value={bulkLabelCategory} onChange={(e) => setBulkLabelCategory(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+              <select value={bulkLabelCategory} onChange={(e) => setBulkLabelCategory(e.target.value)} className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2">
                 <option value="">Choose a category...</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>
-              <span className="text-stone-400 text-xs">&rarr;</span>
+              <span className="text-faint text-xs">&rarr;</span>
             </>
           )}
-          <select value={bulkLabel} onChange={(e) => setBulkLabel(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+          <select value={bulkLabel} onChange={(e) => setBulkLabel(e.target.value)} className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2">
             <option value="">Choose a label...</option>
             {labels.map((l) => (
               <option key={l.id} value={l.name}>{l.name}</option>
@@ -1713,20 +1713,20 @@ export default function SettingsTab() {
             type="button"
             disabled={!bulkLabel || (bulkLabelMode === "category" && !bulkLabelCategory)}
             onClick={handleBulkAssignLabel}
-            className="px-4 py-2 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
+            className="px-4 py-2 rounded bg-fg hover:bg-accent hover:text-accent-fg text-bg text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
           >
             Assign All
           </button>
         </div>
-        {bulkLabelStatus && <p className="text-[11px] text-stone-500 mt-2">{bulkLabelStatus}</p>}
+        {bulkLabelStatus && <p className="text-[11px] text-faint mt-2">{bulkLabelStatus}</p>}
       </div>
     </div>
 
     {/* SECTION D.1: CATEGORIES */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="text-xl font-serif text-stone-900">Categories</h2>
-        <p className="text-stone-500 text-xs mt-1">Manage the categories offered in the product form’s dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category’s products appear in the homepage&rsquo;s default view (they’re still reachable by selecting the category directly). GST % is set per category and used to break down the final bill. &ldquo;% Off&rdquo; shows a struck-through original price everywhere on the site (product price you set stays the real price charged -- this is display only). &ldquo;Products/page&rdquo; overrides the site-wide default just for that category&rsquo;s own page -- leave blank to use the default above. The enquiry WhatsApp dropdown routes every &ldquo;Chat&rdquo; click for that category&rsquo;s products to a specific number (from WhatsApp Numbers above) instead of the site default -- a product&rsquo;s own number (set in the product form) still wins over this if it has one.</p>
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Categories</h2>
+        <p className="text-faint text-xs mt-1">Manage the categories offered in the product form’s dropdown and storefront filter. &ldquo;On Homepage&rdquo; controls whether a category’s products appear in the homepage&rsquo;s default view (they’re still reachable by selecting the category directly). GST % is set per category and used to break down the final bill. &ldquo;% Off&rdquo; shows a struck-through original price everywhere on the site (product price you set stays the real price charged -- this is display only). &ldquo;Products/page&rdquo; overrides the site-wide default just for that category&rsquo;s own page -- leave blank to use the default above. The enquiry WhatsApp dropdown routes every &ldquo;Chat&rdquo; click for that category&rsquo;s products to a specific number (from WhatsApp Numbers above) instead of the site default -- a product&rsquo;s own number (set in the product form) still wins over this if it has one.</p>
       </div>
 
       {/* Mobile-first: the name input takes its own full-width row, and
@@ -1739,7 +1739,7 @@ export default function SettingsTab() {
           placeholder="e.g., Wall Decor"
           value={newCategoryName}
           onChange={(e) => setNewCategoryName(e.target.value)}
-          className="w-full sm:flex-grow px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="w-full sm:flex-grow px-3 py-2.5 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         />
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -1751,9 +1751,9 @@ export default function SettingsTab() {
               title="GST %"
               value={newCategoryGstRate}
               onChange={(e) => setNewCategoryGstRate(e.target.value)}
-              className="w-20 px-3 py-2.5 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
+              className="w-20 px-3 py-2.5 rounded border border-border-strong text-sm font-mono focus:outline-none focus:border-accent bg-surface-2"
             />
-            <span className="text-xs text-stone-500 whitespace-nowrap">% GST</span>
+            <span className="text-xs text-faint whitespace-nowrap">% GST</span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <input
@@ -1764,29 +1764,29 @@ export default function SettingsTab() {
               title="Discount % (used to show a struck-through original price)"
               value={newCategoryDiscountPercent}
               onChange={(e) => setNewCategoryDiscountPercent(e.target.value)}
-              className="w-20 px-3 py-2.5 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
+              className="w-20 px-3 py-2.5 rounded border border-border-strong text-sm font-mono focus:outline-none focus:border-accent bg-surface-2"
             />
-            <span className="text-xs text-stone-500 whitespace-nowrap">% Off</span>
+            <span className="text-xs text-faint whitespace-nowrap">% Off</span>
           </div>
-          <button type="submit" className="px-4 py-2.5 rounded bg-stone-950 hover:bg-amber-800 text-white font-medium text-xs uppercase tracking-wider shadow transition whitespace-nowrap">
+          <button type="submit" className="px-4 py-2.5 rounded bg-fg hover:bg-accent-hover hover:text-accent-fg text-bg font-medium text-xs uppercase tracking-wider shadow transition whitespace-nowrap">
             Add
           </button>
         </div>
       </form>
 
-      {categoryStatus && <p className="text-xs text-stone-500 mb-4">{categoryStatus}</p>}
+      {categoryStatus && <p className="text-xs text-faint mb-4">{categoryStatus}</p>}
 
       {categories.length === 0 ? (
-        <p className="text-stone-400 text-sm text-center py-6">No categories yet.</p>
+        <p className="text-faint text-sm text-center py-6">No categories yet.</p>
       ) : (
-        <div className="divide-y divide-stone-100">
+        <div className="divide-y divide-border">
           {categories.map((cat) => (
             // Mobile-first: name stacks above its controls instead of
             // sharing a row with them (nowhere near enough width for
             // both on a phone screen), and the controls themselves wrap
             // onto multiple lines rather than overflowing off-screen.
             <div key={cat.id} className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-              <span className="text-sm text-stone-800 font-medium">{cat.name}</span>
+              <span className="text-sm text-fg font-medium">{cat.name}</span>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center gap-1.5" title="GST % for this category's products">
                   <input
@@ -1800,9 +1800,9 @@ export default function SettingsTab() {
                       const next = e.target.value;
                       if (next !== String(cat.gst_rate)) handleUpdateCategoryGstRate(cat.id, next);
                     }}
-                    className="w-16 px-2 py-1.5 rounded border border-stone-300 text-xs font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+                    className="w-16 px-2 py-1.5 rounded border border-border-strong text-xs font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
                   />
-                  <span className="text-[11px] text-stone-400">% GST</span>
+                  <span className="text-[11px] text-faint">% GST</span>
                 </div>
                 <div className="flex items-center gap-1.5" title="Discount % used to show a struck-through original price on the storefront (the real price customers pay is unaffected)">
                   <input
@@ -1816,9 +1816,9 @@ export default function SettingsTab() {
                       const next = e.target.value;
                       if (next !== String(cat.discount_percent)) handleUpdateCategoryDiscountPercent(cat.id, next);
                     }}
-                    className="w-16 px-2 py-1.5 rounded border border-stone-300 text-xs font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+                    className="w-16 px-2 py-1.5 rounded border border-border-strong text-xs font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
                   />
-                  <span className="text-[11px] text-stone-400">% Off</span>
+                  <span className="text-[11px] text-faint">% Off</span>
                 </div>
                 <div className="flex items-center gap-1.5" title="Products per page override for this category -- leave blank to use the site-wide default">
                   <input
@@ -1832,16 +1832,16 @@ export default function SettingsTab() {
                       const next = e.target.value.trim();
                       if (next !== String(cat.default_page_size ?? "")) handleUpdateCategoryPageSize(cat.id, next);
                     }}
-                    className="w-16 px-2 py-1.5 rounded border border-stone-300 text-xs font-mono text-right focus:outline-none focus:border-amber-600 bg-stone-50"
+                    className="w-16 px-2 py-1.5 rounded border border-border-strong text-xs font-mono text-right focus:outline-none focus:border-accent bg-surface-2"
                   />
-                  <span className="text-[11px] text-stone-400">/page</span>
+                  <span className="text-[11px] text-faint">/page</span>
                 </div>
                 <select
                   key={`${cat.id}-${cat.whatsapp_number ?? ""}`}
                   defaultValue={cat.whatsapp_number ?? ""}
                   title="WhatsApp number for enquiries on this category's products -- overrides the site default, but a product's own number (product form) still wins over this"
                   onChange={(e) => handleUpdateCategoryWhatsappNumber(cat.id, e.target.value)}
-                  className="px-2 py-1.5 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-stone-50 max-w-[140px]"
+                  className="px-2 py-1.5 rounded border border-border-strong text-xs focus:outline-none focus:border-accent bg-surface-2 max-w-[140px]"
                 >
                   <option value="">Enquiries: Default</option>
                   {whatsappNumbers.map((n) => (
@@ -1854,8 +1854,8 @@ export default function SettingsTab() {
                   title="Block Cash on Delivery for every product in this category (e.g. categories that ship badly and come back damaged)"
                   className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold border transition ${
                     cat.cod_disabled
-                      ? "border-rose-500 bg-rose-50 text-rose-700"
-                      : "border-stone-300 text-stone-500 hover:bg-stone-100"
+                      ? "border-danger bg-danger-soft text-danger"
+                      : "border-border-strong text-faint hover:bg-surface-2"
                   }`}
                 >
                   {cat.cod_disabled ? "COD off" : "COD ok"}
@@ -1866,8 +1866,8 @@ export default function SettingsTab() {
                   title="Toggle whether this category's products appear in the homepage's default (unfiltered) view"
                   className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold border transition ${
                     cat.show_on_home
-                      ? "border-emerald-600 text-emerald-700 hover:bg-emerald-50"
-                      : "border-stone-300 text-stone-500 hover:bg-stone-100"
+                      ? "border-success text-success hover:bg-success-soft"
+                      : "border-border-strong text-faint hover:bg-surface-2"
                   }`}
                 >
                   {cat.show_on_home ? "On Homepage" : "Hidden From Home"}
@@ -1876,7 +1876,7 @@ export default function SettingsTab() {
                   type="button"
                   onClick={() => handleDeleteCategory(cat.id)}
                   title="Delete category"
-                  className="w-7 h-7 flex items-center justify-center rounded-full text-rose-600 hover:bg-rose-100 leading-none border border-rose-200"
+                  className="w-7 h-7 flex items-center justify-center rounded-full text-danger hover:bg-danger-soft leading-none border border-danger-border"
                 >
                   &times;
                 </button>

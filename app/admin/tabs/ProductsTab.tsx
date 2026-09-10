@@ -837,20 +837,20 @@ export default function ProductsTab() {
   return (
     <>
     {/* SECTION A: PRODUCT REGISTRY MANAGEMENT FORM */}
-    <div className={`bg-white border rounded-lg shadow-sm p-8 transition duration-300 ${editingProductId ? "border-amber-500 shadow-amber-50" : "border-amber-200"}`}>
-      <div className="border-b border-stone-100 pb-4 mb-6 flex items-center justify-between">
-        <h2 className="text-xl font-serif text-stone-900">
+    <div className={`bg-surface border rounded-lg shadow-sm p-8 transition duration-300 ${editingProductId ? "border-accent shadow-accent-soft-border" : "border-accent-soft-border"}`}>
+      <div className="border-b border-border pb-4 mb-6 flex items-center justify-between">
+        <h2 className="text-xl font-serif text-fg">
           {editingProductId ? "Modify Active Artifact Details" : "Publish New Brass Artifact"}
         </h2>
         {editingProductId && (
-          <button type="button" onClick={handleCancelEdit} className="px-3 py-1 text-xs uppercase tracking-wider font-semibold border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 rounded transition">
+          <button type="button" onClick={handleCancelEdit} className="px-3 py-1 text-xs uppercase tracking-wider font-semibold border border-danger-border text-danger bg-danger-soft hover:bg-danger-soft rounded transition">
             Cancel Edit Mode
           </button>
         )}
       </div>
 
       {status && (
-        <div className={`mb-6 p-4 text-xs font-medium rounded border ${status.startsWith("Success") ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-amber-50 border-amber-200 text-amber-800"}`}>
+        <div className={`mb-6 p-4 text-xs font-medium rounded border ${status.startsWith("Success") ? "bg-success-soft border-success-border text-success" : "bg-accent-soft border-accent-soft-border text-accent"}`}>
           {status}
         </div>
       )}
@@ -858,24 +858,24 @@ export default function ProductsTab() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">Artifact Title</label>
-            <input type="text" required disabled={isSubmitting} placeholder="e.g., Premium Brass Engraved Peacock Diya" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+            <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">Artifact Title</label>
+            <input type="text" required disabled={isSubmitting} placeholder="e.g., Premium Brass Engraved Peacock Diya" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2" />
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">Price (INR ₹)</label>
-            <input type="number" required disabled={isSubmitting} placeholder="e.g., 3500" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+            <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">Price (INR ₹)</label>
+            <input type="number" required disabled={isSubmitting} placeholder="e.g., 3500" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2" />
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
-              Cost Price (INR ₹) <span className="text-stone-400 font-normal normal-case">(optional -- what you paid, powers margin/profit stats; never shown to customers)</span>
+            <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
+              Cost Price (INR ₹) <span className="text-faint font-normal normal-case">(optional -- what you paid, powers margin/profit stats; never shown to customers)</span>
             </label>
-            <input type="number" min={0} step="any" disabled={isSubmitting} placeholder="e.g., 1800" value={formData.cost_price} onChange={(e) => setFormData({...formData, cost_price: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+            <input type="number" min={0} step="any" disabled={isSubmitting} placeholder="e.g., 1800" value={formData.cost_price} onChange={(e) => setFormData({...formData, cost_price: e.target.value})} className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2" />
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
-              Category <span className="text-stone-400 font-normal normal-case">(optional — powers the storefront filter)</span>
+            <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
+              Category <span className="text-faint font-normal normal-case">(optional — powers the storefront filter)</span>
             </label>
-            <select disabled={isSubmitting} value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+            <select disabled={isSubmitting} value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2">
               <option value="">Uncategorized</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.name}>{c.name}</option>
@@ -883,25 +883,25 @@ export default function ProductsTab() {
             </select>
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
-              Label <span className="text-stone-400 font-normal normal-case">(optional — cross-cutting tag, e.g. &ldquo;Lightweight Brass&rdquo;; shown in the category menu and, for &ldquo;Lightweight Brass&rdquo;, unlocks the weight-based price calculator below in the stock tracker)</span>
+            <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
+              Label <span className="text-faint font-normal normal-case">(optional — cross-cutting tag, e.g. &ldquo;Lightweight Brass&rdquo;; shown in the category menu and, for &ldquo;Lightweight Brass&rdquo;, unlocks the weight-based price calculator below in the stock tracker)</span>
             </label>
-            <select disabled={isSubmitting} value={formData.label} onChange={(e) => setFormData({...formData, label: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+            <select disabled={isSubmitting} value={formData.label} onChange={(e) => setFormData({...formData, label: e.target.value})} className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2">
               <option value="">No label set</option>
               {labels.map((l) => (
                 <option key={l.id} value={l.name}>{l.name}</option>
               ))}
             </select>
             <div className="flex gap-2 mt-2">
-              <input type="text" disabled={isSubmitting} placeholder="Add a new label..." value={newLabelName} onChange={(e) => setNewLabelName(e.target.value)} className="flex-grow px-3 py-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-amber-600 bg-white" />
-              <button type="button" disabled={isSubmitting || !newLabelName.trim()} onClick={handleAddLabel} className="px-3 py-2 rounded bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
+              <input type="text" disabled={isSubmitting} placeholder="Add a new label..." value={newLabelName} onChange={(e) => setNewLabelName(e.target.value)} className="flex-grow px-3 py-2 rounded border border-border text-xs focus:outline-none focus:border-accent bg-surface" />
+              <button type="button" disabled={isSubmitting || !newLabelName.trim()} onClick={handleAddLabel} className="px-3 py-2 rounded bg-disabled hover:bg-border-strong text-muted text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
             </div>
-            {labelStatus && <p className="text-[11px] text-rose-600 mt-1">{labelStatus}</p>}
+            {labelStatus && <p className="text-[11px] text-danger mt-1">{labelStatus}</p>}
           </div>
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">Public Image Link (Cover Photo)</label>
+          <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">Public Image Link (Cover Photo)</label>
           <ImageUploadField
             value={formData.imageUrl}
             onChange={(url) => setFormData({ ...formData, imageUrl: url })}
@@ -912,8 +912,8 @@ export default function ProductsTab() {
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
-            Additional Gallery Photos <span className="text-stone-400 font-normal normal-case">(optional — shown in the flip/slideshow preview)</span>
+          <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
+            Additional Gallery Photos <span className="text-faint font-normal normal-case">(optional — shown in the flip/slideshow preview)</span>
           </label>
           <div className="space-y-2">
             {formData.additionalImages.map((url, idx) => (
@@ -930,7 +930,7 @@ export default function ProductsTab() {
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => handleRemoveImageRow(idx)}
-                  className="px-3 py-3 rounded border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 text-xs font-semibold uppercase transition whitespace-nowrap"
+                  className="px-3 py-3 rounded border border-danger-border text-danger bg-danger-soft hover:bg-danger-soft text-xs font-semibold uppercase transition whitespace-nowrap"
                 >
                   Remove
                 </button>
@@ -941,7 +941,7 @@ export default function ProductsTab() {
             type="button"
             disabled={isSubmitting}
             onClick={handleAddImageRow}
-            className="mt-2 px-4 py-2 text-xs uppercase tracking-wider font-semibold border border-amber-300 text-amber-700 rounded hover:bg-amber-50 transition"
+            className="mt-2 px-4 py-2 text-xs uppercase tracking-wider font-semibold border border-accent-soft-border text-accent rounded hover:bg-accent-soft transition"
           >
             + Add Image
           </button>
@@ -949,18 +949,18 @@ export default function ProductsTab() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2">
-            <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">Craftsmanship Description</label>
-            <textarea rows={4} required disabled={isSubmitting} placeholder="Detail structural weight parameters, hand carvings, and antique finish attributes..." value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+            <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">Craftsmanship Description</label>
+            <textarea rows={4} required disabled={isSubmitting} placeholder="Detail structural weight parameters, hand carvings, and antique finish attributes..." value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2" />
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">Initial Stock Allocation</label>
-            <input type="number" required disabled={isSubmitting} value={formData.inventory} onChange={(e) => setFormData({...formData, inventory: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+            <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">Initial Stock Allocation</label>
+            <input type="number" required disabled={isSubmitting} value={formData.inventory} onChange={(e) => setFormData({...formData, inventory: e.target.value})} className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2" />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
-            Weight & Dimensions <span className="text-stone-400 font-normal normal-case">(all optional — shown on the storefront only for products where they’re filled in)</span>
+          <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
+            Weight & Dimensions <span className="text-faint font-normal normal-case">(all optional — shown on the storefront only for products where they’re filled in)</span>
           </label>
 
           {/* Changes what unit you type into the fields below (and how
@@ -971,11 +971,11 @@ export default function ProductsTab() {
               storefront's own weight/dimension *display* unit setting. */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 text-xs">
             <span className="flex items-center gap-1.5">
-              <span className="text-stone-500">Enter weight in</span>
+              <span className="text-faint">Enter weight in</span>
               <select
                 value={weightInputUnit}
                 onChange={(e) => handleWeightUnitChange(e.target.value as WeightUnit)}
-                className="px-2 py-1 rounded border border-stone-300 bg-white focus:outline-none focus:border-amber-600"
+                className="px-2 py-1 rounded border border-border-strong bg-surface focus:outline-none focus:border-accent"
               >
                 {WEIGHT_UNITS.map((u) => (
                   <option key={u} value={u}>{u === "lb" ? "lbs" : u}</option>
@@ -983,11 +983,11 @@ export default function ProductsTab() {
               </select>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="text-stone-500">dimensions in</span>
+              <span className="text-faint">dimensions in</span>
               <select
                 value={dimensionInputUnit}
                 onChange={(e) => handleDimensionUnitChange(e.target.value as DimensionUnit)}
-                className="px-2 py-1 rounded border border-stone-300 bg-white focus:outline-none focus:border-amber-600"
+                className="px-2 py-1 rounded border border-border-strong bg-surface focus:outline-none focus:border-accent"
               >
                 {DIMENSION_UNITS.map((u) => (
                   <option key={u} value={u}>{u}</option>
@@ -997,7 +997,7 @@ export default function ProductsTab() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <input type="number" min={0} step="any" disabled={isSubmitting} placeholder={`Weight (${weightInputUnit})`} value={formData.weight_g} onChange={(e) => setFormData({...formData, weight_g: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50" />
+            <input type="number" min={0} step="any" disabled={isSubmitting} placeholder={`Weight (${weightInputUnit})`} value={formData.weight_g} onChange={(e) => setFormData({...formData, weight_g: e.target.value})} className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2" />
             {/* The 1-100 range + suggestion list below only made sense
                 for whole centimeters -- other units (a fraction of a
                 metre, tens of millimetres, etc.) fall back to a plain
@@ -1012,7 +1012,7 @@ export default function ProductsTab() {
               placeholder={`Height (${dimensionInputUnit})`}
               value={formData.height_cm}
               onChange={(e) => setFormData({...formData, height_cm: e.target.value})}
-              className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+              className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
             />
             <input
               type="number"
@@ -1024,7 +1024,7 @@ export default function ProductsTab() {
               placeholder={`Depth (${dimensionInputUnit})`}
               value={formData.depth_cm}
               onChange={(e) => setFormData({...formData, depth_cm: e.target.value})}
-              className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+              className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
             />
             <input
               type="number"
@@ -1036,7 +1036,7 @@ export default function ProductsTab() {
               placeholder={`Breadth (${dimensionInputUnit})`}
               value={formData.breadth_cm}
               onChange={(e) => setFormData({...formData, breadth_cm: e.target.value})}
-              className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+              className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
             />
             {/* Shared by all three dimension fields above -- a native
                 number input with searchable suggestions (type "9" to
@@ -1054,28 +1054,28 @@ export default function ProductsTab() {
           {/* Scratch-pad only -- doesn't write into the fields above,
               just helps figure out what number to type into them (e.g.
               measured 5 inches with a tape, need the cm equivalent). */}
-          <div className="mt-3 p-3 rounded border border-dashed border-stone-300 bg-stone-50 flex flex-wrap items-center gap-2">
-            <span className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold mr-1">Unit converter</span>
+          <div className="mt-3 p-3 rounded border border-dashed border-border-strong bg-surface-2 flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-faint font-semibold mr-1">Unit converter</span>
             <input
               type="number"
               step="any"
               placeholder="Value"
               value={converterValue}
               onChange={(e) => setConverterValue(e.target.value)}
-              className="w-20 px-2 py-1.5 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-white"
+              className="w-20 px-2 py-1.5 rounded border border-border-strong text-xs focus:outline-none focus:border-accent bg-surface"
             />
             <select
               value={converterUnit}
               onChange={(e) => setConverterUnit(e.target.value as DimensionUnit)}
-              className="px-2 py-1.5 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-white"
+              className="px-2 py-1.5 rounded border border-border-strong text-xs focus:outline-none focus:border-accent bg-surface"
             >
               {DIMENSION_UNITS.map((u) => (
                 <option key={u} value={u}>{u}</option>
               ))}
             </select>
-            <span className="text-stone-400 text-xs">=</span>
+            <span className="text-faint text-xs">=</span>
             {DIMENSION_UNITS.filter((u) => u !== converterUnit).map((u) => (
-              <span key={u} className="text-xs font-mono bg-white border border-stone-200 rounded px-2 py-1.5">
+              <span key={u} className="text-xs font-mono bg-surface border border-border rounded px-2 py-1.5">
                 {converterValue.trim() && Number.isFinite(Number(converterValue))
                   ? convertDimensionValue(Number(converterValue), converterUnit, u)
                   : "—"} {u}
@@ -1085,66 +1085,66 @@ export default function ProductsTab() {
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
-            Material & Colour <span className="text-stone-400 font-normal normal-case">(both optional — shown on the product detail page and the card’s flip-back, only when filled in)</span>
+          <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
+            Material & Colour <span className="text-faint font-normal normal-case">(both optional — shown on the product detail page and the card’s flip-back, only when filled in)</span>
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
             <div>
-              <select disabled={isSubmitting} value={formData.material} onChange={(e) => setFormData({...formData, material: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+              <select disabled={isSubmitting} value={formData.material} onChange={(e) => setFormData({...formData, material: e.target.value})} className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2">
                 <option value="">No material set</option>
                 {materials.map((m) => (
                   <option key={m.id} value={m.name}>{m.name}</option>
                 ))}
               </select>
               <div className="flex gap-2 mt-2">
-                <input type="text" disabled={isSubmitting} placeholder="Add a new material..." value={newMaterialName} onChange={(e) => setNewMaterialName(e.target.value)} className="flex-grow px-3 py-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-amber-600 bg-white" />
-                <button type="button" disabled={isSubmitting || !newMaterialName.trim()} onClick={handleAddMaterial} className="px-3 py-2 rounded bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
+                <input type="text" disabled={isSubmitting} placeholder="Add a new material..." value={newMaterialName} onChange={(e) => setNewMaterialName(e.target.value)} className="flex-grow px-3 py-2 rounded border border-border text-xs focus:outline-none focus:border-accent bg-surface" />
+                <button type="button" disabled={isSubmitting || !newMaterialName.trim()} onClick={handleAddMaterial} className="px-3 py-2 rounded bg-disabled hover:bg-border-strong text-muted text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
               </div>
-              {materialStatus && <p className="text-[11px] text-rose-600 mt-1">{materialStatus}</p>}
+              {materialStatus && <p className="text-[11px] text-danger mt-1">{materialStatus}</p>}
             </div>
             <div>
-              <select disabled={isSubmitting} value={formData.color} onChange={(e) => setFormData({...formData, color: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+              <select disabled={isSubmitting} value={formData.color} onChange={(e) => setFormData({...formData, color: e.target.value})} className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2">
                 <option value="">No colour set</option>
                 {colors.map((c) => (
                   <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>
               <div className="flex gap-2 mt-2">
-                <input type="text" disabled={isSubmitting} placeholder="Add a new colour..." value={newColorName} onChange={(e) => setNewColorName(e.target.value)} className="flex-grow px-3 py-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-amber-600 bg-white" />
-                <button type="button" disabled={isSubmitting || !newColorName.trim()} onClick={handleAddColor} className="px-3 py-2 rounded bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
+                <input type="text" disabled={isSubmitting} placeholder="Add a new colour..." value={newColorName} onChange={(e) => setNewColorName(e.target.value)} className="flex-grow px-3 py-2 rounded border border-border text-xs focus:outline-none focus:border-accent bg-surface" />
+                <button type="button" disabled={isSubmitting || !newColorName.trim()} onClick={handleAddColor} className="px-3 py-2 rounded bg-disabled hover:bg-border-strong text-muted text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
               </div>
-              {colorStatus && <p className="text-[11px] text-rose-600 mt-1">{colorStatus}</p>}
+              {colorStatus && <p className="text-[11px] text-danger mt-1">{colorStatus}</p>}
             </div>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
-            WhatsApp Number for Enquiries <span className="text-stone-400 font-normal normal-case">(optional — defaults to +91 6302672351 if not set here. Order/business notifications always go to +91 6302672351 regardless of this.)</span>
+          <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
+            WhatsApp Number for Enquiries <span className="text-faint font-normal normal-case">(optional — defaults to +91 6302672351 if not set here. Order/business notifications always go to +91 6302672351 regardless of this.)</span>
           </label>
-          <select disabled={isSubmitting} value={formData.whatsapp_number} onChange={(e) => setFormData({...formData, whatsapp_number: e.target.value})} className="w-full px-4 py-3 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50">
+          <select disabled={isSubmitting} value={formData.whatsapp_number} onChange={(e) => setFormData({...formData, whatsapp_number: e.target.value})} className="w-full px-4 py-3 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2">
             <option value="">Default (+91 6302672351)</option>
             {whatsappNumbers.map((n) => (
               <option key={n.id} value={n.phone_number}>{n.label ? `${n.label} — ` : ""}+{n.phone_number}</option>
             ))}
           </select>
           <div className="flex flex-wrap gap-2 mt-2">
-            <input type="text" disabled={isSubmitting} placeholder="Label (optional, e.g. Sales Team 2)" value={newWhatsappLabel} onChange={(e) => setNewWhatsappLabel(e.target.value)} className="flex-grow min-w-[140px] px-3 py-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-amber-600 bg-white" />
-            <input type="text" disabled={isSubmitting} placeholder="Add a new WhatsApp number..." value={newWhatsappNumber} onChange={(e) => setNewWhatsappNumber(e.target.value)} className="flex-grow min-w-[160px] px-3 py-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-amber-600 bg-white" />
-            <button type="button" disabled={isSubmitting || !newWhatsappNumber.trim()} onClick={handleAddWhatsappNumber} className="px-3 py-2 rounded bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
+            <input type="text" disabled={isSubmitting} placeholder="Label (optional, e.g. Sales Team 2)" value={newWhatsappLabel} onChange={(e) => setNewWhatsappLabel(e.target.value)} className="flex-grow min-w-[140px] px-3 py-2 rounded border border-border text-xs focus:outline-none focus:border-accent bg-surface" />
+            <input type="text" disabled={isSubmitting} placeholder="Add a new WhatsApp number..." value={newWhatsappNumber} onChange={(e) => setNewWhatsappNumber(e.target.value)} className="flex-grow min-w-[160px] px-3 py-2 rounded border border-border text-xs focus:outline-none focus:border-accent bg-surface" />
+            <button type="button" disabled={isSubmitting || !newWhatsappNumber.trim()} onClick={handleAddWhatsappNumber} className="px-3 py-2 rounded bg-disabled hover:bg-border-strong text-muted text-xs font-semibold uppercase tracking-wider disabled:opacity-50">Add</button>
           </div>
-          {whatsappNumberStatus && <p className="text-[11px] text-rose-600 mt-1">{whatsappNumberStatus}</p>}
+          {whatsappNumberStatus && <p className="text-[11px] text-danger mt-1">{whatsappNumberStatus}</p>}
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+          <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
             Also notify suppliers on orders for this product{" "}
-            <span className="text-stone-400 font-normal normal-case">
+            <span className="text-faint font-normal normal-case">
               (optional — every notification for this product also goes to the ticked numbers, on top of +91 6302672351. Manage the list in Settings → Order Notification Numbers.)
             </span>
           </label>
           {orderNotificationNumbers.length === 0 ? (
-            <p className="text-[11px] text-stone-400">
+            <p className="text-[11px] text-faint">
               No order-notification numbers yet — add some in Settings → Order Notification Numbers.
             </p>
           ) : (
@@ -1155,7 +1155,7 @@ export default function ProductsTab() {
                   <label
                     key={n.id}
                     className={`flex items-center gap-2 px-3 py-2 rounded border text-xs cursor-pointer transition ${
-                      checked ? "border-amber-400 bg-amber-50" : "border-stone-200 bg-stone-50 hover:bg-stone-100"
+                      checked ? "border-accent-soft-border bg-accent-soft" : "border-border bg-surface-2 hover:bg-surface-2"
                     }`}
                   >
                     <input
@@ -1170,11 +1170,11 @@ export default function ProductsTab() {
                             : formData.supplier_numbers.filter((p) => p !== n.phone_number),
                         })
                       }
-                      className="accent-amber-600 flex-shrink-0"
+                      className="accent-[var(--accent)] flex-shrink-0"
                     />
                     <span className="min-w-0">
-                      <span className="block text-stone-800 truncate">{n.label || "—"}</span>
-                      <span className="block font-mono text-[10px] text-stone-500">+{n.phone_number}</span>
+                      <span className="block text-fg truncate">{n.label || "—"}</span>
+                      <span className="block font-mono text-[10px] text-faint">+{n.phone_number}</span>
                     </span>
                   </label>
                 );
@@ -1184,16 +1184,16 @@ export default function ProductsTab() {
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wider text-stone-600 font-semibold mb-2">
+          <label className="block text-xs uppercase tracking-wider text-muted font-semibold mb-2">
             Also notify on enquiry for this product{" "}
-            <span className="text-stone-400 font-normal normal-case">
+            <span className="text-faint font-normal normal-case">
               (optional — a WhatsApp &ldquo;Chat&rdquo; click for this product also pings the ticked numbers.
               Separate from the supplier list above; a number can be in one, both, or neither. Same managed
               list — Settings → Order Notification Numbers.)
             </span>
           </label>
           {orderNotificationNumbers.length === 0 ? (
-            <p className="text-[11px] text-stone-400">
+            <p className="text-[11px] text-faint">
               No order-notification numbers yet — add some in Settings → Order Notification Numbers.
             </p>
           ) : (
@@ -1204,7 +1204,7 @@ export default function ProductsTab() {
                   <label
                     key={n.id}
                     className={`flex items-center gap-2 px-3 py-2 rounded border text-xs cursor-pointer transition ${
-                      checked ? "border-sky-400 bg-sky-50" : "border-stone-200 bg-stone-50 hover:bg-stone-100"
+                      checked ? "border-accent-soft-border bg-accent-soft" : "border-border bg-surface-2 hover:bg-surface-2"
                     }`}
                   >
                     <input
@@ -1219,11 +1219,11 @@ export default function ProductsTab() {
                             : formData.enquiry_notify_numbers.filter((p) => p !== n.phone_number),
                         })
                       }
-                      className="accent-sky-600 flex-shrink-0"
+                      className="accent-[var(--accent)] flex-shrink-0"
                     />
                     <span className="min-w-0">
-                      <span className="block text-stone-800 truncate">{n.label || "—"}</span>
-                      <span className="block font-mono text-[10px] text-stone-500">+{n.phone_number}</span>
+                      <span className="block text-fg truncate">{n.label || "—"}</span>
+                      <span className="block font-mono text-[10px] text-faint">+{n.phone_number}</span>
                     </span>
                   </label>
                 );
@@ -1232,8 +1232,8 @@ export default function ProductsTab() {
           )}
         </div>
 
-        <div className="flex justify-end pt-4 border-t border-stone-100">
-          <button type="submit" disabled={isSubmitting} className={`font-medium text-xs uppercase tracking-widest px-8 py-3.5 rounded shadow text-white transition duration-150 ${editingProductId ? "bg-amber-600 hover:bg-amber-700" : "bg-stone-950 hover:bg-amber-800"}`}>
+        <div className="flex justify-end pt-4 border-t border-border">
+          <button type="submit" disabled={isSubmitting} className={`font-medium text-xs uppercase tracking-widest px-8 py-3.5 rounded shadow transition duration-150 ${editingProductId ? "bg-accent hover:bg-accent-hover text-accent-fg" : "bg-fg hover:bg-accent-hover hover:text-accent-fg text-bg"}`}>
             {isSubmitting ? "Processing..." : editingProductId ? "Update Brass Artifact" : "Publish Brass Artifact"}
           </button>
         </div>
@@ -1256,23 +1256,23 @@ export default function ProductsTab() {
       rows={categoryStats.rows}
       totals={categoryStats.totals}
       lowStockThreshold={LOW_STOCK_THRESHOLD}
-      valueBarColorClass="bg-emerald-600"
-      unitsBarColorClass="bg-indigo-600"
+      valueBarColorClass="bg-success"
+      unitsBarColorClass="bg-accent"
     />
 
     {/* SECTION A.7: TOP VALUE, DEAD STOCK, STOCK AGING, COST & MARGIN */}
     <InventoryInsightsPanel products={products} soldCountByProductId={soldCountByProductId} />
 
     {/* SECTION B: ACTIVE PRODUCT INVENTORY BALANCES TUNER */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6">
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-serif text-stone-900">Live Storefront Catalog & Stock Tracker</h2>
-            <p className="text-stone-500 text-xs mt-1">Manage physical stock variations or open a product’s text fields to overwrite details cleanly.</p>
+            <h2 className="text-xl font-serif text-fg">Live Storefront Catalog & Stock Tracker</h2>
+            <p className="text-faint text-xs mt-1">Manage physical stock variations or open a product’s text fields to overwrite details cleanly.</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs font-mono font-bold text-stone-500 bg-stone-100 border border-stone-200 rounded px-3 py-1.5 whitespace-nowrap">
+            <span className="text-xs font-mono font-bold text-faint bg-surface-2 border border-border rounded px-3 py-1.5 whitespace-nowrap">
               {products.length} product{products.length === 1 ? "" : "s"} added
             </span>
             <a
@@ -1280,7 +1280,7 @@ export default function ProductsTab() {
               target="_blank"
               rel="noopener noreferrer"
               title="Download a branded, category-wise PDF catalogue of every product"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide bg-amber-700 hover:bg-amber-800 text-white px-3 py-1.5 rounded shadow-sm transition whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide bg-accent hover:bg-accent-hover text-accent-fg px-3 py-1.5 rounded shadow-sm transition whitespace-nowrap"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
@@ -1297,11 +1297,11 @@ export default function ProductsTab() {
             brass calculator keeps its own fixed kg/in. */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 text-xs">
           <span className="flex items-center gap-1.5">
-            <span className="text-stone-500">Weight input unit</span>
+            <span className="text-faint">Weight input unit</span>
             <select
               value={weightInputUnit}
               onChange={(e) => handleWeightUnitChange(e.target.value as WeightUnit)}
-              className="px-2 py-1 rounded border border-stone-300 bg-white focus:outline-none focus:border-amber-600"
+              className="px-2 py-1 rounded border border-border-strong bg-surface focus:outline-none focus:border-accent"
             >
               {WEIGHT_UNITS.map((u) => (
                 <option key={u} value={u}>{u === "lb" ? "lbs" : u}</option>
@@ -1309,11 +1309,11 @@ export default function ProductsTab() {
             </select>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="text-stone-500">Dimension input unit</span>
+            <span className="text-faint">Dimension input unit</span>
             <select
               value={dimensionInputUnit}
               onChange={(e) => handleDimensionUnitChange(e.target.value as DimensionUnit)}
-              className="px-2 py-1 rounded border border-stone-300 bg-white focus:outline-none focus:border-amber-600"
+              className="px-2 py-1 rounded border border-border-strong bg-surface focus:outline-none focus:border-accent"
             >
               {DIMENSION_UNITS.map((u) => (
                 <option key={u} value={u}>{u}</option>
@@ -1325,7 +1325,7 @@ export default function ProductsTab() {
         <div className="flex flex-col sm:flex-row gap-3 mt-4">
           <div className="relative flex-grow">
             <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -1340,14 +1340,14 @@ export default function ProductsTab() {
               onChange={(e) => setProductSearch(e.target.value)}
               placeholder="Search added products by name..."
               aria-label="Search products"
-              className="w-full pl-9 pr-3 py-2.5 rounded border border-stone-200 bg-stone-50 text-sm text-stone-800 focus:outline-none focus:border-amber-600 focus:bg-white transition"
+              className="w-full pl-9 pr-3 py-2.5 rounded border border-border bg-surface-2 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface transition"
             />
           </div>
           <select
             value={productCategoryFilter}
             onChange={(e) => setProductCategoryFilter(e.target.value)}
             aria-label="Filter products by category"
-            className="px-3 py-2.5 rounded border border-stone-200 bg-stone-50 text-sm text-stone-800 focus:outline-none focus:border-amber-600 focus:bg-white transition sm:w-56"
+            className="px-3 py-2.5 rounded border border-border bg-surface-2 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface transition sm:w-56"
           >
             <option value="">All Categories</option>
             {categories.map((c) => (
@@ -1357,11 +1357,11 @@ export default function ProductsTab() {
         </div>
 
         {productCategoryFilter && (
-          <div className="flex flex-wrap items-center gap-2 mt-3 p-3 rounded border border-dashed border-amber-300 bg-amber-50">
-            <span className="text-[11px] uppercase tracking-wider text-stone-500 font-semibold whitespace-nowrap">
+          <div className="flex flex-wrap items-center gap-2 mt-3 p-3 rounded border border-dashed border-accent-soft-border bg-accent-soft">
+            <span className="text-[11px] uppercase tracking-wider text-faint font-semibold whitespace-nowrap">
               Tag all &ldquo;{productCategoryFilter}&rdquo; as
             </span>
-            <select value={trackerBulkLabel} onChange={(e) => setTrackerBulkLabel(e.target.value)} className="px-3 py-2 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-white">
+            <select value={trackerBulkLabel} onChange={(e) => setTrackerBulkLabel(e.target.value)} className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface">
               <option value="">Choose a label...</option>
               {labels.map((l) => (
                 <option key={l.id} value={l.name}>{l.name}</option>
@@ -1371,26 +1371,26 @@ export default function ProductsTab() {
               type="button"
               disabled={!trackerBulkLabel}
               onClick={handleTrackerBulkAssignLabel}
-              className="px-4 py-2 rounded bg-stone-900 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
+              className="px-4 py-2 rounded bg-fg hover:bg-accent hover:text-accent-fg text-bg text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
             >
               Assign All
             </button>
-            {trackerBulkLabelStatus && <span className="text-[11px] text-stone-500">{trackerBulkLabelStatus}</span>}
+            {trackerBulkLabelStatus && <span className="text-[11px] text-faint">{trackerBulkLabelStatus}</span>}
           </div>
         )}
       </div>
 
       {products.length === 0 ? (
-        <p className="text-stone-400 text-sm text-center py-6">No products found in cloud database storage.</p>
+        <p className="text-faint text-sm text-center py-6">No products found in cloud database storage.</p>
       ) : visibleProducts.length === 0 ? (
-        <p className="text-stone-400 text-sm text-center py-6">
+        <p className="text-faint text-sm text-center py-6">
           {productSearch
             ? <>No products match &ldquo;{productSearch}&rdquo;.</>
             : <>No products in the &ldquo;{productCategoryFilter}&rdquo; category yet.</>}
         </p>
       ) : (
         <>
-        <div className="divide-y divide-stone-100">
+        <div className="divide-y divide-border">
           {paginatedProducts.map((product, index) => (
             <div key={product.id} className={`py-4 flex flex-col gap-3 ${product.hidden ? "opacity-60" : ""}`}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1407,21 +1407,21 @@ export default function ProductsTab() {
                     const parsed = next === "" ? null : Number(next);
                     if (parsed !== (product.display_order ?? null)) handleDisplayOrderUpdate(product.id, parsed);
                   }}
-                  className="text-xs font-mono font-bold text-stone-600 w-12 px-1.5 py-1 rounded border border-stone-200 text-right flex-shrink-0 focus:outline-none focus:border-amber-600"
+                  className="text-xs font-mono font-bold text-muted w-12 px-1.5 py-1 rounded border border-border text-right flex-shrink-0 focus:outline-none focus:border-accent"
                 />
-                <div className="relative w-14 h-14 rounded overflow-hidden border border-stone-200 bg-stone-50 flex-shrink-0">
+                <div className="relative w-14 h-14 rounded overflow-hidden border border-border bg-surface-2 flex-shrink-0">
                   <Image src={product.thumb_url || product.image_url} alt={product.name} fill sizes="56px" className="object-cover" />
                 </div>
                 <div>
-                  <h3 className="font-serif text-stone-900 text-sm font-medium flex items-center gap-2">
+                  <h3 className="font-serif text-fg text-sm font-medium flex items-center gap-2">
                     {product.name}
                     {product.hidden && (
-                      <span className="text-[9px] uppercase tracking-wider font-semibold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded">
+                      <span className="text-[9px] uppercase tracking-wider font-semibold text-danger bg-danger-soft px-1.5 py-0.5 rounded">
                         Hidden
                       </span>
                     )}
                   </h3>
-                  <p className="text-amber-800 text-xs font-mono font-bold">₹{Number(product.price).toLocaleString("en-IN")}</p>
+                  <p className="text-accent text-xs font-mono font-bold">₹{Number(product.price).toLocaleString("en-IN")}</p>
                 </div>
               </div>
 
@@ -1432,17 +1432,17 @@ export default function ProductsTab() {
                   the actual "can't edit products on mobile" bug. */}
               <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 sm:gap-6 border-t sm:border-0 pt-3 sm:pt-0">
                 <div className="flex items-center gap-2">
-                  <button onClick={() => handleStockUpdate(product.id, product.inventory, -1)} className="w-8 h-8 rounded border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 transition">-</button>
+                  <button onClick={() => handleStockUpdate(product.id, product.inventory, -1)} className="w-8 h-8 rounded border border-border-strong flex items-center justify-center font-bold text-muted hover:bg-surface-2 transition">-</button>
                   <div className="w-12 text-center">
-                    <span className={`text-sm font-mono font-bold px-2.5 py-1 rounded ${product.inventory === 0 ? "bg-rose-100 text-rose-700" : "bg-stone-100 text-stone-800"}`}>
+                    <span className={`text-sm font-mono font-bold px-2.5 py-1 rounded ${product.inventory === 0 ? "bg-danger-soft text-danger" : "bg-surface-2 text-fg"}`}>
                       {product.inventory}
                     </span>
                   </div>
-                  <button onClick={() => handleStockUpdate(product.id, product.inventory, 1)} className="w-8 h-8 rounded border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 transition">+</button>
+                  <button onClick={() => handleStockUpdate(product.id, product.inventory, 1)} className="w-8 h-8 rounded border border-border-strong flex items-center justify-center font-bold text-muted hover:bg-surface-2 transition">+</button>
                 </div>
 
                 <div className="flex flex-col items-start flex-shrink-0">
-                  <label className="text-[9px] uppercase tracking-wider text-stone-400 font-semibold mb-0.5">Cost ₹</label>
+                  <label className="text-[9px] uppercase tracking-wider text-faint font-semibold mb-0.5">Cost ₹</label>
                   <input
                     type="number"
                     min={0}
@@ -1456,7 +1456,7 @@ export default function ProductsTab() {
                     }}
                     title="Cost/purchase price -- optional, powers margin stats, never shown to customers"
                     aria-label={`Cost price for ${product.name}`}
-                    className="w-20 px-2 py-1.5 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-stone-50"
+                    className="w-20 px-2 py-1.5 rounded border border-border-strong text-xs focus:outline-none focus:border-accent bg-surface-2"
                   />
                 </div>
 
@@ -1465,7 +1465,7 @@ export default function ProductsTab() {
                   onChange={(e) => handleInlineLabelUpdate(product.id, e.target.value)}
                   title="Label"
                   aria-label={`Label for ${product.name}`}
-                  className="px-2 py-2 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-stone-50 max-w-[9rem]"
+                  className="px-2 py-2 rounded border border-border-strong text-xs focus:outline-none focus:border-accent bg-surface-2 max-w-[9rem]"
                 >
                   <option value="">No label</option>
                   {labels.map((l) => (
@@ -1478,7 +1478,7 @@ export default function ProductsTab() {
                   onChange={(e) => handleInlinePhotoFilterUpdate(product.id, e.target.value)}
                   title="Photo look override for this product (beats its label's look and the site default)"
                   aria-label={`Photo look for ${product.name}`}
-                  className="px-2 py-2 rounded border border-stone-300 text-xs focus:outline-none focus:border-amber-600 bg-stone-50 max-w-[8rem]"
+                  className="px-2 py-2 rounded border border-border-strong text-xs focus:outline-none focus:border-accent bg-surface-2 max-w-[8rem]"
                 >
                   <option value="">Auto (label/default)</option>
                   {PHOTO_FILTER_PRESETS.map((preset) => (
@@ -1492,8 +1492,8 @@ export default function ProductsTab() {
                   title={product.hidden ? "Unhide -- makes this product visible and orderable on the storefront again" : "Hide -- removes this product from the storefront and blocks it from being ordered, without deleting it"}
                   className={`px-4 py-2 rounded font-semibold text-xs uppercase shadow-sm transition border ${
                     product.hidden
-                      ? "border-emerald-600 text-emerald-700 hover:bg-emerald-50"
-                      : "border-stone-400 text-stone-600 hover:bg-stone-100"
+                      ? "border-success text-success hover:bg-success-soft"
+                      : "border-border-strong text-muted hover:bg-surface-2"
                   }`}
                 >
                   {product.hidden ? "Unhide" : "Hide"}
@@ -1505,8 +1505,8 @@ export default function ProductsTab() {
                   title={product.is_spotlight ? "Remove from the /spotlight marketing page" : "Feature on the /spotlight marketing page"}
                   className={`px-4 py-2 rounded font-semibold text-xs uppercase shadow-sm transition border ${
                     product.is_spotlight
-                      ? "border-amber-600 bg-amber-50 text-amber-800"
-                      : "border-stone-400 text-stone-600 hover:bg-stone-100"
+                      ? "border-accent bg-accent-soft text-accent"
+                      : "border-border-strong text-muted hover:bg-surface-2"
                   }`}
                 >
                   {product.is_spotlight ? "★ Featured" : "☆ Feature"}
@@ -1522,8 +1522,8 @@ export default function ProductsTab() {
                   }
                   className={`px-4 py-2 rounded font-semibold text-xs uppercase shadow-sm transition border ${
                     product.enquire_only
-                      ? "border-amber-600 bg-amber-50 text-amber-800"
-                      : "border-stone-400 text-stone-600 hover:bg-stone-100"
+                      ? "border-accent bg-accent-soft text-accent"
+                      : "border-border-strong text-muted hover:bg-surface-2"
                   }`}
                 >
                   {product.enquire_only ? "Enquire only" : "Sold online"}
@@ -1539,14 +1539,14 @@ export default function ProductsTab() {
                     }
                   className={`px-4 py-2 rounded font-semibold text-xs uppercase shadow-sm transition border ${
                     product.cod_disabled
-                      ? "border-rose-500 bg-rose-50 text-rose-700"
-                      : "border-stone-400 text-stone-600 hover:bg-stone-100"
+                      ? "border-danger bg-danger-soft text-danger"
+                      : "border-border-strong text-muted hover:bg-surface-2"
                   }`}
                 >
                   {product.cod_disabled ? "COD off" : "COD ok"}
                 </button>
 
-                <button type="button" onClick={() => handleEditClick(product)} className="px-4 py-2 border border-amber-600 rounded text-amber-700 hover:bg-amber-50 font-semibold text-xs uppercase shadow-sm transition">
+                <button type="button" onClick={() => handleEditClick(product)} className="px-4 py-2 border border-accent rounded text-accent hover:bg-accent-soft font-semibold text-xs uppercase shadow-sm transition">
                   Edit Details
                 </button>
               </div>
@@ -1562,8 +1562,8 @@ export default function ProductsTab() {
                     <summary
                       className={`cursor-pointer select-none inline-flex items-center gap-1.5 px-3 py-2 rounded border font-semibold uppercase tracking-wide list-none [&::-webkit-details-marker]:hidden transition ${
                         attached.length > 0
-                          ? "border-amber-300 bg-amber-50 text-amber-800"
-                          : "border-stone-300 text-stone-600 hover:bg-stone-100"
+                          ? "border-accent-soft-border bg-accent-soft text-accent"
+                          : "border-border-strong text-muted hover:bg-surface-2"
                       }`}
                     >
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1578,7 +1578,7 @@ export default function ProductsTab() {
                           <label
                             key={n.id}
                             className={`flex items-center gap-2.5 px-3 py-2.5 rounded border cursor-pointer transition ${
-                              checked ? "border-amber-400 bg-amber-50" : "border-stone-200 bg-stone-50 hover:bg-stone-100"
+                              checked ? "border-accent-soft-border bg-accent-soft" : "border-border bg-surface-2 hover:bg-surface-2"
                             }`}
                           >
                             <input
@@ -1592,11 +1592,11 @@ export default function ProductsTab() {
                                     : attached.filter((p) => p !== n.phone_number)
                                 )
                               }
-                              className="accent-amber-600 flex-shrink-0"
+                              className="accent-[var(--accent)] flex-shrink-0"
                             />
                             <span className="min-w-0">
-                              <span className="block text-stone-800 truncate">{n.label || "—"}</span>
-                              <span className="block font-mono text-[10px] text-stone-500">+{n.phone_number}</span>
+                              <span className="block text-fg truncate">{n.label || "—"}</span>
+                              <span className="block font-mono text-[10px] text-faint">+{n.phone_number}</span>
                             </span>
                           </label>
                         );
@@ -1617,8 +1617,8 @@ export default function ProductsTab() {
                     <summary
                       className={`cursor-pointer select-none inline-flex items-center gap-1.5 px-3 py-2 rounded border font-semibold uppercase tracking-wide list-none [&::-webkit-details-marker]:hidden transition ${
                         attached.length > 0
-                          ? "border-sky-300 bg-sky-50 text-sky-800"
-                          : "border-stone-300 text-stone-600 hover:bg-stone-100"
+                          ? "border-accent-soft-border bg-accent-soft text-accent"
+                          : "border-border-strong text-muted hover:bg-surface-2"
                       }`}
                     >
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1633,7 +1633,7 @@ export default function ProductsTab() {
                           <label
                             key={n.id}
                             className={`flex items-center gap-2.5 px-3 py-2.5 rounded border cursor-pointer transition ${
-                              checked ? "border-sky-400 bg-sky-50" : "border-stone-200 bg-stone-50 hover:bg-stone-100"
+                              checked ? "border-accent-soft-border bg-accent-soft" : "border-border bg-surface-2 hover:bg-surface-2"
                             }`}
                           >
                             <input
@@ -1647,11 +1647,11 @@ export default function ProductsTab() {
                                     : attached.filter((p) => p !== n.phone_number)
                                 )
                               }
-                              className="accent-sky-600 flex-shrink-0"
+                              className="accent-[var(--accent)] flex-shrink-0"
                             />
                             <span className="min-w-0">
-                              <span className="block text-stone-800 truncate">{n.label || "—"}</span>
-                              <span className="block font-mono text-[10px] text-stone-500">+{n.phone_number}</span>
+                              <span className="block text-fg truncate">{n.label || "—"}</span>
+                              <span className="block font-mono text-[10px] text-faint">+{n.phone_number}</span>
                             </span>
                           </label>
                         );
@@ -1669,77 +1669,77 @@ export default function ProductsTab() {
                 const costRate = Number(draft.cost_price_per_kg);
                 const computedCost = weightKg > 0 && costRate > 0 ? weightKg * costRate : null;
                 return (
-                  <div className="bg-amber-50 border border-amber-200 rounded px-3 py-2.5 flex flex-wrap items-end gap-3">
+                  <div className="bg-accent-soft border border-accent-soft-border rounded px-3 py-2.5 flex flex-wrap items-end gap-3">
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Weight (kg)</label>
+                      <label className="block text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Weight (kg)</label>
                       <input
                         type="number" min={0} step="any" placeholder="e.g. 0.5"
                         value={draft.weight_kg}
                         onChange={(e) => updateBrassDraftField(product, "weight_kg", e.target.value)}
                         onBlur={(e) => handleBrassSpecUpdate(product.id, { ...draft, weight_kg: e.target.value })}
-                        className="w-20 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                        className="w-20 px-2 py-1.5 rounded border border-border-strong bg-surface text-xs focus:outline-none focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Height (in)</label>
+                      <label className="block text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Height (in)</label>
                       <input
                         type="number" min={0} step="any" placeholder="H"
                         value={draft.height_in}
                         onChange={(e) => updateBrassDraftField(product, "height_in", e.target.value)}
                         onBlur={(e) => handleBrassSpecUpdate(product.id, { ...draft, height_in: e.target.value })}
-                        className="w-16 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                        className="w-16 px-2 py-1.5 rounded border border-border-strong bg-surface text-xs focus:outline-none focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Depth (in)</label>
+                      <label className="block text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Depth (in)</label>
                       <input
                         type="number" min={0} step="any" placeholder="D"
                         value={draft.depth_in}
                         onChange={(e) => updateBrassDraftField(product, "depth_in", e.target.value)}
                         onBlur={(e) => handleBrassSpecUpdate(product.id, { ...draft, depth_in: e.target.value })}
-                        className="w-16 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                        className="w-16 px-2 py-1.5 rounded border border-border-strong bg-surface text-xs focus:outline-none focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Breadth (in)</label>
+                      <label className="block text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Breadth (in)</label>
                       <input
                         type="number" min={0} step="any" placeholder="B"
                         value={draft.breadth_in}
                         onChange={(e) => updateBrassDraftField(product, "breadth_in", e.target.value)}
                         onBlur={(e) => handleBrassSpecUpdate(product.id, { ...draft, breadth_in: e.target.value })}
-                        className="w-16 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                        className="w-16 px-2 py-1.5 rounded border border-border-strong bg-surface text-xs focus:outline-none focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">₹ / kg</label>
+                      <label className="block text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">₹ / kg</label>
                       <input
                         type="number" min={0} step="any"
                         value={draft.price_per_kg}
                         onChange={(e) => updateBrassDraftField(product, "price_per_kg", e.target.value)}
                         onBlur={(e) => handleBrassSpecUpdate(product.id, { ...draft, price_per_kg: e.target.value })}
-                        className="w-20 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                        className="w-20 px-2 py-1.5 rounded border border-border-strong bg-surface text-xs focus:outline-none focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Cost ₹ / kg</label>
+                      <label className="block text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Cost ₹ / kg</label>
                       <input
                         type="number" min={0} step="any" placeholder="Optional"
                         value={draft.cost_price_per_kg}
                         onChange={(e) => updateBrassDraftField(product, "cost_price_per_kg", e.target.value)}
                         onBlur={(e) => handleBrassSpecUpdate(product.id, { ...draft, cost_price_per_kg: e.target.value })}
-                        className="w-20 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                        className="w-20 px-2 py-1.5 rounded border border-border-strong bg-surface text-xs focus:outline-none focus:border-accent"
                       />
                     </div>
                     <div className="flex flex-col gap-0.5 pb-1.5">
-                      <p className="text-xs font-mono font-semibold text-amber-800">
+                      <p className="text-xs font-mono font-semibold text-accent">
                         {computedPrice !== null
-                          ? <>Rate: ₹{computedPrice.toLocaleString("en-IN")} <span className="text-stone-400 font-normal">(wt × rate × 1.2)</span></>
-                          : <span className="text-stone-400 font-normal">Enter weight to auto-compute the rate — otherwise the manually-set price above is kept.</span>}
+                          ? <>Rate: ₹{computedPrice.toLocaleString("en-IN")} <span className="text-faint font-normal">(wt × rate × 1.2)</span></>
+                          : <span className="text-faint font-normal">Enter weight to auto-compute the rate — otherwise the manually-set price above is kept.</span>}
                       </p>
-                      <p className="text-xs font-mono font-semibold text-stone-600">
+                      <p className="text-xs font-mono font-semibold text-muted">
                         {computedCost !== null
-                          ? <>Cost: ₹{computedCost.toLocaleString("en-IN", { maximumFractionDigits: 2 })} <span className="text-stone-400 font-normal">(wt × cost rate)</span></>
-                          : <span className="text-stone-400 font-normal">Enter a cost ₹/kg to auto-compute cost -- otherwise the manually-set Cost ₹ field is kept.</span>}
+                          ? <>Cost: ₹{computedCost.toLocaleString("en-IN", { maximumFractionDigits: 2 })} <span className="text-faint font-normal">(wt × cost rate)</span></>
+                          : <span className="text-faint font-normal">Enter a cost ₹/kg to auto-compute cost -- otherwise the manually-set Cost ₹ field is kept.</span>}
                       </p>
                     </div>
                   </div>
@@ -1754,58 +1754,58 @@ export default function ProductsTab() {
               {product.label?.trim().toLowerCase() !== "lightweight brass" && (() => {
                 const draft = specDraft(product);
                 return (
-                  <div className="bg-stone-50 border border-stone-200 rounded px-3 py-2.5 flex flex-wrap items-end gap-3">
+                  <div className="bg-surface-2 border border-border rounded px-3 py-2.5 flex flex-wrap items-end gap-3">
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Weight ({weightInputUnit === "lb" ? "lbs" : weightInputUnit})</label>
+                      <label className="block text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Weight ({weightInputUnit === "lb" ? "lbs" : weightInputUnit})</label>
                       <input
                         type="number" min={0} step="any" placeholder="Optional"
                         value={draft.weight_g}
                         onChange={(e) => updateSpecDraftField(product, "weight_g", e.target.value)}
                         onBlur={(e) => handleSpecUpdate(product.id, { ...draft, weight_g: e.target.value })}
-                        className="w-20 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                        className="w-20 px-2 py-1.5 rounded border border-border-strong bg-surface text-xs focus:outline-none focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Height ({dimensionInputUnit})</label>
+                      <label className="block text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Height ({dimensionInputUnit})</label>
                       <input
                         type="number" min={0} step="any" placeholder="H"
                         value={draft.height_cm}
                         onChange={(e) => updateSpecDraftField(product, "height_cm", e.target.value)}
                         onBlur={(e) => handleSpecUpdate(product.id, { ...draft, height_cm: e.target.value })}
-                        className="w-16 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                        className="w-16 px-2 py-1.5 rounded border border-border-strong bg-surface text-xs focus:outline-none focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Depth ({dimensionInputUnit})</label>
+                      <label className="block text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Depth ({dimensionInputUnit})</label>
                       <input
                         type="number" min={0} step="any" placeholder="D"
                         value={draft.depth_cm}
                         onChange={(e) => updateSpecDraftField(product, "depth_cm", e.target.value)}
                         onBlur={(e) => handleSpecUpdate(product.id, { ...draft, depth_cm: e.target.value })}
-                        className="w-16 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                        className="w-16 px-2 py-1.5 rounded border border-border-strong bg-surface text-xs focus:outline-none focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Breadth ({dimensionInputUnit})</label>
+                      <label className="block text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Breadth ({dimensionInputUnit})</label>
                       <input
                         type="number" min={0} step="any" placeholder="B"
                         value={draft.breadth_cm}
                         onChange={(e) => updateSpecDraftField(product, "breadth_cm", e.target.value)}
                         onBlur={(e) => handleSpecUpdate(product.id, { ...draft, breadth_cm: e.target.value })}
-                        className="w-16 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                        className="w-16 px-2 py-1.5 rounded border border-border-strong bg-surface text-xs focus:outline-none focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider text-stone-500 font-semibold mb-1">Price (₹)</label>
+                      <label className="block text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Price (₹)</label>
                       <input
                         type="number" min={0} step="any"
                         value={draft.price}
                         onChange={(e) => updateSpecDraftField(product, "price", e.target.value)}
                         onBlur={(e) => handleSpecUpdate(product.id, { ...draft, price: e.target.value })}
-                        className="w-24 px-2 py-1.5 rounded border border-stone-300 bg-white text-xs focus:outline-none focus:border-amber-600"
+                        className="w-24 px-2 py-1.5 rounded border border-border-strong bg-surface text-xs focus:outline-none focus:border-accent"
                       />
                     </div>
-                    <p className="text-[10px] text-stone-400 pb-1.5">Weight/dimensions optional — leave blank to clear.</p>
+                    <p className="text-[10px] text-faint pb-1.5">Weight/dimensions optional — leave blank to clear.</p>
                   </div>
                 );
               })()}

@@ -93,24 +93,24 @@ export default function CouponsTab() {
   return (
     <>
     {topReferrers.length > 0 && (
-      <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8 mb-6">
-        <div className="border-b border-stone-200 pb-4 mb-4">
-          <h2 className="text-xl font-serif text-stone-900">Top Referrers</h2>
-          <p className="text-stone-500 text-xs mt-1">
+      <div className="bg-surface border border-border rounded-lg shadow-sm p-8 mb-6">
+        <div className="border-b border-border pb-4 mb-4">
+          <h2 className="text-xl font-serif text-fg">Top Referrers</h2>
+          <p className="text-faint text-xs mt-1">
             All-time, by successful referrals (a friend&rsquo;s order actually paid for using their code). Each
             referral also auto-rewards them a one-time &ldquo;THANKS&hellip;&rdquo; coupon &mdash; see the list
             below.
           </p>
         </div>
-        <div className="divide-y divide-stone-100">
+        <div className="divide-y divide-border">
           {topReferrers.map((c, i) => (
             <div key={c.id} className="py-2.5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="text-xs font-mono text-stone-400 w-5 text-right">{i + 1}</span>
-                <span className="font-mono text-sm text-stone-900">{c.referral_phone}</span>
-                <span className="text-[11px] text-stone-400 font-mono">{c.code}</span>
+                <span className="text-xs font-mono text-faint w-5 text-right">{i + 1}</span>
+                <span className="font-mono text-sm text-fg">{c.referral_phone}</span>
+                <span className="text-[11px] text-faint font-mono">{c.code}</span>
               </div>
-              <span className="text-xs font-semibold text-amber-700">
+              <span className="text-xs font-semibold text-accent">
                 {c.used_count} referral{c.used_count === 1 ? "" : "s"}
               </span>
             </div>
@@ -120,10 +120,10 @@ export default function CouponsTab() {
     )}
 
     {/* SECTION D: COUPON / DISCOUNT CODES */}
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-      <div className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="text-xl font-serif text-stone-900">Coupon Codes</h2>
-        <p className="text-stone-500 text-xs mt-1">Discounts are validated and applied server-side at checkout, so codes are safe from tampering.</p>
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Coupon Codes</h2>
+        <p className="text-faint text-xs mt-1">Discounts are validated and applied server-side at checkout, so codes are safe from tampering.</p>
       </div>
 
       <form onSubmit={handleCreateCoupon} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
@@ -133,12 +133,12 @@ export default function CouponsTab() {
           placeholder="CODE"
           value={couponForm.code}
           onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
-          className="px-3 py-2.5 rounded border border-stone-300 text-sm font-mono focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="px-3 py-2.5 rounded border border-border-strong text-sm font-mono focus:outline-none focus:border-accent bg-surface-2"
         />
         <select
           value={couponForm.discountType}
           onChange={(e) => setCouponForm({ ...couponForm, discountType: e.target.value })}
-          className="px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="px-3 py-2.5 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         >
           <option value="flat">₹ Flat off</option>
           <option value="percent">% Off</option>
@@ -149,14 +149,14 @@ export default function CouponsTab() {
           placeholder={couponForm.discountType === "percent" ? "e.g., 10" : "e.g., 200"}
           value={couponForm.discountValue}
           onChange={(e) => setCouponForm({ ...couponForm, discountValue: e.target.value })}
-          className="px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="px-3 py-2.5 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         />
         <input
           type="number"
           placeholder="Max uses (optional)"
           value={couponForm.maxUses}
           onChange={(e) => setCouponForm({ ...couponForm, maxUses: e.target.value })}
-          className="px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+          className="px-3 py-2.5 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
         />
         <div className="flex gap-2">
           <input
@@ -164,42 +164,42 @@ export default function CouponsTab() {
             title="Expiry date (optional)"
             value={couponForm.expiresAt}
             onChange={(e) => setCouponForm({ ...couponForm, expiresAt: e.target.value })}
-            className="flex-grow px-3 py-2.5 rounded border border-stone-300 text-sm focus:outline-none focus:border-amber-600 bg-stone-50"
+            className="flex-grow px-3 py-2.5 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
           />
-          <button type="submit" className="px-4 py-2.5 rounded bg-stone-950 hover:bg-amber-800 text-white font-medium text-xs uppercase tracking-wider shadow transition whitespace-nowrap">
+          <button type="submit" className="px-4 py-2.5 rounded bg-fg hover:bg-accent-hover hover:text-accent-fg text-bg font-medium text-xs uppercase tracking-wider shadow transition whitespace-nowrap">
             Add
           </button>
         </div>
       </form>
 
-      <label className="flex items-center gap-2 text-xs text-stone-600 mb-6 -mt-2">
+      <label className="flex items-center gap-2 text-xs text-muted mb-6 -mt-2">
         <input
           type="checkbox"
           checked={couponForm.isPublic}
           onChange={(e) => setCouponForm({ ...couponForm, isPublic: e.target.checked })}
-          className="w-4 h-4 accent-amber-700"
+          className="w-4 h-4 accent-[var(--accent)]"
         />
         Show on site (public promo banner) &mdash; leave unchecked to share this code only externally (WhatsApp, social, etc.)
       </label>
 
-      {couponStatus && <p className="text-xs text-stone-500 mb-4">{couponStatus}</p>}
+      {couponStatus && <p className="text-xs text-faint mb-4">{couponStatus}</p>}
 
       {coupons.length === 0 ? (
-        <p className="text-stone-400 text-sm text-center py-6">No coupon codes created yet.</p>
+        <p className="text-faint text-sm text-center py-6">No coupon codes created yet.</p>
       ) : (
-        <div className="divide-y divide-stone-100">
+        <div className="divide-y divide-border">
           {coupons.map((coupon) => (
             <div key={coupon.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="font-mono font-bold text-stone-900 text-sm">{coupon.code}</span>
-                <span className="text-xs text-amber-700 font-medium">
+                <span className="font-mono font-bold text-fg text-sm">{coupon.code}</span>
+                <span className="text-xs text-accent font-medium">
                   {coupon.discount_type === "percent" ? `${coupon.discount_value}% off` : `₹${coupon.discount_value} off`}
                 </span>
-                <span className="text-[11px] text-stone-400">
+                <span className="text-[11px] text-faint">
                   Used {coupon.used_count}{coupon.max_uses ? ` / ${coupon.max_uses}` : ""}
                 </span>
                 {coupon.expires_at && (
-                  <span className="text-[11px] text-stone-400">
+                  <span className="text-[11px] text-faint">
                     Expires {new Date(coupon.expires_at).toLocaleDateString("en-IN")}
                   </span>
                 )}
@@ -211,8 +211,8 @@ export default function CouponsTab() {
                   title="Toggle whether this code appears in the on-site promo banner"
                   className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold border transition ${
                     coupon.is_public
-                      ? "border-amber-600 text-amber-700 hover:bg-amber-50"
-                      : "border-stone-300 text-stone-500 hover:bg-stone-100"
+                      ? "border-accent text-accent hover:bg-accent-soft"
+                      : "border-border-strong text-faint hover:bg-surface-2"
                   }`}
                 >
                   {coupon.is_public ? "Public" : "Private"}
@@ -222,8 +222,8 @@ export default function CouponsTab() {
                   onClick={() => handleToggleCoupon(coupon.id, !coupon.active)}
                   className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold border transition ${
                     coupon.active
-                      ? "border-emerald-600 text-emerald-700 hover:bg-emerald-50"
-                      : "border-stone-300 text-stone-500 hover:bg-stone-100"
+                      ? "border-success text-success hover:bg-success-soft"
+                      : "border-border-strong text-faint hover:bg-surface-2"
                   }`}
                 >
                   {coupon.active ? "Active" : "Inactive"}
@@ -231,7 +231,7 @@ export default function CouponsTab() {
                 <button
                   type="button"
                   onClick={() => handleDeleteCoupon(coupon.id)}
-                  className="px-3 py-1.5 rounded border border-rose-600 text-rose-700 hover:bg-rose-50 text-[11px] uppercase font-semibold transition"
+                  className="px-3 py-1.5 rounded border border-danger text-danger hover:bg-danger-soft text-[11px] uppercase font-semibold transition"
                 >
                   Delete
                 </button>

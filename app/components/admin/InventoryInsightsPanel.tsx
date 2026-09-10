@@ -151,34 +151,34 @@ export default function InventoryInsightsPanel({
   return (
     <>
       {/* TOP VALUE PRODUCTS */}
-      <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-        <div className="border-b border-stone-200 pb-4 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+      <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+        <div className="border-b border-border pb-4 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h2 className="text-xl font-serif text-stone-900">Top 10 Highest-Value Products</h2>
-            <p className="text-stone-500 text-xs mt-1">Individual SKUs tying up the most working capital (stock &times; selling price) right now.</p>
+            <h2 className="text-xl font-serif text-fg">Top 10 Highest-Value Products</h2>
+            <p className="text-faint text-xs mt-1">Individual SKUs tying up the most working capital (stock &times; selling price) right now.</p>
           </div>
           <DownloadCsvButton onClick={handleDownloadTopValue} label="Download CSV" />
         </div>
         {topValueProducts.length === 0 ? (
-          <p className="text-stone-400 text-sm text-center py-6">No in-stock products yet.</p>
+          <p className="text-faint text-sm text-center py-6">No in-stock products yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="bg-stone-50 text-stone-700 uppercase font-semibold text-[10px] tracking-wider border-b border-stone-200">
+                <tr className="bg-surface-2 text-muted uppercase font-semibold text-[10px] tracking-wider border-b border-border">
                   <th className="p-3">Product</th>
                   <th className="p-3 text-right">Stock</th>
                   <th className="p-3 text-right">Price (₹)</th>
                   <th className="p-3 text-right">Value Locked (₹)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className="divide-y divide-border">
                 {topValueProducts.map((p) => (
                   <tr key={p.id}>
-                    <td className="p-3 text-stone-800 font-medium">{p.name}</td>
-                    <td className="p-3 text-right font-mono text-stone-700">{p.inventory}</td>
-                    <td className="p-3 text-right font-mono text-stone-700">₹{Math.round(Number(p.price)).toLocaleString("en-IN")}</td>
-                    <td className="p-3 text-right font-mono text-stone-900 font-semibold">₹{Math.round(p.lockedValue).toLocaleString("en-IN")}</td>
+                    <td className="p-3 text-fg font-medium">{p.name}</td>
+                    <td className="p-3 text-right font-mono text-muted">{p.inventory}</td>
+                    <td className="p-3 text-right font-mono text-muted">₹{Math.round(Number(p.price)).toLocaleString("en-IN")}</td>
+                    <td className="p-3 text-right font-mono text-fg font-semibold">₹{Math.round(p.lockedValue).toLocaleString("en-IN")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -188,36 +188,36 @@ export default function InventoryInsightsPanel({
       </div>
 
       {/* DEAD STOCK */}
-      <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-        <div className="border-b border-stone-200 pb-4 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+      <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+        <div className="border-b border-border pb-4 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h2 className="text-xl font-serif text-stone-900">Dead Stock</h2>
-            <p className="text-stone-500 text-xs mt-1">
+            <h2 className="text-xl font-serif text-fg">Dead Stock</h2>
+            <p className="text-faint text-xs mt-1">
               In stock, live {DEAD_STOCK_DAYS}+ days, and never sold a single unit (real order history) -- candidates for a discount, bundling, or delisting.
             </p>
           </div>
           <DownloadCsvButton onClick={handleDownloadDeadStock} label="Download CSV" />
         </div>
         {deadStockProducts.length === 0 ? (
-          <p className="text-stone-400 text-sm text-center py-6">Nothing flagged -- every in-stock product has either sold or isn&rsquo;t {DEAD_STOCK_DAYS} days old yet.</p>
+          <p className="text-faint text-sm text-center py-6">Nothing flagged -- every in-stock product has either sold or isn&rsquo;t {DEAD_STOCK_DAYS} days old yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="bg-stone-50 text-stone-700 uppercase font-semibold text-[10px] tracking-wider border-b border-stone-200">
+                <tr className="bg-surface-2 text-muted uppercase font-semibold text-[10px] tracking-wider border-b border-border">
                   <th className="p-3">Product</th>
                   <th className="p-3 text-right">Days Live</th>
                   <th className="p-3 text-right">Stock</th>
                   <th className="p-3 text-right">Value Locked (₹)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className="divide-y divide-border">
                 {deadStockProducts.map((p) => (
                   <tr key={p.id}>
-                    <td className="p-3 text-stone-800 font-medium">{p.name}</td>
-                    <td className="p-3 text-right font-mono text-rose-600">{p.liveDays}</td>
-                    <td className="p-3 text-right font-mono text-stone-700">{p.inventory}</td>
-                    <td className="p-3 text-right font-mono text-stone-900 font-semibold">₹{Math.round(p.lockedValue).toLocaleString("en-IN")}</td>
+                    <td className="p-3 text-fg font-medium">{p.name}</td>
+                    <td className="p-3 text-right font-mono text-danger">{p.liveDays}</td>
+                    <td className="p-3 text-right font-mono text-muted">{p.inventory}</td>
+                    <td className="p-3 text-right font-mono text-fg font-semibold">₹{Math.round(p.lockedValue).toLocaleString("en-IN")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -227,11 +227,11 @@ export default function InventoryInsightsPanel({
       </div>
 
       {/* STOCK AGING */}
-      <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-        <div className="border-b border-stone-200 pb-4 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+      <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+        <div className="border-b border-border pb-4 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h2 className="text-xl font-serif text-stone-900">Stock Aging</h2>
-            <p className="text-stone-500 text-xs mt-1">
+            <h2 className="text-xl font-serif text-fg">Stock Aging</h2>
+            <p className="text-faint text-xs mt-1">
               In-stock products, oldest last restock first. Restock dates are only stamped going forward (whenever a save increases a product&rsquo;s stock) --
               {" "}{productsWithoutRestockData} product{productsWithoutRestockData === 1 ? "" : "s"} currently have no restock history yet and aren&rsquo;t shown until their next restock.
             </p>
@@ -239,25 +239,25 @@ export default function InventoryInsightsPanel({
           <DownloadCsvButton onClick={handleDownloadStockAging} label="Download CSV" />
         </div>
         {stockAgingRows.length === 0 ? (
-          <p className="text-stone-400 text-sm text-center py-6">No restock history recorded yet -- this fills in as stock gets updated.</p>
+          <p className="text-faint text-sm text-center py-6">No restock history recorded yet -- this fills in as stock gets updated.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="bg-stone-50 text-stone-700 uppercase font-semibold text-[10px] tracking-wider border-b border-stone-200">
+                <tr className="bg-surface-2 text-muted uppercase font-semibold text-[10px] tracking-wider border-b border-border">
                   <th className="p-3">Product</th>
                   <th className="p-3 text-right">Days Since Restock</th>
                   <th className="p-3 text-right">Stock</th>
                   <th className="p-3 text-right">Value Locked (₹)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className="divide-y divide-border">
                 {stockAgingRows.map((p) => (
                   <tr key={p.id}>
-                    <td className="p-3 text-stone-800 font-medium">{p.name}</td>
-                    <td className="p-3 text-right font-mono text-orange-600">{p.restockAgeDays}</td>
-                    <td className="p-3 text-right font-mono text-stone-700">{p.inventory}</td>
-                    <td className="p-3 text-right font-mono text-stone-900 font-semibold">₹{Math.round(p.lockedValue).toLocaleString("en-IN")}</td>
+                    <td className="p-3 text-fg font-medium">{p.name}</td>
+                    <td className="p-3 text-right font-mono text-accent">{p.restockAgeDays}</td>
+                    <td className="p-3 text-right font-mono text-muted">{p.inventory}</td>
+                    <td className="p-3 text-right font-mono text-fg font-semibold">₹{Math.round(p.lockedValue).toLocaleString("en-IN")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -267,11 +267,11 @@ export default function InventoryInsightsPanel({
       </div>
 
       {/* COST & MARGIN */}
-      <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-8">
-        <div className="border-b border-stone-200 pb-4 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+      <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+        <div className="border-b border-border pb-4 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-          <h2 className="text-xl font-serif text-stone-900">Cost &amp; Margin</h2>
-          <p className="text-stone-500 text-xs mt-1">
+          <h2 className="text-xl font-serif text-fg">Cost &amp; Margin</h2>
+          <p className="text-faint text-xs mt-1">
             Only counts products with a Cost Price set (Edit Details &rarr; Cost Price) -- {costMarginStats.productsWithCost} of {products.length} products currently have one.
             {costMarginStats.productsWithCost === 0 && " Set a few to start seeing real margin figures here."}
           </p>
@@ -279,22 +279,22 @@ export default function InventoryInsightsPanel({
           <DownloadCsvButton onClick={handleDownloadCostMargin} label="Download CSV" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-            <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold mb-1">Inventory Value at Cost</p>
-            <p className="text-xl font-mono font-bold text-stone-900">₹{Math.round(costMarginStats.inventoryValueAtCost).toLocaleString("en-IN")}</p>
-            <p className="text-[10px] text-stone-400 mt-0.5">vs ₹{Math.round(costMarginStats.inventoryValueAtRetailForCosted).toLocaleString("en-IN")} at retail</p>
+          <div className="bg-surface-2 border border-border rounded-lg p-4">
+            <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Inventory Value at Cost</p>
+            <p className="text-xl font-mono font-bold text-fg">₹{Math.round(costMarginStats.inventoryValueAtCost).toLocaleString("en-IN")}</p>
+            <p className="text-[10px] text-faint mt-0.5">vs ₹{Math.round(costMarginStats.inventoryValueAtRetailForCosted).toLocaleString("en-IN")} at retail</p>
           </div>
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-            <p className="text-[10px] uppercase tracking-wider text-emerald-700 font-semibold mb-1">Realized Gross Profit</p>
-            <p className="text-xl font-mono font-bold text-emerald-800">₹{Math.round(costMarginStats.realizedGrossProfit).toLocaleString("en-IN")}</p>
-            <p className="text-[10px] text-emerald-600 mt-0.5">From actual sales, cost-priced products only</p>
+          <div className="bg-success-soft border border-success-border rounded-lg p-4">
+            <p className="text-[10px] uppercase tracking-wider text-success font-semibold mb-1">Realized Gross Profit</p>
+            <p className="text-xl font-mono font-bold text-success">₹{Math.round(costMarginStats.realizedGrossProfit).toLocaleString("en-IN")}</p>
+            <p className="text-[10px] text-success mt-0.5">From actual sales, cost-priced products only</p>
           </div>
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-            <p className="text-[10px] uppercase tracking-wider text-emerald-700 font-semibold mb-1">Gross Margin</p>
-            <p className="text-xl font-mono font-bold text-emerald-800">
+          <div className="bg-success-soft border border-success-border rounded-lg p-4">
+            <p className="text-[10px] uppercase tracking-wider text-success font-semibold mb-1">Gross Margin</p>
+            <p className="text-xl font-mono font-bold text-success">
               {costMarginStats.marginPercent === null ? "—" : `${costMarginStats.marginPercent.toFixed(1)}%`}
             </p>
-            <p className="text-[10px] text-emerald-600 mt-0.5">On realized sales of cost-priced products</p>
+            <p className="text-[10px] text-success mt-0.5">On realized sales of cost-priced products</p>
           </div>
         </div>
       </div>
