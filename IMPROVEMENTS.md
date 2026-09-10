@@ -12,6 +12,25 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Checkout Review: the two gates become footer-triggered bottom-sheets — 2026-09-10 IST — ⚠️ payment path
+- Owner-reported after the #4 deploy: on mobile the verify field was buried below the fold and the footer
+  button sat **disabled** ("Verify WhatsApp number to continue") with no obvious next step — an
+  inexperienced shopper gets stuck and never proceeds.
+- **Fix:** the sheet footer is now a **progressive CTA**. Step 3: `!verified` → "Verify WhatsApp number"
+  opens a focused **Verify bottom-sheet** (phone shown · Send code · 6-digit · Verify; auto-focused; closes
+  on success). Then `!agreedToPolicy` → "Review & accept terms" opens a **Terms bottom-sheet** (full
+  bilingual policy, scrolls inside; one explicit "I Agree & Continue"). Then "Pay ₹X". The button is
+  disabled *only* while a request is in flight — no dead button, no hunting for a field, no scrolling back
+  down to pay.
+- New `app/components/checkout/CheckoutGateSheets.tsx` (`VerifySheet` + `TermsSheet`, same shell as
+  `EnquirySheet`). `ReviewStep` drops the two long inline blocks for a compact `GateRow` each.
+  `PhoneVerification` slimmed to the OTP controls. Consent is still an explicit act, still recorded
+  per-order; server path unchanged.
+- Verified: `tsc` clean · `eslint` (checkout dir) clean · `npm test` 337/338 · `next build` 145/145.
+  Headless walkthrough reaches Review with the progressive footer label and the footer tap opens a
+  bottom-sheet (scrim + panel confirmed); a clean shot of the sheet *body* wasn't captured (dev recompile +
+  cookie/install overlays). **Owner: verify the two sheets on the deploy preview.**
+
 ### Checkout: verify at Review, not step 1 (#4) + COD order-total ceiling (#5) — 2026-09-10 IST — ⚠️ payment path
 - **Owner approved doing both in one PR, overriding the "wait for InitiateCheckout data" hold on #4.**
 - **#4 — WhatsApp OTP verification moved from step 1 to step 3 (Review).** Cold traffic now fills

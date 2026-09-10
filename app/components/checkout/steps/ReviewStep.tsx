@@ -11,7 +11,6 @@ import { calculateGstBreakdown, GST_RATE } from "@/app/utils/gst";
 import { calculateSlashedPrice } from "@/app/utils/pricing";
 import PriceDisplay from "@/app/components/PriceDisplay";
 import { useAvailableCoupons, couponUrgencyText, type AvailableCoupon } from "@/app/components/checkout/useAvailableCoupons";
-import PhoneVerification, { type PhoneVerificationBag } from "@/app/components/checkout/steps/PhoneVerification";
 import type { CartItem } from "@/app/types/product";
 
 export interface ReviewBag {
@@ -19,9 +18,15 @@ export interface ReviewBag {
   cartTotal: number;
   categoryDiscounts: Record<string, number>;
 
-  // WhatsApp OTP verification -- moved here from step 1 (IMPROVEMENTS #4).
-  // The Pay button (sheet footer) stays disabled until `verification.otpVerified`.
-  verification: PhoneVerificationBag;
+  // The two gates -- WhatsApp verify + refund-policy consent -- are handled
+  // by bottom-sheets reached from the sheet footer's progressive CTA
+  // (CheckoutGateSheets). Here we only show a compact "✓ done" row for each
+  // once it's complete, with a link back into the relevant sheet/step.
+  verified: boolean;
+  verifiedPhone: string;
+  agreedToPolicy: boolean;
+  onEditContact: () => void;
+  onOpenTerms: () => void;
 
   // Storewide "Spend & Save" tier offer. The offer and a coupon are
   // mutually exclusive but never forced -- while `offerActive`, the shopper
@@ -61,10 +66,6 @@ export interface ReviewBag {
   onChoosePrepaid: () => void;
   onChooseCod: () => void;
 
-  agreedToPolicy: boolean;
-  setAgreedToPolicy: (v: boolean) => void;
-  invalidField: string | null;
-  clearInvalid: () => void;
 }
 
 export default function ReviewStep({ bag }: { bag: ReviewBag }) {
@@ -347,74 +348,64 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
         <CouponPanel b={b} suggestions={suggestions} />
       )}
 
-      {/* --- WhatsApp number verification (moved from step 1, #4) --- the
-          last gate before Pay. The footer button stays disabled until this
-          is done. */}
-      <PhoneVerification bag={b.verification} />
-
-      {/* --- Cancellation & Refund Policy (bilingual, required consent) ---
-          Lifted verbatim from the old CartDrawer so acceptance of the
-          return-window / unboxing-video terms is a proven part of THIS
-          order, not something buried on a policy page nobody visited. */}
-      <div className="p-3 bg-accent-soft border border-accent-soft-border rounded space-y-3">
-        <h4 className="text-[11px] font-bold uppercase tracking-wide text-accent-hover">
-          Cancellation &amp; Refund Policy
-        </h4>
-
-        <div className="space-y-1.5 text-[11px] text-accent-hover leading-relaxed">
-          <p>
-            As each piece is handcrafted, we&rsquo;re unable to accept returns for change of mind once an order has been dispatched. However, if you receive a damaged, defective, or incorrect item, please contact us within 48 hours of delivery, along with a continuous, unedited unboxing video as proof.
-          </p>
-          <p>The video must:</p>
-          <ul className="list-disc pl-4 space-y-0.5">
-            <li>Start before the parcel is opened, clearly showing the sealed package and shipping label intact.</li>
-            <li>Continue without any pause, cut, or edit through to the item being fully unpacked.</li>
-            <li>Clearly and legibly show the damage, defect, or incorrect item.</li>
-          </ul>
-          <p>
-            This is required to verify the condition of the product at the time of delivery and to prevent fraudulent claims. Claims made without a valid unboxing video, or where the video is cut, edited, or does not clearly show the parcel being opened for the first time, may not be eligible for a replacement, repair, or refund. Once verified, we will arrange a replacement, repair, or refund as appropriate.
-          </p>
-        </div>
-
-        <div lang="hi" className="space-y-1.5 text-[11px] text-accent-hover leading-relaxed pt-2 border-t border-accent-soft-border">
-          <p>
-            चूंकि प्रत्येक वस्तु हस्तनिर्मित होती है, ऑर्डर डिस्पैच होने के बाद केवल मन बदलने पर रिटर्न स्वीकार नहीं किया जाएगा। हालांकि, यदि आपको क्षतिग्रस्त, दोषपूर्ण या गलत उत्पाद प्राप्त होता है, तो कृपया डिलीवरी के 48 घंटों के भीतर, प्रमाण के रूप में एक निरंतर, बिना एडिट की गई अनबॉक्सिंग वीडियो के साथ हमसे संपर्क करें।
-          </p>
-          <p>वीडियो में यह होना आवश्यक है:</p>
-          <ul className="list-disc pl-4 space-y-0.5">
-            <li>पार्सल खोलने से पहले शुरू हो, जिसमें सीलबंद पैकेट और शिपिंग लेबल स्पष्ट रूप से बरकरार दिखें।</li>
-            <li>उत्पाद पूरी तरह से खुलने तक बिना किसी रुकावट, कट या एडिट के जारी रहे।</li>
-            <li>क्षति, खराबी या गलत उत्पाद को स्पष्ट रूप से दिखाए।</li>
-          </ul>
-          <p>
-            यह डिलीवरी के समय उत्पाद की स्थिति सत्यापित करने और धोखाधड़ी वाले दावों को रोकने के लिए आवश्यक है। बिना वैध अनबॉक्सिंग वीडियो के किए गए दावे, या जिन वीडियो को काटा या एडिट किया गया हो, या जो पार्सल को पहली बार खोलते हुए स्पष्ट रूप से न दिखाएं, वे रिप्लेसमेंट, रिपेयर या रिफंड के लिए पात्र नहीं हो सकते। सत्यापन के बाद, हम उचित रिप्लेसमेंट, रिपेयर या रिफंड की व्यवस्था करेंगे।
-          </p>
-        </div>
-
-        <label
-          className={`flex items-start gap-2 text-[11px] text-accent-hover cursor-pointer pt-2 border-t ${
-            b.invalidField === "policy" ? "border-danger-border" : "border-accent-soft-border"
-          }`}
-        >
-          <input
-            type="checkbox"
-            required
-            checked={b.agreedToPolicy}
-            onChange={(e) => {
-              b.setAgreedToPolicy(e.target.checked);
-              if (b.invalidField === "policy") b.clearInvalid();
-            }}
-            className="mt-0.5 accent-amber-700 flex-shrink-0"
-          />
-          <span>
-            I have read and agree to the above Cancellation &amp; Refund Policy. / मैंने उपरोक्त रद्दीकरण और धनवापसी नीति पढ़ ली है और सहमत हूं। (
-            <a href="/refunds" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-accent">
-              full policy
-            </a>
-            )
-          </span>
-        </label>
+      {/* --- The two gates, as compact status rows. The un-done state is
+          driven entirely by the sheet footer's progressive CTA (which opens
+          the matching bottom-sheet in CheckoutGateSheets); here we only
+          confirm what's done and give a way back in. */}
+      <div className="space-y-2">
+        <GateRow
+          done={b.verified}
+          doneLabel={
+            <>WhatsApp number verified &middot; <span className="font-mono">+91 {b.verifiedPhone}</span></>
+          }
+          pendingLabel="WhatsApp number — verify to place the order"
+          actionLabel="Change"
+          onAction={b.onEditContact}
+        />
+        <GateRow
+          done={b.agreedToPolicy}
+          doneLabel={<>Cancellation &amp; Refund Policy accepted</>}
+          pendingLabel="Cancellation & Refund Policy — read &amp; accept to place the order"
+          actionLabel={b.agreedToPolicy ? "View" : "Open"}
+          onAction={b.onOpenTerms}
+        />
       </div>
+    </div>
+  );
+}
+
+function GateRow({
+  done,
+  doneLabel,
+  pendingLabel,
+  actionLabel,
+  onAction,
+}: {
+  done: boolean;
+  doneLabel: React.ReactNode;
+  pendingLabel: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 rounded border px-3 py-2 text-[11px] ${
+        done
+          ? "border-success-border bg-success-soft text-success"
+          : "border-accent-soft-border bg-accent-soft text-accent-hover"
+      }`}
+    >
+      <span className="min-w-0 flex items-center gap-1.5">
+        <span aria-hidden="true">{done ? "✓" : "–"}</span>
+        <span className="truncate">{done ? doneLabel : pendingLabel}</span>
+      </span>
+      <button
+        type="button"
+        onClick={onAction}
+        className="flex-shrink-0 underline font-medium hover:opacity-80 transition"
+      >
+        {actionLabel}
+      </button>
     </div>
   );
 }
