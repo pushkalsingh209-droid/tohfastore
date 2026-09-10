@@ -2661,7 +2661,7 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
     the revised deploy step in &sect;27 / the working agreement.</dd>
   <dt>Last verified build</dt><dd><code>next build</code> exit 0 &mdash; ~86 SSG pages (product pages are now <code>force-dynamic</code>, not prerendered &mdash; 2026-08-30), all routes + middleware compiled, <code>tsc --noEmit</code> clean, unit tests pass.</dd>
   <dt>CSP</dt><dd>Enforced only when <code>NODE_ENV === "production"</code> (dev tooling needs looser rules). Directive list compiled by grepping every <code>https://</code> the code loads + each integration&rsquo;s documented requirements; deliberately generous on <code>script/connect/frame</code>.</dd>
-  <dt>Images</dt><dd><code>remotePatterns</code>: <code>gxlervcazzddqcoagewy.supabase.co/storage/v1/object/**</code>, <code>images.unsplash.com/**</code>. <code>unoptimized: true</code> &mdash; on hold by owner decision (2026-08-29): stays until the Vercel quota cycle resets and the flag can be dropped for free. Supabase image transforms (Pro-only) are ruled out. With no server-side resize available, the catalog grid's first-photo-per-card now uses the pre-generated <code>thumb_url</code> instead of the full original (<code>getProductCardGallery</code>, added 2026-09-01) to keep Supabase Storage egress down; and every Storage upload (<code>/api/admin/upload</code>) sets an explicit 1-year <code>cacheControl</code> (was the SDK's 1-hour default) since upload paths are never reused/overwritten. See Change log 2026-09-01.</dd>
+  <dt>Images</dt><dd><code>remotePatterns</code>: <code>gxlervcazzddqcoagewy.supabase.co/storage/v1/object/**</code>, <code>images.unsplash.com/**</code>. <code>unoptimized: true</code> &mdash; on hold by owner decision (2026-08-29): stays until the Vercel quota cycle resets and the flag can be dropped for free. Supabase image transforms (Pro-only) are ruled out. With no server-side resize available, the catalog grid's first-photo-per-card now uses the pre-generated <code>thumb_url</code> instead of the full original (<code>getProductCardGallery</code>, added 2026-09-01) to keep Supabase Storage egress down &mdash; extended 2026-09-10 to <code>HeroProductRotator</code>, <code>BestsellersStrip</code> and <code>CategorySlider</code>, the three homepage strips that render <code>image_url</code> directly rather than through <code>getProductCardGallery</code>. Every Storage upload sets an explicit 1-year <code>cacheControl</code> (was the SDK's 1-hour default) since upload paths are never reused/overwritten &mdash; <code>/api/admin/upload</code> since 2026-09-01, and <code>scripts/migrate-product-images.mjs</code> since 2026-09-10. See Change log 2026-09-01 / 2026-09-10.</dd>
   <dt>Lint debt</dt><dd>The repo carries pre-existing <code>@typescript-eslint/no-explicit-any</code> and <code>react-hooks/set-state-in-effect</code> errors (<code>npm run lint</code> is not clean). Next 16 does not run ESLint during <code>next build</code>, so deploys are unaffected.</dd>
   <dt>tsconfig</dt><dd><code>paths: { "@/*": ["./*"] }</code>, <code>strict</code>, <code>noEmit</code>, incremental.</dd>
   <dt>Not committed</dt><dd><code>.env*</code>, <code>.next/</code>, <code>*.tsbuildinfo</code>, <code>scripts/.image-migration-manifest.json</code>.</dd>
@@ -3010,6 +3010,36 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-10<br>09:04</code></td>
+  <td><strong>Thumbnails on the last three full-res image surfaces</strong><br>(follow-up to the 2026-09-01 Storage-egress batch &mdash; IMPROVEMENTS.md Tier&nbsp;3 #9a)</td>
+  <td>
+    <code>HeroProductRotator</code>, <code>BestsellersStrip</code> and <code>CategorySlider</code> rendered
+    <code>product.image_url</code> (the full ~1600px original) directly &mdash; they don't go through
+    <code>ProductGallery</code>/<code>getProductCardGallery</code>, so the 2026-09-01 thumbnail switch never
+    reached them. All three are homepage surfaces every visitor loads, drawing the photo in a 144&ndash;220px
+    box, so the full file was pure wasted Supabase Storage egress.
+    <br><br>
+    <code>getBestsellers</code>/<code>getRelatedProducts</code>/<code>getViewedTogether</code> already attach
+    <code>thumb_url</code> (via <code>attachThumbUrls</code>), so <code>BestsellersStrip</code> was a one-line
+    <code>src={product.thumb_url || product.image_url}</code>. <code>getCategorySliderItems</code> (feeds both
+    <code>CategorySlider</code> and <code>HeroProductRotator</code>) now resolves <code>getThumbUrl</code> for
+    the one product it picks per category, in parallel &mdash; <code>getThumbUrl</code> is itself cached per URL
+    (24h) so this adds no Storage round trip after warmup even though that function isn't cache-wrapped. Falls
+    back to <code>image_url</code> for any product predating thumbnails.
+    <br><br>
+    Also: <code>scripts/migrate-product-images.mjs</code>'s two <code>.upload()</code> calls now set an explicit
+    1-year <code>cacheControl</code> (was the Supabase SDK's 1-hour default), matching
+    <code>/api/admin/upload</code> &mdash; these immutable webp objects were being re-fetched hourly by CDN/browser.
+  </td>
+  <td><code>app/utils/categorySliderItems.ts</code>, <code>app/components/HeroProductRotator.tsx</code>, <code>app/components/CategorySlider.tsx</code>, <code>app/components/BestsellersStrip.tsx</code>, <code>scripts/migrate-product-images.mjs</code>; this handbook; <code>IMPROVEMENTS.md</code>.</td>
+  <td><code>tsc --noEmit</code> clean; <code>npx eslint</code> on all 5 changed files 0 errors; <code>npm test</code>
+    298/299 (1 pre-existing live-only skip, unchanged); <code>npx next build</code> exit 0, static-route count
+    unchanged. Pure image-source swap &mdash; no schema, route, or payment-path change. Not verified in a real
+    browser (no running app here) &mdash; owner to eyeball the homepage hero, Shop by Category rail and
+    Bestsellers strip after deploy and confirm the photos still render (they fall back to the full image if a
+    thumb is missing, so the worst case is no saving, not a broken image).</td>
+</tr>
 <tr>
   <td><code>2026-09-09<br>13:10</code></td>
   <td><strong>🔒 Close a third RLS gap &mdash; <code>orders_cancelled_archive</code></strong><br>(triggered by a Supabase advisor email: &ldquo;Table publicly accessible&rdquo;, <code>rls_disabled_in_public</code>)</td>

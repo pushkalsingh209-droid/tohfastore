@@ -37,6 +37,11 @@ const MANIFEST_PATH = path.join(__dirname, ".image-migration-manifest.json");
 
 const DEST_BUCKET = "brass-images";
 const TEN_YEARS_SECONDS = 315360000;
+// Matches app/api/admin/upload/route.ts. Without an explicit value the
+// Supabase SDK stamps only Cache-Control: max-age=3600, so every CDN/browser
+// re-fetched these immutable webp objects hourly -- pointless Storage egress
+// against the metered quota. One year, same as new uploads get.
+const UPLOAD_CACHE_CONTROL_SECONDS = "31536000";
 const MAX_DIMENSION = 1600;
 const WEBP_QUALITY = 85;
 const THUMB_MAX_DIMENSION = 240;
@@ -125,7 +130,7 @@ async function ensureThumb(mainPath, mainBuffer) {
 
   const { error: uploadError } = await supabase.storage
     .from(DEST_BUCKET)
-    .upload(thumbPath, thumbBuffer, { contentType: "image/webp", upsert: false });
+    .upload(thumbPath, thumbBuffer, { contentType: "image/webp", upsert: false, cacheControl: UPLOAD_CACHE_CONTROL_SECONDS });
   if (uploadError) {
     console.warn(`  thumb: upload of ${thumbPath} failed: ${uploadError.message}`);
     return { created: false };
@@ -170,6 +175,7 @@ async function migrateOne(bucket, srcPath) {
   const { error: uploadError } = await supabase.storage.from(DEST_BUCKET).upload(destPath, outputBuffer, {
     contentType: "image/webp",
     upsert: false,
+    cacheControl: UPLOAD_CACHE_CONTROL_SECONDS,
   });
   if (uploadError) throw new Error(`Upload ${destPath} failed: ${uploadError.message}`);
 

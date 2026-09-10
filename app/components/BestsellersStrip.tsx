@@ -37,7 +37,7 @@ export default function BestsellersStrip({
           >
             <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 bg-white">
               <Image
-                src={product.image_url}
+                src={product.thumb_url || product.image_url}
                 alt={product.name}
                 fill
                 sizes="(max-width: 640px) 144px, 176px"
