@@ -49,7 +49,11 @@ export default function HeaderNavbar() {
     e.preventDefault();
     setCategoryMenuOpen(false);
     runTransition(() => {
-      router.push(categoryHref(name), { scroll: false });
+      // Land on the filtered grid, not page-top -- same reasoning as the
+      // homepage rail (CategorySlider): a category hero the shopper didn't
+      // just scroll past is still shown on load, it's just not the first
+      // thing this particular navigation scrolls them to.
+      router.push(`${categoryHref(name)}#signature-collection`);
     });
   }
 

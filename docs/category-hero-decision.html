@@ -264,6 +264,22 @@
   }
   .deferred-item p { font-size: 14.5px; margin: 0; }
   .deferred-item b { color: var(--ink); font-weight: 600; }
+  .shipped {
+    display: inline-flex;
+    align-items: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--good);
+    background: var(--good-soft);
+    border: 1px solid var(--good-border);
+    border-radius: 5px;
+    padding: 1px 6px;
+    margin-right: 6px;
+    transform: translateY(-1px);
+  }
 
   /* ---------- Footer ---------- */
   footer {
@@ -289,12 +305,20 @@
     <div class="meta-row">
       <span class="status-pill">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M4 10l4 4 8-9"/></svg>
-        Decided — keeping current flow
+        Decided — hero kept, both follow-ups shipped
       </span>
       <span><b>Reviewed</b> 11 Sep 2026</span>
+      <span><b>Updated</b> 11 Sep 2026</span>
       <span><b>Site</b> tohfaonline.com</span>
     </div>
   </header>
+
+  <section>
+    <div class="case good" style="margin-bottom:8px">
+      <h3 style="margin-bottom:6px">Update — same day</h3>
+      <p style="font-size:14.5px;color:var(--ink)">The hero stays for the reason in §04. Both of §05's shelved ideas shipped anyway — they don't touch the SEO copy the hero exists for, they just stop repeating the <em>rest</em> of it. See the shipped notes in §05 below.</p>
+    </div>
+  </section>
 
   <section>
     <h2>01 · The flow as built</h2>
@@ -382,16 +406,16 @@
   </section>
 
   <section>
-    <h2>05 · On the shelf, not off the table</h2>
-    <p>Two smaller moves would address the rail-click friction without touching the SEO copy. Neither is built — logged for whenever this comes up again.</p>
+    <h2>05 · The two follow-ups — shipped 11 Sep 2026</h2>
+    <p>Two smaller moves address the rail-click friction without touching the SEO copy. Both are live.</p>
     <div class="deferred">
       <div class="deferred-item">
         <span class="num">A</span>
-        <p><b>Slim the category hero.</b> Breadcrumb, heading, one line of intro — no full-height photo band. Keeps the unique H1 for search, cuts the vertical space by more than half.</p>
+        <p><span class="shipped">Shipped</span> <b>Slim the category hero.</b> Breadcrumb, heading, one line of copy where it exists — no full-height photo band, no CTA buttons, no stats row. Keeps the unique H1 for search, cuts the vertical space by more than half. The full hero stays exactly as it was — it's now homepage-only.</p>
       </div>
       <div class="deferred-item">
         <span class="num">B</span>
-        <p><b>Scroll the rail's own click to the grid.</b> The homepage rail already does a client-side navigation — pointing it at the grid instead of the page top would get a rail-click shopper to products immediately, while a direct landing still gets the full hero.</p>
+        <p><span class="shipped">Shipped</span> <b>Scroll the rail's own click to the grid.</b> Clicking a category — from the homepage rail or the header menu — now lands scrolled to the product grid, not the top of the destination page. A direct landing on that same URL (search, a shared link) still sees the slim header first, exactly as before.</p>
       </div>
     </div>
   </section>

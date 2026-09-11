@@ -581,20 +581,25 @@
     <li><b>Per-card live stock.</b> Each <code>ProductCard</code>'s <code>LiveStock</code> child fetches
     <code>/api/stock/[id]</code> on mount &mdash; the one figure that must never be stale.</li>
   </ol>
-  <p style="font-size:12.5px;color:var(--muted)"><strong>Design decision (2026-09-11, revisited &amp;
-  confirmed):</strong> <code>/collections/[category]</code> keeps the <em>full</em> hero band (category-specific
-  H1/tagline/intro from <code>categoryContent.ts</code> + a pinned product photo), same as the homepage's, rather
-  than dropping straight into the filtered grid. A UI/UX opinion raised that this repeats a hero the shopper just
-  saw on the homepage's &ldquo;Shop by Category&rdquo; rail. Owner's call: keep it as-is. Reasoning &mdash; the
-  category hero is only a <em>repeat</em> for rail-click traffic; a large share of category-page visits are
-  direct/organic (search, a shared link, a bio link straight to <code>/collections/lamps</code>), for whom it's
-  the <em>only</em> hero they see and is what makes that URL substantively unique content rather than one
-  template with a filter (the whole point of the hand-written per-category copy &mdash; see &sect;9 SEO). Removing
-  it to help the rail-click case would hurt the direct-landing case, which is exactly the traffic that copy exists
-  to capture. Considered and shelved for later, not built: shrinking the category hero to a slim banner (no full
-  photo band) and having the homepage rail's click scroll straight to the grid instead of the top of the page --
-  keeps the SEO uniqueness, cuts the rail-click scroll distance, touches nothing payment/schema-related. No code
-  changed by this decision.</p>
+  <p style="font-size:12.5px;color:var(--muted)"><strong>Design decision (2026-09-11):</strong>
+  <code>/collections/[category]</code> does <em>not</em> repeat the homepage's full photo hero. A UI/UX opinion
+  raised that a shopper who just clicked a category off the homepage's &ldquo;Shop by Category&rdquo; rail sees
+  a second, near-identical hero before reaching the grid. Owner's call, in two parts &mdash; keep the per-category
+  SEO uniqueness (see &sect;9), lose the repeated bulk:
+  <br>&bull; <strong>Slim category header</strong> &mdash; the full maroon hero (photo, CTA buttons, stats row) is
+  now homepage-only (<code>{"{"}!category &amp;&amp; (&hellip;){"}"}</code>); <code>/collections/[category]</code>
+  gets a compact <code>bg-surface-2</code> band with just the breadcrumb, an H1 (<code>categoryContent.heading</code>
+  or the raw category name), and &mdash; only for the categories with hand-written copy &mdash; one truncated line
+  of <code>categoryContent.tagline</code>. Still a unique H1 per URL; a fraction of the height and no image
+  request.
+  <br>&bull; <strong>Rail click scrolls to the grid</strong> &mdash; <code>CategorySlider</code>'s and the header
+  category menu's <code>router.push</code> now target <code>categoryHref(name) + "#signature-collection"</code>
+  (no <code>scroll:false</code>) instead of the bare URL; the App Router scrolls to that hash once the destination
+  renders. The plain <code>href</code> stays hash-free, so a copied/shared link still lands on the full header,
+  not mid-scroll. A direct/organic landing on a category URL (no hash) still sees the header on load first, exactly
+  as before.
+  <br>Full writeup: <code>docs/category-hero-decision.html</code> (also published as an artifact). Both follow-ups
+  landed same-day as this note &mdash; see Change log.</p>
 
   <h3 id="fl-pdp">2 &nbsp;Product detail &nbsp;<span class="pill get">force-dynamic</span></h3>
   <ol class="steps">
@@ -2469,8 +2474,9 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
   <li><strong>Per-category copy</strong> &mdash; <code>app/utils/categoryContent.ts</code> hand-written H1 / tagline /
       intro / meta for the categories that have it (Pocket Temples, Pan Stands, Board Games, Polyresin, UV Resin
       Earrings, Misc), keyed to the exact <code>categories.name</code>. Avoids duplicate-content issues. This is
-      also why the full hero band stays on <code>/collections/[category]</code> instead of being dropped for a
-      bare filtered grid &mdash; see the design-decision note in &sect;3 flow&nbsp;1 (2026-09-11).</li>
+      also why <code>/collections/[category]</code> keeps its own H1 even in the slim category header (a compact
+      band, not the full homepage hero) rather than a bare filtered grid &mdash; see the design-decision note in
+      &sect;3 flow&nbsp;1 (2026-09-11).</li>
   <li><strong>Gift guides</strong> &mdash; <code>/guides</code> + <code>/guides/&lt;slug&gt;</code> (&sect;9),
       hand-written occasion pages (<code>app/utils/giftGuides.ts</code>: Diwali / housewarming / wedding-return
       / puja-room) for gifting-intent search. Editorial framing + <em>live</em> product grids pulled by
@@ -3044,6 +3050,44 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-11<br>04:24</code></td>
+  <td><strong>Category pages: slim header + rail-click scrolls to the grid</strong><br>(follow-through on the 2026-09-11 category-hero decision &mdash; both deferred ideas, now built)</td>
+  <td>
+    The category-hero decision (previous entry's cross-reference; full writeup
+    <code>docs/category-hero-decision.html</code>) kept the per-category SEO hero but logged two ways to cut the
+    rail-click repeat. Both shipped:
+    <ul class="tight">
+      <li><strong><code>StorefrontPage.tsx</code></strong> &mdash; the full maroon hero (photo, CTA buttons, stats
+      row) is now gated on <code>!category</code>, homepage-only. <code>/collections/[category]</code> instead
+      gets a compact <code>bg-surface-2</code> band: breadcrumb, an H1 (<code>categoryContent.heading</code> or
+      the raw name for categories without hand-written copy), and one <code>line-clamp-1</code> line of
+      <code>categoryContent.tagline</code> where it exists. <code>heroProduct</code>'s category-pin branch
+      (dead now that only the homepage renders <code>HeroProductRotator</code>) was dropped along with it.</li>
+      <li><strong><code>CategorySlider.tsx</code> + <code>headerNavbar.tsx</code></strong> &mdash; both
+      category-link click handlers now <code>router.push(categoryHref(name) + "#signature-collection")</code>
+      instead of the bare href with <code>{ scroll: false }</code>; the App Router scrolls to that hash
+      once the destination page renders. The rendered <code>&lt;a href&gt;</code> stays hash-free (only the
+      JS-driven push carries it), so a copied/shared link is unaffected and still lands on the category header.</li>
+    </ul>
+    Mobile-first per the ask: the slim header's padding/type step up from a phone-first base
+    (<code>px-4 py-4</code> &rarr; <code>sm:px-6 sm:py-6</code>, <code>text-xl</code> &rarr;
+    <code>sm:text-2xl md:text-3xl</code>), and on a 390px viewport the category grid's first row is visible with
+    almost no scrolling at all.
+  </td>
+  <td>
+    <em>edited:</em> <code>app/components/StorefrontPage.tsx</code>, <code>app/components/CategorySlider.tsx</code>,
+    <code>app/components/headerNavbar.tsx</code>; this handbook, <code>IMPROVEMENTS.md</code>,
+    <code>docs/category-hero-decision.html</code>
+  </td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> (changed files) clean &middot;
+    <code>npm test</code> 337 / 1 skip &middot; <code>next build</code> exit 0, 145/145. Screenshotted:
+    <code>/collections/idols</code> (no hand-written copy) and <code>/collections/pocket-temples</code> (has one)
+    on a 390px viewport and desktop &mdash; slim header renders correctly in both cases, homepage hero unchanged.
+    Headless walkthrough: clicking a homepage rail card lands on <code>/collections/diyas#signature-collection</code>
+    with <code>window.scrollY</code> settled at the grid heading (confirmed via polling, ~1.5s after click) &mdash;
+    not a schema/payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-10<br>15:30</code></td>
   <td><strong>Checkout Review: the two gates become footer-triggered bottom-sheets</strong><br>(&#9888; payment path &mdash; UX follow-up to #4, owner-reported: the verify field was buried and the disabled button gave no clue)</td>
