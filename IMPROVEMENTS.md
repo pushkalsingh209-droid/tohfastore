@@ -2010,6 +2010,16 @@ care, land behind tests, never "blind".
      - **Next:** once templates are approved, confirm exact approved names (may differ
        from submitted drafts), verify the request shape against a real test send, then
        wire stage 2 (stock alerts).
+     - **Blocker found 2026-09-12:** attempting to submit the first (Authentication/OTP)
+       template on MSG91 returned "This whatsapp business account does not have
+       permission to create message template" — traced to incomplete **Meta Business
+       Verification** on the WABA, which requires domain ownership proof before Meta
+       grants template-management permissions. Added `facebook-domain-verification` to
+       `app/layout.tsx`'s existing `metadata.other` (same mechanism as the Pinterest tag).
+       **Owner: click "Verify domain" in Meta Business Manager after this deploys** — can
+       take up to 72h. Domain verification may not be the *only* gate — Meta could still
+       require business documents (GST/PAN, already on hand from MSG91's own KYC) to fully
+       clear Business Verification. Template submission stays blocked until this clears.
 
 13. **💰 Blog / Content Hub** — *foundation exists.* Already have:
     - `/guides` index + 4 gift guides (Diwali, housewarming, wedding, puja room)
