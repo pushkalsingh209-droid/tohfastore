@@ -28,6 +28,13 @@ care, land behind tests, never "blind".
   (past `SHOW_DELAY_MS`) the cookie banner is up and Ganesha has *not* appeared; clicking "Got it" reveals
   it within ~1.5s. Headless Chrome also fired `beforeinstallprompt` in the same run, confirming
   `InstallPrompt`'s gate holds too.
+- **Same-day follow-up:** `InstallPrompt` and `WelcomeGaneshaPopup` both reveal on the exact same
+  `onCookieConsentResolved` signal, so the instant a shopper accepted cookies both could still land in the
+  same frame. Added `InstallPrompt`'s own `REVEAL_STAGGER_MS = 2500` — it now waits 2.5s after that signal
+  (roughly Ganesha's own entrance animation plus a beat) before revealing. Verified with a deterministic
+  headless test (dispatched a synthetic `beforeinstallprompt` right at accept, since real Chrome install
+  heuristics are non-deterministic in headless mode): Ganesha visible from t+0.5s, install card hidden
+  through t+2s, appears at exactly t+2.5s, both spatially non-overlapping thereafter.
 
 ### Category pages: slim header + rail-click scrolls to the grid — 2026-09-11 IST
 - Follow-through on the category-hero decision (`docs/category-hero-decision.html`, also published as an
