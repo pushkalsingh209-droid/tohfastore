@@ -2059,9 +2059,31 @@ care, land behind tests, never "blind".
          Thank You
          Tohfa
        ```
-     - **Next:** wire stage 2 (stock alerts, using `back_in_stock`) behind
-       `WHATSAPP_PROVIDER`, verify the request shape against a real MSG91 test send, watch
-       it run clean, then proceed to stage 3 (OTP).
+     - **Stage 2 wired 2026-09-12.** New `sendBackInStockWhatsapp(phone, productName,
+       productUrl)` in `msg91Whatsapp.ts` — a thin provider-dispatch wrapper: defaults to
+       Green API with today's exact message text (unchanged) unless
+       `WHATSAPP_PROVIDER=msg91`, in which case it sends the approved `back_in_stock`
+       template with `[productName, productUrl]` as the two variables. Single call site
+       touched: `app/api/admin/products/route.ts`'s restock-notify loop (was calling
+       `sendWhatsappMessage` from `greenApi.ts` directly) now calls the wrapper instead.
+       `data[0].name` is nullable per the DB schema — falls back to `"This item"` rather
+       than a literal `"null"` string, a small correctness fix caught by `tsc` on the new
+       typed parameter (the old template-literal call silently stringified `null` instead
+       of erroring). No test added for the wrapper itself — it's network I/O throughout,
+       matching how `sendWhatsappMessage`/`sendMsg91WhatsappTemplate` are already left
+       untested at that layer (only pure helpers like `buildMsg91TemplatePayload` get unit
+       tests in this file).
+     - **Not yet live-tested against MSG91's real API** — `WHATSAPP_PROVIDER` stays unset
+       (defaults to `"green-api"`) until the owner flips it in one environment and watches
+       a real restock notification send cleanly via MSG91. **Owner: to test, set
+       `WHATSAPP_PROVIDER=msg91` in Vercel (or `.env.local` for a dev-server check),
+       trigger a genuine 0→positive inventory transition on a product with a pending
+       `stock_alert_subscriptions` row, and confirm the WhatsApp arrives with the right
+       product name + link.** Flip the var back (or unset it) to fall back to Green API
+       instantly if anything looks wrong — no redeploy needed for env var changes on
+       Vercel, though a redeploy or restart is needed to pick up the new value.
+     - **Next:** once a real MSG91 send is confirmed clean, proceed to stage 3 (OTP) —
+       the highest-scrutiny swap since it gates checkout.
 
 13. **💰 Blog / Content Hub** — *foundation exists.* Already have:
     - `/guides` index + 4 gift guides (Diwali, housewarming, wedding, puja room)
