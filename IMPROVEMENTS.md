@@ -2007,19 +2007,61 @@ care, land behind tests, never "blind".
        build` exit 0. **Not wired into any call site — zero behaviour change to any live
        path.** Not a payment-path change (nothing touches checkout yet). Not live-tested
        against MSG91's real API (templates still pending approval).
-     - **Next:** once templates are approved, confirm exact approved names (may differ
-       from submitted drafts), verify the request shape against a real test send, then
-       wire stage 2 (stock alerts).
-     - **Blocker found 2026-09-12:** attempting to submit the first (Authentication/OTP)
-       template on MSG91 returned "This whatsapp business account does not have
-       permission to create message template" — traced to incomplete **Meta Business
-       Verification** on the WABA, which requires domain ownership proof before Meta
-       grants template-management permissions. Added `facebook-domain-verification` to
-       `app/layout.tsx`'s existing `metadata.other` (same mechanism as the Pinterest tag).
-       **Owner: click "Verify domain" in Meta Business Manager after this deploys** — can
-       take up to 72h. Domain verification may not be the *only* gate — Meta could still
-       require business documents (GST/PAN, already on hand from MSG91's own KYC) to fully
-       clear Business Verification. Template submission stays blocked until this clears.
+     - **Blocker found + resolved 2026-09-12:** first submit attempt (Authentication/OTP)
+       returned "This whatsapp business account does not have permission to create
+       message template" — traced to incomplete **Meta Business Verification** on the
+       WABA, which requires domain ownership proof before Meta grants template-management
+       permissions. Added `facebook-domain-verification` to `app/layout.tsx`'s existing
+       `metadata.other` (same mechanism as the Pinterest tag). Owner verified the domain
+       in Meta Business Manager — cleared faster than Meta's own "up to 72h" estimate.
+     - **All 6 templates approved 2026-09-12.** Meta reclassified `back_in_stock` from
+       Utility to Marketing during review (common for "back in stock + order now" wording
+       — doesn't affect the code, since only the template *name* matters to the API call;
+       does mean it bills at Marketing's higher per-conversation rate once sending real
+       volume). WhatsApp also rejects a template starting or ending on a variable — owner
+       added static "Hi" / "Thank You / Tohfa" bookend lines to the templates that needed
+       it. **Variable count and order are unchanged** from the original drafts in every
+       template, confirmed against the actual approved preview text, so
+       `msg91Whatsapp.ts`'s existing variable-passing code needs no changes. Actual
+       approved bodies (exact, from MSG91's Template Preview):
+       ```
+       tohfa_otp (Authentication, Meta's fixed format):
+         {{1}} is your verification code.
+
+       order_confirmed (Utility):
+         Hi {{1}}, your TOHFA order {{2}} is confirmed and being prepared!
+         Total: ₹{{3}}
+         View your full invoice: {{4}}
+         Thank you
+         Tohfa
+
+       order_shipped (Utility):
+         Good news! Your TOHFA order {{1}} has shipped.
+         Shipped via {{2}} · Tracking No: {{3}}
+         Invoice: {{4}}
+         Thank You
+         Tohfa
+
+       order_delivered (Utility):
+         Your TOHFA order {{1}} has been delivered. Thank you for shopping with us!
+         Invoice: {{2}}
+         We'd love your feedback: {{3}}
+         Thank You
+         Tohfa
+
+       order_cancelled (Utility — no bookend needed, already static-bookended):
+         Your TOHFA order {{1}} has been cancelled.
+         Questions? Reply here on WhatsApp.
+
+       back_in_stock (Marketing):
+         Hi
+         {{1}} is back in stock at TOHFA! Order now: {{2}}
+         Thank You
+         Tohfa
+       ```
+     - **Next:** wire stage 2 (stock alerts, using `back_in_stock`) behind
+       `WHATSAPP_PROVIDER`, verify the request shape against a real MSG91 test send, watch
+       it run clean, then proceed to stage 3 (OTP).
 
 13. **💰 Blog / Content Hub** — *foundation exists.* Already have:
     - `/guides` index + 4 gift guides (Diwali, housewarming, wedding, puja room)

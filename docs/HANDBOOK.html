@@ -3070,6 +3070,38 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-09-12<br>01:30</code></td>
+  <td><strong>All 6 MSG91 WhatsApp templates approved</strong><br>(docs-only &mdash; no code change; corrects the drafted template wording in <code>app/utils/msg91Whatsapp.ts</code> and <code>IMPROVEMENTS.md</code> to match what Meta actually approved)</td>
+  <td>
+    Domain verification (previous row) cleared faster than Meta's &ldquo;up to 72h&rdquo; estimate. Owner
+    submitted all 6 templates; Meta approved all of them within hours. Two findings worth recording:
+    <ul class="tight">
+      <li><strong><code>back_in_stock</code> reclassified Marketing</strong> (submitted as Utility) &mdash;
+      common Meta behaviour for &ldquo;back in stock + order now&rdquo; wording. Doesn't affect
+      <code>msg91Whatsapp.ts</code> (only the template <em>name</em> matters to the API call), but means it
+      bills at Marketing's higher per-conversation rate once sending real volume. The opt-in (customer
+      explicitly clicked &ldquo;Notify me when back in stock&rdquo;) is genuine, so this is compliant, just
+      pricier than assumed.</li>
+      <li><strong>WhatsApp rejects a template starting/ending on a variable.</strong> Owner added static
+      &ldquo;Hi&rdquo; / &ldquo;Thank You&nbsp;/&nbsp;Tohfa&rdquo; bookend lines to whichever templates hit
+      that rule during submission. <strong>Variable count and order are unchanged</strong> from the original
+      drafts in every template &mdash; confirmed by reading the exact approved preview text back against
+      what <code>msg91Whatsapp.ts</code> already wires, so <strong>no code changes were needed</strong>, only
+      correcting the drafted wording in comments/docs to match reality.
+    </ul>
+    Exact approved bodies now recorded in <code>IMPROVEMENTS.md</code>'s Tier 3 WhatsApp item (verbatim,
+    including the bookend lines) so future reference doesn't rely on the original (now-inaccurate) draft.
+  </td>
+  <td><em>edited:</em> <code>app/utils/msg91Whatsapp.ts</code> (comments only), <code>IMPROVEMENTS.md</code>,
+  this handbook</td>
+  <td>Docs/comments-only change &mdash; <code>tsc</code>/<code>test</code>/<code>build</code> unaffected (no
+  source logic touched). Verified by reading MSG91's own Template Preview panel for all 6 templates directly
+  (owner screenshots) and cross-checking variable position/count against the existing
+  <code>sendMsg91WhatsappTemplate</code> call shape. <strong>Next:</strong> wire stage 2 (stock alerts, using
+  <code>back_in_stock</code>) behind <code>WHATSAPP_PROVIDER</code>, verify one real MSG91 test send, then
+  proceed to stage 3 (OTP).</td>
+</tr>
+<tr>
   <td><code>2026-09-12<br>00:40</code></td>
   <td><strong>Meta Business domain verification tag</strong><br>(owner hit &ldquo;This whatsapp business account does not have permission to create message template&rdquo; on MSG91 while trying to submit the OTP template &mdash; traced to incomplete Meta Business Verification, which requires domain ownership proof)</td>
   <td>

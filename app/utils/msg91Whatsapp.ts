@@ -21,12 +21,20 @@
 // confirmation template is deliberately a shortened summary + invoice link, not
 // the full itemized invoice Green API sends today -- Meta's template review
 // rejects arbitrary-length content stuffed into one variable).
+//
+// All 6 approved 2026-09-12 (see IMPROVEMENTS.md Tier 3 WhatsApp item for the exact
+// approved wording). WhatsApp rejects a template starting/ending on a variable, so the
+// owner added static "Hi" / "Thank You / Tohfa" bookend lines to whichever templates
+// needed it during submission -- variable count and order are unchanged from what's
+// wired below, confirmed against the real approved preview text. back_in_stock got
+// reclassified Marketing (not Utility) by Meta during review -- doesn't affect this
+// file (only the template name matters to the API call), just the per-conversation
+// billing rate once sending real volume.
 
 import { normalizeIndianPhone } from "@/app/utils/phone";
 
-// Template names -- must exactly match what's registered (and approved) in
-// MSG91's Template Manager. Update these constants once the owner confirms the
-// actual approved names, which may differ slightly from what was submitted.
+// Template names -- confirmed exact matches to what's approved in MSG91's Template
+// Manager (2026-09-12).
 export const MSG91_WHATSAPP_TEMPLATES = {
   otp: "tohfa_otp",
   orderConfirmed: "order_confirmed",
