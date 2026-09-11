@@ -195,7 +195,7 @@ Modified:
 - [ ] Confirm no SMS errors in function logs (should be silent)
 
 ### To Enable Later
-- [ ] Run migration 0062 in Supabase SQL editor
+- [x] Run migration 0062 in Supabase SQL editor (done 2026-09-11)
 - [ ] Rebuild admin dashboard UGC moderation view (next batch)
 - [ ] Set SMS_PROVIDER + credentials env vars (when ready)
 - [ ] Wire SMS calls in order/stock alert routes (next batch)
