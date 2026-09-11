@@ -8,12 +8,18 @@
 // attempted automatically once the entrance finishes; browsers that block
 // unrequested audio autoplay fall back to quietly retrying on the visitor's
 // next interaction with the page (see the audioBlocked effect below), with
-// a visible speaker badge as the last-resort manual option.
+// a visible speaker badge as the last-resort manual option. Its reveal
+// (after SHOW_DELAY_MS) waits on cookie consent being resolved, same as
+// InstallPrompt -- both hold back their first appearance so a first-visit
+// shopper never gets this, the cookie banner, and the install prompt
+// stacked at once (app/utils/cookieConsent.ts). A no-op wait on every load
+// but the very first, since consent is normally already resolved by then.
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCatalogLoading } from "@/app/context/CatalogLoadingContext";
 import { useGaneshaPopupSettings } from "@/app/context/GaneshaPopupSettingContext";
+import { onCookieConsentResolved } from "@/app/utils/cookieConsent";
 
 const SHOW_DELAY_MS = 1200; // gives the page a beat to finish its own initial load/paint first
 const ARC_DURATION_MS = 2000; // must match the ganesha-arc keyframe duration in globals.css
@@ -160,19 +166,27 @@ export default function WelcomeGaneshaPopup() {
     }
 
     let timer: ReturnType<typeof setTimeout>;
+    let unsubConsent: (() => void) | null = null;
+    function reveal() {
+      if (dismissedRef.current) return;
+      setAudioBlocked(false);
+      setPhase("entering");
+      trackEvent("welcome_popup_shown");
+      const nextCount = freq.count + 1;
+      const nextState: FreqState = {
+        count: nextCount,
+        cooldownUntil: nextCount >= effectiveMaxAutoShows ? Date.now() + cooldownMs : null,
+      };
+      saveFreqState(nextState);
+      if (nextState.cooldownUntil) setInCooldown(true);
+    }
     function show() {
       timer = setTimeout(() => {
-        if (dismissedRef.current) return;
-        setAudioBlocked(false);
-        setPhase("entering");
-        trackEvent("welcome_popup_shown");
-        const nextCount = freq.count + 1;
-        const nextState: FreqState = {
-          count: nextCount,
-          cooldownUntil: nextCount >= effectiveMaxAutoShows ? Date.now() + cooldownMs : null,
-        };
-        saveFreqState(nextState);
-        if (nextState.cooldownUntil) setInCooldown(true);
+        // Don't land on top of an unresolved cookie banner on a first visit
+        // (first-visit overlay pile-up) -- reveals immediately once consent
+        // is resolved, which on every page view but the very first is
+        // already true, so this is a no-op wait almost always.
+        unsubConsent = onCookieConsentResolved(reveal);
       }, SHOW_DELAY_MS);
     }
 
@@ -189,6 +203,7 @@ export default function WelcomeGaneshaPopup() {
     return () => {
       window.removeEventListener("load", show);
       clearTimeout(timer);
+      unsubConsent?.();
     };
     // Every route change, every category-filter change, every catalog
     // transition finishing, and every full reload (which remounts

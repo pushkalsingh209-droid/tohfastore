@@ -1,23 +1,26 @@
 // app/components/CookieConsent.tsx
 "use client";
 import { useEffect, useState } from "react";
-
-const STORAGE_KEY = "tohfa_cookie_consent";
+import { COOKIE_CONSENT_KEY, COOKIE_CONSENT_RESOLVED_EVENT } from "@/app/utils/cookieConsent";
 
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     try {
-      if (!localStorage.getItem(STORAGE_KEY)) setVisible(true);
+      if (!localStorage.getItem(COOKIE_CONSENT_KEY)) setVisible(true);
     } catch {}
   }, []);
 
   function accept() {
     try {
-      localStorage.setItem(STORAGE_KEY, "accepted");
+      localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
     } catch {}
     setVisible(false);
+    // Lets InstallPrompt / WelcomeGaneshaPopup, which hold their own first
+    // appearance back until this resolves, show now instead of waiting for
+    // a poll -- see app/utils/cookieConsent.ts.
+    window.dispatchEvent(new Event(COOKIE_CONSENT_RESOLVED_EVENT));
   }
 
   if (!visible) return null;
