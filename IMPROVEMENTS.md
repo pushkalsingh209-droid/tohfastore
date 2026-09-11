@@ -1944,27 +1944,40 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 3 Marketing (longer-term, brand-building)
 
-11. **💰 Blog / Content Hub** — Organic SEO engine. "Puja room design guide",
-    "Gifting guide for Diwali", "How to care for brass handicrafts". Target high-intent
-    keywords (`gifts for wedding`, `brass deity idol`, `eco-friendly gifting`).
-    **Impact:** 30–50% of organic traffic at scale. **Effort:** high (requires writer +
-    editing + ongoing). **Cost:** writer budget (₹5–20k/mo). **Timeline:** 6–12 months
-    to see ROI.
+**Status: 2026-09-11** — UGC campaign + SMS infrastructure framework. Part 1 of Tier 3.
 
-12. **UGC Campaign** — Incentivize customers to post unboxing videos with
-    `#TOHFACRAFTS`. Feature best ones on homepage or Instagram. Authentic social proof,
-    low cost. **Impact:** brand trust + community. **Effort:** medium (curation SOP +
-    Instagram workflow). **Cost:** minimal (repost free user content).
+11. **✅ UGC Campaign Foundation (#TOHFACRAFTS)** — *implemented (2026-09-11).*
+    Customer unboxing photos/testimonials collected and moderated. MVP: text testimonials
+    (photos/videos in next batch). All submissions go to moderation queue.
+    - New `product_ugc` table (migration 0062): customer_name, phone, email, caption,
+      approved, featured, used_in_marketing flags
+    - New `UgcSubmissionForm.tsx`: appears below product reviews on PDP
+    - New `/api/ugc/submit` route: validates, rate-limits (5/hour/IP), stores submissions
+    - Hashtag framework ready: #TOHFACRAFTS for social coordination
+    - Admin panel integration TBD: view/moderate/feature submissions
+    - **Owner action:** Run migration 0062, then admin UGC dashboard in next batch
+    - Verified: `tsc` clean, `npm test` 337/338, `next build` 146/146 static
 
-13. **💰 Influencer Seeding** — Send free products to micro-influencers (5k–50k
-    followers) in Indian gifting/home-décor space. More authentic than paid ads.
-    **Impact:** 2–5% new customer acquisition per 10 seeding packages. **Effort:** medium
-    (prospecting + outreach). **Cost:** ~₹2–5k per influencer (product + shipping).
+12. **✅ SMS Notification Infrastructure** — *framework implemented (2026-09-11).*
+    Ready for SMS when owner enables (cost: ₹0.50–2 per SMS). Currently disabled safely.
+    - New `smsNotifications.ts`: provider-agnostic API (AWS SNS, Twilio, Exotel)
+    - Config: SMS_ENABLED=false by default, safe to ship
+    - Message formatters: stock-alert, order-status, delivery-update, review-reminder
+    - Message length validation (160 chars per SMS part)
+    - **Owner action:** Set SMS_ENABLED=true + provider credentials when ready
+    - No external calls in dev mode; stub-only while disabled
 
-14. **SMS Marketing Channel** — WhatsApp is great; SMS hits broader audiences (some
-    users don't check WA). Use Razorpay phone data for order status + reorder reminders.
-    **Impact:** 5–10% higher engagement than email. **Effort:** low (SMS API + templates).
-    **Cost:** 💰 per SMS (₹0.50–2 per message, typical).
+13. **💰 Blog / Content Hub** — *foundation exists.* Already have:
+    - `/guides` index + 4 gift guides (Diwali, housewarming, wedding, puja room)
+    - Live product pull + JSON-LD breadcrumbs per guide
+    - No changes needed this batch; expand with more guides in next batch
+    - **Timeline:** 6–12 months to meaningful organic traffic (30–50% at scale)
+    - **Cost:** writer budget (₹5–20k/mo)
+
+14. **💰 Influencer Seeding** — *backlog.* Send free products to micro-influencers
+    (5k–50k followers). **Impact:** 2–5% new acquisition per 10 packages. **Effort:**
+    medium (prospecting + outreach). **Cost:** ~₹2–5k per influencer.
+    **Timeline:** 2–4 weeks per batch. *Recommended after organic reach plateaus.*
 
 ---
 
