@@ -1643,7 +1643,9 @@ paths produce an identical row because both re-read from Razorpay&rsquo;s own AP
 <tr><td><code>RAZORPAY_WEBHOOK_SECRET</code></td><td>server</td><td>HMAC key for the Dashboard server-to-server webhook (<code>x-razorpay-signature</code>). Configure event <code>payment.captured</code> &rarr; <code>/api/razorpay-webhook</code>.</td></tr>
 <tr><td><code>ADMIN_PASSWORD</code></td><td>server</td><td>Admin password (constant-time compare). Missing &rarr; login 500 (fails closed, no default).</td></tr>
 <tr><td><code>ADMIN_TOTP_SECRET</code></td><td>server</td><td>Base32 TOTP secret (RFC 6238, SHA1, 6 digits, 30s, &plusmn;1 step drift). Static &mdash; the QR tool just re-renders it.</td></tr>
-<tr><td><code>GREEN_API_URL</code>, <code>GREEN_API_ID_INSTANCE</code>, <code>GREEN_API_TOKEN_INSTANCE</code></td><td>server</td><td>Green API instance. All three required or every WhatsApp feature silently no-ops (OTP send surfaces an explicit error instead).</td></tr>
+<tr><td><code>GREEN_API_URL</code>, <code>GREEN_API_ID_INSTANCE</code>, <code>GREEN_API_TOKEN_INSTANCE</code></td><td>server</td><td>Green API instance (unofficial WhatsApp Web automation). All three required or every WhatsApp feature silently no-ops (OTP send surfaces an explicit error instead). Primary WhatsApp channel today &mdash; see <code>WHATSAPP_PROVIDER</code> for the MSG91 migration in progress.</td></tr>
+<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. Not yet wired into any call site (stage 1 of the phased cutover, see IMPROVEMENTS.md) &mdash; template approval on MSG91's side is the current blocker.</td></tr>
+<tr><td><code>WHATSAPP_PROVIDER</code></td><td>server</td><td>Optional. <code>"green-api"</code> (default, unset behaves the same) or <code>"msg91"</code>. Selects which provider a send uses once call sites are wired in stage 2/3 of the migration &mdash; currently read by <code>activeWhatsappProvider()</code> but not yet consulted by any live send path.</td></tr>
 <tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code>, <code>/api/cron/abandoned-checkout</code>, <code>/api/cron/product-sales-reconcile</code>, <code>/api/cron/rls-check</code>.</td></tr>
 <tr><td><code>RESEND_API_KEY</code></td><td>server</td><td>Missing &rarr; order-confirmation <em>and</em> shipped/delivered/status emails skipped silently; contact form returns 500.</td></tr>
 <tr><td><code>NEXT_PUBLIC_META_PIXEL_ID</code></td><td>public</td><td>Optional. Unset &rarr; <code>MetaPixel</code> and <em>every</em> <code>metaPixel.ts</code> event (<code>ViewContent</code>, <code>AddToCart</code>, <code>InitiateCheckout</code>, <code>Purchase</code>) no-op. Comma-separate for multiple pixels.</td></tr>
@@ -3059,6 +3061,36 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-11<br>23:58</code></td>
+  <td><strong>MSG91 WhatsApp module (stage 1 of Green API migration)</strong><br>(owner registered with MSG91 for an official Meta WhatsApp Business API integration, replacing Green API's unofficial/ban-risk channel)</td>
+  <td>
+    Owner's real WhatsApp number is already registered under Green API's WABA, so Meta can't dual-register it
+    under MSG91 &mdash; MSG91 issued a separate virtual number instead. Owner chose full migration (retire
+    Green API once MSG91 is proven) over a permanent split. Given this eventually touches the checkout OTP
+    gate, the plan is a phased cutover, not a hard swap: stage 1 (this batch) builds the MSG91 sender in
+    isolation, unwired from any live call site; stage 2 wires low-stakes sends (stock alerts) behind a
+    provider flag; stage 3 wires OTP last, only after stage 2 proves clean; stage 4 retires Green API.
+    <br><br>
+    New <code>app/utils/msg91Whatsapp.ts</code>: <code>sendMsg91WhatsappTemplate()</code> (Meta template-based
+    send, not free text &mdash; Meta's template review rejects arbitrary-length content in one variable, so
+    this is structurally different from Green API's <code>sendWhatsappMessage()</code>), pure
+    <code>buildMsg91TemplatePayload()</code> split out for testability, <code>activeWhatsappProvider()</code>
+    reading a new <code>WHATSAPP_PROVIDER</code> env var (defaults to <code>"green-api"</code>, i.e. today's
+    behaviour, unread by any live path yet). Six template names drafted to match the existing Green API
+    message wording (<code>orderNotifications.ts</code>, <code>whatsappOtp.ts</code>) &mdash; the order-
+    confirmation template is a deliberately <em>shortened</em> summary + invoice link, not the full itemized
+    invoice Green API sends today, since Meta's template system can't express a variable-length item list.
+    Owner submitted all six to MSG91 for approval; not yet approved as of this entry.
+  </td>
+  <td><em>new:</em> <code>app/utils/msg91Whatsapp.ts</code>, <code>app/utils/msg91Whatsapp.test.ts</code>;
+  <em>edited:</em> this handbook (env var table + this row), <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 342/343 (1 pre-existing skip, +5 new)
+  &middot; <code>next build</code> exit 0. Not wired into any call site, so no behaviour change to any live
+  path &mdash; not a payment-path change. Not live-tested against MSG91's real API (templates still pending
+  approval; the exact request shape is flagged in the file header as needing verification against MSG91's
+  live docs before going live, since API providers change field names across versions).</td>
+</tr>
 <tr>
   <td><code>2026-09-11<br>06:34</code></td>
   <td><strong>Stagger the install prompt behind the Ganesha popup</strong><br>(same-day follow-up &mdash; both revealed on the same cookie-consent-resolved signal, so they could still land in the same frame)</td>

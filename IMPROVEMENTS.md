@@ -1968,6 +1968,48 @@ care, land behind tests, never "blind".
     - Message length validation (160 chars per SMS part)
     - **Owner action:** Set SMS_ENABLED=true + provider credentials when ready
     - No external calls in dev mode; stub-only while disabled
+    - **Owner registered with MSG91 2026-09-11** (SMS entity KYC submitted, awaiting
+      DLT approval). Progress tracked in auto-memory `sms_provider_registration_timeline.md`.
+
+12a. **⚠️ WhatsApp: Green API → MSG91 migration (official Meta Business API)** — *stage 1
+     of 4, implemented 2026-09-11.* Owner's real WhatsApp number is already registered
+     under Green API's WABA; MSG91 issued a separate virtual number. Owner chose **full
+     migration** (retire Green API once proven) over a permanent split — driven by real
+     ban risk on unofficial WhatsApp Web automation, documented industry-wide through
+     2025–2026.
+     - **Phased cutover, not a hard swap** (this eventually touches the checkout OTP
+       gate): Stage 1 (done) — build `app/utils/msg91Whatsapp.ts` in isolation, unit
+       tested, unwired from any live call site. Stage 2 — wire low-stakes sends
+       (stock alerts) behind `WHATSAPP_PROVIDER` flag. Stage 3 — wire OTP last, only
+       after stage 2 runs clean. Stage 4 — retire Green API.
+     - **Meta templates are structurally different from Green API's free text.**
+       Templates need fixed `{{1}}`, `{{2}}`... placeholders — Meta's review rejects
+       arbitrary-length content (e.g. an itemized invoice) stuffed into one variable.
+       Six templates drafted matching existing message wording (`orderNotifications.ts`,
+       `whatsappOtp.ts`): `otp` (Authentication category, Meta's rigid predefined
+       format), `order_confirmed` (**deliberately shortened** to a summary + invoice
+       link, not the full itemized invoice Green API sends today), `order_shipped`,
+       `order_delivered` (referral-code mention dropped — Meta reviews conditional
+       content poorly, revisit as a separate template later), `order_cancelled`,
+       `back_in_stock`. **Owner submitted all six to MSG91 2026-09-11 — pending approval.**
+     - `app/utils/msg91Whatsapp.ts`: `sendMsg91WhatsappTemplate()`, pure
+       `buildMsg91TemplatePayload()` (unit-tested, 5 tests), `activeWhatsappProvider()`
+       reading `WHATSAPP_PROVIDER` (default `"green-api"`, unread by any live path yet).
+       **Request shape needs live verification** against MSG91's current API docs before
+       going live — flagged explicitly in the file header, since MSG91 has changed field
+       names across API versions before and this was built without live API access.
+     - Env vars documented in HANDBOOK.html: `MSG91_AUTH_KEY`, `MSG91_WHATSAPP_NUMBER`,
+       `WHATSAPP_PROVIDER`. IP-security on the Auth Key was turned off (Vercel serverless
+       functions have no fixed outbound IP, so IP-locking would break production sends);
+       the key is protected the same way every other credential in this codebase is —
+       env vars only, never committed, never exposed client-side.
+     - Verified: `tsc` clean, `npm test` 342/343 (1 pre-existing skip, +5 new), `next
+       build` exit 0. **Not wired into any call site — zero behaviour change to any live
+       path.** Not a payment-path change (nothing touches checkout yet). Not live-tested
+       against MSG91's real API (templates still pending approval).
+     - **Next:** once templates are approved, confirm exact approved names (may differ
+       from submitted drafts), verify the request shape against a real test send, then
+       wire stage 2 (stock alerts).
 
 13. **💰 Blog / Content Hub** — *foundation exists.* Already have:
     - `/guides` index + 4 gift guides (Diwali, housewarming, wedding, puja room)
