@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 import { onCookieConsentResolved } from "@/app/utils/cookieConsent";
 
 const DISMISS_KEY = "tohfa_install_dismissed";
+// Once cookie consent is resolved, wait this much longer before revealing --
+// WelcomeGaneshaPopup reveals essentially immediately on the same signal, so
+// without a stagger both could still land in the same frame right after a
+// shopper taps "Got it". Ganesha's own entrance arc is ARC_DURATION_MS (2s);
+// this clears that plus a beat, so the mascot's greeting isn't competing
+// with an "Install TOHFA" card on its very first frame.
+const REVEAL_STAGGER_MS = 2500;
 
 // Chrome/Edge/Android fire `beforeinstallprompt` when a page meets basic PWA
 // installability criteria (manifest + https); Safari/iOS never fire it, so
@@ -12,7 +19,7 @@ const DISMISS_KEY = "tohfa_install_dismissed";
 // consent being resolved first (app/utils/cookieConsent.ts) -- Chrome can
 // fire beforeinstallprompt within the first second or two of a first
 // visit, which used to stack this directly on top of the still-showing
-// cookie banner.
+// cookie banner -- then staggers REVEAL_STAGGER_MS behind WelcomeGaneshaPopup.
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -24,6 +31,7 @@ export default function InstallPrompt() {
 
   useEffect(() => {
     let unsubConsent: (() => void) | null = null;
+    let staggerTimer: ReturnType<typeof setTimeout> | null = null;
     function handler(e: Event) {
       const evt = e as BeforeInstallPromptEvent;
       e.preventDefault();
@@ -32,14 +40,17 @@ export default function InstallPrompt() {
       } catch {}
       setDeferredPrompt(evt);
       // Don't stack on top of an unresolved cookie banner on a first visit
-      // -- shows immediately if consent is already resolved (the common
-      // case), otherwise waits for it.
-      unsubConsent = onCookieConsentResolved(() => setVisible(true));
+      // -- reveals REVEAL_STAGGER_MS after consent resolves (immediately if
+      // it already was, the common case, so this is just the stagger then).
+      unsubConsent = onCookieConsentResolved(() => {
+        staggerTimer = setTimeout(() => setVisible(true), REVEAL_STAGGER_MS);
+      });
     }
     window.addEventListener("beforeinstallprompt", handler);
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
       unsubConsent?.();
+      if (staggerTimer) clearTimeout(staggerTimer);
     };
   }, []);
 

@@ -2608,7 +2608,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>giftGuides.ts</code></td><td><code>GIFT_GUIDES</code> + <code>findGiftGuide(slug)</code> &mdash; the hand-written occasion gift-guide pages (<code>/guides</code>, <code>/guides/&lt;slug&gt;</code>). Each guide is <code>{slug, title, meta*, intro, body[], sections[]}</code> where a section names an exact <code>products.category</code> + a heading + one line of &ldquo;why this fits&rdquo;. Product grids are resolved live at request time (<code>getCatalogPage</code> per section), so the module is pure copy &mdash; no ids, no DB. Pure; no test (data only).</td></tr>
 <tr><td><code>searchProducts.ts</code></td><td>Substring autocomplete + Levenshtein &ldquo;did you mean&rdquo;.</td></tr>
 <tr><td><code>seo.ts</code>, <code>metaPixel.ts</code>, <code>googleTranslate.ts</code>, <code>trackWhatsappEnquiry.ts</code></td><td>OG default; Meta Pixel funnel events (<code>ViewContent</code>/<code>AddToCart</code>/<code>InitiateCheckout</code>/<code>Purchase</code>, all no-op without a pixel id); translate cookie + voice-command parsing; enquiry beacon.</td></tr>
-<tr><td><code>cookieConsent.ts</code></td><td>Single source of truth for whether <code>CookieConsent</code>'s banner has been accepted (<code>hasCookieConsent()</code>) plus <code>onCookieConsentResolved(cb)</code> &mdash; runs <code>cb</code> immediately if already resolved, otherwise on a <code>window</code> event <code>CookieConsent</code> dispatches on accept. <code>InstallPrompt</code> and <code>WelcomeGaneshaPopup</code> gate their first reveal on it so a first-time visitor doesn't get all three stacked (2026-09-11).</td></tr>
+<tr><td><code>cookieConsent.ts</code></td><td>Single source of truth for whether <code>CookieConsent</code>'s banner has been accepted (<code>hasCookieConsent()</code>) plus <code>onCookieConsentResolved(cb)</code> &mdash; runs <code>cb</code> immediately if already resolved, otherwise on a <code>window</code> event <code>CookieConsent</code> dispatches on accept. <code>InstallPrompt</code> and <code>WelcomeGaneshaPopup</code> gate their first reveal on it so a first-time visitor doesn't get all three stacked (2026-09-11). <code>InstallPrompt</code> additionally staggers <code>REVEAL_STAGGER_MS</code> (2.5s) behind that signal, since <code>WelcomeGaneshaPopup</code> reveals on the same signal near-instantly &mdash; without the stagger the two could still land in the same frame right after a shopper accepts.</td></tr>
 <tr><td><code>recentlyViewed.ts</code>, <code>visitorId.ts</code></td><td>localStorage recently-viewed list (max 8); anonymous per-browser UUID.</td></tr>
 <tr><td><code>couriers.ts</code></td><td><code>COURIER_PRESETS</code> (dropdown list for the admin Orders tab) + <code>normalizeCourierName(raw)</code> (trim + clamp to 60, empty &rarr; null). The stored <code>orders.courier_name</code> is unconstrained free text; this list is convenience only. <em>(0045)</em></td></tr>
 <tr><td><code>instagramCaption.ts</code></td><td><code>buildInstagramCaption(product)</code> &mdash; the ready-to-paste caption for the public &ldquo;Create Insta Post&rdquo; tool. Unlike every other message-builder here, written in <strong>first person</strong>: the poster is a third party (a customer, a friend) sharing it as their own content, not the store talking to a customer. Pure, no I/O &mdash; computed client-side straight from data already on the product page. Name, price, a handcrafted-brass line, the real handle (<code>@tohfaforu</code>), <code>productHref</code> link, base hashtags + one derived from category. <strong>6 unit tests.</strong></td></tr>
@@ -3059,6 +3059,30 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-11<br>06:34</code></td>
+  <td><strong>Stagger the install prompt behind the Ganesha popup</strong><br>(same-day follow-up &mdash; both revealed on the same cookie-consent-resolved signal, so they could still land in the same frame)</td>
+  <td>
+    The 06:12 fix stopped all three first-load overlays from being visible <em>simultaneously on page load</em>,
+    but <code>InstallPrompt</code> and <code>WelcomeGaneshaPopup</code> both reveal on the exact same
+    <code>onCookieConsentResolved</code> signal &mdash; so the instant a shopper taps &ldquo;Got it&rdquo; on
+    the cookie banner, both could still appear together. Added
+    <code>InstallPrompt</code>'s own <code>REVEAL_STAGGER_MS = 2500</code>: after
+    <code>onCookieConsentResolved</code> fires, it now waits an extra 2.5s (roughly Ganesha's own
+    <code>ARC_DURATION_MS</code> entrance plus a beat) before calling <code>setVisible(true)</code>, so the
+    mascot's greeting settles in first and the install card follows as a separate, later beat rather than
+    landing in the same frame. Ganesha's own reveal timing is unchanged.
+  </td>
+  <td><em>edited:</em> <code>app/components/InstallPrompt.tsx</code> (one constant + wrapping the existing
+  reveal in a <code>setTimeout</code>); this handbook, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> unchanged &middot; <code>npm test</code>
+  337 / 1 skip &middot; <code>next build</code> exit 0, 145/145. Headless walkthrough on a fresh profile:
+  accepted cookies, dispatched a synthetic <code>beforeinstallprompt</code> at that instant (real Chrome
+  install heuristics are non-deterministic in headless mode, so this makes the test deterministic) &mdash;
+  polled every 0.5s: Ganesha visible from t+0.5s, the install card stays hidden through t+2s and first
+  appears at <strong>exactly t+2.5s</strong>, both visible and spatially non-overlapping (Ganesha top-left,
+  install card lower) from then on. Not a schema/payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-11<br>06:12</code></td>
   <td><strong>Fix the first-visit overlay pile-up</strong><br>(UI/UX audit finding &mdash; cookie banner, PWA install prompt, and the Ganesha popup could all stack on a first mobile visit)</td>
