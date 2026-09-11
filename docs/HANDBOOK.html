@@ -2458,6 +2458,14 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       tags (above) &mdash; and the <code>Product</code> JSON-LD as a fallback (&sect;overview &mdash;
       <code>offers.price</code> / <code>offers.availability</code>) &mdash; no separate feed needed. The Pinterest
       profile is also listed in <code>organizationJsonLd.sameAs</code> alongside Instagram/Facebook.</li>
+  <li><strong>Meta (Facebook) Business domain verification</strong> &mdash;
+      <code>metadata.other["facebook-domain-verification"]</code> in <code>app/layout.tsx</code>, same
+      <code>other</code> object as the Pinterest tag above (a static, one-time value issued by Meta Business
+      Manager, never rotates). Required to clear Meta Business Verification for the WABA (WhatsApp Business
+      Account) used in the MSG91 WhatsApp migration (&sect;whatsapp) &mdash; without it, MSG91 returns
+      &ldquo;This whatsapp business account does not have permission to create message template&rdquo; when
+      trying to submit a template for approval. Domain verification alone doesn't complete Business
+      Verification (Meta may also require business documents), but it's the first gate.</li>
   <li><strong>Google Search Console verification</strong> &mdash; <code>public/google6134d6a1f559c3f3.html</code>
       (the exact one-line file GSC issued; served at the domain root, never rotates). Verifies the
       <code>https://tohfaonline.com</code> URL-prefix property so the sitemap can be submitted and indexing
@@ -3061,6 +3069,29 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-12<br>00:40</code></td>
+  <td><strong>Meta Business domain verification tag</strong><br>(owner hit &ldquo;This whatsapp business account does not have permission to create message template&rdquo; on MSG91 while trying to submit the OTP template &mdash; traced to incomplete Meta Business Verification, which requires domain ownership proof)</td>
+  <td>
+    Meta Business Manager issued a <code>facebook-domain-verification</code> meta-tag value to prove
+    <code>tohfaonline.com</code> ownership &mdash; a gate on Business Verification, which in turn gates
+    WhatsApp template creation on the MSG91 WABA (see &sect;whatsapp, the MSG91 migration entry below).
+    Added <code>"facebook-domain-verification"</code> to the existing <code>metadata.other</code> object in
+    <code>app/layout.tsx</code>, right alongside the Pinterest domain-verify tag &mdash; identical mechanism
+    (Next's <code>other</code> renders each key as a plain <code>&lt;meta name=&hellip; content=&hellip;&gt;</code>
+    in <code>&lt;head&gt;</code>), same static/never-rotates value shape. Domain verification is the first
+    gate, not necessarily the only one &mdash; Meta may still ask for business documents (GST certificate,
+    PAN &mdash; already on hand from the MSG91 KYC) to fully clear Business Verification.
+  </td>
+  <td><em>edited:</em> <code>app/layout.tsx</code>, this handbook, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 342/343 (1 pre-existing skip) &middot;
+  <code>next build</code> exit 0. <strong>Live-verified on the dev server</strong>: <code>curl localhost:3000/</code>
+  confirmed the exact tag
+  <code>&lt;meta name="facebook-domain-verification" content="liwhjsvuycndz0zpw3r4psvfhpwh6d"/&gt;</code>
+  renders in the served HTML <code>&lt;head&gt;</code>. Static metadata only &mdash; no schema, no route, not a
+  payment-path change. <strong>Owner: click &ldquo;Verify domain&rdquo; in Meta Business Manager after this
+  deploys</strong> &mdash; Meta's own note says verification can take up to 72 hours to find the tag.</td>
+</tr>
 <tr>
   <td><code>2026-09-11<br>23:58</code></td>
   <td><strong>MSG91 WhatsApp module (stage 1 of Green API migration)</strong><br>(owner registered with MSG91 for an official Meta WhatsApp Business API integration, replacing Green API's unofficial/ban-risk channel)</td>

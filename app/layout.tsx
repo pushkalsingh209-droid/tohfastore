@@ -54,8 +54,16 @@ export const metadata: Metadata = {
   // Pins can pull live price/availability from this site's own Product
   // JSON-LD below, and pin analytics attribute back to tohfaonline.com.
   // Static, one-time value issued by Pinterest -- never rotates.
+  //
+  // facebook-domain-verification proves domain ownership to Meta Business
+  // Manager -- required to clear Business Verification, which in turn is
+  // what unblocks WhatsApp template creation on the MSG91 WABA (the
+  // "account does not have permission to create message template" error
+  // during the MSG91 WhatsApp migration). Static, one-time value issued by
+  // Meta -- never rotates.
   other: {
     "p:domain_verify": "41b5277fa64086b477d9a6901631ccf1",
+    "facebook-domain-verification": "liwhjsvuycndz0zpw3r4psvfhpwh6d",
   },
 };
 
