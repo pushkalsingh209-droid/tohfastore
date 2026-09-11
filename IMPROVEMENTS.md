@@ -1606,15 +1606,18 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 1 (correctness / money)
 
-1. ~~**⚠️ Non-atomic stock deduction / checkout-vs-checkout race.**~~ — **code done
-   2026-08-30, ships disabled** (see Done). Migration `0043` (`stock_reservations` +
-   `reserve_stock` / `consume_reservation`), `/api/razorpay` reserves before minting the
-   order, webhook consumes (legacy `decrement_inventory` fallback), `/api/checkout/release`
-   + `CheckoutSheet` free the hold on dismiss/fail, `abandoned-checkout` cron trims.
-   All behind `site_settings.stock_reservations_enabled` (seeded `'0'`).
-   **Owner to finish:** apply `0043`, run the SQL checks in the migration file, one
-   Razorpay-mode race test, then `update site_settings set value='1' …` from the SQL
-   editor. Flip back to `'0'` instantly if trouble — the webhook's legacy path is intact.
+1. ~~**⚠️ Non-atomic stock deduction / checkout-vs-checkout race.**~~ — **LIVE (owner,
+   2026-09-11).** Migration `0043` (`stock_reservations` + `reserve_stock` /
+   `consume_reservation`), `/api/razorpay` reserves before minting the order, webhook
+   consumes (legacy `decrement_inventory` fallback), `/api/checkout/release` +
+   `CheckoutSheet` free the hold on dismiss/fail, `abandoned-checkout` cron trims. Owner
+   ran the migration file's SQL checks against production (reserve → confirmed the hold
+   summed correctly → a second over-quantity reserve correctly returned `ok=false` with
+   the right `available` → `consume_reservation` decremented inventory with
+   `oversold_by=0` → cleanup) — every result matched spec exactly. Then
+   `update site_settings set value='1' where key='stock_reservations_enabled';` — this is
+   now the live checkout path. Flip back to `'0'` instantly if trouble; the webhook's
+   legacy `decrement_inventory` fallback is still intact and untouched.
    *(The 0041 webhook-vs-webhook race + oversell detection were already done 2026-08-29.)*
 
 2. ~~**Sold-count accuracy degrades past ~300 orders.**~~ — **done + verified end-to-end
