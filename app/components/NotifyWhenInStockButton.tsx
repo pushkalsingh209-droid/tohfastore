@@ -27,6 +27,8 @@ export default function NotifyWhenInStockButton({
 
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [channels, setChannels] = useState<("whatsapp" | "email")[]>(["whatsapp"]);
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [error, setError] = useState("");
 
@@ -34,11 +36,26 @@ export default function NotifyWhenInStockButton({
     e.preventDefault();
     setStatus("submitting");
     setError("");
+
+    const hasPhone = channels.includes("whatsapp") && phone.length === 10;
+    const hasEmail = channels.includes("email") && email.includes("@");
+
+    if (!hasPhone && !hasEmail) {
+      setStatus("error");
+      setError("Please enter a WhatsApp number or email address.");
+      return;
+    }
+
     try {
       const res = await fetch("/api/stock-alerts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId, phone }),
+        body: JSON.stringify({
+          productId,
+          ...(hasPhone && { phone }),
+          ...(hasEmail && { email }),
+          channels: channels.filter(c => (c === "whatsapp" ? hasPhone : hasEmail))
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -77,27 +94,74 @@ export default function NotifyWhenInStockButton({
     );
   }
 
+  const canSubmit = (channels.includes("whatsapp") && phone.length === 10) ||
+                    (channels.includes("email") && email.includes("@"));
+
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="flex gap-2">
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="flex gap-3">
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={channels.includes("whatsapp")}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setChannels([...channels, "whatsapp"]);
+              } else {
+                setChannels(channels.filter(c => c !== "whatsapp"));
+              }
+            }}
+            className="w-3.5 h-3.5"
+          />
+          <span>WhatsApp</span>
+        </label>
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={channels.includes("email")}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setChannels([...channels, "email"]);
+              } else {
+                setChannels(channels.filter(c => c !== "email"));
+              }
+            }}
+            className="w-3.5 h-3.5"
+          />
+          <span>Email</span>
+        </label>
+      </div>
+
+      {channels.includes("whatsapp") && (
         <input
           type="tel"
-          required
           maxLength={10}
           value={phone}
           onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-          placeholder="Your WhatsApp number"
-          className="flex-grow px-3 py-2.5 border border-border-strong rounded text-sm bg-surface-2 text-fg focus:outline-none focus:border-accent font-mono"
+          placeholder="Your WhatsApp number (10 digits)"
+          className="w-full px-3 py-2.5 border border-border-strong rounded text-sm bg-surface-2 text-fg focus:outline-none focus:border-accent font-mono"
         />
-        <button
-          type="submit"
-          disabled={status === "submitting" || phone.length !== 10}
-          className="px-4 py-2.5 text-xs uppercase tracking-wider font-semibold rounded bg-fg text-bg hover:bg-accent hover:text-accent-fg transition disabled:opacity-50"
-        >
-          {status === "submitting" ? "Saving..." : "Notify Me"}
-        </button>
-      </div>
-      {error && <p className="text-[11px] text-danger mt-1">{error}</p>}
+      )}
+
+      {channels.includes("email") && (
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Your email address"
+          className="w-full px-3 py-2.5 border border-border-strong rounded text-sm bg-surface-2 text-fg focus:outline-none focus:border-accent"
+        />
+      )}
+
+      <button
+        type="submit"
+        disabled={status === "submitting" || !canSubmit}
+        className="w-full px-4 py-2.5 text-xs uppercase tracking-wider font-semibold rounded bg-fg text-bg hover:bg-accent hover:text-accent-fg transition disabled:opacity-50"
+      >
+        {status === "submitting" ? "Saving..." : "Notify Me"}
+      </button>
+
+      {error && <p className="text-[11px] text-danger">{error}</p>}
     </form>
   );
 }

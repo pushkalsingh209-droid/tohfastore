@@ -975,3 +975,29 @@ export const getRelatedProducts = unstable_cache(
   ["related-products"],
   { tags: ["orders", "products"], revalidate: 86400 }
 );
+
+// Get 30-day purchase count for social proof badges ("867 customers bought this")
+// Counts distinct orders (not units) for the product in the last 30 days,
+// excluding cancelled/test orders.
+export const get30DayPurchaseCount = unstable_cache(
+  async (productId: number): Promise<number> => {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .contains("items", JSON.stringify([{ product_id: productId }]))
+        .not("status", "in", `(${statsExcludedInList()})`)
+        .gte("created_at", thirtyDaysAgo.toISOString());
+
+      if (error || data === null) return 0;
+      return data.length;
+    } catch {
+      return 0;
+    }
+  },
+  ["30day-purchases"],
+  { tags: ["orders"], revalidate: 86400 }
+);

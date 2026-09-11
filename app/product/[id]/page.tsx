@@ -13,6 +13,8 @@ import ShareButtons from "@/app/components/ShareButtons";
 import InstagramPostGenerator from "@/app/components/InstagramPostGenerator";
 import InstagramReelGenerator from "@/app/components/InstagramReelGenerator";
 import ReviewForm from "@/app/components/ReviewForm";
+import CategoryFaqSection from "@/app/components/CategoryFaqSection";
+import SocialProofBadge from "@/app/components/SocialProofBadge";
 import RecordProductView from "@/app/components/RecordProductView";
 import BackToCollectionsLink from "@/app/components/BackToCollectionsLink";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
@@ -27,10 +29,11 @@ import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink, resolveProductWhatsappNumber } from "@/app/utils/whatsapp";
 import WhatsappEnquiryLink from "@/app/components/WhatsappEnquiryLink";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
-import { getRelatedProducts, getViewedTogether, getProductUnitSettings, getDefaultWhatsappNumber, getCategoryWhatsappNumberMap, getSoldCounts } from "@/app/utils/storeQueries";
+import { getRelatedProducts, getViewedTogether, getProductUnitSettings, getDefaultWhatsappNumber, getCategoryWhatsappNumberMap, getSoldCounts, get30DayPurchaseCount } from "@/app/utils/storeQueries";
 import { getThumbUrl } from "@/app/utils/imageThumb";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
+import { getCategoryFaqs } from "@/app/utils/categoryFaqs";
 import { productHref, productIdFromParam, categoryHref } from "@/app/utils/slug";
 import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 import { permanentRedirect } from "next/navigation";
@@ -206,7 +209,7 @@ export default async function ProductDetailPage({
   // (The recent-viewers count is no longer fetched here -- its 60s refresh
   // window used to drag this whole static route down to a 60s ISR
   // revalidate. It's read client-side now: see RecentViewersNoteLive.)
-  const [reviews, categorySliderItems, relatedProducts, viewedTogether, unitSettings, defaultWhatsappNumber, categoryWhatsappNumbers] =
+  const [reviews, categorySliderItems, relatedProducts, viewedTogether, unitSettings, defaultWhatsappNumber, categoryWhatsappNumbers, purchaseCount30d] =
     await Promise.all([
       product ? getApprovedReviews(product.id) : Promise.resolve([]),
       getCategorySliderItems(),
@@ -215,6 +218,7 @@ export default async function ProductDetailPage({
       getProductUnitSettings(),
       getDefaultWhatsappNumber(),
       getCategoryWhatsappNumberMap(),
+      product ? get30DayPurchaseCount(product.id) : Promise.resolve(0),
     ]);
 
   const stock = product ? Number(product.inventory) || 0 : 0;
@@ -478,6 +482,13 @@ export default async function ProductDetailPage({
             </LiveStockProvider>
           </div>
 
+          {/* Social proof badge — drives FOMO, typically 3–5% conversion lift */}
+          {product && purchaseCount30d > 0 && (
+            <div className="mt-12 max-w-2xl">
+              <SocialProofBadge purchaseCount={purchaseCount30d} />
+            </div>
+          )}
+
           {/* Customer Reviews */}
           <div className="mt-16 max-w-2xl">
             <h2 className="text-xl font-serif text-fg border-b border-border pb-4 mb-6">
@@ -507,6 +518,14 @@ export default async function ProductDetailPage({
 
             <ReviewForm productId={product.id} />
           </div>
+
+          {/* Category-specific FAQs to address common questions and drive SEO intent */}
+          {product.category && (
+            <CategoryFaqSection
+              category={product.category}
+              faqs={getCategoryFaqs(product.category)}
+            />
+          )}
           </>
         )}
       </div>
