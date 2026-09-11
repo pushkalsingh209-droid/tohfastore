@@ -589,9 +589,13 @@
   <br>&bull; <strong>Slim category header</strong> &mdash; the full maroon hero (photo, CTA buttons, stats row) is
   now homepage-only (<code>{"{"}!category &amp;&amp; (&hellip;){"}"}</code>); <code>/collections/[category]</code>
   gets a compact <code>bg-surface-2</code> band with just the breadcrumb, an H1 (<code>categoryContent.heading</code>
-  or the raw category name), and &mdash; only for the categories with hand-written copy &mdash; one truncated line
-  of <code>categoryContent.tagline</code>. Still a unique H1 per URL; a fraction of the height and no image
-  request.
+  or the raw category name), and &mdash; only for the categories with hand-written copy &mdash; its
+  <code>categoryContent.intro</code> sentence at <code>line-clamp-2</code>. Still a unique H1 per URL; a fraction
+  of the height and no image request. <strong>Same-day correction:</strong> the first cut showed the shorter
+  <code>tagline</code> instead, which silently dropped the one substantive per-category sentence from the
+  visible/crawlable page (nothing else on the page used it &mdash; <code>metaDescription</code> is separate).
+  Caught by the owner asking &ldquo;will SEO be impacted?&rdquo; before it mattered; fixed to <code>intro</code>
+  the same day (line-clamp is a visual truncation only, the full text stays in the DOM regardless).
   <br>&bull; <strong>Rail click scrolls to the grid</strong> &mdash; <code>CategorySlider</code>'s and the header
   category menu's <code>router.push</code> now target <code>categoryHref(name) + "#signature-collection"</code>
   (no <code>scroll:false</code>) instead of the bare URL; the App Router scrolls to that hash once the destination
@@ -3050,6 +3054,27 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-11<br>05:05</code></td>
+  <td><strong>Slim category header: show the intro sentence, not the tagline</strong><br>(same-day correction &mdash; owner asked &ldquo;will SEO be impacted?&rdquo; after the 04:24 entry below)</td>
+  <td>
+    Answering that question surfaced a real gap: the 04:24 slim header showed <code>categoryContent.tagline</code>
+    (a few words, e.g. &ldquo;Foldable Deity Photo Frames&rdquo;) instead of the fuller <code>intro</code>
+    sentence the old full hero used to show. <code>intro</code> wasn't rendered anywhere else on the page
+    (<code>metaDescription</code>, used in the <code>&lt;meta&gt;</code> tag, is a separate field) &mdash; so for
+    the 18 categories with hand-written copy, the substantive per-category sentence had quietly stopped being
+    visible/crawlable body text. Fixed same day, before any real exposure: the header now shows
+    <code>categoryContent.intro</code> at <code>line-clamp-2</code> instead of <code>tagline</code> at
+    <code>line-clamp-1</code> &mdash; line-clamp only affects what's visually shown, the full sentence is in the
+    DOM either way. Categories with no hand-written copy are unaffected (they never showed a line here).
+  </td>
+  <td><em>edited:</em> <code>app/components/StorefrontPage.tsx</code> (one prop swap); this handbook,
+  <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 337 / 1 skip &middot; <code>next build</code>
+  exit 0, 145/145. Screenshotted <code>/collections/pocket-temples</code> on mobile (390px) and desktop &mdash;
+  the full intro sentence renders, wraps to 2 lines on narrow viewports, still reads as a slim header. Not a
+  schema/payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-11<br>04:24</code></td>
   <td><strong>Category pages: slim header + rail-click scrolls to the grid</strong><br>(follow-through on the 2026-09-11 category-hero decision &mdash; both deferred ideas, now built)</td>
