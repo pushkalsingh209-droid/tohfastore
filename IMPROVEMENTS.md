@@ -1864,3 +1864,156 @@ care, land behind tests, never "blind".
     `used_count` increment (`validateAndCalculateDiscount` already covered by
     `coupons.test.ts`; the increment itself is a one-line DB write). A true end-to-end
     Razorpay-mode test would need a running app + test keys — out of scope here.
+
+---
+
+## Active — Tier 1 Marketing (high-impact, low-effort)
+
+**Status: 2026-09-11** — Foundation complete, Tier 1 implementations underway.
+
+1. **✅ Product Reviews on PDP** — *already live (previous batch).* Each product page
+   displays approved customer reviews (rating ≥ 4) with aggregated star rating in
+   JSON-LD for Google Search. A ReviewForm at the bottom lets visitors submit new
+   reviews for moderation.
+
+2. **Email capture for out-of-stock notifications** — *implemented (2026-09-11).*
+   Migration `0061_add_email_to_stock_alerts.sql` adds `email` and `channels` columns
+   to `stock_alert_subscriptions`. UI updated: "Notify me" button now shows checkboxes
+   for WhatsApp and/or Email, with conditional inputs. `/api/stock-alerts` validates
+   phone (10 digits) and email regex, accepts either or both. Backwards compatible —
+   existing WhatsApp-only subscriptions unaffected. **Owner: run migration 0061.**
+
+3. **Category-specific FAQs on product pages** — *implemented (2026-09-11).* New
+   `app/utils/categoryFaqs.ts` holds per-category Q&As (Idols, Diyas, Lamps, Pocket
+   Temples, Board Games, UV Resin Earrings, Polyresin Collectibles). New
+   `CategoryFaqSection.tsx` renders an accordion below product reviews. PDP updated to
+   call `getCategoryFaqs(product.category)` and pass to the component. Drives organic
+   search intent and addresses hesitation objections (care, durability, customization).
+   Easy to expand — one category entry in the map per 3–5 questions.
+
+4. **Verify & enhance JSON-LD for Google Search** — *implemented (2026-09-11).*
+   Product JSON-LD already includes `AggregateRating` when reviews exist (rating +
+   count). Verified to match the rendered reviews section. Consider adding review items
+   to the JSON-LD schema for Rich Snippets if Google starts indexing individual reviews.
+   Current structure is sufficient for Google Search star ratings. **Owner: test in
+   Google's Rich Results Tester** (`https://search.google.com/test/rich-results`).
+
+5. **Product Comparison Tool** — *proposed for next batch.* Allow users to compare up
+   to 3–4 products side-by-side (dimensions, materials, price, stock, rating). Minimal
+   DB impact. Could be a simple modal or dedicated `/compare?ids=1,5,12` route. Helps
+   shoppers with similar items (e.g., brass idols at different price points). **Impact:**
+   increases AOV by reducing friction for multi-item decisions. **Effort:** medium.
+
+---
+
+## Active — Tier 2 Marketing (medium effort, growing audiences)
+
+6. **Social Proof Badges** — "⭐ 847 customers bought this in last 30 days" or
+   "🔥 Trending in Diyas". Requires 30-day rolling purchase count per product (can
+   compute from `orders` table). Drives FOMO. **Impact:** 3–5% conversion lift typical.
+   **Effort:** low (new computed column + badge component).
+
+7. **Video Testimonials** — Short 5–10s clips of real customers unboxing/using
+   products. Offer WhatsApp form for customers to submit videos. Feature best ones on
+   PDP or homepage carousel. **Impact:** very high (60%+ of shoppers watch videos before
+   buying). **Effort:** medium (collection + moderation + player component). **Liability:**
+   user-submitted content — moderation SOP required.
+
+8. **Abandoned Cart Recovery Email** — Currently you have WhatsApp checkout leads via
+   `checkout_started` beacon. Build drip email sequence: 1h, 24h, 3 days after cart
+   abandonment. Include "complete your order" link + 5% early-bird discount code.
+   **Impact:** 10–20% cart recovery typical. **Effort:** medium (email scheduling +
+   template design). **Requires:** Resend integration (already have API key).
+
+9. **Exit Intent Popup** — Trigger when visitor scrolls off homepage: "15% off your
+   first order for newsletter signup." Builds email list with near-zero friction.
+   **Impact:** 2–5% list growth. **Effort:** low (browser scroll detection + modal).
+
+10. **Product Bundle Recommendations** — Show "frequently bought together" or themed
+    bundles (e.g., "Complete your Puja set") at checkout Review step. Increases AOV by
+    15–30%. **Effort:** low (manual bundles JSON + UI component to suggest at checkout).
+
+---
+
+## Active — Tier 3 Marketing (longer-term, brand-building)
+
+11. **💰 Blog / Content Hub** — Organic SEO engine. "Puja room design guide",
+    "Gifting guide for Diwali", "How to care for brass handicrafts". Target high-intent
+    keywords (`gifts for wedding`, `brass deity idol`, `eco-friendly gifting`).
+    **Impact:** 30–50% of organic traffic at scale. **Effort:** high (requires writer +
+    editing + ongoing). **Cost:** writer budget (₹5–20k/mo). **Timeline:** 6–12 months
+    to see ROI.
+
+12. **UGC Campaign** — Incentivize customers to post unboxing videos with
+    `#TOHFACRAFTS`. Feature best ones on homepage or Instagram. Authentic social proof,
+    low cost. **Impact:** brand trust + community. **Effort:** medium (curation SOP +
+    Instagram workflow). **Cost:** minimal (repost free user content).
+
+13. **💰 Influencer Seeding** — Send free products to micro-influencers (5k–50k
+    followers) in Indian gifting/home-décor space. More authentic than paid ads.
+    **Impact:** 2–5% new customer acquisition per 10 seeding packages. **Effort:** medium
+    (prospecting + outreach). **Cost:** ~₹2–5k per influencer (product + shipping).
+
+14. **SMS Marketing Channel** — WhatsApp is great; SMS hits broader audiences (some
+    users don't check WA). Use Razorpay phone data for order status + reorder reminders.
+    **Impact:** 5–10% higher engagement than email. **Effort:** low (SMS API + templates).
+    **Cost:** 💰 per SMS (₹0.50–2 per message, typical).
+
+---
+
+## Active — Tier 4 Marketing (analytics / insights)
+
+15. **Heatmap / Session Recording** — Tools like Hotjar / Clarity: see where visitors
+    drop off on PDP / checkout. Complements pixel events (shows *why*, not just *what*).
+    **Impact:** identify UX friction. **Cost:** 💰 (Hotjar Pro ~$39–99/mo).
+
+16. **Product-Level Attribution** — Which traffic source (organic, Pinterest, Instagram,
+    Google Shopping, referral) drives orders per product? Helps double down on high-ROI
+    channels. **Requires:** UTM tracking + analytics dashboard. **Effort:** medium.
+
+17. **Customer Segmentation** — Cohort repeat buyers vs. one-time. Send different
+    campaigns (retention for repeats, reactivation for dormant). **Requires:** email
+    marketing platform. **Impact:** 2–3× ROAS on segmented campaigns.
+
+---
+
+## Active — Tier 5 Marketing (defensive / expansion)
+
+18. **Verify Pinterest domain claim** — You added the meta tag; owner must click
+    "Verify" in Pinterest Business Hub. Product Pins will then pull live price/stock
+    from JSON-LD automatically. **Effort:** 5 min (owner action).
+
+19. **Google Merchant Center feed validation** — Feed at `/api/google-merchant-feed` is
+    live. **Ensure:**
+    - Feed is submitted in Google Merchant Center + synced daily.
+    - Products show correct `availability` (`InStock` / `OutOfStock` / `InStoreOnly`).
+    - Pricing stays in sync (test after promos).
+    - Images load correctly.
+    **Effort:** low (owner setup).
+
+20. **Avoid premature scaling** — Don't buy ads until:
+    - Organic reach is saturated (typically 50–100 orders/month).
+    - Email list is 500+ subscribers.
+    - Referral loop is self-sustaining (5%+ orders from referrals).
+    Current viral loops (testimonials, referral codes, gift guides) are working;
+    ads will multiply them, but organic first is cheaper and more stable.
+
+---
+
+## Recommendations by Channel (Quick Reference)
+
+| Channel        | Best For | Tier | Timeline | Budget |
+|----------------|----------|------|----------|--------|
+| Product Reviews (PDP) | Social proof, conversion | 1 | Live | None |
+| Email capture (OOS) | Lead gen, retention | 1 | Live | None |
+| Category FAQs | Organic SEO, hesitation | 1 | Live | None |
+| JSON-LD verification | Google Search stars | 1 | Live | None |
+| Product comparison | Multi-item purchases | 1 | 1–2 weeks | Low |
+| Pinterest domain | Free Shopping listings | 1 | 1 day (owner) | None |
+| Social proof badges | FOMO, micro-conversions | 2 | 2–3 weeks | Low |
+| Abandoned cart email | Recovery, revenue | 2 | 3–4 weeks | None (Resend used) |
+| Video testimonials | Social proof, trust | 2 | 4–8 weeks | Medium |
+| Blog / guides | Organic traffic | 3 | 6–12 months | ₹5–20k/mo |
+| Influencer seeding | Brand awareness | 3 | 2–4 weeks | ₹20–50k (batch) |
+| Heatmap analytics | UX insights | 4 | Ongoing | 💰 (Hotjar) |
+| SMS marketing | Engagement, retention | 2–3 | 2–3 weeks | 💰 (per SMS) |
