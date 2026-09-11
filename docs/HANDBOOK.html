@@ -2522,7 +2522,11 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <ul class="tight">
 <li><code>headerNavbar</code> &mdash; sticky header, category + label menus, search, contact row, theme toggle, cart button</li>
 <li><code>FloatingContactButtons</code> &mdash; mobile WhatsApp/email shortcut</li>
-<li><code>DeferredWidgets</code> &mdash; CookieConsent, InstallPrompt, AbandonedCartNudge, WelcomeGaneshaPopup</li>
+<li><code>DeferredWidgets</code> &mdash; CookieConsent, InstallPrompt, AbandonedCartNudge, WelcomeGaneshaPopup.
+    The latter two hold their own first appearance back until cookie consent is resolved
+    (<code>app/utils/cookieConsent.ts</code>) so a first-time visitor doesn't get the cookie banner, the PWA
+    install prompt, and the Ganesha popup all stacked at once (2026-09-11) &mdash; a no-op wait on every load
+    but the very first, since consent is normally already resolved by then.</li>
 <li><code>ResourceHints</code>, <code>CatalogLoadingOverlay</code>, <code>BrandSpinner</code></li>
 <li><code>ThemePicker</code> (header theme menu &mdash; an anchored dropdown right under the trigger on every screen size, left-aligned on the mobile header row / right-aligned in the desktop nav, height-capped + scrolls; sets <code>data-theme</code> + persists to <code>localStorage.theme</code>; replaced the old <code>ThemeToggle</code> sun/moon button), <code>GoogleTranslateWidget</code>, <code>MetaPixel</code></li>
 <li><code>PromoBanner</code>, <code>PageNavLinks</code>, <code>Breadcrumbs</code>, <code>Pagination</code>, <code>JumpToPage</code></li>
@@ -2604,6 +2608,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>giftGuides.ts</code></td><td><code>GIFT_GUIDES</code> + <code>findGiftGuide(slug)</code> &mdash; the hand-written occasion gift-guide pages (<code>/guides</code>, <code>/guides/&lt;slug&gt;</code>). Each guide is <code>{slug, title, meta*, intro, body[], sections[]}</code> where a section names an exact <code>products.category</code> + a heading + one line of &ldquo;why this fits&rdquo;. Product grids are resolved live at request time (<code>getCatalogPage</code> per section), so the module is pure copy &mdash; no ids, no DB. Pure; no test (data only).</td></tr>
 <tr><td><code>searchProducts.ts</code></td><td>Substring autocomplete + Levenshtein &ldquo;did you mean&rdquo;.</td></tr>
 <tr><td><code>seo.ts</code>, <code>metaPixel.ts</code>, <code>googleTranslate.ts</code>, <code>trackWhatsappEnquiry.ts</code></td><td>OG default; Meta Pixel funnel events (<code>ViewContent</code>/<code>AddToCart</code>/<code>InitiateCheckout</code>/<code>Purchase</code>, all no-op without a pixel id); translate cookie + voice-command parsing; enquiry beacon.</td></tr>
+<tr><td><code>cookieConsent.ts</code></td><td>Single source of truth for whether <code>CookieConsent</code>'s banner has been accepted (<code>hasCookieConsent()</code>) plus <code>onCookieConsentResolved(cb)</code> &mdash; runs <code>cb</code> immediately if already resolved, otherwise on a <code>window</code> event <code>CookieConsent</code> dispatches on accept. <code>InstallPrompt</code> and <code>WelcomeGaneshaPopup</code> gate their first reveal on it so a first-time visitor doesn't get all three stacked (2026-09-11).</td></tr>
 <tr><td><code>recentlyViewed.ts</code>, <code>visitorId.ts</code></td><td>localStorage recently-viewed list (max 8); anonymous per-browser UUID.</td></tr>
 <tr><td><code>couriers.ts</code></td><td><code>COURIER_PRESETS</code> (dropdown list for the admin Orders tab) + <code>normalizeCourierName(raw)</code> (trim + clamp to 60, empty &rarr; null). The stored <code>orders.courier_name</code> is unconstrained free text; this list is convenience only. <em>(0045)</em></td></tr>
 <tr><td><code>instagramCaption.ts</code></td><td><code>buildInstagramCaption(product)</code> &mdash; the ready-to-paste caption for the public &ldquo;Create Insta Post&rdquo; tool. Unlike every other message-builder here, written in <strong>first person</strong>: the poster is a third party (a customer, a friend) sharing it as their own content, not the store talking to a customer. Pure, no I/O &mdash; computed client-side straight from data already on the product page. Name, price, a handcrafted-brass line, the real handle (<code>@tohfaforu</code>), <code>productHref</code> link, base hashtags + one derived from category. <strong>6 unit tests.</strong></td></tr>
@@ -3054,6 +3059,40 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-11<br>06:12</code></td>
+  <td><strong>Fix the first-visit overlay pile-up</strong><br>(UI/UX audit finding &mdash; cookie banner, PWA install prompt, and the Ganesha popup could all stack on a first mobile visit)</td>
+  <td>
+    Traced three independent first-load overlays: <code>CookieConsent</code> shows immediately (no delay) for
+    anyone without <code>tohfa_cookie_consent</code> in localStorage; <code>InstallPrompt</code> shows whenever
+    Chrome fires <code>beforeinstallprompt</code> (often within a second or two on a PWA-eligible first visit);
+    <code>WelcomeGaneshaPopup</code> shows ~1.2s in. None coordinated with the others &mdash; a first-time
+    Chrome/Android visitor could get 2&ndash;3 dismiss-required overlays stacked at once. (The codebase had
+    already solved this exact class of problem once, for <code>FloatingContactButtons</code> vs
+    <code>StickyAddToCartBar</code> on the product page &mdash; just never applied between these three.)
+    <br><br>
+    New <strong><code>app/utils/cookieConsent.ts</code></strong>: <code>hasCookieConsent()</code> +
+    <code>onCookieConsentResolved(cb)</code> (runs <code>cb</code> immediately if consent is already resolved,
+    otherwise on a <code>window</code> event <code>CookieConsent</code> now dispatches from <code>accept()</code>).
+    <code>InstallPrompt</code>'s <code>beforeinstallprompt</code> handler and
+    <code>WelcomeGaneshaPopup</code>'s post-<code>SHOW_DELAY_MS</code> reveal both route through it instead of
+    calling <code>setVisible(true)</code>/revealing directly. On every page view but a shopper's literal first
+    ever (consent already resolved by then), this is a no-op &mdash; same timing as before.
+  </td>
+  <td>
+    <em>new:</em> <code>app/utils/cookieConsent.ts</code> &middot; <em>edited:</em>
+    <code>app/components/CookieConsent.tsx</code>, <code>app/components/InstallPrompt.tsx</code>,
+    <code>app/components/WelcomeGaneshaPopup.tsx</code>; this handbook, <code>IMPROVEMENTS.md</code>
+  </td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> (changed files) 5 warnings, 0 errors, all
+  pre-existing categories on lines this change didn't touch (<code>set-state-in-effect</code> /
+  <code>no-img-element</code>) &middot; <code>npm test</code> 337 / 1 skip &middot; <code>next build</code>
+  exit 0, 145/145. Headless walkthrough on a fresh profile (390px): at t+2.5s (past
+  <code>SHOW_DELAY_MS</code>) the cookie banner is up and Ganesha has <strong>not</strong> appeared; clicking
+  &ldquo;Got it&rdquo; reveals it within ~1.5s. Bonus: headless Chrome also fired
+  <code>beforeinstallprompt</code> in this run, confirming <code>InstallPrompt</code>'s gate holds too &mdash;
+  it appeared only after acceptance, not before. Not a schema/payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-11<br>05:56</code></td>
   <td><strong>Stock reservation (0043, IMPROVEMENTS T1 #1) is now LIVE</strong><br>(no code change &mdash; owner ran the verification + flipped the kill switch)</td>

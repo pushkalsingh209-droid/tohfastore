@@ -1,13 +1,18 @@
 // app/components/InstallPrompt.tsx
 "use client";
 import { useEffect, useState } from "react";
+import { onCookieConsentResolved } from "@/app/utils/cookieConsent";
 
 const DISMISS_KEY = "tohfa_install_dismissed";
 
 // Chrome/Edge/Android fire `beforeinstallprompt` when a page meets basic PWA
 // installability criteria (manifest + https); Safari/iOS never fire it, so
 // this simply never appears there -- no harm, just no banner. Free, no
-// service worker or extra infra required.
+// service worker or extra infra required. Its reveal waits on cookie
+// consent being resolved first (app/utils/cookieConsent.ts) -- Chrome can
+// fire beforeinstallprompt within the first second or two of a first
+// visit, which used to stack this directly on top of the still-showing
+// cookie banner.
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -18,6 +23,7 @@ export default function InstallPrompt() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    let unsubConsent: (() => void) | null = null;
     function handler(e: Event) {
       const evt = e as BeforeInstallPromptEvent;
       e.preventDefault();
@@ -25,10 +31,16 @@ export default function InstallPrompt() {
         if (localStorage.getItem(DISMISS_KEY)) return;
       } catch {}
       setDeferredPrompt(evt);
-      setVisible(true);
+      // Don't stack on top of an unresolved cookie banner on a first visit
+      // -- shows immediately if consent is already resolved (the common
+      // case), otherwise waits for it.
+      unsubConsent = onCookieConsentResolved(() => setVisible(true));
     }
     window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      unsubConsent?.();
+    };
   }, []);
 
   async function handleInstall() {

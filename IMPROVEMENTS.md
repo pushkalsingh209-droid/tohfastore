@@ -12,6 +12,23 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Fix the first-visit overlay pile-up — 2026-09-11 IST
+- UI/UX audit finding: three independent first-load overlays — `CookieConsent` (shows immediately),
+  `InstallPrompt` (whenever Chrome fires `beforeinstallprompt`, often within a second or two), and
+  `WelcomeGaneshaPopup` (~1.2s in) — never coordinated with each other, so a first-time Chrome/Android
+  visitor could get 2–3 dismiss-required overlays stacked at once. The codebase had already solved this
+  exact class of problem for `FloatingContactButtons` vs `StickyAddToCartBar` on the product page; just
+  never applied here.
+- New `app/utils/cookieConsent.ts`: `hasCookieConsent()` + `onCookieConsentResolved(cb)` (runs `cb`
+  immediately if already resolved, else on a `window` event `CookieConsent` now dispatches on accept).
+  `InstallPrompt` and `WelcomeGaneshaPopup` route their reveal through it instead of showing directly. A
+  no-op wait on every page view but a shopper's literal first ever.
+- Verified: `tsc` clean · `eslint` changed files 0 new errors (5 pre-existing warnings, untouched lines) ·
+  `npm test` 337/338 · `next build` exit 0, 145/145. Headless walkthrough on a fresh profile: at t+2.5s
+  (past `SHOW_DELAY_MS`) the cookie banner is up and Ganesha has *not* appeared; clicking "Got it" reveals
+  it within ~1.5s. Headless Chrome also fired `beforeinstallprompt` in the same run, confirming
+  `InstallPrompt`'s gate holds too.
+
 ### Category pages: slim header + rail-click scrolls to the grid — 2026-09-11 IST
 - Follow-through on the category-hero decision (`docs/category-hero-decision.html`, also published as an
   artifact): kept the per-category SEO hero, built both deferred ideas to cut the rail-click repeat.
