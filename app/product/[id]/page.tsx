@@ -14,6 +14,7 @@ import InstagramPostGenerator from "@/app/components/InstagramPostGenerator";
 import InstagramReelGenerator from "@/app/components/InstagramReelGenerator";
 import ReviewForm from "@/app/components/ReviewForm";
 import CategoryFaqSection from "@/app/components/CategoryFaqSection";
+import SocialProofBadge from "@/app/components/SocialProofBadge";
 import RecordProductView from "@/app/components/RecordProductView";
 import BackToCollectionsLink from "@/app/components/BackToCollectionsLink";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
@@ -28,7 +29,7 @@ import { getProductGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink, resolveProductWhatsappNumber } from "@/app/utils/whatsapp";
 import WhatsappEnquiryLink from "@/app/components/WhatsappEnquiryLink";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
-import { getRelatedProducts, getViewedTogether, getProductUnitSettings, getDefaultWhatsappNumber, getCategoryWhatsappNumberMap, getSoldCounts } from "@/app/utils/storeQueries";
+import { getRelatedProducts, getViewedTogether, getProductUnitSettings, getDefaultWhatsappNumber, getCategoryWhatsappNumberMap, getSoldCounts, get30DayPurchaseCount } from "@/app/utils/storeQueries";
 import { getThumbUrl } from "@/app/utils/imageThumb";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
@@ -208,7 +209,7 @@ export default async function ProductDetailPage({
   // (The recent-viewers count is no longer fetched here -- its 60s refresh
   // window used to drag this whole static route down to a 60s ISR
   // revalidate. It's read client-side now: see RecentViewersNoteLive.)
-  const [reviews, categorySliderItems, relatedProducts, viewedTogether, unitSettings, defaultWhatsappNumber, categoryWhatsappNumbers] =
+  const [reviews, categorySliderItems, relatedProducts, viewedTogether, unitSettings, defaultWhatsappNumber, categoryWhatsappNumbers, purchaseCount30d] =
     await Promise.all([
       product ? getApprovedReviews(product.id) : Promise.resolve([]),
       getCategorySliderItems(),
@@ -217,6 +218,7 @@ export default async function ProductDetailPage({
       getProductUnitSettings(),
       getDefaultWhatsappNumber(),
       getCategoryWhatsappNumberMap(),
+      product ? get30DayPurchaseCount(product.id) : Promise.resolve(0),
     ]);
 
   const stock = product ? Number(product.inventory) || 0 : 0;
@@ -479,6 +481,13 @@ export default async function ProductDetailPage({
             </div>
             </LiveStockProvider>
           </div>
+
+          {/* Social proof badge — drives FOMO, typically 3–5% conversion lift */}
+          {product && purchaseCount30d > 0 && (
+            <div className="mt-12 max-w-2xl">
+              <SocialProofBadge purchaseCount={purchaseCount30d} />
+            </div>
+          )}
 
           {/* Customer Reviews */}
           <div className="mt-16 max-w-2xl">

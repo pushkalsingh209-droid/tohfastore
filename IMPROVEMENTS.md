@@ -1908,30 +1908,37 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 2 Marketing (medium effort, growing audiences)
 
-6. **Social Proof Badges** — "⭐ 847 customers bought this in last 30 days" or
-   "🔥 Trending in Diyas". Requires 30-day rolling purchase count per product (can
-   compute from `orders` table). Drives FOMO. **Impact:** 3–5% conversion lift typical.
-   **Effort:** low (new computed column + badge component).
+6. **✅ Social Proof Badges** — *implemented (2026-09-11).* "⭐ 867 customers bought this
+   in the last 30 days" — drives FOMO, typically 3–5% conversion lift. Query counts
+   distinct orders in last 30 days (excludes cancelled/test orders) and caches 24h.
+   - New `get30DayPurchaseCount(productId)` in `storeQueries.ts` (cached, tagged `orders`)
+   - New `SocialProofBadge.tsx` component with inline `<strong>` count
+   - PDP auto-renders the badge above reviews (only if count > 0)
+   - Count formatted as `"867"` or `"1.2k"` for readability
+   - Verified: `tsc` clean, `npm test` 337/338, `next build` 145/145
 
-7. **Video Testimonials** — Short 5–10s clips of real customers unboxing/using
+7. **Abandoned Cart Recovery Email** — *high impact, medium effort.* Currently you
+   have WhatsApp checkout leads via `checkout_started` beacon. Build drip email sequence:
+   1h, 24h, 3 days after cart abandonment. Include "complete your order" link + 5%
+   early-bird discount code. **Impact:** 10–20% cart recovery typical. **Effort:**
+   medium (email scheduling + template design). **Requires:** Resend integration
+   (already have API key).
+
+8. **Product Bundle Recommendations** — *quick follow-up to social badges.* Show
+   "frequently bought together" or themed bundles (e.g., "Complete your Puja set") at
+   checkout Review step. Increases AOV by 15–30%. **Effort:** low (manual bundles JSON +
+   UI component to suggest at checkout). MVP: hardcode complementary categories (if cart
+   has Idols, suggest Diyas/Lamps/Pocket Temples).
+
+9. **Video Testimonials** — Short 5–10s clips of real customers unboxing/using
    products. Offer WhatsApp form for customers to submit videos. Feature best ones on
    PDP or homepage carousel. **Impact:** very high (60%+ of shoppers watch videos before
    buying). **Effort:** medium (collection + moderation + player component). **Liability:**
    user-submitted content — moderation SOP required.
 
-8. **Abandoned Cart Recovery Email** — Currently you have WhatsApp checkout leads via
-   `checkout_started` beacon. Build drip email sequence: 1h, 24h, 3 days after cart
-   abandonment. Include "complete your order" link + 5% early-bird discount code.
-   **Impact:** 10–20% cart recovery typical. **Effort:** medium (email scheduling +
-   template design). **Requires:** Resend integration (already have API key).
-
-9. **Exit Intent Popup** — Trigger when visitor scrolls off homepage: "15% off your
-   first order for newsletter signup." Builds email list with near-zero friction.
-   **Impact:** 2–5% list growth. **Effort:** low (browser scroll detection + modal).
-
-10. **Product Bundle Recommendations** — Show "frequently bought together" or themed
-    bundles (e.g., "Complete your Puja set") at checkout Review step. Increases AOV by
-    15–30%. **Effort:** low (manual bundles JSON + UI component to suggest at checkout).
+10. **Exit Intent Popup** — Trigger when visitor scrolls off homepage: "15% off your
+    first order for newsletter signup." Builds email list with near-zero friction.
+    **Impact:** 2–5% list growth. **Effort:** low (browser scroll detection + modal).
 
 ---
 
