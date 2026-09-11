@@ -154,7 +154,7 @@ This document summarizes all marketing recommendations (Tier 1–5) and tracks i
 - [x] Email capture UI + API (2026-09-11)
 - [x] Category-specific FAQs (2026-09-11)
 - [x] JSON-LD verification (2026-09-11)
-- [ ] **Owner: Run migration 0061** (pending)
+- [x] **Owner: Run migration 0061** (done 2026-09-11)
 - [ ] **Owner: Test in Google Rich Results Tester** (pending)
 
 ### Tier 2 — Planned

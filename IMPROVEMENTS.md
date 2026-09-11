@@ -1881,7 +1881,8 @@ care, land behind tests, never "blind".
    to `stock_alert_subscriptions`. UI updated: "Notify me" button now shows checkboxes
    for WhatsApp and/or Email, with conditional inputs. `/api/stock-alerts` validates
    phone (10 digits) and email regex, accepts either or both. Backwards compatible —
-   existing WhatsApp-only subscriptions unaffected. **Owner: run migration 0061.**
+   existing WhatsApp-only subscriptions unaffected. **✅ Migration 0061 run by owner
+   2026-09-11 — live.**
 
 3. **Category-specific FAQs on product pages** — *implemented (2026-09-11).* New
    `app/utils/categoryFaqs.ts` holds per-category Q&As (Idols, Diyas, Lamps, Pocket
@@ -1955,7 +1956,8 @@ care, land behind tests, never "blind".
     - New `/api/ugc/submit` route: validates, rate-limits (5/hour/IP), stores submissions
     - Hashtag framework ready: #TOHFACRAFTS for social coordination
     - Admin panel integration TBD: view/moderate/feature submissions
-    - **Owner action:** Run migration 0062, then admin UGC dashboard in next batch
+    - **✅ Migration 0062 run by owner 2026-09-11 — live.** Admin UGC moderation
+      dashboard (view/approve/feature) is the next follow-up batch.
     - Verified: `tsc` clean, `npm test` 337/338, `next build` 146/146 static
 
 12. **✅ SMS Notification Infrastructure** — *framework implemented (2026-09-11).*
