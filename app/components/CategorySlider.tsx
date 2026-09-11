@@ -96,7 +96,15 @@ export default function CategorySlider({
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     runTransition(() => {
-      router.push(categoryHref(name), { scroll: false });
+      // Land directly on the filtered grid instead of page-top. This rail
+      // sits right under the hero, so a click here already means the
+      // shopper just saw one -- jumping straight to #signature-collection
+      // (Next scrolls to a nav URL's hash automatically) skips repeating
+      // it, while a direct/organic landing on the destination category
+      // page still sees its hero on load (docs/category-hero-decision.html,
+      // deferred idea B; the plain `href` above stays hash-free so a
+      // copied/shared link isn't affected).
+      router.push(`${categoryHref(name)}#signature-collection`);
     });
   }
 

@@ -12,6 +12,28 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Category pages: slim header + rail-click scrolls to the grid — 2026-09-11 IST
+- Follow-through on the category-hero decision (`docs/category-hero-decision.html`, also published as an
+  artifact): kept the per-category SEO hero, built both deferred ideas to cut the rail-click repeat.
+- **Slim category header.** The full maroon hero (photo, CTA buttons, stats row) is now homepage-only
+  (`!category` in `StorefrontPage.tsx`). `/collections/[category]` gets a compact `bg-surface-2` band:
+  breadcrumb, an H1 (`categoryContent.heading` or the raw name for categories without hand-written copy),
+  and — only where it exists — one `line-clamp-1` line of `categoryContent.tagline`. Still a unique H1 per
+  URL; a fraction of the height, no image request. `heroProduct`'s now-dead category-pin branch dropped
+  along with it.
+- **Rail click scrolls to the grid.** `CategorySlider` and the header's category menu both now
+  `router.push(categoryHref(name) + "#signature-collection")` instead of the bare href with
+  `{ scroll: false }` — the App Router scrolls to that hash once the destination renders. The rendered
+  `<a href>` stays hash-free (only the JS-driven push carries it), so a copied/shared link is unaffected.
+  A direct/organic landing (no hash) still sees the header on load, same as before.
+- Mobile-first per the ask: the slim header steps up from a phone-first base (`px-4 py-4` → `sm:px-6
+  sm:py-6`, `text-xl` → `sm:text-2xl md:text-3xl`) — on a 390px viewport the category grid's first row is
+  visible with almost no scrolling.
+- Verified: `tsc` clean · `eslint` (changed files) clean · `npm test` 337/338 · `next build` 145/145.
+  Screenshotted `/collections/idols` (no hand-written copy) and `/collections/pocket-temples` (has one) on
+  mobile + desktop; homepage hero confirmed unchanged. Headless walkthrough: a homepage rail click lands on
+  `/collections/diyas#signature-collection` with `scrollY` settled at the grid heading (~1.5s after click).
+
 ### Checkout Review: the two gates become footer-triggered bottom-sheets — 2026-09-10 IST — ⚠️ payment path
 - Owner-reported after the #4 deploy: on mobile the verify field was buried below the fold and the footer
   button sat **disabled** ("Verify WhatsApp number to continue") with no obvious next step — an
@@ -1798,21 +1820,6 @@ care, land behind tests, never "blind".
     code ever read it; removed from the docs / env table / gotcha list / AGENT.md, and
     deleted from the Vercel project env by the owner 2026-08-29.
 
-22. **`/collections/[category]` repeats the full homepage hero — considered, kept as-is
-    (owner, 2026-09-11).** A UI/UX opinion: a shopper who clicked a category from the
-    homepage's "Shop by Category" rail just scrolled past a hero, then lands on another
-    one (different copy) before reaching the grid — feels redundant, costs mobile scroll
-    distance. Discussed in full (see the shareable write-up + HANDBOOK §3 flow 1) —
-    owner's call is to keep the current flow: the category hero is only a *repeat* for
-    rail-click traffic; direct/organic landings (search, shared links) never saw a prior
-    hero, and the hand-written per-category copy (`categoryContent.ts`) exists precisely
-    so each `/collections/<slug>` page is unique content for SEO, not a template + filter.
-    Removing the hero would help the rail-click case at the direct-landing case's expense.
-    **Not built, logged for later if revisited:** shrink the category hero to a slim
-    banner (breadcrumb + heading + one line, no full photo band) to cut scroll distance
-    while keeping the unique H1; and/or have the homepage rail's click scroll straight to
-    the grid (`#signature-collection`) instead of page-top. Zero cost, no payment/schema
-    surface, small diff — pick this up only if the owner asks again.
 
 ## Active — Tier 5 (tests)
 
