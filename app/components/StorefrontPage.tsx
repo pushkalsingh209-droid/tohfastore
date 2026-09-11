@@ -276,9 +276,16 @@ export default async function StorefrontPage({
         )}
 
         {/* Slim category header -- breadcrumb + H1 + (when this category has
-            hand-written SEO copy) one truncated line of it. Keeps every
-            /collections/<slug> a unique, indexable page without repeating
-            the homepage's full hero treatment. Mobile-first: tight padding
+            hand-written SEO copy) its intro sentence, clamped to 2 lines.
+            Keeps every /collections/<slug> a unique, indexable page without
+            repeating the homepage's full hero treatment. `intro` (not the
+            shorter `tagline`) is what's shown here on purpose: it's the
+            substantive per-category sentence also used nowhere else on the
+            page, so dropping it in favour of the terser tagline would have
+            quietly thinned each category page's visible/crawlable copy
+            (docs/category-hero-decision.html "Will SEO be impacted" note,
+            2026-09-11) -- line-clamp is a visual truncation only, the full
+            text stays in the DOM either way. Mobile-first: tight padding
             and a small heading by default, both step up from sm:. */}
         {category && (
           <div className="bg-surface-2 border-b border-border">
@@ -288,8 +295,8 @@ export default async function StorefrontPage({
                 {categoryContent ? categoryContent.heading : category}
               </h1>
               {categoryContent && (
-                <p className="mt-1.5 text-xs sm:text-sm text-muted max-w-2xl line-clamp-1">
-                  {categoryContent.tagline}
+                <p className="mt-1.5 text-xs sm:text-sm text-muted max-w-2xl line-clamp-2">
+                  {categoryContent.intro}
                 </p>
               )}
             </div>

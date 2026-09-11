@@ -18,9 +18,14 @@ care, land behind tests, never "blind".
 - **Slim category header.** The full maroon hero (photo, CTA buttons, stats row) is now homepage-only
   (`!category` in `StorefrontPage.tsx`). `/collections/[category]` gets a compact `bg-surface-2` band:
   breadcrumb, an H1 (`categoryContent.heading` or the raw name for categories without hand-written copy),
-  and — only where it exists — one `line-clamp-1` line of `categoryContent.tagline`. Still a unique H1 per
+  and — only where it exists — its `categoryContent.intro` sentence, `line-clamp-2`. Still a unique H1 per
   URL; a fraction of the height, no image request. `heroProduct`'s now-dead category-pin branch dropped
   along with it.
+- **Same-day correction:** the first cut showed the shorter `tagline` instead of `intro`, which silently
+  dropped the one substantive per-category sentence from the visible/crawlable page (it wasn't used
+  anywhere else — `metaDescription` is a separate field). Owner asked "will SEO be impacted?" — caught and
+  fixed before it mattered: swapped to `intro` at `line-clamp-2` (a visual clamp only; full text stays in
+  the DOM either way).
 - **Rail click scrolls to the grid.** `CategorySlider` and the header's category menu both now
   `router.push(categoryHref(name) + "#signature-collection")` instead of the bare href with
   `{ scroll: false }` — the App Router scrolls to that hash once the destination renders. The rendered
