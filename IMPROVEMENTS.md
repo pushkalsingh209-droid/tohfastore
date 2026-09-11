@@ -1798,6 +1798,22 @@ care, land behind tests, never "blind".
     code ever read it; removed from the docs / env table / gotcha list / AGENT.md, and
     deleted from the Vercel project env by the owner 2026-08-29.
 
+22. **`/collections/[category]` repeats the full homepage hero — considered, kept as-is
+    (owner, 2026-09-11).** A UI/UX opinion: a shopper who clicked a category from the
+    homepage's "Shop by Category" rail just scrolled past a hero, then lands on another
+    one (different copy) before reaching the grid — feels redundant, costs mobile scroll
+    distance. Discussed in full (see the shareable write-up + HANDBOOK §3 flow 1) —
+    owner's call is to keep the current flow: the category hero is only a *repeat* for
+    rail-click traffic; direct/organic landings (search, shared links) never saw a prior
+    hero, and the hand-written per-category copy (`categoryContent.ts`) exists precisely
+    so each `/collections/<slug>` page is unique content for SEO, not a template + filter.
+    Removing the hero would help the rail-click case at the direct-landing case's expense.
+    **Not built, logged for later if revisited:** shrink the category hero to a slim
+    banner (breadcrumb + heading + one line, no full photo band) to cut scroll distance
+    while keeping the unique H1; and/or have the homepage rail's click scroll straight to
+    the grid (`#signature-collection`) instead of page-top. Zero cost, no payment/schema
+    surface, small diff — pick this up only if the owner asks again.
+
 ## Active — Tier 5 (tests)
 
 21. **Integration-test the payment path.** — *mostly done (2026-08-29).* The re-price

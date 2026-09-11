@@ -581,6 +581,20 @@
     <li><b>Per-card live stock.</b> Each <code>ProductCard</code>'s <code>LiveStock</code> child fetches
     <code>/api/stock/[id]</code> on mount &mdash; the one figure that must never be stale.</li>
   </ol>
+  <p style="font-size:12.5px;color:var(--muted)"><strong>Design decision (2026-09-11, revisited &amp;
+  confirmed):</strong> <code>/collections/[category]</code> keeps the <em>full</em> hero band (category-specific
+  H1/tagline/intro from <code>categoryContent.ts</code> + a pinned product photo), same as the homepage's, rather
+  than dropping straight into the filtered grid. A UI/UX opinion raised that this repeats a hero the shopper just
+  saw on the homepage's &ldquo;Shop by Category&rdquo; rail. Owner's call: keep it as-is. Reasoning &mdash; the
+  category hero is only a <em>repeat</em> for rail-click traffic; a large share of category-page visits are
+  direct/organic (search, a shared link, a bio link straight to <code>/collections/lamps</code>), for whom it's
+  the <em>only</em> hero they see and is what makes that URL substantively unique content rather than one
+  template with a filter (the whole point of the hand-written per-category copy &mdash; see &sect;9 SEO). Removing
+  it to help the rail-click case would hurt the direct-landing case, which is exactly the traffic that copy exists
+  to capture. Considered and shelved for later, not built: shrinking the category hero to a slim banner (no full
+  photo band) and having the homepage rail's click scroll straight to the grid instead of the top of the page --
+  keeps the SEO uniqueness, cuts the rail-click scroll distance, touches nothing payment/schema-related. No code
+  changed by this decision.</p>
 
   <h3 id="fl-pdp">2 &nbsp;Product detail &nbsp;<span class="pill get">force-dynamic</span></h3>
   <ol class="steps">
@@ -2454,7 +2468,9 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       nothing to have either way.</li>
   <li><strong>Per-category copy</strong> &mdash; <code>app/utils/categoryContent.ts</code> hand-written H1 / tagline /
       intro / meta for the categories that have it (Pocket Temples, Pan Stands, Board Games, Polyresin, UV Resin
-      Earrings, Misc), keyed to the exact <code>categories.name</code>. Avoids duplicate-content issues.</li>
+      Earrings, Misc), keyed to the exact <code>categories.name</code>. Avoids duplicate-content issues. This is
+      also why the full hero band stays on <code>/collections/[category]</code> instead of being dropped for a
+      bare filtered grid &mdash; see the design-decision note in &sect;3 flow&nbsp;1 (2026-09-11).</li>
   <li><strong>Gift guides</strong> &mdash; <code>/guides</code> + <code>/guides/&lt;slug&gt;</code> (&sect;9),
       hand-written occasion pages (<code>app/utils/giftGuides.ts</code>: Diwali / housewarming / wedding-return
       / puja-room) for gifting-intent search. Editorial framing + <em>live</em> product grids pulled by

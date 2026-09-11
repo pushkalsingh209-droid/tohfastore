@@ -1,0 +1,404 @@
+<title>Category Hero Verdict</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400;1,8..60,500&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #faf6ee;
+    --surface: #ffffff;
+    --surface-2: #f3ede0;
+    --ink: #2b241c;
+    --muted: #6b6255;
+    --faint: #9a8f7d;
+    --border: #e6dcc8;
+    --border-strong: #d8caa9;
+    --accent: #b45309;
+    --accent-ink: #7a3706;
+    --accent-soft: #fbe9d2;
+    --good: #2f6b3d;
+    --good-soft: #e6efe1;
+    --good-border: #c3d8bb;
+    --bad: #9a3b2e;
+    --bad-soft: #f3e4df;
+    --bad-border: #dfc0b6;
+    --shadow: 0 1px 2px rgba(43,36,28,.06), 0 8px 24px -12px rgba(43,36,28,.15);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #18140f;
+      --surface: #221c15;
+      --surface-2: #2b241b;
+      --ink: #ece3d3;
+      --muted: #bcae96;
+      --faint: #8a7c66;
+      --border: #3a3122;
+      --border-strong: #4a3f2c;
+      --accent: #e0912f;
+      --accent-ink: #f0b45c;
+      --accent-soft: #3a2c17;
+      --good: #7fbf8e;
+      --good-soft: #223126;
+      --good-border: #3a4f3e;
+      --bad: #e2897a;
+      --bad-soft: #372521;
+      --bad-border: #513932;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #18140f;
+    --surface: #221c15;
+    --surface-2: #2b241b;
+    --ink: #ece3d3;
+    --muted: #bcae96;
+    --faint: #8a7c66;
+    --border: #3a3122;
+    --border-strong: #4a3f2c;
+    --accent: #e0912f;
+    --accent-ink: #f0b45c;
+    --accent-soft: #3a2c17;
+    --good: #7fbf8e;
+    --good-soft: #223126;
+    --good-border: #3a4f3e;
+    --bad: #e2897a;
+    --bad-soft: #372521;
+    --bad-border: #513932;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 16.5px;
+    line-height: 1.65;
+    padding-inline: 20px;
+    padding-block: 56px 80px;
+  }
+  h1, h2, h3 { font-family: 'Source Serif 4', Georgia, serif; text-wrap: balance; color: var(--ink); }
+  code, .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+
+  .page { max-width: 720px; margin-inline: auto; }
+
+  /* ---------- Header ---------- */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin-bottom: 14px;
+  }
+  .eyebrow::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  h1 {
+    font-size: clamp(30px, 5vw, 42px);
+    font-weight: 600;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  .dek {
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 60ch;
+    margin: 0 0 22px;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 18px;
+    font-size: 13px;
+    color: var(--faint);
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 36px;
+  }
+  .meta-row b { color: var(--muted); font-weight: 600; }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--good-soft);
+    border: 1px solid var(--good-border);
+    color: var(--good);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    padding: 4px 11px 4px 9px;
+    border-radius: 999px;
+  }
+  .status-pill svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+  /* ---------- Sections ---------- */
+  section { margin-bottom: 44px; }
+  section > h2 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--faint);
+    margin: 0 0 18px;
+  }
+  h3 {
+    font-size: 20px;
+    font-weight: 500;
+    margin: 0 0 8px;
+  }
+  p { margin: 0 0 14px; }
+  p:last-child { margin-bottom: 0; }
+  .lede { font-size: 17.5px; }
+  a { color: var(--accent-ink); text-decoration-color: var(--border-strong); text-underline-offset: 2px; }
+  a:hover { text-decoration-color: currentColor; }
+
+  code {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.87em;
+    color: var(--accent-ink);
+  }
+
+  /* ---------- Flow diagram ---------- */
+  .flow-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 22px 18px;
+    box-shadow: var(--shadow);
+  }
+  .flow-card figcaption {
+    font-size: 12.5px;
+    color: var(--faint);
+    margin-top: 14px;
+    line-height: 1.55;
+  }
+  svg text { font-family: 'Source Sans 3', sans-serif; }
+
+  /* ---------- Pros / cons ---------- */
+  .split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 560px) { .split { grid-template-columns: 1fr; } }
+  .case {
+    border-radius: 10px;
+    padding: 18px 20px 20px;
+    border: 1px solid;
+  }
+  .case.good { background: var(--good-soft); border-color: var(--good-border); }
+  .case.bad { background: var(--bad-soft); border-color: var(--bad-border); }
+  .case h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .case.good h3 { color: var(--good); }
+  .case.bad h3 { color: var(--bad); }
+  .case ul { margin: 0; padding: 0; list-style: none; }
+  .case li {
+    position: relative;
+    padding-left: 20px;
+    margin-bottom: 11px;
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+  .case li:last-child { margin-bottom: 0; }
+  .case li::before {
+    position: absolute; left: 0; top: 1px; font-size: 13px; font-weight: 700;
+  }
+  .case.good li::before { content: '+'; color: var(--good); }
+  .case.bad li::before { content: '\2013'; color: var(--bad); }
+  .case li b { font-weight: 600; }
+
+  /* ---------- Verdict ---------- */
+  .verdict {
+    background: linear-gradient(175deg, var(--accent-soft), var(--surface) 60%);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    padding: 26px 26px 24px;
+    box-shadow: var(--shadow);
+  }
+  .verdict .who {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin-bottom: 10px;
+    display: block;
+  }
+  .verdict h3 { font-size: 23px; margin-bottom: 10px; }
+  .verdict p { font-size: 15.5px; }
+
+  /* ---------- Deferred list ---------- */
+  .deferred {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .deferred-item {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 14px 16px;
+  }
+  .deferred-item .num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--faint);
+    padding-top: 1px;
+  }
+  .deferred-item p { font-size: 14.5px; margin: 0; }
+  .deferred-item b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Footer ---------- */
+  footer {
+    margin-top: 56px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--faint);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  footer .mono { color: var(--muted); }
+</style>
+
+<div class="page">
+
+  <header>
+    <span class="eyebrow">Decision memo &middot; navigation &amp; SEO</span>
+    <h1>Does the category hero need to repeat itself?</h1>
+    <p class="dek">A UI/UX review flagged that <code>/collections/[category]</code> shows a full hero band — same as the homepage's — right before the product grid. Here's the flow as built, the case for changing it, and where TOHFA landed.</p>
+    <div class="meta-row">
+      <span class="status-pill">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M4 10l4 4 8-9"/></svg>
+        Decided — keeping current flow
+      </span>
+      <span><b>Reviewed</b> 11 Sep 2026</span>
+      <span><b>Site</b> tohfaonline.com</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>01 · The flow as built</h2>
+    <p class="lede">Every category link — the homepage's <b>Shop by Category</b> rail, the header's hidden-categories menu — lands on <code>/collections/[category]</code>. That route renders the exact same <code>&lt;StorefrontPage&gt;</code> the homepage uses, just handed a <code>category</code> prop.</p>
+    <p>Three things change under that prop: the hero swaps from generic copy to a hand-written heading, tagline and intro for that one category; a breadcrumb appears; and Bestsellers / Testimonials drop out in favour of the filtered grid. The <b>Shop by Category</b> rail itself stays on the page, so a shopper can jump sideways to a different category without a trip back home.</p>
+
+    <figure class="flow-card">
+      <svg viewBox="0 0 640 190" width="100%" role="img" aria-labelledby="flowTitle">
+        <title id="flowTitle">Homepage and collections page both render StorefrontPage, differing only in hero content and what appears below it</title>
+        <defs>
+          <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0 L8 4 L0 8 z" fill="var(--faint)"/>
+          </marker>
+        </defs>
+
+        <!-- Home -->
+        <rect x="4" y="70" width="108" height="46" rx="8" fill="var(--surface-2)" stroke="var(--border-strong)"/>
+        <text x="58" y="90" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">Homepage</text>
+        <text x="58" y="105" text-anchor="middle" font-size="10.5" fill="var(--faint)" font-family="IBM Plex Mono, monospace">/</text>
+
+        <line x1="112" y1="93" x2="150" y2="93" stroke="var(--faint)" stroke-width="1.4" marker-end="url(#arrow)"/>
+        <text x="131" y="83" text-anchor="middle" font-size="9.5" fill="var(--faint)">tap category</text>
+
+        <!-- Collections -->
+        <rect x="154" y="46" width="150" height="98" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+        <text x="229" y="66" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-ink)">/collections/idols</text>
+        <line x1="169" y1="76" x2="289" y2="76" stroke="var(--accent)" stroke-width="1" opacity=".35"/>
+        <text x="229" y="92" text-anchor="middle" font-size="10" fill="var(--accent-ink)">Hero (idols copy)</text>
+        <text x="229" y="107" text-anchor="middle" font-size="10" fill="var(--accent-ink)">Breadcrumb</text>
+        <text x="229" y="122" text-anchor="middle" font-size="10" fill="var(--accent-ink)">Shop by Category rail</text>
+        <text x="229" y="137" text-anchor="middle" font-size="10" font-weight="600" fill="var(--accent-ink)">↓ filtered grid</text>
+
+        <line x1="308" y1="93" x2="346" y2="93" stroke="var(--faint)" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+        <!-- categoryContent.ts -->
+        <rect x="350" y="70" width="132" height="46" rx="8" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-dasharray="3 3"/>
+        <text x="416" y="88" text-anchor="middle" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="var(--muted)">categoryContent</text>
+        <text x="416" y="102" text-anchor="middle" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="var(--muted)">.ts</text>
+
+        <text x="416" y="140" text-anchor="middle" font-size="9.5" fill="var(--faint)">one hand-written</text>
+        <text x="416" y="152" text-anchor="middle" font-size="9.5" fill="var(--faint)">H1 + intro per category</text>
+
+        <!-- Same component note -->
+        <text x="320" y="18" text-anchor="middle" font-size="10" fill="var(--faint)" font-style="italic">both routes render the same &lt;StorefrontPage&gt; — only the props differ</text>
+      </svg>
+      <figcaption>Simplified from <code>app/collections/[category]/page.tsx</code> and <code>app/components/StorefrontPage.tsx</code>. Eighteen categories currently have their own hand-written copy in <code>categoryContent.ts</code> — including a correction on record for "Pan Stands," which are gold/silver deity photo frames shaped like a betel leaf, not brass paan-holders.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>02 · Why it's built this way</h2>
+    <p>The comment above the hero in <code>StorefrontPage.tsx</code> is direct about it: each category needed <b>its own unique H1 and intro</b>, or every collections URL would be the same template wrapped around a different filter — the kind of thin, duplicate content search engines actively rank down. The per-category copy is a real investment: eighteen categories, each hand-checked against what's actually stocked rather than assumed from the name.</p>
+  </section>
+
+  <section>
+    <h2>03 · The case, both ways</h2>
+    <div class="split">
+      <div class="case good">
+        <h3>Keep the full hero</h3>
+        <ul>
+          <li><b>Not everyone arrives via the rail.</b> Search results, a shared link, a bio link land straight on <code>/collections/lamps</code> — for that visitor there was no prior hero, and this is the only one they see.</li>
+          <li><b>It's the SEO payload.</b> Delete it and every collections page becomes the same grid with a different filter — the exact duplicate-content problem it was built to avoid.</li>
+          <li><b>Sets context fast.</b> One representative product photo plus a line of copy orients a shopper before a wall of thumbnails does.</li>
+          <li><b>Keeps the brand band consistent</b> across every page that renders it, rather than some pages having it and some not.</li>
+        </ul>
+      </div>
+      <div class="case bad">
+        <h3>Skip straight to the grid</h3>
+        <ul>
+          <li><b>Real repeat, for rail traffic.</b> A shopper who scrolled past the homepage hero once sees a visually similar band again seconds later.</li>
+          <li><b>Costs mobile scroll.</b> Hero + breadcrumb + the category rail sit above the grid — real distance between a tap and the first product card, on the majority device.</li>
+          <li><b>Reads as a reset.</b> Same layout, new words — can feel like the page reloaded rather than filtered.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>04 · The call</h2>
+    <div class="verdict">
+      <span class="who">Owner's decision</span>
+      <h3>Keep the current flow.</h3>
+      <p>The rail-click repeat is real, but it's the minority path. Direct and organic landings — the traffic the hand-written copy was built for — never saw a prior hero, and removing it would trade their experience for the rail-click shopper's, while giving up the SEO uniqueness. As built, the hero is doing more good than harm.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>05 · On the shelf, not off the table</h2>
+    <p>Two smaller moves would address the rail-click friction without touching the SEO copy. Neither is built — logged for whenever this comes up again.</p>
+    <div class="deferred">
+      <div class="deferred-item">
+        <span class="num">A</span>
+        <p><b>Slim the category hero.</b> Breadcrumb, heading, one line of intro — no full-height photo band. Keeps the unique H1 for search, cuts the vertical space by more than half.</p>
+      </div>
+      <div class="deferred-item">
+        <span class="num">B</span>
+        <p><b>Scroll the rail's own click to the grid.</b> The homepage rail already does a client-side navigation — pointing it at the grid instead of the page top would get a rail-click shopper to products immediately, while a direct landing still gets the full hero.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Recorded in <span class="mono">IMPROVEMENTS.md</span> #22 and <span class="mono">docs/HANDBOOK.html</span> &sect;3, flow 1</span>
+    <span class="mono">tohfaonline.com</span>
+  </footer>
+
+</div>
