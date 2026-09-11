@@ -32,6 +32,7 @@
 // billing rate once sending real volume.
 
 import { normalizeIndianPhone } from "@/app/utils/phone";
+import { sendWhatsappMessage } from "@/app/utils/greenApi";
 
 // Template names -- confirmed exact matches to what's approved in MSG91's Template
 // Manager (2026-09-12).
@@ -109,4 +110,23 @@ export async function sendMsg91WhatsappTemplate({ to, templateName, variables }:
   if (!res.ok) {
     throw new Error(`MSG91 WhatsApp send failed: ${body.payload.template.to_and_components[0].to[0]} ${templateName} ${res.status} ${await res.text()}`);
   }
+}
+
+// Stage 2 of the phased cutover -- the first live call site to actually read
+// WHATSAPP_PROVIDER. Defaults to Green API (today's exact message text,
+// unchanged); switches to the approved MSG91 back_in_stock template only when
+// the flag is explicitly set to "msg91". Same best-effort contract as both
+// underlying senders -- throws on a real failure so the caller's existing
+// try/catch (app/api/admin/products/route.ts) logs and continues to the next
+// subscriber rather than losing the whole notify pass to one bad number.
+export async function sendBackInStockWhatsapp(phone: string, productName: string, productUrl: string): Promise<void> {
+  if (activeWhatsappProvider() === "msg91") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.backInStock,
+      variables: [productName, productUrl],
+    });
+    return;
+  }
+  await sendWhatsappMessage(phone, `Good news! "${productName}" is back in stock on TOHFA -- ${productUrl}`);
 }

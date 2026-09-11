@@ -3070,6 +3070,38 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-09-12<br>02:10</code></td>
+  <td><strong>MSG91 WhatsApp stage 2 &mdash; back-in-stock notify wired</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item; first live call site to actually read <code>WHATSAPP_PROVIDER</code>)</td>
+  <td>
+    New <code>sendBackInStockWhatsapp(phone, productName, productUrl)</code> in
+    <code>app/utils/msg91Whatsapp.ts</code> &mdash; a thin provider-dispatch wrapper. Defaults to Green API
+    with today's exact message text (unchanged) unless <code>WHATSAPP_PROVIDER=msg91</code>, in which case
+    it sends the approved <code>back_in_stock</code> template with <code>[productName, productUrl]</code> as
+    the two variables. Single call site touched: <code>app/api/admin/products/route.ts</code>'s restock-notify
+    loop (the one that fires on a genuine 0&rarr;positive inventory transition to pending
+    <code>stock_alert_subscriptions</code> rows) now calls the wrapper instead of
+    <code>sendWhatsappMessage</code> from <code>greenApi.ts</code> directly.
+    <br><br>
+    <strong>Small correctness fix caught en route:</strong> <code>data[0].name</code> is nullable per the DB
+    schema; the old code passed it straight into a template literal, which silently stringifies
+    <code>null</code> to the literal text <code>"null"</code> rather than erroring. The new typed parameter
+    on <code>sendBackInStockWhatsapp</code> caught this at compile time &mdash; now falls back to
+    <code>"This item"</code>. No test added for the wrapper itself (network I/O throughout, same as
+    <code>sendWhatsappMessage</code>/<code>sendMsg91WhatsappTemplate</code> below it &mdash; only pure
+    helpers like <code>buildMsg91TemplatePayload</code> get unit tests in this file).
+  </td>
+  <td><em>edited:</em> <code>app/utils/msg91Whatsapp.ts</code>, <code>app/api/admin/products/route.ts</code>,
+  <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> (both changed files) 0 errors &middot;
+  <code>npm test</code> 342/343 (1 pre-existing skip, unchanged &mdash; no new pure logic) &middot;
+  <code>next build</code> exit 0. <strong>Not live-tested against MSG91's real API</strong> &mdash;
+  <code>WHATSAPP_PROVIDER</code> stays unset (defaults to Green API) until the owner flips it in one
+  environment and watches a real restock notification send cleanly. Owner: set
+  <code>WHATSAPP_PROVIDER=msg91</code>, trigger a genuine 0&rarr;positive inventory transition on a product
+  with a pending stock-alert subscriber, confirm the WhatsApp arrives correctly formatted. Flip back
+  (unset the var) to fall back to Green API instantly if anything looks wrong.</td>
+</tr>
+<tr>
   <td><code>2026-09-12<br>01:30</code></td>
   <td><strong>All 6 MSG91 WhatsApp templates approved</strong><br>(docs-only &mdash; no code change; corrects the drafted template wording in <code>app/utils/msg91Whatsapp.ts</code> and <code>IMPROVEMENTS.md</code> to match what Meta actually approved)</td>
   <td>

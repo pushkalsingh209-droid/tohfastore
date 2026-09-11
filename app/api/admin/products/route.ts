@@ -5,7 +5,7 @@ import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { attachThumbUrls } from "@/app/utils/imageThumb";
-import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import { sendBackInStockWhatsapp } from "@/app/utils/msg91Whatsapp";
 import { productHref } from "@/app/utils/slug";
 import { normalizeIndianPhone } from "@/app/utils/phone";
 import { isValidOrderNotificationNumber } from "@/app/utils/orderNotificationNumbers";
@@ -274,12 +274,11 @@ export async function PATCH(req: Request) {
           .select("id, phone")
           .eq("product_id", id)
           .is("notified_at", null);
+        const productUrl = `https://tohfaonline.com${productHref(data[0])}`;
+        const productName = data[0].name ?? "This item";
         for (const sub of subscribers || []) {
           try {
-            await sendWhatsappMessage(
-              sub.phone,
-              `Good news! "${data[0].name}" is back in stock on TOHFA -- https://tohfaonline.com${productHref(data[0])}`
-            );
+            await sendBackInStockWhatsapp(sub.phone, productName, productUrl);
           } catch (waError) {
             console.error(`Back-in-stock notify failed for subscription ${sub.id}:`, waError);
             continue; // leave notified_at unset so a later restock retries it
