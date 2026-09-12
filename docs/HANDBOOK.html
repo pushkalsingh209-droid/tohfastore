@@ -707,7 +707,11 @@
     the returned rows.</li>
     <li><b>Units-sold tally.</b> <code>apply_product_sales(items, +1)</code> (migration 0042).</li>
     <li><b>Notify.</b> Build the summary once; send business + customer WhatsApp (with a hero image) and both
-    Resend emails. All best-effort &mdash; a failure logs and is swallowed.</li>
+    Resend emails. All best-effort &mdash; a failure logs and is swallowed. The customer WhatsApp goes through
+    <code>sendOrderConfirmedWhatsapp</code> (<code>msg91Whatsapp.ts</code>) &mdash; Green API's full itemized
+    invoice + hero image by default, the shorter approved <code>order_confirmed</code> MSG91 template (no
+    image) when <code>WHATSAPP_PROVIDER=msg91</code>; the business alert stays on Green API unconditionally,
+    no template exists for that shape.</li>
     <li><b>Supplier copies</b> (0046). Resolve <code>products.supplier_numbers</code> for this order's items
     against the live <code>order_notification_numbers</code> list (<code>resolveSupplierTargets</code>): the
     unioned set gets the same business order message; each product's own set is copied on that product's
@@ -1644,7 +1648,7 @@ paths produce an identical row because both re-read from Razorpay&rsquo;s own AP
 <tr><td><code>ADMIN_PASSWORD</code></td><td>server</td><td>Admin password (constant-time compare). Missing &rarr; login 500 (fails closed, no default).</td></tr>
 <tr><td><code>ADMIN_TOTP_SECRET</code></td><td>server</td><td>Base32 TOTP secret (RFC 6238, SHA1, 6 digits, 30s, &plusmn;1 step drift). Static &mdash; the QR tool just re-renders it.</td></tr>
 <tr><td><code>GREEN_API_URL</code>, <code>GREEN_API_ID_INSTANCE</code>, <code>GREEN_API_TOKEN_INSTANCE</code></td><td>server</td><td>Green API instance (unofficial WhatsApp Web automation). All three required or every WhatsApp feature silently no-ops (OTP send surfaces an explicit error instead). Primary WhatsApp channel today &mdash; see <code>WHATSAPP_PROVIDER</code> for the MSG91 migration in progress.</td></tr>
-<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server &mdash; <strong>Production scope only</strong>, not Preview</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. <code>MSG91_WHATSAPP_NUMBER</code> is the real production number, running in parallel with Green API. Wired behind <code>WHATSAPP_PROVIDER=msg91</code> for back-in-stock notify and checkout OTP (stages 2&ndash;3, both <strong>confirmed working live</strong>), plus 9 more best-effort message types as of Stage 4 batch 1 (alerts, leads, reminders, referral reward, enquiry alert &mdash; <strong>not yet live-tested</strong>, each is low-frequency and none gate checkout). Order confirmations and admin status-update notifications (Stage 4 batch 2) are <strong>not yet wired</strong> &mdash; Green API still handles 100% of those. See IMPROVEMENTS.md for the full phased-cutover plan.</td></tr>
+<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server &mdash; <strong>Production scope only</strong>, not Preview</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. <code>MSG91_WHATSAPP_NUMBER</code> is the real production number, running in parallel with Green API. Wired behind <code>WHATSAPP_PROVIDER=msg91</code> for back-in-stock notify, checkout OTP, and 9 best-effort message types (alerts, leads, reminders, referral reward, enquiry alert) &mdash; all <strong>confirmed working live</strong> &mdash; plus, as of Stage 4 batch 2, the automatic order confirmation (customer side only; the business/supplier copies stay on Green API, no template for that shape) and the admin's manual shipped/delivered/cancelled &ldquo;Notify customer&rdquo; action, including its optional note and referral-share follow-ups (<strong>not yet live-tested</strong> &mdash; the highest-stakes batch, since it's the first message every customer sees for every order). The admin's &ldquo;processing&rdquo; re-notify has no template and always falls back to Green API. See IMPROVEMENTS.md for the full phased-cutover plan.</td></tr>
 <tr><td><code>WHATSAPP_PROVIDER</code></td><td>server</td><td>Optional. <code>"green-api"</code> (default, unset behaves the same) or <code>"msg91"</code>. Selects which provider a send uses once call sites are wired in stage 2/3 of the migration &mdash; currently read by <code>activeWhatsappProvider()</code> but not yet consulted by any live send path.</td></tr>
 <tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code>, <code>/api/cron/abandoned-checkout</code>, <code>/api/cron/product-sales-reconcile</code>, <code>/api/cron/rls-check</code>.</td></tr>
 <tr><td><code>RESEND_API_KEY</code></td><td>server</td><td>Missing &rarr; order-confirmation <em>and</em> shipped/delivered/status emails skipped silently; contact form returns 500.</td></tr>
@@ -2622,7 +2626,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>recentlyViewed.ts</code>, <code>visitorId.ts</code></td><td>localStorage recently-viewed list (max 8); anonymous per-browser UUID.</td></tr>
 <tr><td><code>couriers.ts</code></td><td><code>COURIER_PRESETS</code> (dropdown list for the admin Orders tab) + <code>normalizeCourierName(raw)</code> (trim + clamp to 60, empty &rarr; null). The stored <code>orders.courier_name</code> is unconstrained free text; this list is convenience only. <em>(0045)</em></td></tr>
 <tr><td><code>instagramCaption.ts</code></td><td><code>buildInstagramCaption(product)</code> &mdash; the ready-to-paste caption for the public &ldquo;Create Insta Post&rdquo; tool. Unlike every other message-builder here, written in <strong>first person</strong>: the poster is a third party (a customer, a friend) sharing it as their own content, not the store talking to a customer. Pure, no I/O &mdash; computed client-side straight from data already on the product page. Name, price, a handcrafted-brass line, the real handle (<code>@tohfaforu</code>), <code>productHref</code> link, base hashtags + one derived from category. <strong>6 unit tests.</strong></td></tr>
-<tr><td><code>orderNotifications.ts</code></td><td>Customer status-update message text (<code>buildStatusWhatsappMessage</code>) + email HTML (<code>buildStatusEmailHtml</code>, <code>statusEmailSubject</code>) for all four statuses, plus <code>cleanNotifyComment</code> (trim + clamp 600). Pure &mdash; the text builder is imported client-side too for the Notify dialog's live preview. Used only by <code>/api/admin/orders/notify</code>. <strong>15 unit tests.</strong></td></tr>
+<tr><td><code>orderNotifications.ts</code></td><td>Customer status-update message text (<code>buildStatusWhatsappMessage</code>) + email HTML (<code>buildStatusEmailHtml</code>, <code>statusEmailSubject</code>) for all four statuses, plus <code>cleanNotifyComment</code> (trim + clamp 600) and <code>invoiceUrl</code> (exported so <code>/api/admin/orders/notify</code>'s MSG91 path can reuse it instead of re-deriving the URL). Pure &mdash; the text builder is imported client-side too for the Notify dialog's live preview. Used by <code>/api/admin/orders/notify</code> (Green API text + email always; MSG91 template variables as of Stage 4 batch 2). <strong>15 unit tests.</strong></td></tr>
 <tr><td><code>orderNotificationNumbers.ts</code></td><td>Supplier order-notification list (0046). <code>MAX_ORDER_NOTIFICATION_NUMBERS</code> (10), <code>isValidOrderNotificationNumber</code> (<code>/^91[6-9]\d{9}$/</code>), and the pure <code>resolveSupplierTargets(productSupplierArrays, liveNumbers, businessNumber)</code> &mdash; distinct in-list supplier numbers across an order's products, minus the business number, de-duped. DB reads live in the routes / webhook. <strong>7 unit tests.</strong></td></tr>
 <tr><td><code>enquiryNotify.ts</code></td><td><code>buildEnquiryNotifyMessage({productName, price, outOfStock, productUrl})</code> &mdash; the short courtesy-ping text for <code>products.enquiry_notify_numbers</code> (0053), sent by <code>/api/enquiries</code> when a visitor clicks &ldquo;Chat&rdquo; for a product that has one or more numbers attached. Pure. <strong>3 unit tests.</strong></td></tr>
 <tr><td><code>extraNotifyNumbers.ts</code></td><td>Ad-hoc, per-send extra WhatsApp recipients for the Notify dialog &mdash; distinct from both the customer's own number and the managed <code>orderNotificationNumbers.ts</code> supplier list; typed in free text, never stored. <code>MAX_EXTRA_NOTIFY_NUMBERS</code> (5) and the pure <code>parseExtraNotifyNumbers(raw, excludeNumber?)</code>: splits on comma/whitespace/newline, normalises each with <code>phone.ts</code>, drops anything that doesn't validate as a real mobile (reusing <code>isValidOrderNotificationNumber</code>), silently drops the customer's own number if re-entered, de-dupes, caps at the max. Imported both server-side (<code>/api/admin/orders/notify</code>, source of truth) and client-side (Notify dialog's live preview, so nothing surprises the admin after Send). <strong>7 unit tests.</strong></td></tr>
@@ -3069,6 +3073,50 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-12<br>14:00</code></td>
+  <td><strong>MSG91 WhatsApp &mdash; batch 1 confirmed live + stage 4 batch 2 (order status)</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item &mdash; the highest-stakes batch of the migration, owner explicitly accepted the content trade-off first)</td>
+  <td>
+    <strong>Stage 4 batch 1 confirmed working live</strong> &mdash; owner tested
+    <code>lead_product_enquiry</code> + <code>enquiry_alert</code> (a product's Chat button) and
+    <code>lead_catalogue_download</code> / <code>lead_corporate_gifting</code> (<code>/catalogue</code>,
+    <code>/corporate</code>), all as expected.
+    <br><br>
+    <strong>Stage 4 batch 2, wired.</strong> <code>order_confirmed</code>/<code>order_shipped</code>/
+    <code>order_delivered</code>/<code>order_cancelled</code> existed and were approved since the original
+    template batch but had never been wired to any call site &mdash; Green API still handled 100% of order
+    confirmations and admin status-update notifications until now. New
+    <code>sendOrderConfirmedWhatsapp()</code> in <code>msg91Whatsapp.ts</code> wires the automatic
+    post-payment confirmation in <code>fulfilOrder.ts</code>, <strong>customer side only</strong> &mdash; the
+    business alert and supplier copies stay on Green API unconditionally, since no template was approved for
+    that full-PII/item-dump shape. New <code>sendOrderStatusWhatsapp()</code> handles the admin's manual
+    &ldquo;Notify customer&rdquo; action for shipped/delivered/cancelled, sent to the customer, any admin-typed
+    extra numbers, and supplier copies alike. It sends the status template, then <code>order_note</code> as a
+    separate follow-up if the admin typed a one-off comment, then <code>referral_share</code> as a separate
+    follow-up on a delivered order with a referral code &mdash; templates can't do the variable-conditional
+    paragraph blocks free text can, so one message with optional sections becomes up to three sequential
+    template messages. <code>order_shipped</code> falls back to &ldquo;our courier partner&rdquo; / &ldquo;to
+    follow&rdquo; when courier/AWB are unset (Meta templates require a value for every variable);
+    <code>order_delivered</code> falls back to the invoice link for its review-URL slot on the rare order with
+    no resolvable review product. <strong><code>processing</code> has no approved template</strong> (the
+    admin's rare manual re-notify for a still-processing order, distinct from the automatic
+    <code>order_confirmed</code> send at creation time) &mdash; <code>hasMsg91OrderStatusTemplate()</code>
+    gates this, so it always falls back to Green API even when <code>WHATSAPP_PROVIDER=msg91</code>.
+    <code>invoiceUrl</code> exported from <code>orderNotifications.ts</code> so the route can reuse it. 3 new
+    unit tests (<code>hasMsg91OrderStatusTemplate</code>).
+  </td>
+  <td><em>edited:</em> <code>app/utils/msg91Whatsapp.ts</code>, <code>app/utils/msg91Whatsapp.test.ts</code>,
+  <code>app/utils/fulfilOrder.ts</code>, <code>app/utils/orderNotifications.ts</code>,
+  <code>app/api/admin/orders/notify/route.ts</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> (all changed files) 0 errors &middot;
+  <code>npm test</code> 347/348 (1 pre-existing skip, unchanged) &middot; <code>next build</code> exit 0.
+  <strong>Not yet live-tested</strong> &mdash; this is the first WhatsApp message most customers see for every
+  order, so a misfire is visible to a real customer immediately, unlike the lower-frequency batch 1 sends.
+  Owner should test order_confirmed (place a real small order), order_shipped (Notify with courier+AWB set,
+  then again with one blank), order_delivered (check the review link), order_cancelled, and one Notify with an
+  admin comment typed in before trusting this in general use. Flip <code>WHATSAPP_PROVIDER</code> back to
+  unset at the first sign of trouble.</td>
+</tr>
 <tr>
   <td><code>2026-09-12<br>12:30</code></td>
   <td><strong>MSG91 WhatsApp &mdash; stage 3 confirmed live + stage 4 batch 1 (9 more message types)</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item)</td>

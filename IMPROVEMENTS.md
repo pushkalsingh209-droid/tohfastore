@@ -2213,30 +2213,64 @@ care, land behind tests, never "blind".
        `app/utils/fulfilOrder.ts` (referral reward). `enquiries/route.ts`'s MSG91 path
        reuses the existing unit-tested `buildEnquiryNotifyMessage` pure builder for its
        Green API branch rather than duplicating that string logic.
-       **Not yet live-tested** — `tsc`/lint/`npm test`/`next build` all clean, `1` test
-       updated for the 2 new template keys, but every one of these 9 is a low-frequency,
-       best-effort side-channel send (none gate checkout or a payment), so the blast radius
-       of a mistake is far smaller than Stage 3's OTP — still, watch at least one real
-       trigger of each before fully trusting it (a real RLS violation is hard to
-       manufacture safely; the rest can be triggered on demand: submit a lead, click an
-       enquiry, wait for the abandoned-checkout/review-reminder cron, or run the reconcile
-       job with a deliberately drifted row).
-     - **Stage 4 batch 2 (not started): order status + admin note + referral share.**
-       `order_confirmed`/`order_shipped`/`order_delivered`/`order_cancelled` already exist
-       and are approved but were **never wired to MSG91 at all** — Green API still handles
-       100% of order confirmations and admin status-update notifications. Deferred to its
-       own batch because it's higher-stakes than batch 1 (touches the main order-
-       confirmation flow, business+customer+supplier copies, and a hero image the approved
-       templates don't support) and needs an owner decision: the approved `order_confirmed`
-       template is a shortened summary + invoice link, not today's full itemized invoice,
-       and has no image component, so the MSG91 path will look different from the Green API
-       path until Green API is fully retired. Also in this batch: `order_note` (the admin's
-       free-text one-off note — approved by Meta despite being close to "insert any text",
-       worth confirming it wasn't quietly rejected/reclassified) and `referral_share` (the
-       "share with a friend" line currently embedded inside the delivered-status composite
-       message — needs to become its own follow-up send, since templates can't do
-       variable-conditional blocks the way free text can).
-     - **Next:** watch batch 1's 9 sends trigger at least once each; scope + build batch 2.
+       **✅ Confirmed working live.** Owner tested `lead_product_enquiry` + `enquiry_alert`
+       (via a product's Chat button) and `lead_catalogue_download` / `lead_corporate_gifting`
+       (via `/catalogue` and `/corporate`), all as expected. `checkout_nudge`,
+       `review_reminder`, `rls_alert`, `stock_drift_alert`, `referral_reward` weren't
+       force-tested (they need real abandoned-checkout/delivery/security-drift/referral
+       conditions, not an on-demand click) — same code path as the tested ones, treated as
+       probably-fine but not confirmed the same way. **Batch 1 done.**
+     - **Stage 4 batch 2, wired — order status + admin note + referral share.** Owner
+       accepted the content trade-off (shortened `order_confirmed` wording, no hero image on
+       the MSG91 path) before this was built.
+       - **`sendOrderConfirmedWhatsapp`** in `msg91Whatsapp.ts` wires the automatic
+         post-payment confirmation, **customer side only** — the business alert (to
+         `BUSINESS_WHATSAPP_NUMBER`) and supplier copies stay on Green API unconditionally,
+         since no template was approved for that message (a full PII + item dump for
+         internal use, a different shape from the customer-facing template entirely).
+         Wired in `fulfilOrder.ts`.
+       - **`sendOrderStatusWhatsapp`** handles the admin's manual "Notify customer" action
+         for shipped/delivered/cancelled, sent to the customer, any admin-typed extra
+         numbers, and supplier copies alike (same recipients Green API already messages).
+         Sends the status template, then `order_note` as a separate follow-up if the admin
+         typed a one-off comment, then `referral_share` as a separate follow-up if the order
+         is delivered and has a referral code — templates can't do the variable-conditional
+         paragraph blocks free text can, so what was one message with optional sections
+         becomes up to three sequential template messages. `order_shipped` needs a courier
+         name and AWB number in its fixed variable slots even when either is unset in the DB
+         (Meta templates require a value for every variable) — falls back to "our courier
+         partner" / "to follow" rather than sending a broken slot. `order_delivered` falls
+         back to the invoice link for its review-URL slot on the rare order with no
+         resolvable review product.
+       - **`processing` has no approved template** (the admin's rare manual re-notify for a
+         still-processing order, distinct from the automatic `order_confirmed` send at
+         creation time) — `hasMsg91OrderStatusTemplate()` gates this, so a "processing"
+         notify falls back to Green API even when `WHATSAPP_PROVIDER=msg91`. Building a
+         template for this would mean re-deriving the order total this route doesn't
+         currently compute; deferred as low-value (rare action, not customer's first
+         confirmation of the order).
+       - `enquiries/route.ts`-style code duplication was avoided: the admin notify route's
+         3 recipient groups (customer, extra numbers, suppliers) share one `messageText`
+         build and one supplier-target resolution regardless of provider, branching only at
+         the actual send call.
+       - **3 new unit tests** (`hasMsg91OrderStatusTemplate`); `invoiceUrl` exported from
+         `orderNotifications.ts` so the route can reuse it instead of re-deriving the URL.
+     - **Not yet live-tested** — `tsc`/lint/`npm test`/`next build` all clean, but this is
+       the highest-stakes batch of the whole migration: it's the very first WhatsApp message
+       most customers see for every single order, and any misfire (wrong courier text, a
+       missing review link, a duplicate note) is visible to a real customer immediately.
+       **Owner: test all of order_confirmed (place a real small order), order_shipped
+       (Notify customer with courier+AWB set, then again with one blank), order_delivered
+       (Notify customer, check the review link works), order_cancelled, and one Notify with
+       an admin comment typed in** before trusting this in general use. Flip
+       `WHATSAPP_PROVIDER` back to unset at the first sign of trouble — same instant
+       fallback as every earlier stage.
+     - **Next:** the live tests above. Once clean, Stage 4 is functionally complete for
+       every message type that has a template — Green API remains as the fallback path
+       (`WHATSAPP_PROVIDER` unset) and for the messages that were never templated (business
+       order alerts, "processing" re-notify) until/unless those get their own templates
+       later. Actually retiring Green API (removing the code path entirely, not just
+       defaulting away from it) is a separate future decision, not assumed by this work.
 
 13. **💰 Blog / Content Hub** — *foundation exists.* Already have:
     - `/guides` index + 4 gift guides (Diwali, housewarming, wedding, puja room)

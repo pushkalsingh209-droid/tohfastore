@@ -25,7 +25,7 @@ import { Resend } from "resend";
 import { calculateOrderGstBreakdown, BUSINESS_GSTIN } from "@/app/utils/gst";
 import { calculateSlashedPrice } from "@/app/utils/pricing";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
-import { sendReferralRewardWhatsapp } from "@/app/utils/msg91Whatsapp";
+import { sendReferralRewardWhatsapp, sendOrderConfirmedWhatsapp } from "@/app/utils/msg91Whatsapp";
 import { productHref } from "@/app/utils/slug";
 import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
 import { resolveSupplierTargets } from "@/app/utils/orderNotificationNumbers";
@@ -550,7 +550,16 @@ export async function fulfilOrder(params: FulfilOrderParams): Promise<FulfilOrde
     try {
       await Promise.all([
         sendWhatsappMessage(businessWhatsappNumber, businessMessage, heroImage),
-        sendWhatsappMessage(customerPhone, customerMessage, heroImage),
+        sendOrderConfirmedWhatsapp(customerPhone, customerMessage, heroImage, {
+          customerName,
+          orderId,
+          // gst is set in the same try block that builds customerMessage
+          // above -- non-null whenever we reach here, but typed nullable
+          // (it starts as null) so TS can't narrow that from the truthy
+          // check on customerMessage alone.
+          totalAmount: gst?.totalPrice ?? 0,
+          invoiceUrl: `${SITE_URL}/success?order_id=${encodeURIComponent(orderId)}`,
+        }),
       ]);
     } catch (waError) {
       console.error("WhatsApp dispatch skip:", waError);
