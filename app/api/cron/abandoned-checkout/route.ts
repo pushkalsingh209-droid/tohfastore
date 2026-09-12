@@ -13,16 +13,11 @@
 import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
-import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import { sendCheckoutNudgeWhatsapp } from "@/app/utils/msg91Whatsapp";
 import { normalizePhoneForRecord } from "@/app/utils/whatsappOtp";
 
 const MIN_AGE_MS = 2 * 60 * 60 * 1000;
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // don't resurrect very stale leads if this job hasn't run in a while
-
-function nudgeMessage(name: string): string {
-  const firstName = name.split(" ")[0];
-  return `Hi ${firstName}! Noticed you were checking out on TOHFA but didn't quite finish -- your bag's still saved if you'd like to complete the order. Let us know here on WhatsApp if you have any questions or need a hand.`;
-}
 
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -70,7 +65,7 @@ export async function GET(req: Request) {
         continue;
       }
 
-      await sendWhatsappMessage(lead.phone, nudgeMessage(lead.name));
+      await sendCheckoutNudgeWhatsapp(lead.phone, lead.name.split(" ")[0]);
       await supabase.from("leads").update({ contacted: true, contacted_at: new Date().toISOString() }).eq("id", lead.id);
       nudged++;
     } catch (err) {

@@ -25,6 +25,7 @@ import { Resend } from "resend";
 import { calculateOrderGstBreakdown, BUSINESS_GSTIN } from "@/app/utils/gst";
 import { calculateSlashedPrice } from "@/app/utils/pricing";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import { sendReferralRewardWhatsapp } from "@/app/utils/msg91Whatsapp";
 import { productHref } from "@/app/utils/slug";
 import { LOW_STOCK_THRESHOLD } from "@/app/utils/stock";
 import { resolveSupplierTargets } from "@/app/utils/orderNotificationNumbers";
@@ -219,10 +220,7 @@ export async function fulfilOrder(params: FulfilOrderParams): Promise<FulfilOrde
           validDays: parseReferralValidDays(settingsMap.referral_coupon_valid_days),
         });
         if (reward) {
-          await sendWhatsappMessage(
-            referralOwnerPhone,
-            `🎉 Great news! A friend just used your TOHFA referral code. As a thank-you, here's ${reward.discountPercent}% off your next order: ${reward.code}`
-          );
+          await sendReferralRewardWhatsapp(referralOwnerPhone, reward.discountPercent, reward.code);
         }
       }
     } catch (referralRewardErr) {

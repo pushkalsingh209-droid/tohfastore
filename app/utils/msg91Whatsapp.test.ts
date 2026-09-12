@@ -62,9 +62,25 @@ describe("buildMsg91OtpPayload", () => {
 });
 
 describe("MSG91_WHATSAPP_TEMPLATES", () => {
-  it("has one entry per order-notification status plus otp and back-in-stock", () => {
+  it("has one entry per order-notification status, otp, back-in-stock, and the stage 4 batch 1 templates", () => {
     expect(Object.keys(MSG91_WHATSAPP_TEMPLATES).sort()).toEqual(
-      ["backInStock", "orderCancelled", "orderConfirmed", "orderDelivered", "orderShipped", "otp"].sort()
+      [
+        "backInStock",
+        "checkoutNudge",
+        "enquiryAlert",
+        "leadCatalogueDownload",
+        "leadCorporateGifting",
+        "leadProductEnquiry",
+        "orderCancelled",
+        "orderConfirmed",
+        "orderDelivered",
+        "orderShipped",
+        "otp",
+        "referralReward",
+        "reviewReminder",
+        "rlsAlert",
+        "stockDriftAlert",
+      ].sort()
     );
   });
 });

@@ -2179,8 +2179,64 @@ care, land behind tests, never "blind".
        immediately attempt a real checkout yourself, and confirm the OTP actually arrives
        before any real customer could hit it** — unset the var again at the first sign of
        trouble.
-     - **Next:** the live OTP test above, watched 2–3 times clean; once confirmed, Stage 4
-       (retire Green API entirely) becomes viable.
+     - **✅ Confirmed working live.** Owner watched a live checkout: OTP arrived via MSG91,
+       verified correctly, a COD order completed end-to-end (and the still-Green-API order
+       confirmation arrived too). **Stage 3 done.**
+     - **Stage 4 (retire Green API) — batch 1 of 2, wired.** Green API is used for far more
+       than OTP/back-in-stock/order-status: 9 more best-effort message types had zero MSG91
+       coverage. All 9 templates drafted, submitted, and **approved by Meta same day**
+       (`rls_alert`, `stock_drift_alert`, `review_reminder`, `checkout_nudge`,
+       `lead_product_enquiry`, `lead_corporate_gifting`, `lead_catalogue_download`,
+       `referral_reward`, `enquiry_alert`). Two content redesigns were required since
+       WhatsApp templates can't render a variable-length list (only fixed positional
+       variables): the RLS-violation alert and the stock-tally-drift alert both collapse
+       from an itemized per-issue/per-product list to a plain count on the MSG91 path —
+       Green API keeps the full itemized list unchanged. Two lead-follow-up templates
+       (`lead_corporate_gifting`, `lead_catalogue_download`) consolidate what were two
+       slightly different Green API wordings (automatic send vs. admin manual resend) into
+       one approved wording for both — Green API keeps both original wordings unchanged.
+       `lead_product_enquiry` similarly consolidates the "known product name" / "unknown
+       product name" variants into one template (fills `{{1}}` with "this piece" when
+       unknown). `referral_reward` and `enquiry_alert` each needed a closing bookend added
+       ("— Thank you, TOHFA!" / "— please respond promptly") since their original Green API
+       wording ends on a variable (the coupon code / the product URL), which WhatsApp
+       templates don't allow. New provider-dispatch wrapper per message type in
+       `msg91Whatsapp.ts` (`sendRlsAlertWhatsapp`, `sendStockDriftAlertWhatsapp`,
+       `sendReviewReminderWhatsapp`, `sendCheckoutNudgeWhatsapp`,
+       `sendLeadProductEnquiryWhatsapp`, `sendLeadCorporateGiftingWhatsapp`,
+       `sendLeadCatalogueDownloadWhatsapp`, `sendReferralRewardWhatsapp`,
+       `sendEnquiryAlertWhatsapp`) — same pattern as `sendBackInStockWhatsapp`: Green API's
+       exact existing wording by default, the approved MSG91 template only when
+       `WHATSAPP_PROVIDER=msg91`. 9 call sites updated across
+       `app/api/cron/{rls-check,product-sales-reconcile,review-reminder,abandoned-checkout}`,
+       `app/api/leads`, `app/api/admin/leads/follow-up`, `app/api/enquiries`, and
+       `app/utils/fulfilOrder.ts` (referral reward). `enquiries/route.ts`'s MSG91 path
+       reuses the existing unit-tested `buildEnquiryNotifyMessage` pure builder for its
+       Green API branch rather than duplicating that string logic.
+       **Not yet live-tested** — `tsc`/lint/`npm test`/`next build` all clean, `1` test
+       updated for the 2 new template keys, but every one of these 9 is a low-frequency,
+       best-effort side-channel send (none gate checkout or a payment), so the blast radius
+       of a mistake is far smaller than Stage 3's OTP — still, watch at least one real
+       trigger of each before fully trusting it (a real RLS violation is hard to
+       manufacture safely; the rest can be triggered on demand: submit a lead, click an
+       enquiry, wait for the abandoned-checkout/review-reminder cron, or run the reconcile
+       job with a deliberately drifted row).
+     - **Stage 4 batch 2 (not started): order status + admin note + referral share.**
+       `order_confirmed`/`order_shipped`/`order_delivered`/`order_cancelled` already exist
+       and are approved but were **never wired to MSG91 at all** — Green API still handles
+       100% of order confirmations and admin status-update notifications. Deferred to its
+       own batch because it's higher-stakes than batch 1 (touches the main order-
+       confirmation flow, business+customer+supplier copies, and a hero image the approved
+       templates don't support) and needs an owner decision: the approved `order_confirmed`
+       template is a shortened summary + invoice link, not today's full itemized invoice,
+       and has no image component, so the MSG91 path will look different from the Green API
+       path until Green API is fully retired. Also in this batch: `order_note` (the admin's
+       free-text one-off note — approved by Meta despite being close to "insert any text",
+       worth confirming it wasn't quietly rejected/reclassified) and `referral_share` (the
+       "share with a friend" line currently embedded inside the delivered-status composite
+       message — needs to become its own follow-up send, since templates can't do
+       variable-conditional blocks the way free text can).
+     - **Next:** watch batch 1's 9 sends trigger at least once each; scope + build batch 2.
 
 13. **💰 Blog / Content Hub** — *foundation exists.* Already have:
     - `/guides` index + 4 gift guides (Diwali, housewarming, wedding, puja room)

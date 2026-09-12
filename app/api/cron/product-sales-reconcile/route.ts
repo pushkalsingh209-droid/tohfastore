@@ -22,7 +22,7 @@ import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { statsExcludedInList } from "@/app/utils/orderStatus";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
-import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import { sendStockDriftAlertWhatsapp } from "@/app/utils/msg91Whatsapp";
 import { tallyUnitsSold } from "@/app/utils/orderTally";
 
 export const dynamic = "force-dynamic";
@@ -106,10 +106,7 @@ export async function GET(req: Request) {
           .map((d) => `  #${d.productId}: stored ${d.stored}, should be ${d.shouldBe}`)
           .join("\n");
         const more = drift.length > 10 ? `\n  ...and ${drift.length - 10} more` : "";
-        await sendWhatsappMessage(
-          businessWhatsappNumber,
-          `TOHFA: product_sales tally drift on ${drift.length} product(s).${heal ? ` Auto-healed ${healed}.` : ""}\n${top}${more}\n\nRun /api/cron/product-sales-reconcile?heal=1 to correct, or fix by hand (see ARCHITECTURE.html #7).`,
-        );
+        await sendStockDriftAlertWhatsapp(businessWhatsappNumber, drift.length, healed, heal, top, more);
       } catch (alertErr) {
         console.error("Reconcile drift alert failed:", alertErr);
       }

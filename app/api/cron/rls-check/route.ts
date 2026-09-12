@@ -17,7 +17,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { serverErrorResponse } from "@/app/utils/apiError";
-import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import { sendRlsAlertWhatsapp } from "@/app/utils/msg91Whatsapp";
 import { checkRlsPerimeter } from "@/app/utils/rlsProbes";
 
 export const dynamic = "force-dynamic";
@@ -44,12 +44,7 @@ export async function GET(req: Request) {
     if (violations.length > 0) {
       try {
         const businessWhatsappNumber = process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351";
-        await sendWhatsappMessage(
-          businessWhatsappNumber,
-          `⚠️ RLS PERIMETER ALERT — the anon Supabase key can now do things it shouldn't:\n\n` +
-            violations.map((v) => `• ${v}`).join("\n") +
-            `\n\nCheck pg_policies in the Supabase SQL editor for a stray permissive policy.`
-        );
+        await sendRlsAlertWhatsapp(businessWhatsappNumber, violations);
       } catch (alertErr) {
         console.error("RLS check: business alert failed:", alertErr);
       }

@@ -5,7 +5,11 @@
 // server-side, same pattern as the public contact-form route.
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
-import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import {
+  sendLeadProductEnquiryWhatsapp,
+  sendLeadCorporateGiftingWhatsapp,
+  sendLeadCatalogueDownloadWhatsapp,
+} from "@/app/utils/msg91Whatsapp";
 import { isRateLimited, recordRateLimitEvent } from "@/app/utils/rateLimit";
 import { getClientIp } from "@/app/utils/clientIp";
 import { serverErrorResponse } from "@/app/utils/apiError";
@@ -40,25 +44,6 @@ const INDIAN_MOBILE_REGEX = /^[6-9]\d{9}$/;
 // column means "the person", and the product travels in `details` where
 // the admin Leads table renders it.
 const ENQUIRY_PLACEHOLDER_NAME = "WhatsApp enquiry";
-
-// Warm, source-specific opener sent right after capture -- the goal is to
-// catch the lead while they're still on-site/thinking about the products,
-// not a hard sales pitch. Best-effort: only fires when the lead left a
-// phone number, and a failed send never fails the lead submission itself.
-function followUpMessage(name: string, source: string, productName?: string): string {
-  const firstName = name.split(" ")[0];
-  if (source === "product_enquiry") {
-    // The one source where we message first and they never wrote to us, so
-    // it has to say what it's about or it reads like a cold blast.
-    return productName
-      ? `Hi! You were looking at *${productName}* on TOHFA. Happy to answer anything about it -- size, weight, finish, delivery time. Just reply here.`
-      : `Hi! Thanks for your interest in TOHFA. Happy to answer anything about the piece you were looking at -- just reply here.`;
-  }
-  if (source === "corporate_gifting") {
-    return `Hi ${firstName}! Thanks for reaching out to TOHFA about corporate/bulk gifting. We'll follow up shortly with options and pricing -- feel free to share more details here on WhatsApp anytime.`;
-  }
-  return `Hi ${firstName}! Thanks for downloading the TOHFA catalogue. If anything catches your eye, reply here on WhatsApp and we'll help you pick the perfect piece.`;
-}
 
 export async function POST(req: Request) {
   try {
@@ -111,13 +96,26 @@ export async function POST(req: Request) {
     // seconds ago, and "thanks for downloading the catalogue" makes no
     // sense mid-checkout anyway; any follow-up for an abandoned checkout is
     // a deliberate admin action instead (see the Leads section).
+    //
+    // Warm, source-specific opener -- the goal is to catch the lead while
+    // they're still on-site/thinking about the products, not a hard sales
+    // pitch. product_enquiry is the one source where we message first and
+    // they never wrote to us, so it has to say what it's about or it reads
+    // like a cold blast.
     if (phone && source !== "checkout_started") {
       try {
-        const enquiryProduct =
-          details && typeof (details as { productName?: unknown }).productName === "string"
-            ? ((details as { productName: string }).productName)
-            : undefined;
-        await sendWhatsappMessage(phone, followUpMessage(name || ENQUIRY_PLACEHOLDER_NAME, source, enquiryProduct));
+        const firstName = (name || ENQUIRY_PLACEHOLDER_NAME).split(" ")[0];
+        if (source === "product_enquiry") {
+          const enquiryProduct =
+            details && typeof (details as { productName?: unknown }).productName === "string"
+              ? (details as { productName: string }).productName
+              : undefined;
+          await sendLeadProductEnquiryWhatsapp(phone, enquiryProduct);
+        } else if (source === "corporate_gifting") {
+          await sendLeadCorporateGiftingWhatsapp(phone, firstName, "auto");
+        } else {
+          await sendLeadCatalogueDownloadWhatsapp(phone, firstName, "auto");
+        }
         await supabase.from("leads").update({ contacted: true, contacted_at: new Date().toISOString() }).eq("id", inserted.id);
       } catch (waError) {
         console.error("Lead follow-up WhatsApp skip:", waError);
