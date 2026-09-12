@@ -140,6 +140,23 @@ export interface AdminChatLabel {
   label: string;
 }
 
+// "Gift With Purchase" campaigns (gift_campaigns table, migration 0063,
+// IMPROVEMENTS.md #14a) -- managed in the settings tab's own card. Raw
+// snake_case DB row shape (as GET /api/admin/gift-campaigns returns it);
+// app/utils/giftCampaigns.ts's toGiftCampaign() maps this to the camelCase
+// shape used elsewhere once the checkout-facing PRs land.
+export interface AdminGiftCampaign {
+  id: number;
+  enabled: boolean;
+  title: string;
+  gift_product_id: number;
+  min_amount: number | string;
+  max_redemptions: number;
+  redeemed_count: number;
+  starts_at: string | null;
+  ends_at: string;
+}
+
 export interface AdminAnalytics {
   totalOrders: number;
   totalRevenue: number;
@@ -223,6 +240,8 @@ export interface AdminData {
   setSettings: Dispatch<SetStateAction<Record<string, string>>>;
   chatLabelPresets: AdminChatLabel[];
   setChatLabelPresets: Dispatch<SetStateAction<AdminChatLabel[]>>;
+  giftCampaigns: AdminGiftCampaign[];
+  setGiftCampaigns: Dispatch<SetStateAction<AdminGiftCampaign[]>>;
   // --- products tab (#16) ---
   products: AdminProduct[];
   setProducts: (value: AdminProduct[]) => void;

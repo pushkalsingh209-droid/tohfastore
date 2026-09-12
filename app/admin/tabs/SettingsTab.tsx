@@ -9,9 +9,9 @@
 // Mechanical move -- the JSX is the exact {activeTab === "settings"} block
 // that was inline, only `fetchData` is renamed to the context's `refetch`.
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/app/admin/lib/apiRequest";
-import { useAdminData } from "@/app/admin/AdminDataContext";
+import { useAdminData, type AdminGiftCampaign } from "@/app/admin/AdminDataContext";
 import { PHOTO_FILTER_PRESETS } from "@/app/utils/photoFilters";
 import { WEIGHT_UNITS, DIMENSION_UNITS } from "@/app/utils/productUnits";
 import { CHAT_LABEL_KINDS, DEFAULT_CHAT_LABELS, MAX_CHAT_LABEL_LENGTH, type ChatLabelKind } from "@/app/utils/chatLabels";
@@ -27,6 +27,7 @@ import { parseFeaturedSpotlight } from "@/app/utils/featuredSpotlight";
 import { MAX_ORDER_NOTIFICATION_NUMBERS } from "@/app/utils/orderNotificationNumbers";
 import { parseReferralProgramEnabled } from "@/app/utils/referralCoupon";
 import { parseCodEnabled } from "@/app/utils/codSettings";
+import { getAutocompleteMatches } from "@/app/utils/searchProducts";
 
 // --- "Spend & Save" offer editor (Storefront Settings) -------------------
 // The offer lives as one JSON row in site_settings; the strict validation
@@ -90,6 +91,49 @@ function spotlightToDraft(stored: string | undefined): SpotlightDraft {
   };
 }
 
+// --- "Gift With Purchase" campaigns editor (0063, IMPROVEMENTS.md #14a) --
+// Genuinely a LIST (not a single JSON blob like the two campaigns above) --
+// see app/utils/giftCampaigns.ts's header for why. One form serves both
+// "create" (giftCampaignEditingId === null) and "edit" (populated from a
+// row's Edit button) -- the admin always submits the full field set either
+// way, matching sanitizeGiftCampaign's "always validate the whole draft"
+// contract server-side.
+interface GiftCampaignFormDraft {
+  title: string;
+  giftProductId: string;
+  giftProductName: string; // display only, for the picker's "selected" chip
+  minAmount: string;
+  maxRedemptions: string;
+  startsAt: string; // datetime-local value; "" = active as soon as enabled
+  endsAt: string;
+  enabled: boolean;
+}
+const EMPTY_GIFT_CAMPAIGN_DRAFT: GiftCampaignFormDraft = {
+  title: "",
+  giftProductId: "",
+  giftProductName: "",
+  minAmount: "",
+  maxRedemptions: "10",
+  startsAt: "",
+  endsAt: "",
+  enabled: false,
+};
+
+type GiftDurationUnit = "day" | "week" | "month";
+
+// Fills the End field from Start (or now, if Start is blank) plus a chosen
+// quantity/unit -- a convenience layered on the same two datetime-local
+// fields every other campaign config on this page uses, not a new storage
+// concept (no duration-picker precedent existed anywhere in this admin
+// panel before this feature).
+function addDuration(base: Date, amount: number, unit: GiftDurationUnit): Date {
+  const d = new Date(base);
+  if (unit === "day") d.setDate(d.getDate() + amount);
+  else if (unit === "week") d.setDate(d.getDate() + amount * 7);
+  else d.setMonth(d.getMonth() + amount);
+  return d;
+}
+
 export default function SettingsTab() {
   const {
     categories,
@@ -106,6 +150,8 @@ export default function SettingsTab() {
     setChatLabelPresets,
     products,
     setProducts,
+    giftCampaigns,
+    setGiftCampaigns,
     refetch,
   } = useAdminData();
 
@@ -260,6 +306,127 @@ export default function SettingsTab() {
       }
     }
     setProducts(next);
+  };
+
+  // --- "Gift With Purchase" campaigns (0063, #14a) ---
+  const [giftCampaignEditingId, setGiftCampaignEditingId] = useState<number | null>(null);
+  const [giftCampaignDraft, setGiftCampaignDraft] = useState<GiftCampaignFormDraft>(EMPTY_GIFT_CAMPAIGN_DRAFT);
+  const [giftCampaignStatus, setGiftCampaignStatus] = useState("");
+  const [giftProductSearch, setGiftProductSearch] = useState("");
+  const [giftDurationAmount, setGiftDurationAmount] = useState("1");
+  const [giftDurationUnit, setGiftDurationUnit] = useState<GiftDurationUnit>("week");
+  // Snapshotted once per mount rather than read fresh per row -- this is a
+  // display-only status label (Active/Upcoming/Ended), not a security or
+  // pricing decision, so being off by however long the page has been open
+  // is harmless; a refresh corrects it. Same intentional exception as
+  // StorefrontPage's Math.random() hero pick -- a one-time read, not a
+  // per-render side effect.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = useMemo(() => Date.now(), []);
+
+  // Live search over already-loaded products, same substring-match helper
+  // ProductsTab's own search uses -- there's no existing single-product
+  // picker component in this admin panel to reuse, so this assembles one
+  // from that same primitive rather than inventing a new search.
+  const giftProductMatches = useMemo(() => {
+    const query = giftProductSearch.trim();
+    if (!query) return [];
+    const searchable = products.map((p) => ({ id: String(p.id), name: String(p.name ?? "") }));
+    return getAutocompleteMatches(searchable, query, 6);
+  }, [products, giftProductSearch]);
+
+  const handleSelectGiftProduct = (id: string, name: string) => {
+    setGiftCampaignDraft((d) => ({ ...d, giftProductId: id, giftProductName: name }));
+    setGiftProductSearch("");
+  };
+
+  const handleApplyQuickDuration = () => {
+    const amount = parseInt(giftDurationAmount, 10);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const base = giftCampaignDraft.startsAt ? new Date(giftCampaignDraft.startsAt) : new Date();
+    const end = addDuration(base, amount, giftDurationUnit);
+    setGiftCampaignDraft((d) => ({ ...d, endsAt: isoToLocalInput(end.toISOString()) }));
+  };
+
+  const handleEditGiftCampaign = (c: AdminGiftCampaign) => {
+    const product = products.find((p) => String(p.id) === String(c.gift_product_id));
+    setGiftCampaignEditingId(c.id);
+    setGiftCampaignDraft({
+      title: c.title,
+      giftProductId: String(c.gift_product_id),
+      giftProductName: (product?.name as string) || `Product #${c.gift_product_id}`,
+      minAmount: String(c.min_amount),
+      maxRedemptions: String(c.max_redemptions),
+      startsAt: isoToLocalInput(c.starts_at),
+      endsAt: isoToLocalInput(c.ends_at),
+      enabled: c.enabled,
+    });
+    setGiftProductSearch("");
+    setGiftCampaignStatus("");
+  };
+
+  const handleResetGiftCampaignForm = () => {
+    setGiftCampaignEditingId(null);
+    setGiftCampaignDraft(EMPTY_GIFT_CAMPAIGN_DRAFT);
+    setGiftProductSearch("");
+    setGiftCampaignStatus("");
+  };
+
+  // Server-side sanitizeGiftCampaign does the real validation and returns a
+  // 400 with the specific problem(s) -- surface that text as-is, same
+  // pattern as the Spend & Save offer / Spotlight saves above.
+  const handleSaveGiftCampaign = async () => {
+    setGiftCampaignStatus("Saving...");
+    try {
+      const payload = {
+        title: giftCampaignDraft.title,
+        giftProductId: giftCampaignDraft.giftProductId ? Number(giftCampaignDraft.giftProductId) : null,
+        minAmount: giftCampaignDraft.minAmount,
+        maxRedemptions: giftCampaignDraft.maxRedemptions,
+        startsAt: giftCampaignDraft.startsAt || null,
+        endsAt: giftCampaignDraft.endsAt || null,
+        enabled: giftCampaignDraft.enabled,
+      };
+      const result = giftCampaignEditingId
+        ? await apiRequest("/api/admin/gift-campaigns", {
+            method: "PATCH",
+            body: JSON.stringify({ id: giftCampaignEditingId, ...payload }),
+          })
+        : await apiRequest("/api/admin/gift-campaigns", { method: "POST", body: JSON.stringify(payload) });
+      setGiftCampaigns((prev) =>
+        giftCampaignEditingId
+          ? prev.map((c) => (c.id === result.campaign.id ? result.campaign : c))
+          : [result.campaign, ...prev]
+      );
+      setGiftCampaignStatus("Saved.");
+      handleResetGiftCampaignForm();
+    } catch (err: unknown) {
+      setGiftCampaignStatus(err instanceof Error ? err.message : "Could not save the campaign.");
+    }
+  };
+
+  // Quick enable/disable toggle per row -- PATCH re-sends the campaign's
+  // full field set with just `enabled` flipped, since sanitizeGiftCampaign
+  // validates the whole draft every time (same contract POST/PATCH share).
+  const handleToggleGiftCampaignEnabled = async (c: AdminGiftCampaign) => {
+    try {
+      const result = await apiRequest("/api/admin/gift-campaigns", {
+        method: "PATCH",
+        body: JSON.stringify({
+          id: c.id,
+          title: c.title,
+          giftProductId: c.gift_product_id,
+          minAmount: c.min_amount,
+          maxRedemptions: c.max_redemptions,
+          startsAt: c.starts_at,
+          endsAt: c.ends_at,
+          enabled: !c.enabled,
+        }),
+      });
+      setGiftCampaigns((prev) => prev.map((row) => (row.id === c.id ? result.campaign : row)));
+    } catch (err: unknown) {
+      alert(`Could not update "${c.title}": ${err instanceof Error ? err.message : String(err)}`);
+    }
   };
 
   const handleCreateCategory = async (e: React.FormEvent) => {
@@ -1341,6 +1508,210 @@ export default function SettingsTab() {
           Save spotlight
         </button>
         {spotlightStatus && <span className="text-xs text-faint">{spotlightStatus}</span>}
+      </div>
+    </div>
+
+    {/* SECTION D.0.4: GIFT WITH PURCHASE CAMPAIGNS */}
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Gift With Purchase Campaigns</h2>
+        <p className="text-faint text-xs mt-1">
+          Give the first N qualifying orders a free product. The order total is checked <strong className="text-fg">after</strong>{" "}
+          any coupon/Spend &amp; Save discount is applied. Redemptions are capped atomically at the database level, so the
+          campaign can never hand out more than the limit even if many shoppers check out at the same moment. Not yet wired to
+          checkout &mdash; creating a campaign here doesn&rsquo;t do anything at the register until that lands in a follow-up batch.
+        </p>
+      </div>
+
+      {giftCampaigns.length === 0 ? (
+        <p className="text-xs text-faint mb-6">No campaigns yet -- create one below.</p>
+      ) : (
+        <div className="space-y-3 mb-6">
+          {giftCampaigns.map((c) => {
+            const product = products.find((p) => String(p.id) === String(c.gift_product_id));
+            const started = !c.starts_at || new Date(c.starts_at).getTime() <= nowMs;
+            const ended = new Date(c.ends_at).getTime() < nowMs;
+            const full = c.redeemed_count >= c.max_redemptions;
+            const statusLabel = !c.enabled ? "Disabled" : ended ? "Ended" : full ? "Full" : !started ? "Upcoming" : "Active";
+            const statusColor = statusLabel === "Active" ? "text-success" : statusLabel === "Upcoming" ? "text-accent" : "text-faint";
+            return (
+              <div key={c.id} className="border border-border rounded-lg p-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-fg">
+                    {c.title}{" "}
+                    <span className={`ml-2 text-[10px] uppercase tracking-wider font-semibold ${statusColor}`}>{statusLabel}</span>
+                  </p>
+                  <p className="text-xs text-faint mt-0.5">
+                    {(product?.name as string) || `Product #${c.gift_product_id}`} free on orders &#8377;
+                    {Number(c.min_amount).toLocaleString("en-IN")}+ &middot; {c.redeemed_count}/{c.max_redemptions} redeemed
+                    &middot; ends {new Date(c.ends_at).toLocaleString("en-IN")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleGiftCampaignEnabled(c)}
+                    className="text-xs font-semibold text-muted hover:underline"
+                  >
+                    {c.enabled ? "Disable" : "Enable"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEditGiftCampaign(c)}
+                    className="text-xs font-semibold text-accent hover:underline"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="border-t border-border pt-6">
+        <h3 className="text-sm font-semibold text-fg mb-4">{giftCampaignEditingId ? "Edit campaign" : "New campaign"}</h3>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="text-sm text-muted font-medium">Title</label>
+          <input
+            type="text"
+            maxLength={80}
+            value={giftCampaignDraft.title}
+            onChange={(e) => setGiftCampaignDraft((d) => ({ ...d, title: e.target.value }))}
+            placeholder="e.g. New Year Ganesha Giveaway"
+            className="w-64 px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+          />
+        </div>
+
+        <div className="mt-4 relative">
+          <label className="block text-sm text-muted font-medium mb-1">Gift product</label>
+          {giftCampaignDraft.giftProductId ? (
+            <div className="flex items-center gap-3">
+              <span className="px-3 py-2 rounded border border-border-strong text-sm bg-surface-2">{giftCampaignDraft.giftProductName}</span>
+              <button
+                type="button"
+                onClick={() => setGiftCampaignDraft((d) => ({ ...d, giftProductId: "", giftProductName: "" }))}
+                className="text-xs text-faint hover:underline"
+              >
+                Change
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                type="text"
+                value={giftProductSearch}
+                onChange={(e) => setGiftProductSearch(e.target.value)}
+                placeholder="Search products by name..."
+                className="w-full max-w-sm px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+              />
+              {giftProductMatches.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full max-w-sm bg-surface border border-border rounded shadow-sm max-h-48 overflow-y-auto">
+                  {giftProductMatches.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => handleSelectGiftProduct(m.id, m.name)}
+                      className="block w-full text-left px-3 py-2 text-sm text-fg hover:bg-surface-2"
+                    >
+                      {m.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap mt-4">
+          <label className="text-sm text-muted font-medium">Minimum order amount (&#8377;)</label>
+          <input
+            type="number"
+            min={1}
+            value={giftCampaignDraft.minAmount}
+            onChange={(e) => setGiftCampaignDraft((d) => ({ ...d, minAmount: e.target.value }))}
+            placeholder="2000"
+            className="w-32 px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+          />
+          <label className="text-sm text-muted font-medium ml-2">Max redemptions</label>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={giftCampaignDraft.maxRedemptions}
+            onChange={(e) => setGiftCampaignDraft((d) => ({ ...d, maxRedemptions: e.target.value }))}
+            placeholder="10"
+            className="w-24 px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+          />
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap mt-4">
+          <label className="text-sm text-muted font-medium">Starts</label>
+          <input
+            type="datetime-local"
+            value={giftCampaignDraft.startsAt}
+            onChange={(e) => setGiftCampaignDraft((d) => ({ ...d, startsAt: e.target.value }))}
+            className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+          />
+          <label className="text-sm text-muted font-medium ml-2">Ends</label>
+          <input
+            type="datetime-local"
+            value={giftCampaignDraft.endsAt}
+            onChange={(e) => setGiftCampaignDraft((d) => ({ ...d, endsAt: e.target.value }))}
+            className="px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap mt-3">
+          <span className="text-xs text-faint">Or set it to run for</span>
+          <input
+            type="number"
+            min={1}
+            value={giftDurationAmount}
+            onChange={(e) => setGiftDurationAmount(e.target.value)}
+            className="w-16 px-2 py-1.5 rounded border border-border-strong text-xs focus:outline-none focus:border-accent bg-surface-2"
+          />
+          <select
+            value={giftDurationUnit}
+            onChange={(e) => setGiftDurationUnit(e.target.value as GiftDurationUnit)}
+            className="px-2 py-1.5 rounded border border-border-strong text-xs focus:outline-none focus:border-accent bg-surface-2"
+          >
+            <option value="day">day(s)</option>
+            <option value="week">week(s)</option>
+            <option value="month">month(s)</option>
+          </select>
+          <span className="text-xs text-faint">from {giftCampaignDraft.startsAt ? "the start date" : "now"}</span>
+          <button type="button" onClick={handleApplyQuickDuration} className="text-xs font-semibold text-accent hover:underline">
+            Set end date
+          </button>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-muted font-medium mt-4">
+          <input
+            type="checkbox"
+            checked={giftCampaignDraft.enabled}
+            onChange={(e) => setGiftCampaignDraft((d) => ({ ...d, enabled: e.target.checked }))}
+            className="accent-[var(--accent)]"
+          />
+          Campaign is running
+        </label>
+
+        <div className="flex items-center gap-3 mt-6 pt-5 border-t border-border">
+          <button
+            type="button"
+            onClick={handleSaveGiftCampaign}
+            className="px-5 py-2 rounded bg-fg text-bg text-xs font-semibold uppercase tracking-wider hover:bg-accent hover:text-accent-fg transition"
+          >
+            {giftCampaignEditingId ? "Save changes" : "Create campaign"}
+          </button>
+          {giftCampaignEditingId && (
+            <button type="button" onClick={handleResetGiftCampaignForm} className="text-xs font-semibold text-faint hover:underline">
+              Cancel edit
+            </button>
+          )}
+          {giftCampaignStatus && <span className="text-xs text-faint">{giftCampaignStatus}</span>}
+        </div>
       </div>
     </div>
 

@@ -20,6 +20,7 @@ import {
   type AdminEnquiryAnalytics,
   type AdminLoginAttempt,
   type AdminNotificationLogEntry,
+  type AdminGiftCampaign,
 } from "@/app/admin/AdminDataContext";
 
 // Per-tab components, lazy-loaded so only the active tab's code is parsed.
@@ -76,6 +77,8 @@ function AdminDashboard() {
   // chat_label_in_stock/chat_label_out_of_stock settings. See ProductCard.tsx.
   // Loaded here in loadAll(); read + written by SettingsTab via the context.
   const [chatLabelPresets, setChatLabelPresets] = useState<AdminChatLabel[]>([]);
+  // "Gift With Purchase" campaigns (0063, #14a) -- managed in SettingsTab.
+  const [giftCampaigns, setGiftCampaigns] = useState<AdminGiftCampaign[]>([]);
 
   const [settings, setSettings] = useState<Record<string, string>>({});
   // Derived in loadAll() from settings.last_keepalive_at rather than in
@@ -125,7 +128,7 @@ function AdminDashboard() {
   // them in parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [productsRes, ordersRes, notificationLogRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes, loginAttemptsRes, backupCodesRes, chatLabelsRes, orderNotificationNumbersRes] = await Promise.allSettled([
+    const [productsRes, ordersRes, notificationLogRes, reviewsRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes, loginAttemptsRes, backupCodesRes, chatLabelsRes, orderNotificationNumbersRes, giftCampaignsRes] = await Promise.allSettled([
       apiRequest("/api/admin/products"),
       apiRequest("/api/admin/orders"),
       apiRequest("/api/admin/orders/notification-log"),
@@ -144,6 +147,7 @@ function AdminDashboard() {
       apiRequest("/api/admin/backup-codes"),
       apiRequest("/api/admin/chat-labels"),
       apiRequest("/api/admin/order-notification-numbers"),
+      apiRequest("/api/admin/gift-campaigns"),
     ]);
     if (productsRes.status === "fulfilled") setProducts(productsRes.value.products);
     if (ordersRes.status === "fulfilled") setOrders(ordersRes.value.orders);
@@ -177,6 +181,7 @@ function AdminDashboard() {
     if (backupCodesRes.status === "fulfilled") setBackupCodesRemaining(backupCodesRes.value.remaining);
     if (chatLabelsRes.status === "fulfilled") setChatLabelPresets(chatLabelsRes.value.labels);
     if (orderNotificationNumbersRes.status === "fulfilled") setOrderNotificationNumbers(orderNotificationNumbersRes.value.numbers);
+    if (giftCampaignsRes.status === "fulfilled") setGiftCampaigns(giftCampaignsRes.value.campaigns);
     setLoadingOrders(false);
   };
 
@@ -190,7 +195,7 @@ function AdminDashboard() {
   };
 
   return (
-    <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, coupons, setCoupons, orders, setOrders, loadingOrders, notificationLog, setNotificationLog, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, abandonedCheckoutStale, reviewReminderStale, settings, setSettings, chatLabelPresets, setChatLabelPresets, products, setProducts, categories, setCategories, labels, setLabels, colors, setColors, materials, setMaterials, whatsappNumbers, setWhatsappNumbers, orderNotificationNumbers, setOrderNotificationNumbers, refetch: fetchData }}>
+    <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, coupons, setCoupons, orders, setOrders, loadingOrders, notificationLog, setNotificationLog, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, abandonedCheckoutStale, reviewReminderStale, settings, setSettings, chatLabelPresets, setChatLabelPresets, products, setProducts, categories, setCategories, labels, setLabels, colors, setColors, materials, setMaterials, whatsappNumbers, setWhatsappNumbers, orderNotificationNumbers, setOrderNotificationNumbers, giftCampaigns, setGiftCampaigns, refetch: fetchData }}>
     <div className="bg-bg min-h-screen py-12">
       <div className="max-w-5xl mx-auto px-6 space-y-12">
 
