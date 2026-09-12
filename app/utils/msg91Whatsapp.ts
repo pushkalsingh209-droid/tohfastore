@@ -26,6 +26,19 @@
 // headers are `accept: application/json` + `authkey` + `content-type`. No
 // Campaign object needed for any template.
 //
+// CORRECTED AGAIN 2026-09-12 (a 3rd time, OTP-specific): the shape above is
+// right for 5 of the 6 templates, but tohfa_otp is a Meta Authentication-
+// category template with its own extra requirements (a `namespace` field
+// and a `button_1` component for its "Copy code" button) -- see
+// buildMsg91OtpPayload below for the full story. The failure mode here was
+// new: MSG91 returned 200 OK and the message still never arrived, since the
+// request was well-formed enough to accept but not enough to deliver. Two
+// per-template code samples generated from MSG91's own dashboard (its
+// "Code" button next to tohfa_otp) is what surfaced both missing pieces --
+// same technique that found the base endpoint above, applied per-template
+// this time since the base endpoint alone wasn't the whole story for every
+// template.
+//
 // Unlike Green API's free-text sendWhatsappMessage, every send here references a
 // pre-approved Meta template by name with positional {{1}}, {{2}}... variables --
 // arbitrary free text cannot be sent this way. See app/utils/orderNotifications.ts
@@ -103,6 +116,22 @@ export function buildMsg91TemplatePayload(integratedNumber: string, to: string, 
   };
 }
 
+// Shared network call for every MSG91 template send below -- same host,
+// path, and headers regardless of which template. `errorLabel` is folded
+// into the thrown message so each caller's error stays as specific as it
+// was before this was factored out.
+async function postMsg91TemplateMessage(authKey: string, body: unknown, errorLabel: string): Promise<void> {
+  const res = await fetch("https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", accept: "application/json", authkey: authKey },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    throw new Error(`MSG91 WhatsApp send failed: ${errorLabel} ${res.status} ${await res.text()}`);
+  }
+}
+
 // Best-effort by design, matching greenApi.ts's sendWhatsappMessage contract --
 // silently no-ops when not configured, throws on a real send failure so the
 // caller's existing try/catch (every call site already has one) logs it.
@@ -113,16 +142,67 @@ export async function sendMsg91WhatsappTemplate({ to, templateName, variables }:
 
   const body = buildMsg91TemplatePayload(integratedNumber, to, templateName, variables);
   const recipient = body.payload.template.to_and_components[0].to[0];
+  await postMsg91TemplateMessage(authKey, body, `${recipient} ${templateName}`);
+}
 
-  const res = await fetch("https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", accept: "application/json", authkey: authKey },
-    body: JSON.stringify(body),
-  });
+// tohfa_otp's namespace, read off MSG91's own per-template "Code" sample
+// (dashboard -> Templates -> tohfa_otp -> </> Code) -- see buildMsg91OtpPayload
+// for why this template needs it and the generic builder above doesn't.
+const MSG91_OTP_NAMESPACE = "b9b40f4e_b8a6_493c_b1e4_1d6aa240f1e8";
 
-  if (!res.ok) {
-    throw new Error(`MSG91 WhatsApp send failed: ${recipient} ${templateName} ${res.status} ${await res.text()}`);
-  }
+// tohfa_otp needs a request shape the generic builder above can't produce,
+// discovered 2026-09-12 after stage 3 shipped and the first live OTP send
+// got a 200 OK from MSG91 but the WhatsApp never arrived -- a silent
+// delivery failure, not an HTTP error, so nothing in the app's own logs
+// caught it. Fixed by pulling the exact sample MSG91 generates for this
+// specific template (its "Code" button in the dashboard), which has two
+// things the generic path is missing:
+//   1. `namespace` -- Meta ties an Authentication-category template to a
+//      specific namespace; the generic builder never sends one, which
+//      apparently didn't matter for back_in_stock (a Marketing template,
+//      proven live) but does for this one.
+//   2. `button_1` -- the template's own "Copy code" button is a real
+//      component of the approved template, not decoration; it needs the
+//      same code value as body_1, or WhatsApp accepts the request and
+//      drops the message rather than sending it without a working button.
+// Kept as its own builder (not folded into buildMsg91TemplatePayload)
+// because it's the only template with a button or a namespace requirement
+// -- generalizing the other 5 templates' builder for one exception would
+// just add unused optional params to every call site.
+export function buildMsg91OtpPayload(integratedNumber: string, to: string, code: string) {
+  const phone = normalizeIndianPhone(to);
+  return {
+    integrated_number: integratedNumber,
+    content_type: "template" as const,
+    payload: {
+      messaging_product: "whatsapp" as const,
+      type: "template" as const,
+      template: {
+        name: MSG91_WHATSAPP_TEMPLATES.otp,
+        language: { code: "en", policy: "deterministic" },
+        namespace: MSG91_OTP_NAMESPACE,
+        to_and_components: [
+          {
+            to: [phone],
+            components: {
+              body_1: { type: "text" as const, value: code },
+              button_1: { subtype: "url" as const, type: "text" as const, value: code },
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+export async function sendMsg91OtpTemplate(to: string, code: string): Promise<void> {
+  const authKey = process.env.MSG91_AUTH_KEY;
+  const integratedNumber = process.env.MSG91_WHATSAPP_NUMBER;
+  if (!authKey || !integratedNumber) return;
+
+  const body = buildMsg91OtpPayload(integratedNumber, to, code);
+  const recipient = body.payload.template.to_and_components[0].to[0];
+  await postMsg91TemplateMessage(authKey, body, `${recipient} tohfa_otp`);
 }
 
 // Stage 2 of the phased cutover -- the first live call site to actually read
@@ -169,11 +249,7 @@ function isGreenApiConfigured(): boolean {
 // already handles a Green API failure today.
 export async function sendOtpWhatsapp(phone: string, code: string): Promise<void> {
   if (activeWhatsappProvider() === "msg91") {
-    await sendMsg91WhatsappTemplate({
-      to: phone,
-      templateName: MSG91_WHATSAPP_TEMPLATES.otp,
-      variables: [code],
-    });
+    await sendMsg91OtpTemplate(phone, code);
     return;
   }
   await sendWhatsappMessage(phone, `Your TOHFA verification code is *${code}*. It expires in 5 minutes. Do not share this code with anyone.`);
