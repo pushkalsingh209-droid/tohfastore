@@ -7,6 +7,9 @@ function campaign(overrides: Partial<GiftCampaign> = {}): GiftCampaign {
     enabled: true,
     title: "New Year Ganesha Giveaway",
     giftProductId: 42,
+    customGiftName: null,
+    customGiftValue: null,
+    customGiftImageUrl: null,
     minAmount: 2000,
     maxRedemptions: 10,
     redeemedCount: 0,
@@ -30,6 +33,9 @@ describe("sanitizeGiftCampaign", () => {
     expect(c).toEqual({
       title: "New Year Ganesha Giveaway",
       giftProductId: 42,
+      customGiftName: null,
+      customGiftValue: null,
+      customGiftImageUrl: null,
       minAmount: 2000,
       maxRedemptions: 10,
       startsAt: null,
@@ -98,6 +104,71 @@ describe("sanitizeGiftCampaign", () => {
     expect(sanitizeGiftCampaign({ ...base, enabled: 1 }).campaign.enabled).toBe(true);
     expect(sanitizeGiftCampaign({ ...base, enabled: "yes" }).campaign.enabled).toBe(false);
   });
+
+  it("accepts a valid custom (off-catalog) gift and leaves giftProductId null", () => {
+    const { campaign: c, errors } = sanitizeGiftCampaign({
+      title: "Festive Giveaway",
+      giftSource: "custom",
+      customGiftName: "Branded keychain",
+      customGiftValue: 250,
+      customGiftImageUrl: "https://gxlervcazzddqcoagewy.supabase.co/storage/v1/object/sign/brass-images/uploads/x.webp",
+      minAmount: 2000,
+      maxRedemptions: 10,
+      endsAt: "2099-01-01T00:00:00.000Z",
+    });
+    expect(errors).toEqual([]);
+    expect(c.giftProductId).toBeNull();
+    expect(c.customGiftName).toBe("Branded keychain");
+    expect(c.customGiftValue).toBe(250);
+    expect(c.customGiftImageUrl).toMatch(/^https:\/\//);
+  });
+
+  it("treats a missing customGiftImageUrl as null (optional pic)", () => {
+    const { campaign: c, errors } = sanitizeGiftCampaign({
+      title: "x",
+      giftSource: "custom",
+      customGiftName: "Keychain",
+      customGiftValue: 100,
+      minAmount: 100,
+      maxRedemptions: 1,
+      endsAt: "2099-01-01T00:00:00.000Z",
+    });
+    expect(errors).toEqual([]);
+    expect(c.customGiftImageUrl).toBeNull();
+  });
+
+  it("rejects a custom gift with a blank name", () => {
+    const { errors } = sanitizeGiftCampaign({
+      title: "x",
+      giftSource: "custom",
+      customGiftName: "   ",
+      customGiftValue: 100,
+      minAmount: 100,
+      maxRedemptions: 1,
+      endsAt: "2099-01-01T00:00:00.000Z",
+    });
+    expect(errors.join(" ")).toMatch(/custom gift a name/i);
+  });
+
+  it("rejects a custom gift with a missing or non-positive declared value", () => {
+    const base = { title: "x", giftSource: "custom", customGiftName: "Keychain", minAmount: 100, maxRedemptions: 1, endsAt: "2099-01-01T00:00:00.000Z" };
+    expect(sanitizeGiftCampaign(base).errors.join(" ")).toMatch(/declared value/i);
+    expect(sanitizeGiftCampaign({ ...base, customGiftValue: 0 }).errors.join(" ")).toMatch(/declared value/i);
+    expect(sanitizeGiftCampaign({ ...base, customGiftValue: -10 }).errors.join(" ")).toMatch(/declared value/i);
+  });
+
+  it("does not require giftProductId when giftSource is custom", () => {
+    const { errors } = sanitizeGiftCampaign({
+      title: "x",
+      giftSource: "custom",
+      customGiftName: "Keychain",
+      customGiftValue: 100,
+      minAmount: 100,
+      maxRedemptions: 1,
+      endsAt: "2099-01-01T00:00:00.000Z",
+    });
+    expect(errors.join(" ")).not.toMatch(/pick a product/i);
+  });
 });
 
 describe("toGiftCampaign", () => {
@@ -107,6 +178,9 @@ describe("toGiftCampaign", () => {
       enabled: true,
       title: "Test",
       gift_product_id: 42,
+      custom_gift_name: null,
+      custom_gift_value: null,
+      custom_gift_image_url: null,
       min_amount: "2000", // numeric columns arrive as strings over PostgREST
       max_redemptions: 10,
       redeemed_count: 3,
@@ -118,12 +192,37 @@ describe("toGiftCampaign", () => {
       enabled: true,
       title: "Test",
       giftProductId: 42,
+      customGiftName: null,
+      customGiftValue: null,
+      customGiftImageUrl: null,
       minAmount: 2000,
       maxRedemptions: 10,
       redeemedCount: 3,
       startsAt: null,
       endsAt: "2099-01-01T00:00:00.000Z",
     });
+  });
+
+  it("maps a custom (off-catalog) gift row, coercing custom_gift_value from string", () => {
+    const row: GiftCampaignDbRow = {
+      id: 8,
+      enabled: true,
+      title: "Festive Giveaway",
+      gift_product_id: null,
+      custom_gift_name: "Branded keychain",
+      custom_gift_value: "250", // numeric columns arrive as strings over PostgREST
+      custom_gift_image_url: "https://gxlervcazzddqcoagewy.supabase.co/storage/v1/object/sign/x.webp",
+      min_amount: "2000",
+      max_redemptions: 10,
+      redeemed_count: 0,
+      starts_at: null,
+      ends_at: "2099-01-01T00:00:00.000Z",
+    };
+    const c = toGiftCampaign(row);
+    expect(c.giftProductId).toBeNull();
+    expect(c.customGiftName).toBe("Branded keychain");
+    expect(c.customGiftValue).toBe(250);
+    expect(c.customGiftImageUrl).toMatch(/^https:\/\//);
   });
 });
 

@@ -220,9 +220,12 @@ export type Database = {
       gift_campaigns: {
         Row: {
           created_at: string
+          custom_gift_image_url: string | null
+          custom_gift_name: string | null
+          custom_gift_value: number | null
           enabled: boolean
           ends_at: string
-          gift_product_id: number
+          gift_product_id: number | null
           id: number
           max_redemptions: number
           min_amount: number
@@ -232,9 +235,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_gift_image_url?: string | null
+          custom_gift_name?: string | null
+          custom_gift_value?: number | null
           enabled?: boolean
           ends_at: string
-          gift_product_id: number
+          gift_product_id?: number | null
           id?: number
           max_redemptions: number
           min_amount: number
@@ -244,9 +250,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_gift_image_url?: string | null
+          custom_gift_name?: string | null
+          custom_gift_value?: number | null
           enabled?: boolean
           ends_at?: string
-          gift_product_id?: number
+          gift_product_id?: number | null
           id?: number
           max_redemptions?: number
           min_amount?: number

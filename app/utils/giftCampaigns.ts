@@ -26,12 +26,23 @@
 // This module is intentionally inert -- nothing here talks to Supabase.
 
 export const MAX_GIFT_CAMPAIGN_TITLE_LENGTH = 80;
+export const MAX_CUSTOM_GIFT_NAME_LENGTH = 80;
 
 export interface GiftCampaignDraft {
   title: string;
-  // null when missing/invalid -- the caller (admin route) rejects the
-  // write via `errors`, this just avoids a thrown NaN/undefined downstream.
+  // Exactly one gift source is populated (mirrors the DB's
+  // gift_campaigns_gift_source_xor check, migration 0064): a real catalog
+  // product (giftProductId -- real inventory, reserved through
+  // reserve_stock same as any paid line) or an off-catalog gift
+  // (customGiftName + customGiftValue, the admin-declared "worth ₹X" shown
+  // to shoppers since there's no product row to read a price from; image
+  // optional). null/null when missing/invalid -- the caller (admin route)
+  // rejects the write via `errors`, this just avoids a thrown
+  // NaN/undefined downstream.
   giftProductId: number | null;
+  customGiftName: string | null;
+  customGiftValue: number | null;
+  customGiftImageUrl: string | null;
   minAmount: number;
   maxRedemptions: number;
   startsAt: string | null; // ISO 8601, or null = active as soon as enabled
@@ -68,9 +79,44 @@ export function sanitizeGiftCampaign(input: unknown): SanitizeGiftCampaignResult
   if (title.length > MAX_GIFT_CAMPAIGN_TITLE_LENGTH) title = title.slice(0, MAX_GIFT_CAMPAIGN_TITLE_LENGTH).trim();
   if (!title) errors.push("Give the campaign a title.");
 
-  const giftProductIdNum = Number(raw.giftProductId);
-  const giftProductId = Number.isFinite(giftProductIdNum) && giftProductIdNum > 0 ? giftProductIdNum : null;
-  if (giftProductId == null) errors.push("Pick a product to give away.");
+  // `giftSource` is an explicit discriminator from the admin form ("product"
+  // | "custom"), not inferred from which fields happen to be present --
+  // avoids a custom gift silently falling back to "product" (and getting
+  // rejected with the wrong error message) if the form ever sends both/
+  // neither by mistake. Absent/anything else defaults to "product", so
+  // existing callers/tests that only ever set giftProductId keep working
+  // unchanged.
+  const isCustomGift = raw.giftSource === "custom";
+
+  let giftProductId: number | null = null;
+  let customGiftName: string | null = null;
+  let customGiftValue: number | null = null;
+  let customGiftImageUrl: string | null = null;
+
+  if (isCustomGift) {
+    let name = typeof raw.customGiftName === "string" ? raw.customGiftName.trim() : "";
+    if (name.length > MAX_CUSTOM_GIFT_NAME_LENGTH) name = name.slice(0, MAX_CUSTOM_GIFT_NAME_LENGTH).trim();
+    if (!name) {
+      errors.push("Give the custom gift a name.");
+    } else {
+      customGiftName = name;
+    }
+
+    const valueNum = Number(raw.customGiftValue);
+    customGiftValue = Number.isFinite(valueNum) && valueNum > 0 ? valueNum : null;
+    if (customGiftValue == null) errors.push("Give the custom gift a declared value (₹) greater than 0.");
+
+    // Optional -- the admin form uploads through /api/admin/upload (same
+    // Supabase Storage bucket every product photo already uses, so it's
+    // already inside the CSP img-src allow-list) and hands back a real URL,
+    // so no format validation here beyond "non-empty after trim."
+    const imageRaw = typeof raw.customGiftImageUrl === "string" ? raw.customGiftImageUrl.trim() : "";
+    customGiftImageUrl = imageRaw || null;
+  } else {
+    const giftProductIdNum = Number(raw.giftProductId);
+    giftProductId = Number.isFinite(giftProductIdNum) && giftProductIdNum > 0 ? giftProductIdNum : null;
+    if (giftProductId == null) errors.push("Pick a product to give away.");
+  }
 
   const minAmountNum = Number(raw.minAmount);
   const minAmount = Number.isFinite(minAmountNum) && minAmountNum > 0 ? minAmountNum : 0;
@@ -99,7 +145,18 @@ export function sanitizeGiftCampaign(input: unknown): SanitizeGiftCampaignResult
   const enabled = raw.enabled === true || raw.enabled === "true" || raw.enabled === 1;
 
   return {
-    campaign: { title, giftProductId, minAmount, maxRedemptions, startsAt, endsAt, enabled },
+    campaign: {
+      title,
+      giftProductId,
+      customGiftName,
+      customGiftValue,
+      customGiftImageUrl,
+      minAmount,
+      maxRedemptions,
+      startsAt,
+      endsAt,
+      enabled,
+    },
     errors,
   };
 }
@@ -111,7 +168,12 @@ export interface GiftCampaign {
   id: number;
   enabled: boolean;
   title: string;
-  giftProductId: number;
+  // Exactly one of giftProductId / customGiftName is non-null (migration
+  // 0064's xor constraint) -- see GiftCampaignDraft's doc comment.
+  giftProductId: number | null;
+  customGiftName: string | null;
+  customGiftValue: number | null;
+  customGiftImageUrl: string | null;
   minAmount: number;
   maxRedemptions: number;
   redeemedCount: number;
@@ -127,7 +189,10 @@ export interface GiftCampaignDbRow {
   id: number;
   enabled: boolean;
   title: string;
-  gift_product_id: number;
+  gift_product_id: number | null;
+  custom_gift_name: string | null;
+  custom_gift_value: number | string | null;
+  custom_gift_image_url: string | null;
   min_amount: number | string;
   max_redemptions: number;
   redeemed_count: number;
@@ -141,6 +206,9 @@ export function toGiftCampaign(row: GiftCampaignDbRow): GiftCampaign {
     enabled: row.enabled,
     title: row.title,
     giftProductId: row.gift_product_id,
+    customGiftName: row.custom_gift_name,
+    customGiftValue: row.custom_gift_value != null ? Number(row.custom_gift_value) : null,
+    customGiftImageUrl: row.custom_gift_image_url,
     minAmount: Number(row.min_amount),
     maxRedemptions: row.max_redemptions,
     redeemedCount: row.redeemed_count,

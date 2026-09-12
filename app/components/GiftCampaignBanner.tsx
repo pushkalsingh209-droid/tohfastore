@@ -49,7 +49,10 @@ export default function GiftCampaignBanner() {
   }
   const urgency = urgencyParts.length > 0 ? urgencyParts.join(" · ") : null;
 
-  const message = `Spend ₹${campaign.minAmount.toLocaleString("en-IN")}+ and get a FREE ${campaign.giftProductName}!`;
+  // giftValue only exists for an off-catalog gift (migration 0064) -- a
+  // catalog product's own price already speaks for itself.
+  const valueSuffix = campaign.giftValue != null ? ` (worth ₹${campaign.giftValue.toLocaleString("en-IN")})` : "";
+  const message = `Spend ₹${campaign.minAmount.toLocaleString("en-IN")}+ and get a FREE ${campaign.giftProductName}${valueSuffix}!`;
 
   function handleDismiss() {
     setDismissed(true);
