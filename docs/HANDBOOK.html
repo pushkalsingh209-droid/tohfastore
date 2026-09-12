@@ -1648,7 +1648,7 @@ paths produce an identical row because both re-read from Razorpay&rsquo;s own AP
 <tr><td><code>ADMIN_PASSWORD</code></td><td>server</td><td>Admin password (constant-time compare). Missing &rarr; login 500 (fails closed, no default).</td></tr>
 <tr><td><code>ADMIN_TOTP_SECRET</code></td><td>server</td><td>Base32 TOTP secret (RFC 6238, SHA1, 6 digits, 30s, &plusmn;1 step drift). Static &mdash; the QR tool just re-renders it.</td></tr>
 <tr><td><code>GREEN_API_URL</code>, <code>GREEN_API_ID_INSTANCE</code>, <code>GREEN_API_TOKEN_INSTANCE</code></td><td>server</td><td>Green API instance (unofficial WhatsApp Web automation). All three required or every WhatsApp feature silently no-ops (OTP send surfaces an explicit error instead). Primary WhatsApp channel today &mdash; see <code>WHATSAPP_PROVIDER</code> for the MSG91 migration in progress.</td></tr>
-<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server &mdash; <strong>Production scope only</strong>, not Preview</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. <code>MSG91_WHATSAPP_NUMBER</code> is the real production number, running in parallel with Green API. Wired behind <code>WHATSAPP_PROVIDER=msg91</code> for back-in-stock notify, checkout OTP, and 9 best-effort message types (alerts, leads, reminders, referral reward, enquiry alert) &mdash; all <strong>confirmed working live</strong> &mdash; plus, as of Stage 4 batch 2, the automatic order confirmation (customer side only; the business/supplier copies stay on Green API, no template for that shape) and the admin's manual shipped/delivered/cancelled &ldquo;Notify customer&rdquo; action, including its optional note and referral-share follow-ups (<strong>not yet live-tested</strong> &mdash; the highest-stakes batch, since it's the first message every customer sees for every order). The admin's &ldquo;processing&rdquo; re-notify has no template and always falls back to Green API. See IMPROVEMENTS.md for the full phased-cutover plan.</td></tr>
+<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server &mdash; <strong>Production scope only</strong>, not Preview</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. <code>MSG91_WHATSAPP_NUMBER</code> is the real production number, running in parallel with Green API. <strong>All 4 migration stages confirmed working live</strong> as of 2026-09-12: checkout OTP, back-in-stock, 9 best-effort message types (alerts, leads, reminders, referral reward, enquiry alert), and the full order-status flow (automatic confirmation, customer side only; the admin's manual shipped/delivered/cancelled notify with its optional note and referral-share follow-ups). Still on Green API by design, not oversight: the business order alert (full PII + item dump + photo, no template for that shape), supplier copies via that path, and the admin's rare &ldquo;processing&rdquo; re-notify (no template). See IMPROVEMENTS.md for the full phased-cutover history.</td></tr>
 <tr><td><code>WHATSAPP_PROVIDER</code></td><td>server</td><td>Optional. <code>"green-api"</code> (default, unset behaves the same) or <code>"msg91"</code>. Selects which provider a send uses once call sites are wired in stage 2/3 of the migration &mdash; currently read by <code>activeWhatsappProvider()</code> but not yet consulted by any live send path.</td></tr>
 <tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code>, <code>/api/cron/abandoned-checkout</code>, <code>/api/cron/product-sales-reconcile</code>, <code>/api/cron/rls-check</code>.</td></tr>
 <tr><td><code>RESEND_API_KEY</code></td><td>server</td><td>Missing &rarr; order-confirmation <em>and</em> shipped/delivered/status emails skipped silently; contact form returns 500.</td></tr>
@@ -3073,6 +3073,39 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-12<br>15:30</code></td>
+  <td><strong>MSG91 WhatsApp &mdash; stage 4 batch 2 confirmed live (migration functionally complete)</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item &mdash; docs-only, closes out the Green API &rarr; MSG91 migration for every message type with an approved template)</td>
+  <td>
+    Owner ran the full test checklist from the previous batch: a real order
+    (<code>order_confirmed</code> correct), shipped/delivered/cancelled Notify sends (all correct
+    content), a Notify with an admin comment (<code>order_note</code> arrived as its own follow-up),
+    and a delivered order with a referral code (<code>referral_share</code> arrived as its own
+    follow-up). <strong>Stage 4 batch 2 done.</strong>
+    <br><br>
+    Two &ldquo;duplicate message&rdquo; reports during testing turned out to be correct existing
+    behaviour, not bugs, and are worth remembering if a similar report comes up again:
+    <code>order_confirmed</code> appeared to double because the test used the owner's own number as
+    both the customer contact <em>and</em> <code>BUSINESS_WHATSAPP_NUMBER</code>, so both the customer
+    template and the always-on business alert (full detail + photo) landed on the same phone; the
+    status-update messages appeared to double because the test number was also ticked as a
+    &ldquo;Notify supplier&rdquo; on the test product, so it received both the customer copy and the
+    supplier copy. Neither is visible to a real customer, whose number isn't also the business number
+    or a registered supplier.
+    <br><br>
+    <strong>The Green API &rarr; MSG91 migration is now functionally complete</strong> for every message
+    type that has an approved template (14 templates across OTP, back-in-stock, 9 best-effort types, and
+    the 4 order-status + note + referral-share templates). What remains on Green API is by design: the
+    business order alert (full PII + item dump + photo, internal-only, no template exists for that
+    shape), supplier copies sent via the Green API path, and the admin's rare &ldquo;processing&rdquo;
+    re-notify (no template). <code>WHATSAPP_PROVIDER</code> unset still falls back to Green API
+    instantly and remains the safety net. Actually retiring Green API's code entirely is a separate
+    future decision, not assumed by this work.
+  </td>
+  <td><em>edited:</em> <code>IMPROVEMENTS.md</code> only</td>
+  <td>Docs-only batch, no code changed &mdash; verification is the live test checklist described above,
+  run by the owner directly against production.</td>
+</tr>
 <tr>
   <td><code>2026-09-12<br>14:00</code></td>
   <td><strong>MSG91 WhatsApp &mdash; batch 1 confirmed live + stage 4 batch 2 (order status)</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item &mdash; the highest-stakes batch of the migration, owner explicitly accepted the content trade-off first)</td>

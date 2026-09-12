@@ -2255,22 +2255,30 @@ care, land behind tests, never "blind".
          the actual send call.
        - **3 new unit tests** (`hasMsg91OrderStatusTemplate`); `invoiceUrl` exported from
          `orderNotifications.ts` so the route can reuse it instead of re-deriving the URL.
-     - **Not yet live-tested** — `tsc`/lint/`npm test`/`next build` all clean, but this is
-       the highest-stakes batch of the whole migration: it's the very first WhatsApp message
-       most customers see for every single order, and any misfire (wrong courier text, a
-       missing review link, a duplicate note) is visible to a real customer immediately.
-       **Owner: test all of order_confirmed (place a real small order), order_shipped
-       (Notify customer with courier+AWB set, then again with one blank), order_delivered
-       (Notify customer, check the review link works), order_cancelled, and one Notify with
-       an admin comment typed in** before trusting this in general use. Flip
-       `WHATSAPP_PROVIDER` back to unset at the first sign of trouble — same instant
-       fallback as every earlier stage.
-     - **Next:** the live tests above. Once clean, Stage 4 is functionally complete for
-       every message type that has a template — Green API remains as the fallback path
-       (`WHATSAPP_PROVIDER` unset) and for the messages that were never templated (business
-       order alerts, "processing" re-notify) until/unless those get their own templates
-       later. Actually retiring Green API (removing the code path entirely, not just
-       defaulting away from it) is a separate future decision, not assumed by this work.
+     - **✅ Confirmed working live — the full test checklist passed.** Owner ran a real order
+       (`order_confirmed` correct), shipped/delivered/cancelled Notify sends (all correct
+       content), a Notify with an admin comment (`order_note` arrived as its own follow-up),
+       and a delivered order with a referral code (`referral_share` arrived as its own
+       follow-up). **Stage 4 batch 2 done.**
+       - Two "duplicate message" reports during testing turned out to be correct existing
+         behavior, not bugs: `order_confirmed` appeared to double because the test used the
+         owner's own number as both the customer contact *and* `BUSINESS_WHATSAPP_NUMBER`,
+         so both the customer template and the always-on business alert (with photo) landed
+         on the same phone; shipped/delivered/cancelled appeared to double because the test
+         number was also ticked as a "Notify supplier" on the test product, so it received
+         both the customer copy and the supplier copy. Neither would be visible to a real
+         customer, whose number isn't also the business number or a registered supplier.
+     - **Stage 4 is now functionally complete for every message type that has an approved
+       template.** What's still on Green API is by design, not oversight: the business order
+       alert (full PII + item dump + photo, internal-only, no template exists for that
+       shape), supplier copies via the Green API path specifically, and the admin's rare
+       "processing" re-notify (no template). Actually retiring Green API (removing the code
+       path entirely, not just defaulting away from it) is a separate future decision, not
+       assumed by this work — `WHATSAPP_PROVIDER` unset still falls back to it instantly, and
+       should stay that way as the safety net for the foreseeable future.
+     - **Next:** nothing pending on this item. If new message types are ever added, follow
+       the same phased pattern (draft content → submit to MSG91 → wait for approval → wire
+       behind `WHATSAPP_PROVIDER` → verify → test live before trusting).
 
 13. **💰 Blog / Content Hub** — *foundation exists.* Already have:
     - `/guides` index + 4 gift guides (Diwali, housewarming, wedding, puja room)
