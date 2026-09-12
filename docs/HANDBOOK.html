@@ -650,7 +650,11 @@
     While the storewide <b>Spend &amp; Save</b> tier offer is running (<code>GET /api/offer</code>), a two-option
     selector appears above the coupon UI &mdash; <b>Use offer</b> (&#8377;X off / "add &#8377;Y more to save
     &#8377;Z") vs <b>Use a coupon</b> &mdash; and the shopper picks one (mutually exclusive, never stacked;
-    default "offer"). <code>discountChoice</code> ("offer" | "coupon") is sent to Flow&nbsp;4.</li>
+    default "offer"). <code>discountChoice</code> ("offer" | "coupon") is sent to Flow&nbsp;4. While a
+    <b>Gift With Purchase</b> campaign is live (<code>GET /api/gift-campaign</code>, IMPROVEMENTS.md #14a),
+    a notice compares the already-computed <code>finalTotal</code> against the campaign's minimum &mdash;
+    "add &#8377;X more" below it, "you qualify" at/above &mdash; hidden for COD (prepaid only). Preview
+    only; Flow&nbsp;4's own <code>giftApplied</code> is what actually happened.</li>
     <li><b>Pay.</b> The sheet footer button calls <code>handleRazorpayPayment</code> &rarr; Flow 4.</li>
   </ol>
 
@@ -2015,6 +2019,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/coupons/public</code></td><td><span class="tag t-get">get</span></td><td>Live public coupons (<code>getPublicCoupons</code> + <code>filterLivePublicCoupons</code>, display-safe fields only) for the checkout Review step&rsquo;s tap-to-apply list. <code>Cache-Control</code> 60s / s-maxage 300. Same set the on-site <code>PromoBanner</code> shows (as a reverse-direction <code>.offer-ticker</code> marquee, &sect;19).</td></tr>
 <tr><td><code>/api/refer</code></td><td><span class="tag t-post">post</span></td><td>Backs the <code>/refer</code> page. <code>{phone, token}</code> &mdash; <code>isVerificationTokenValid(phone, token)</code> (the checkout OTP token; stale &rarr; 401 <code>verification_required</code>), then <strong>look-up only</strong> via <code>findReferralCouponByPhone</code> (<code>app/utils/referralCoupon.ts</code>) &mdash; returns <code>{enabled:true, code, discountPercent}</code>, <code>{enabled:true, code:null}</code> when the customer has no <code>FRIEND&hellip;</code> code yet, or <code>{enabled:false}</code> when <code>referral_program_enabled='0'</code>. <strong>Never mints</strong> a code (the earn-on-first-Delivered gate is the whole anti-farm design); the OTP token stops phone-number enumeration of other people's codes. Generic 5xx (<code>apiError.ts</code>).</td></tr>
 <tr><td><code>/api/offer</code></td><td><span class="tag t-get">get</span></td><td>Preview of the live <strong>Spend &amp; Save</strong> tier offer, consumed by two callers sharing one hook (<code>useSpendTierOffer</code>): the checkout Review step, and site-wide <code>SpendOfferBanner</code> (&sect;19) above the header on every page. <code>{active:false}</code> unless running; otherwise <code>{active:true, offer:{label, tiers, startsAt, endsAt, marquee}}</code> where <code>marquee</code> = <code>{secondsPerTier, pauseOnHover, showCountdown}</code> parsed from the three <code>spend_marquee_*</code> scalar settings (one round-trip, <code>.in([&hellip;])</code>; <code>app/utils/spendMarquee.ts</code>). <strong>Not authoritative</strong> &mdash; <code>/api/razorpay</code> re-reads the setting and recomputes at order creation; <code>marquee</code> is display-only. <code>Cache-Control</code> 60s / s-maxage 300.</td></tr>
+<tr><td><code>/api/gift-campaign</code></td><td><span class="tag t-get">get</span></td><td>Preview of the live <strong>Gift With Purchase</strong> campaign (IMPROVEMENTS.md #14a, migration 0063), consumed by <code>useActiveGiftCampaign</code>: site-wide <code>GiftCampaignBanner</code> (&sect;19) and the checkout Review step. <code>{active:false}</code> unless one is running; otherwise <code>{active:true, campaign:{title, giftProductName, minAmount, endsAt, slotsLeft}}</code> (<code>slotsLeft</code> only populated once &le;5 remain). Uses the identical &ldquo;soonest-ending wins&rdquo; lookup query <code>/api/razorpay</code> itself uses, so the two can never disagree about which campaign is active. <strong>Not authoritative</strong> &mdash; <code>/api/razorpay</code> alone decides whether a given order actually gets the gift (<code>giftApplied</code> on its response). <code>Cache-Control</code> 60s / s-maxage 300.</td></tr>
 <tr><td><code>/api/whatsapp-otp/send</code></td><td><span class="tag t-post">post</span></td><td><code>sendOtp(phone, ip)</code>. All abuse limits live in the util; also prunes aged verification rows.</td></tr>
 <tr><td><code>/api/whatsapp-otp/verify</code></td><td><span class="tag t-post">post</span></td><td><code>verifyOtp(phone, code)</code> &rarr; <code>{ok, token}</code>.</td></tr>
 <tr><td><code>/api/check-whatsapp-number</code></td><td><span class="tag t-post">post</span></td><td>Green API <code>checkWhatsapp</code> &mdash; is the number registered? <code>{exists: true|false|null}</code> (null = check unavailable &rarr; client fails open).</td></tr>
@@ -2603,6 +2608,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <ul class="tight">
 <li><code>SpendOfferBanner</code> &mdash; site-wide (rendered in <code>app/layout.tsx</code>, above the sticky header) awareness for the storewide &ldquo;Spend &amp; Save&rdquo; offer, which previously only surfaced once a shopper reached the checkout Review step. Reuses the exact same <code>useSpendTierOffer</code> hook/<code>GET /api/offer</code> the Review step already calls -- a preview only, <code>/api/razorpay</code> still prices the order. The <em>whole</em> ladder (every configured tier, ascending) scrolls past as a slow seamless marquee &mdash; the shared <code>.offer-ticker*</code> primitive in <code>globals.css</code> (two identical sequences, track shifts &minus;50%, linear infinite; edge-fade mask; <code>--pause-on-hover</code>; reduced-motion drops the scroll and wraps the first sequence, the <code>[aria-hidden]</code> twin hidden, screen readers get an <code>.sr-only</code> summary). Pace + toggles come from <code>offer.marquee</code> (the three <code>spend_marquee_*</code> settings, <code>app/utils/spendMarquee.ts</code>): duration = <code>secondsPerTier &times; tierCount</code> so px/second is constant; <code>pauseOnHover</code> adds the modifier class; <code>showCountdown</code> gates the &ldquo;days left&rdquo; chip (still only inside a 14-day window, matching <code>PromoBanner</code>). Dismissible per browser tab (<code>sessionStorage</code>); renders nothing while the offer isn't active or before the dismiss-check effect resolves.</li>
 <li><code>PromoBanner</code> &mdash; the storefront (<code>StorefrontPage</code>) strip of live public coupon codes (same set as <code>/api/coupons/public</code>), tap-to-copy pills. Runs as the same <code>.offer-ticker</code> marquee as <code>SpendOfferBanner</code> but with <code>--reverse</code> (content drifts left&rarr;right) so the two strips visibly move opposite ways rather than reading as one element; <code>--pause-on-hover</code> is always on here so the copy pills stay hittable (<code>:focus-within</code> also pauses, covering a mobile tap). The seamless-loop twin sequence is <code>aria-hidden</code> + non-interactive so keyboard/AT users get each copy button exactly once; reduced-motion falls back to the old static wrapped row.</li>
+<li><code>GiftCampaignBanner</code> &mdash; site-wide (<code>app/layout.tsx</code>, right after <code>SpendOfferBanner</code>) awareness for the live &ldquo;Gift With Purchase&rdquo; campaign (IMPROVEMENTS.md #14a, migration 0063). Same <code>.offer-ticker</code> marquee primitive and <code>sessionStorage</code>-dismiss pattern as <code>SpendOfferBanner</code>, fed by its own <code>useActiveGiftCampaign</code> hook/<code>GET /api/gift-campaign</code> &mdash; a preview only, <code>/api/razorpay</code> alone decides whether a given order actually gets the gift. Rendered in a distinct emerald gradient (vs. <code>SpendOfferBanner</code>'s amber) since both can be live and stacked at once &mdash; Spend &amp; Save still applies on top of a qualifying gift order. Shows &ldquo;Spend &#8377;X+ and get a FREE &lt;product&gt;!&rdquo; plus an urgency chip (&ldquo;Only N left&rdquo; and/or &ldquo;N days left&rdquo;, only once actually low/close, same threshold as the coupon banner's &ldquo;N left&rdquo;). <code>daysLeft</code> computed in a <code>useEffect</code>, not during render (<code>react-hooks/purity</code>).</li>
 <li><code>WelcomeGaneshaPopup</code> &mdash; audio (<code>/public/audio/welcome.mp3</code>) + configurable auto-show</li>
 <li><code>SpotlightCountdown</code> &mdash; the <code>/spotlight</code> page's ticking &ldquo;ends in&hellip;&rdquo; banner (0050); client-only, computed inside <code>useEffect</code> to dodge a hydration mismatch, <code>aria-live="off"</code> on the digits</li>
 <li><code>AbandonedCartNudge</code>, <code>CookieConsent</code>, <code>InstallPrompt</code></li>
@@ -3103,6 +3109,55 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-12<br>20:45</code></td>
+  <td><strong>Gift With Purchase campaigns &mdash; PR 4 of 4: customer-facing banner + Review-step notice</strong><br>(<code>IMPROVEMENTS.md</code> #14a &mdash; final PR, sequenced last so it could honestly reflect PR 3's real behavior via <code>giftApplied</code>)</td>
+  <td>
+    New public <code>GET /api/gift-campaign</code> (<code>app/api/gift-campaign/route.ts</code>) &mdash;
+    mirrors <code>/api/offer</code>'s CDN cache headers (60s / s-maxage 300) and uses the
+    identical &ldquo;soonest-ending wins&rdquo; deterministic lookup query <code>/api/razorpay</code>
+    itself uses, so the preview and the authoritative checkout decision can never disagree about
+    which campaign is active. Returns <code>{"{active:false}"}</code> or <code>{"{active:true,
+    campaign:{title, giftProductName, minAmount, endsAt, slotsLeft}}"}</code> &mdash;
+    <code>slotsLeft</code> only populated once &le;5 remain, same &ldquo;don't show urgency when
+    there's plenty&rdquo; reasoning as the public coupon banner.
+    <br><br>
+    New <code>useActiveGiftCampaign</code> hook (mirrors <code>useSpendTierOffer</code> exactly:
+    same fail-silent fetch, same &ldquo;preview only&rdquo; framing) and new
+    <code>GiftCampaignBanner</code> component (mirrors <code>SpendOfferBanner</code>: same
+    <code>.offer-ticker</code> marquee CSS, same <code>sessionStorage</code> dismiss key pattern,
+    same <code>daysLeft</code> countdown computed in a <code>useEffect</code> rather than during
+    render &mdash; <code>react-hooks/purity</code>), rendered in <code>layout.tsx</code> right after
+    <code>SpendOfferBanner</code> in a distinct emerald gradient (vs. its amber) so the two don't
+    read as one banner when both are running at once &mdash; which they can be, since Spend &amp;
+    Save still applies on top of a qualifying gift order.
+    <br><br>
+    <code>ReviewStep.tsx</code>'s <code>ReviewBag</code> gets a new <code>giftCampaign</code> field,
+    populated in <code>CheckoutSheet.tsx</code> via the same hook. The Review step compares its
+    already-computed <code>finalTotal</code> (post-discount, matching the server's own threshold
+    check) against <code>giftCampaign.minAmount</code>: &ldquo;add &#8377;X more&rdquo; below
+    threshold, &ldquo;you qualify&rdquo; at/above it &mdash; hidden entirely for COD since the
+    campaign is prepaid-only (owner decision). <strong>Preview only, same contract as PR 3's
+    eligibility check</strong>: the actual grant (or not, if the campaign sells out between this
+    preview and payment) is decided solely by <code>/api/razorpay</code>, whose
+    <code>giftApplied</code> response field is what the post-payment flow trusts.
+  </td>
+  <td><em>new:</em> <code>app/api/gift-campaign/route.ts</code>,
+  <code>app/components/checkout/useActiveGiftCampaign.ts</code>,
+  <code>app/components/GiftCampaignBanner.tsx</code><br>
+  <em>edited:</em> <code>app/layout.tsx</code>, <code>app/components/checkout/steps/ReviewStep.tsx</code>,
+  <code>app/components/checkout/CheckoutSheet.tsx</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 365/366 (1 pre-existing skip,
+  unchanged) &middot; <code>eslint</code> (all changed/new files) 0 errors (2
+  <code>react-hooks/set-state-in-effect</code> warnings in <code>GiftCampaignBanner.tsx</code>,
+  confirmed identical to pre-existing warnings already present in <code>SpendOfferBanner.tsx</code>,
+  the file it mirrors &mdash; not new debt) &middot; <code>next build</code> exit 0,
+  <code>/api/gift-campaign</code> registered. Not visually verified in a browser (no browser
+  automation available here) &mdash; owner should click through both the homepage banner and a
+  qualifying/non-qualifying Review step once for real. <strong>Closes out IMPROVEMENTS.md #14a's
+  4-PR plan</strong> pending merge and the owner's own live qualifying order test (still
+  outstanding from PR 3).</td>
+</tr>
 <tr>
   <td><code>2026-09-12<br>19:30</code></td>
   <td><strong>Gift With Purchase campaigns &mdash; PR 3 of 4: checkout wiring</strong><br>(<code>IMPROVEMENTS.md</code> #14a &mdash; the highest-scrutiny batch of this feature; a payment-path change per the CLAUDE.md guardrail)</td>

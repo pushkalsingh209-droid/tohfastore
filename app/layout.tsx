@@ -12,6 +12,7 @@ import { getBootstrapData } from "@/app/utils/storeQueries";
 import LazyCartDrawer from "@/app/components/LazyCartDrawer";
 import HeaderNavbar from "@/app/components/headerNavbar";
 import SpendOfferBanner from "@/app/components/SpendOfferBanner";
+import GiftCampaignBanner from "@/app/components/GiftCampaignBanner";
 import CatalogLoadingOverlay from "@/app/components/CatalogLoadingOverlay";
 import FloatingContactButtons from "@/app/components/FloatingContactButtons";
 import DeferredWidgets from "@/app/components/DeferredWidgets";
@@ -156,6 +157,14 @@ export default async function RootLayout({
               sticky itself, so it scrolls away and the header (which IS
               sticky) takes over at the top. */}
           <SpendOfferBanner />
+
+          {/* Same reasoning as the Spend & Save banner above, for the
+              separate "Gift With Purchase" campaign (IMPROVEMENTS.md
+              #14a) -- both can be live at once (a Spend & Save discount
+              still applies on top of a qualifying gift order), so this
+              renders independently in its own distinct color rather than
+              merging into one combined banner. */}
+          <GiftCampaignBanner />
 
           {/* Universal Premium Branding Banner & Navigation */}
           <HeaderNavbar />
