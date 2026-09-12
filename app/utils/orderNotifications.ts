@@ -38,7 +38,7 @@ export interface StatusMessageInput {
   referralDiscountPercent?: number;
 }
 
-function invoiceUrl(orderId: string): string {
+export function invoiceUrl(orderId: string): string {
   return `${SITE_URL}/success?order_id=${encodeURIComponent(orderId)}`;
 }
 

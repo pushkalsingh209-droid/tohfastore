@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { buildMsg91TemplatePayload, buildMsg91OtpPayload, MSG91_WHATSAPP_TEMPLATES } from "./msg91Whatsapp";
+import {
+  buildMsg91TemplatePayload,
+  buildMsg91OtpPayload,
+  hasMsg91OrderStatusTemplate,
+  MSG91_WHATSAPP_TEMPLATES,
+} from "./msg91Whatsapp";
 
 describe("buildMsg91TemplatePayload", () => {
   it("normalizes the recipient phone to 91XXXXXXXXXX", () => {
@@ -62,7 +67,7 @@ describe("buildMsg91OtpPayload", () => {
 });
 
 describe("MSG91_WHATSAPP_TEMPLATES", () => {
-  it("has one entry per order-notification status, otp, back-in-stock, and the stage 4 batch 1 templates", () => {
+  it("has one entry per order-notification status, otp, back-in-stock, and the stage 4 batch 1 + 2 templates", () => {
     expect(Object.keys(MSG91_WHATSAPP_TEMPLATES).sort()).toEqual(
       [
         "backInStock",
@@ -74,13 +79,29 @@ describe("MSG91_WHATSAPP_TEMPLATES", () => {
         "orderCancelled",
         "orderConfirmed",
         "orderDelivered",
+        "orderNote",
         "orderShipped",
         "otp",
         "referralReward",
+        "referralShare",
         "reviewReminder",
         "rlsAlert",
         "stockDriftAlert",
       ].sort()
     );
+  });
+});
+
+describe("hasMsg91OrderStatusTemplate", () => {
+  it("is true for shipped, delivered, and cancelled", () => {
+    expect(hasMsg91OrderStatusTemplate("shipped")).toBe(true);
+    expect(hasMsg91OrderStatusTemplate("delivered")).toBe(true);
+    expect(hasMsg91OrderStatusTemplate("cancelled")).toBe(true);
+  });
+
+  it("is false for processing (and any other/unknown status)", () => {
+    expect(hasMsg91OrderStatusTemplate("processing")).toBe(false);
+    expect(hasMsg91OrderStatusTemplate("test")).toBe(false);
+    expect(hasMsg91OrderStatusTemplate("")).toBe(false);
   });
 });

@@ -32,9 +32,16 @@ import {
   buildStatusEmailHtml,
   statusEmailSubject,
   cleanNotifyComment,
+  invoiceUrl,
   SITE_URL,
   CONTACT_INBOX,
 } from "@/app/utils/orderNotifications";
+import {
+  activeWhatsappProvider,
+  hasMsg91OrderStatusTemplate,
+  sendOrderStatusWhatsapp,
+  type OrderStatusMsg91Input,
+} from "@/app/utils/msg91Whatsapp";
 
 type ChannelResult = "sent" | "skipped" | "failed";
 
@@ -124,29 +131,57 @@ export async function POST(req: Request) {
       referralDiscountPercent: referralCoupon?.discountPercent,
     };
     // Same wording to every channel below (customer, extra numbers, supplier
-    // copies) -- one build, not three.
+    // copies) -- one build, not three. Used for the Green API path and for
+    // the email HTML regardless of provider; the MSG91 path builds its own
+    // sequence of template sends instead (see msg91Input below).
     const messageText = buildStatusWhatsappMessage(input);
+
+    // "processing" (the rare manual re-notify for a still-processing order,
+    // distinct from the automatic order_confirmed send at order-creation
+    // time) has no approved MSG91 template -- falls back to Green API for
+    // that status even when WHATSAPP_PROVIDER=msg91.
+    const useMsg91 = activeWhatsappProvider() === "msg91" && hasMsg91OrderStatusTemplate(status);
+    const msg91Input: OrderStatusMsg91Input | null = useMsg91
+      ? {
+          status,
+          orderId,
+          courierName,
+          awbNumber,
+          invoiceUrl: invoiceUrl(orderId),
+          reviewUrl,
+          comment: cleanComment || undefined,
+          referralCode: referralCoupon?.code,
+          referralDiscountPercent: referralCoupon?.discountPercent,
+        }
+      : null;
 
     let whatsapp: ChannelResult = "skipped";
     let email: ChannelResult = "skipped";
 
     // --- WhatsApp (best-effort) ---
     try {
-      const greenApiUrl = process.env.GREEN_API_URL;
-      const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
-      const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
-      if (greenApiUrl && greenApiIdInstance && greenApiTokenInstance && customerPhone) {
-        const chatId = `${normalizeIndianPhone(String(customerPhone))}@c.us`;
-        const res = await fetch(
-          `${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chatId, message: messageText }),
+      if (customerPhone) {
+        if (msg91Input) {
+          await sendOrderStatusWhatsapp(normalizeIndianPhone(String(customerPhone)), msg91Input);
+          whatsapp = "sent";
+        } else {
+          const greenApiUrl = process.env.GREEN_API_URL;
+          const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
+          const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
+          if (greenApiUrl && greenApiIdInstance && greenApiTokenInstance) {
+            const chatId = `${normalizeIndianPhone(String(customerPhone))}@c.us`;
+            const res = await fetch(
+              `${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chatId, message: messageText }),
+              }
+            );
+            whatsapp = res.ok ? "sent" : "failed";
+            if (!res.ok) console.error("Notify WhatsApp failed:", await res.text());
           }
-        );
-        whatsapp = res.ok ? "sent" : "failed";
-        if (!res.ok) console.error("Notify WhatsApp failed:", await res.text());
+        }
       }
     } catch (waError) {
       whatsapp = "failed";
@@ -161,24 +196,31 @@ export async function POST(req: Request) {
     const extraResults: { number: string; result: ChannelResult }[] = [];
     if (extraNumbers.length > 0) {
       try {
-        const greenApiUrl = process.env.GREEN_API_URL;
-        const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
-        const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
-        if (greenApiUrl && greenApiIdInstance && greenApiTokenInstance) {
-          const settled = await Promise.allSettled(
-            extraNumbers.map((n) =>
-              fetch(`${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chatId: `${n}@c.us`, message: messageText }),
-              })
-            )
-          );
+        if (msg91Input) {
+          const settled = await Promise.allSettled(extraNumbers.map((n) => sendOrderStatusWhatsapp(n, msg91Input)));
           settled.forEach((r, i) =>
-            extraResults.push({ number: extraNumbers[i], result: r.status === "fulfilled" && r.value.ok ? "sent" : "failed" })
+            extraResults.push({ number: extraNumbers[i], result: r.status === "fulfilled" ? "sent" : "failed" })
           );
         } else {
-          extraNumbers.forEach((n) => extraResults.push({ number: n, result: "skipped" }));
+          const greenApiUrl = process.env.GREEN_API_URL;
+          const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
+          const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
+          if (greenApiUrl && greenApiIdInstance && greenApiTokenInstance) {
+            const settled = await Promise.allSettled(
+              extraNumbers.map((n) =>
+                fetch(`${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ chatId: `${n}@c.us`, message: messageText }),
+                })
+              )
+            );
+            settled.forEach((r, i) =>
+              extraResults.push({ number: extraNumbers[i], result: r.status === "fulfilled" && r.value.ok ? "sent" : "failed" })
+            );
+          } else {
+            extraNumbers.forEach((n) => extraResults.push({ number: n, result: "skipped" }));
+          }
         }
       } catch (extraError) {
         console.error("Notify extra numbers error:", extraError);
@@ -213,13 +255,13 @@ export async function POST(req: Request) {
     // this order (migration 0046), re-checked against the live list.
     let suppliersNotified = 0;
     try {
-      const greenApiUrl = process.env.GREEN_API_URL;
-      const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
-      const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
       const pids = asOrderItems(order.items)
         .map((i) => Number(i.id))
         .filter((n) => Number.isFinite(n) && n > 0);
-      if (greenApiUrl && greenApiIdInstance && greenApiTokenInstance && pids.length > 0) {
+      const greenApiUrl = process.env.GREEN_API_URL;
+      const greenApiIdInstance = process.env.GREEN_API_ID_INSTANCE;
+      const greenApiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
+      if (pids.length > 0 && (msg91Input || (greenApiUrl && greenApiIdInstance && greenApiTokenInstance))) {
         const businessNumber = process.env.BUSINESS_WHATSAPP_NUMBER || "916302672351";
         const [{ data: prodRows }, { data: liveRows }] = await Promise.all([
           supabase.from("products").select("supplier_numbers").in("id", pids),
@@ -231,16 +273,23 @@ export async function POST(req: Request) {
           liveNumbers,
           businessNumber
         );
-        const results = await Promise.allSettled(
-          targets.map((n) =>
-            fetch(`${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chatId: `${normalizeIndianPhone(n)}@c.us`, message: messageText }),
-            })
-          )
-        );
-        suppliersNotified = results.filter((r) => r.status === "fulfilled" && r.value.ok).length;
+        if (msg91Input) {
+          const results = await Promise.allSettled(
+            targets.map((n) => sendOrderStatusWhatsapp(normalizeIndianPhone(n), msg91Input))
+          );
+          suppliersNotified = results.filter((r) => r.status === "fulfilled").length;
+        } else {
+          const results = await Promise.allSettled(
+            targets.map((n) =>
+              fetch(`${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiTokenInstance}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chatId: `${normalizeIndianPhone(n)}@c.us`, message: messageText }),
+              })
+            )
+          );
+          suppliersNotified = results.filter((r) => r.status === "fulfilled" && r.value.ok).length;
+        }
       }
     } catch (supplierError) {
       console.error("Notify supplier copies error:", supplierError);

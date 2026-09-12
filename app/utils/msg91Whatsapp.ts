@@ -85,6 +85,14 @@ export const MSG91_WHATSAPP_TEMPLATES = {
   leadCatalogueDownload: "lead_catalogue_download",
   referralReward: "referral_reward",
   enquiryAlert: "enquiry_alert",
+  // Stage 4 batch 2 (order status). orderConfirmed/Shipped/Delivered/Cancelled
+  // above were approved in the original batch but never wired to any call
+  // site until now -- see sendOrderConfirmedWhatsapp / sendOrderStatusWhatsapp
+  // below. orderNote and referralShare are sent as their own follow-up
+  // message rather than embedded in the status template, since WhatsApp
+  // templates can't do the variable-conditional blocks free text can.
+  orderNote: "order_note",
+  referralShare: "referral_share",
 } as const;
 
 export type Msg91TemplateName = (typeof MSG91_WHATSAPP_TEMPLATES)[keyof typeof MSG91_WHATSAPP_TEMPLATES];
@@ -471,4 +479,117 @@ export async function sendEnquiryAlertWhatsapp(
     return;
   }
   await sendWhatsappMessage(phone, buildEnquiryNotifyMessage({ productName, price, outOfStock, productUrl }));
+}
+
+// ============================================================================
+// Stage 4 batch 2 -- order status (the automatic post-payment confirmation,
+// and the admin's manual shipped/delivered/cancelled "Notify customer"
+// action). Deferred from batch 1 because it's higher-stakes: it touches the
+// main order-confirmation flow, and the approved templates are a real
+// content change, not just a wiring change -- order_confirmed is a
+// shortened summary + invoice link, not today's Green API full itemized
+// invoice, and none of the 4 templates support the hero product photo
+// Green API attaches. Owner accepted this trade-off explicitly before this
+// batch was built.
+// ============================================================================
+
+// The automatic order-confirmation send from fulfilOrder.ts, CUSTOMER side
+// only -- the business alert (to BUSINESS_WHATSAPP_NUMBER) and supplier
+// copies stay on Green API unconditionally, since no template was approved
+// for that message (it's a full PII + item dump for internal use, a
+// different shape entirely from the customer-facing order_confirmed
+// template). `customerMessage` and `heroImage` are the exact values the
+// Green API path already sends -- unchanged there; the MSG91 path uses the
+// approved template's 4 variables instead and has no image.
+export async function sendOrderConfirmedWhatsapp(
+  phone: string,
+  customerMessage: string,
+  heroImage: string | undefined,
+  vars: { customerName: string; orderId: string; totalAmount: number; invoiceUrl: string }
+): Promise<void> {
+  if (activeWhatsappProvider() === "msg91") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.orderConfirmed,
+      variables: [vars.customerName, vars.orderId, vars.totalAmount.toLocaleString("en-IN"), vars.invoiceUrl],
+    });
+    return;
+  }
+  await sendWhatsappMessage(phone, customerMessage, heroImage);
+}
+
+// "processing" has no approved template of its own -- it's the admin's rare
+// manual re-notify for a still-processing order (distinct from
+// sendOrderConfirmedWhatsapp's automatic send at order-creation time), and
+// building one would mean re-deriving the order total this route doesn't
+// currently compute. Callers should check this before calling
+// sendOrderStatusWhatsapp and fall back to Green API for "processing"
+// even when WHATSAPP_PROVIDER=msg91.
+export function hasMsg91OrderStatusTemplate(status: string): status is "shipped" | "delivered" | "cancelled" {
+  return status === "shipped" || status === "delivered" || status === "cancelled";
+}
+
+export interface OrderStatusMsg91Input {
+  status: "shipped" | "delivered" | "cancelled";
+  orderId: string;
+  courierName?: string | null;
+  awbNumber?: string | null;
+  invoiceUrl: string;
+  reviewUrl?: string;
+  comment?: string;
+  referralCode?: string;
+  referralDiscountPercent?: number;
+}
+
+// Sends the approved status template, then any applicable follow-ups
+// (order_note for the admin's one-off comment, referral_share on a
+// delivered order with a referral code) as separate messages -- WhatsApp
+// templates can't embed a variable-conditional block the way
+// buildStatusWhatsappMessage's free text does, so what was one message with
+// optional paragraphs becomes up to three sequential template messages.
+// Sent in order (status, then note, then referral) so they read top-to-
+// bottom the way the single free-text message used to. Every recipient
+// (customer, admin's ad-hoc extra numbers, supplier copies) gets the same
+// sequence -- matching today's Green API behaviour, where all three get
+// identical text.
+export async function sendOrderStatusWhatsapp(phone: string, input: OrderStatusMsg91Input): Promise<void> {
+  if (input.status === "shipped") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.orderShipped,
+      variables: [input.orderId, input.courierName || "our courier partner", input.awbNumber || "to follow", input.invoiceUrl],
+    });
+  } else if (input.status === "delivered") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.orderDelivered,
+      // reviewUrl is normally always set for a delivered order (see the
+      // caller), but the template requires a value for every variable --
+      // fall back to the invoice link rather than send a broken slot on
+      // the rare order with no resolvable review product.
+      variables: [input.orderId, input.invoiceUrl, input.reviewUrl || input.invoiceUrl],
+    });
+  } else {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.orderCancelled,
+      variables: [input.orderId],
+    });
+  }
+
+  if (input.comment) {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.orderNote,
+      variables: [input.orderId, input.comment],
+    });
+  }
+
+  if (input.status === "delivered" && input.referralCode && input.referralDiscountPercent) {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.referralShare,
+      variables: [String(input.referralDiscountPercent), input.referralCode],
+    });
+  }
 }
