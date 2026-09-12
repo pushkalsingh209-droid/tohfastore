@@ -85,10 +85,10 @@ export type Database = {
       }
       categories: {
         Row: {
+          cod_disabled: boolean
           created_at: string
           default_page_size: number | null
           discount_percent: number | null
-          cod_disabled: boolean
           gst_rate: number
           id: number
           name: string
@@ -96,10 +96,10 @@ export type Database = {
           whatsapp_number: string | null
         }
         Insert: {
+          cod_disabled?: boolean
           created_at?: string
           default_page_size?: number | null
           discount_percent?: number | null
-          cod_disabled?: boolean
           gst_rate?: number
           id?: never
           name: string
@@ -107,10 +107,10 @@ export type Database = {
           whatsapp_number?: string | null
         }
         Update: {
+          cod_disabled?: boolean
           created_at?: string
           default_page_size?: number | null
           discount_percent?: number | null
-          cod_disabled?: boolean
           gst_rate?: number
           id?: never
           name?: string
@@ -181,6 +181,88 @@ export type Database = {
           used_count?: number
         }
         Relationships: []
+      }
+      gift_campaign_claims: {
+        Row: {
+          campaign_id: number
+          checkout_token: string
+          created_at: string
+          expires_at: string
+          id: number
+          status: string
+        }
+        Insert: {
+          campaign_id: number
+          checkout_token: string
+          created_at?: string
+          expires_at: string
+          id?: number
+          status?: string
+        }
+        Update: {
+          campaign_id?: number
+          checkout_token?: string
+          created_at?: string
+          expires_at?: string
+          id?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_campaign_claims_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "gift_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_campaigns: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          ends_at: string
+          gift_product_id: number
+          id: number
+          max_redemptions: number
+          min_amount: number
+          redeemed_count: number
+          starts_at: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          ends_at: string
+          gift_product_id: number
+          id?: number
+          max_redemptions: number
+          min_amount: number
+          redeemed_count?: number
+          starts_at?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          ends_at?: string
+          gift_product_id?: number
+          id?: number
+          max_redemptions?: number
+          min_amount?: number
+          redeemed_count?: number
+          starts_at?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_campaigns_gift_product_id_fkey"
+            columns: ["gift_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       labels: {
         Row: {
@@ -264,7 +346,15 @@ export type Database = {
           status?: string
           whatsapp?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "order_notification_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_notification_numbers: {
         Row: {
@@ -341,6 +431,45 @@ export type Database = {
         }
         Relationships: []
       }
+      orders_cancelled_archive: {
+        Row: {
+          amount: number | null
+          awb_number: string | null
+          created_at: string
+          customer_details: Json | null
+          id: number
+          items: Json | null
+          order_id: string | null
+          payment_id: string | null
+          shipping_address: Json | null
+          status: string
+        }
+        Insert: {
+          amount?: number | null
+          awb_number?: string | null
+          created_at?: string
+          customer_details?: Json | null
+          id?: number
+          items?: Json | null
+          order_id?: string | null
+          payment_id?: string | null
+          shipping_address?: Json | null
+          status?: string
+        }
+        Update: {
+          amount?: number | null
+          awb_number?: string | null
+          created_at?: string
+          customer_details?: Json | null
+          id?: number
+          items?: Json | null
+          order_id?: string | null
+          payment_id?: string | null
+          shipping_address?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
       product_colors: {
         Row: {
           created_at: string
@@ -395,6 +524,68 @@ export type Database = {
         }
         Relationships: []
       }
+      product_ugc: {
+        Row: {
+          approved: boolean | null
+          caption: string | null
+          content_type: string
+          content_url: string | null
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string
+          featured: boolean | null
+          id: number
+          moderated_at: string | null
+          moderation_notes: string | null
+          product_id: number
+          used_at: string | null
+          used_in_marketing: boolean | null
+        }
+        Insert: {
+          approved?: boolean | null
+          caption?: string | null
+          content_type: string
+          content_url?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name: string
+          customer_phone: string
+          featured?: boolean | null
+          id?: never
+          moderated_at?: string | null
+          moderation_notes?: string | null
+          product_id: number
+          used_at?: string | null
+          used_in_marketing?: boolean | null
+        }
+        Update: {
+          approved?: boolean | null
+          caption?: string | null
+          content_type?: string
+          content_url?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string
+          featured?: boolean | null
+          id?: never
+          moderated_at?: string | null
+          moderation_notes?: string | null
+          product_id?: number
+          used_at?: string | null
+          used_in_marketing?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_ugc_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_views: {
         Row: {
           id: number
@@ -426,9 +617,9 @@ export type Database = {
           cost_price_per_kg: number | null
           created_at: string
           depth_cm: number | null
-          enquire_only: boolean
           description: string | null
           display_order: number | null
+          enquire_only: boolean
           enquiry_notify_numbers: string[] | null
           height_cm: number | null
           hidden: boolean
@@ -458,9 +649,9 @@ export type Database = {
           cost_price_per_kg?: number | null
           created_at?: string
           depth_cm?: number | null
-          enquire_only?: boolean
           description?: string | null
           display_order?: number | null
+          enquire_only?: boolean
           enquiry_notify_numbers?: string[] | null
           height_cm?: number | null
           hidden?: boolean
@@ -490,9 +681,9 @@ export type Database = {
           cost_price_per_kg?: number | null
           created_at?: string
           depth_cm?: number | null
-          enquire_only?: boolean
           description?: string | null
           display_order?: number | null
+          enquire_only?: boolean
           enquiry_notify_numbers?: string[] | null
           height_cm?: number | null
           hidden?: boolean
@@ -536,6 +727,32 @@ export type Database = {
         }
         Relationships: []
       }
+      review_reminders_sent: {
+        Row: {
+          id: number
+          order_id: number
+          sent_at: string
+        }
+        Insert: {
+          id?: never
+          order_id: number
+          sent_at?: string
+        }
+        Update: {
+          id?: never
+          order_id?: number
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_reminders_sent_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           approved: boolean
@@ -574,32 +791,6 @@ export type Database = {
           },
         ]
       }
-      review_reminders_sent: {
-        Row: {
-          id: number
-          order_id: number
-          sent_at: string
-        }
-        Insert: {
-          id?: never
-          order_id: number
-          sent_at?: string
-        }
-        Update: {
-          id?: never
-          order_id?: number
-          sent_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "review_reminders_sent_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: true
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       site_settings: {
         Row: {
           key: string
@@ -617,21 +808,27 @@ export type Database = {
       }
       stock_alert_subscriptions: {
         Row: {
+          channels: string[] | null
           created_at: string
+          email: string | null
           id: number
           notified_at: string | null
           phone: string
           product_id: number
         }
         Insert: {
+          channels?: string[] | null
           created_at?: string
+          email?: string | null
           id?: never
           notified_at?: string | null
           phone: string
           product_id: number
         }
         Update: {
+          channels?: string[] | null
           created_at?: string
+          email?: string | null
           id?: never
           notified_at?: string | null
           phone?: string
@@ -785,6 +982,18 @@ export type Database = {
         Args: { p_items: Json; p_sign: number }
         Returns: undefined
       }
+      claim_gift_campaign_slot: {
+        Args: { p_campaign_id: number; p_token: string; p_ttl_seconds: number }
+        Returns: {
+          ok: boolean
+        }[]
+      }
+      consume_gift_campaign_claim: {
+        Args: { p_token: string }
+        Returns: {
+          ok: boolean
+        }[]
+      }
       consume_reservation: {
         Args: { p_token: string }
         Returns: {
@@ -827,12 +1036,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -856,11 +1065,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -881,11 +1090,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -906,11 +1115,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -923,11 +1132,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
