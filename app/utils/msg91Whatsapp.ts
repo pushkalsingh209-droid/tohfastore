@@ -7,12 +7,20 @@
 // Stage 3: wire OTP last, only after live sends succeed on stage 2.
 // Stage 4: retire Green API once MSG91 runs clean across all message types.
 //
-// IMPORTANT -- verify before going live: the request shape below follows MSG91's
-// documented v5 WhatsApp template-send pattern as of this writing. MSG91 has
-// changed field names across API versions before. Confirm against
-// https://docs.msg91.com (WhatsApp section) with one real test send before
-// setting WHATSAPP_PROVIDER=msg91 anywhere that matters -- do not trust this
-// blind just because it type-checks.
+// CORRECTED 2026-09-12 (twice): the original endpoint below returned 404
+// "WhatsApp not integrated" against a real number. That was chased down a dead
+// end first (a per-template "Campaign" API requiring a dashboard-created
+// Campaign per template) which turned out to be the wrong tool entirely --
+// the owner's manual "Send WhatsApp" from MSG91's dashboard worked without any
+// Campaign, which didn't add up for an API that supposedly required one.
+// The request BODY shape here was already correct all along -- only the URL
+// was wrong. Confirmed directly against MSG91's live docs page
+// (docs.msg91.com/whatsapp/template-bulk, "Send WhatsApp Template"):
+// `POST https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/`
+// -- host is `control.msg91.com` (not `api.msg91.com`, which a since-discarded
+// secondary source wrongly suggested), path needs the trailing `/bulk/`, and
+// headers are `accept: application/json` + `authkey` + `content-type`. No
+// Campaign object needed for any template.
 //
 // Unlike Green API's free-text sendWhatsappMessage, every send here references a
 // pre-approved Meta template by name with positional {{1}}, {{2}}... variables --
@@ -28,8 +36,8 @@
 // needed it during submission -- variable count and order are unchanged from what's
 // wired below, confirmed against the real approved preview text. back_in_stock got
 // reclassified Marketing (not Utility) by Meta during review -- doesn't affect this
-// file (only the template name matters to the API call), just the per-conversation
-// billing rate once sending real volume.
+// file (only the template/campaign name matters to the API call), just the
+// per-conversation billing rate once sending real volume.
 
 import { normalizeIndianPhone } from "@/app/utils/phone";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
@@ -100,15 +108,16 @@ export async function sendMsg91WhatsappTemplate({ to, templateName, variables }:
   if (!authKey || !integratedNumber) return;
 
   const body = buildMsg91TemplatePayload(integratedNumber, to, templateName, variables);
+  const recipient = body.payload.template.to_and_components[0].to[0];
 
-  const res = await fetch("https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/", {
+  const res = await fetch("https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/", {
     method: "POST",
-    headers: { "Content-Type": "application/json", authkey: authKey },
+    headers: { "Content-Type": "application/json", accept: "application/json", authkey: authKey },
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    throw new Error(`MSG91 WhatsApp send failed: ${body.payload.template.to_and_components[0].to[0]} ${templateName} ${res.status} ${await res.text()}`);
+    throw new Error(`MSG91 WhatsApp send failed: ${recipient} ${templateName} ${res.status} ${await res.text()}`);
   }
 }
 
