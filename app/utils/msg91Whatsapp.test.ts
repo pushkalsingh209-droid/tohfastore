@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildMsg91TemplatePayload, MSG91_WHATSAPP_TEMPLATES } from "./msg91Whatsapp";
+import { buildMsg91TemplatePayload, buildMsg91OtpPayload, MSG91_WHATSAPP_TEMPLATES } from "./msg91Whatsapp";
 
 describe("buildMsg91TemplatePayload", () => {
   it("normalizes the recipient phone to 91XXXXXXXXXX", () => {
@@ -32,6 +32,32 @@ describe("buildMsg91TemplatePayload", () => {
   it("produces an empty components object for a template with no variables", () => {
     const body = buildMsg91TemplatePayload("919999999999", "919876543210", MSG91_WHATSAPP_TEMPLATES.orderCancelled, []);
     expect(body.payload.template.to_and_components[0].components).toEqual({});
+  });
+});
+
+// tohfa_otp needs its own shape (namespace + a button_1 component) that the
+// generic builder above can't produce -- discovered 2026-09-12 when a live
+// send got a 200 OK from MSG91 but the WhatsApp never arrived. See
+// buildMsg91OtpPayload's own comment for the full story.
+describe("buildMsg91OtpPayload", () => {
+  it("normalizes the recipient phone to 91XXXXXXXXXX", () => {
+    const body = buildMsg91OtpPayload("919999999999", "9876543210", "123456");
+    expect(body.payload.template.to_and_components[0].to).toEqual(["919876543210"]);
+  });
+
+  it("carries the template name, namespace, and integrated number", () => {
+    const body = buildMsg91OtpPayload("919999999999", "919876543210", "123456");
+    expect(body.integrated_number).toBe("919999999999");
+    expect(body.payload.template.name).toBe(MSG91_WHATSAPP_TEMPLATES.otp);
+    expect(body.payload.template.namespace).toBe("b9b40f4e_b8a6_493c_b1e4_1d6aa240f1e8");
+  });
+
+  it("puts the code in both body_1 and button_1, matching MSG91's own per-template sample", () => {
+    const body = buildMsg91OtpPayload("919999999999", "919876543210", "654321");
+    expect(body.payload.template.to_and_components[0].components).toEqual({
+      body_1: { type: "text", value: "654321" },
+      button_1: { subtype: "url", type: "text", value: "654321" },
+    });
   });
 });
 

@@ -1644,7 +1644,7 @@ paths produce an identical row because both re-read from Razorpay&rsquo;s own AP
 <tr><td><code>ADMIN_PASSWORD</code></td><td>server</td><td>Admin password (constant-time compare). Missing &rarr; login 500 (fails closed, no default).</td></tr>
 <tr><td><code>ADMIN_TOTP_SECRET</code></td><td>server</td><td>Base32 TOTP secret (RFC 6238, SHA1, 6 digits, 30s, &plusmn;1 step drift). Static &mdash; the QR tool just re-renders it.</td></tr>
 <tr><td><code>GREEN_API_URL</code>, <code>GREEN_API_ID_INSTANCE</code>, <code>GREEN_API_TOKEN_INSTANCE</code></td><td>server</td><td>Green API instance (unofficial WhatsApp Web automation). All three required or every WhatsApp feature silently no-ops (OTP send surfaces an explicit error instead). Primary WhatsApp channel today &mdash; see <code>WHATSAPP_PROVIDER</code> for the MSG91 migration in progress.</td></tr>
-<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. <code>MSG91_WHATSAPP_NUMBER</code> is the real production number, running in parallel with Green API. Wired behind <code>WHATSAPP_PROVIDER=msg91</code> for both back-in-stock notify (stage 2, <strong>confirmed working live 2026-09-12</strong>) and checkout OTP (stage 3, wired same day &mdash; <strong>not yet live-tested</strong>, watch 2&ndash;3 real checkouts before relying on it). See IMPROVEMENTS.md for the phased-cutover plan.</td></tr>
+<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server &mdash; <strong>Production scope only</strong>, not Preview</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. <code>MSG91_WHATSAPP_NUMBER</code> is the real production number, running in parallel with Green API. Wired behind <code>WHATSAPP_PROVIDER=msg91</code> for both back-in-stock notify (stage 2, <strong>confirmed working live 2026-09-12</strong>) and checkout OTP (stage 3 &mdash; first live attempt got a <code>200 OK</code> from MSG91 but silently failed to deliver, briefly breaking Production checkout OTP until the var was unset; root cause was two OTP-template-specific requirements the generic sender didn't know about, since fixed &mdash; <strong>not yet re-tested live</strong>). See IMPROVEMENTS.md for the phased-cutover plan and the incident writeup.</td></tr>
 <tr><td><code>WHATSAPP_PROVIDER</code></td><td>server</td><td>Optional. <code>"green-api"</code> (default, unset behaves the same) or <code>"msg91"</code>. Selects which provider a send uses once call sites are wired in stage 2/3 of the migration &mdash; currently read by <code>activeWhatsappProvider()</code> but not yet consulted by any live send path.</td></tr>
 <tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code>, <code>/api/cron/abandoned-checkout</code>, <code>/api/cron/product-sales-reconcile</code>, <code>/api/cron/rls-check</code>.</td></tr>
 <tr><td><code>RESEND_API_KEY</code></td><td>server</td><td>Missing &rarr; order-confirmation <em>and</em> shipped/delivered/status emails skipped silently; contact form returns 500.</td></tr>
@@ -3069,6 +3069,47 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-12<br>11:15</code></td>
+  <td><strong>MSG91 WhatsApp &mdash; fix OTP template's missing namespace + button (incident)</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item)</td>
+  <td>
+    <strong>Incident:</strong> the owner's first live test of stage 3 (row below) flipped
+    <code>WHATSAPP_PROVIDER=msg91</code> directly in Production. The send returned a
+    <code>200 OK</code> from MSG91 &mdash; no error surfaced anywhere &mdash; but the WhatsApp
+    never arrived, silently breaking real checkout OTP until the owner unset the var and
+    redeployed to restore Green API.
+    <br><br>
+    <strong>Root cause:</strong> <code>tohfa_otp</code> is a Meta <strong>Authentication</strong>-
+    category template with two requirements the generic template sender doesn't know about.
+    Found by pulling MSG91's own per-template &ldquo;Code&rdquo; sample (dashboard &rarr;
+    Templates &rarr; <code>tohfa_otp</code> &rarr; <code>&lt;/&gt;</code> Code &mdash; the same
+    technique that found the base endpoint earlier, this time applied per-template since the
+    base endpoint alone wasn't the whole story for every template): (1) a <code>namespace</code>
+    field tying the template to its WABA registration &mdash; omitted by the generic builder,
+    which didn't matter for <code>back_in_stock</code> (Marketing category, proven live) but does
+    here; (2) a <code>button_1</code> component for the template's own &ldquo;Copy code&rdquo;
+    button &mdash; a real part of the approved template; omitting it means MSG91 accepts the
+    request but WhatsApp drops the message rather than send it without a working button.
+    <br><br>
+    New <code>buildMsg91OtpPayload()</code> / <code>sendMsg91OtpTemplate()</code> in
+    <code>msg91Whatsapp.ts</code>, used only by <code>sendOtpWhatsapp</code> &mdash; the other 5
+    templates are unaffected (no button, no namespace needed) and still go through the generic
+    <code>sendMsg91WhatsappTemplate</code>. Host kept at <code>control.msg91.com</code> (proven by
+    stage 2's actual delivery, and by this very bug's own <code>200 OK</code> from that host) even
+    though MSG91's per-template sample showed <code>api.msg91.com</code> &mdash; unproven, and
+    looks like dashboard-codegen boilerplate rather than the real working domain.
+  </td>
+  <td><em>edited:</em> <code>app/utils/msg91Whatsapp.ts</code>, <code>app/utils/msg91Whatsapp.test.ts</code>,
+  <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> (both changed files) 0 errors &middot;
+  <code>npm test</code> 345/346 (1 pre-existing skip, unchanged; 3 new tests on the pure payload
+  builder) &middot; <code>next build</code> exit 0. <strong>Not yet live-tested with the fix</strong>
+  &mdash; <code>WHATSAPP_PROVIDER</code> is unset (Green API) in Production after the incident
+  rollback. <code>MSG91_AUTH_KEY</code>/<code>MSG91_WHATSAPP_NUMBER</code> are Production-scoped
+  only in Vercel, so a Preview-deployment test would need those added to Preview first. If testing
+  directly in Production again: flip the var, immediately attempt a real checkout, confirm the OTP
+  arrives, and unset it again at the first sign of trouble.</td>
+</tr>
 <tr>
   <td><code>2026-09-12<br>10:05</code></td>
   <td><strong>MSG91 WhatsApp &mdash; stage 2 confirmed live + stage 3 (OTP) wired</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item; one PR combining a status update with the next stage, at the owner's request to keep deployments fewer)</td>

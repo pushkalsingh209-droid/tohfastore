@@ -2142,15 +2142,45 @@ care, land behind tests, never "blind".
        clear "try again" error instead of a silent no-op reporting false success) is
        now provider-aware via `isActiveWhatsappProviderConfigured()`.
      - **Highest-scrutiny swap since it gates checkout** — a failed OTP send doesn't just
-       miss a notification, it blocks a sale. Ships behind the same `WHATSAPP_PROVIDER`
-       flag as stage 2 for an instant fallback to Green API. **Not yet live-tested** —
-       `tsc`/lint/`npm test`/`next build` all clean, but no real checkout has gone through
-       MSG91 for OTP yet. **Owner: only flip `WHATSAPP_PROVIDER=msg91` for OTP after
-       watching 2–3 real checkout attempts complete cleanly** (code arrives, verifies,
-       order completes) — per the CLAUDE.md payment-path guardrail, this is treated as a
-       proposal until proven, not done just because it built and unit-tested clean.
-     - **Next:** the live OTP test above; once clean, Stage 4 (retire Green API entirely)
-       becomes viable.
+       miss a notification, it blocks a sale.
+     - **⚠️ Incident 2026-09-12: first live test broke Production checkout OTP.** Owner
+       flipped `WHATSAPP_PROVIDER=msg91` in Production (not a preview/staging environment)
+       to test stage 3. The send returned `200 OK` from MSG91 — no error anywhere in the
+       app's own logs — but the WhatsApp never arrived, silently blocking real checkout for
+       real customers until the owner unset the var and redeployed to restore Green API.
+       **Lesson for next time: a new WHATSAPP_PROVIDER flip on a payment-path send should
+       be tested from a Preview deployment or a narrow canary, never flipped directly on
+       Production first** — this file's own guardrail ("watched against 2–3 real orders
+       before being called done") assumes a failure surfaces as an error, which this one
+       didn't.
+     - **Root cause + fix.** `tohfa_otp` is a Meta **Authentication**-category template
+       with two requirements the generic template builder doesn't know about, found by
+       pulling MSG91's own per-template "Code" sample (dashboard → Templates → `tohfa_otp`
+       → `</>` Code — same technique that found the base endpoint, applied per-template
+       this time): (1) a `namespace` field tying the template to its specific WABA
+       registration — omitted entirely by the generic builder, which apparently didn't
+       matter for `back_in_stock` (Marketing category, proven live) but does here; (2) a
+       `button_1` component for the template's own "Copy code" button — a real part of the
+       approved template, not decoration; omitting it means MSG91 accepts the request but
+       WhatsApp drops the message rather than sending it without a working button. New
+       `buildMsg91OtpPayload()` / `sendMsg91OtpTemplate()` in `msg91Whatsapp.ts`, used only
+       by `sendOtpWhatsapp` — the other 5 templates are unaffected (no button, no namespace
+       needed) and still go through the generic `sendMsg91WhatsappTemplate`. Host kept at
+       `control.msg91.com` (proven — Stage 2's actual delivery, plus this bug's own `200 OK`
+       from that host) even though MSG91's per-template sample showed `api.msg91.com`,
+       which is unproven and looks like dashboard-codegen boilerplate rather than the real
+       working domain. **3 new unit tests** on the pure payload builder.
+     - **Not yet live-tested with the fix** — `tsc`/lint/`npm test`/`next build` all clean.
+       `WHATSAPP_PROVIDER` is currently unset (Green API) in Production after the incident
+       rollback. **Owner: test this fix from a Preview deployment first if possible** — note
+       `MSG91_AUTH_KEY` / `MSG91_WHATSAPP_NUMBER` are currently scoped to Production only in
+       Vercel, so they'd need adding to Preview too before a Preview test could reach MSG91
+       at all; **if testing directly in Production instead, flip `WHATSAPP_PROVIDER=msg91`,
+       immediately attempt a real checkout yourself, and confirm the OTP actually arrives
+       before any real customer could hit it** — unset the var again at the first sign of
+       trouble.
+     - **Next:** the live OTP test above, watched 2–3 times clean; once confirmed, Stage 4
+       (retire Green API entirely) becomes viable.
 
 13. **💰 Blog / Content Hub** — *foundation exists.* Already have:
     - `/guides` index + 4 gift guides (Diwali, housewarming, wedding, puja room)
