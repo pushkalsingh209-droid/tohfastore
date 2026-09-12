@@ -2292,10 +2292,12 @@ care, land behind tests, never "blind".
     medium (prospecting + outreach). **Cost:** ~₹2–5k per influencer.
     **Timeline:** 2–4 weeks per batch. *Recommended after organic reach plateaus.*
 
-14a. **⚠️ Gift With Purchase campaigns** — *in progress, PR 3 of 4 (checkout wiring)
-     ready — the highest-scrutiny batch, end-to-end tested against a real dev login +
-     real Supabase (order creation only, no real payment — see below). PRs 1-2 merged
-     and confirmed live.* First promo: the first 10 prepaid orders with a
+14a. **⚠️ Gift With Purchase campaigns** — *all 4 PRs complete. PRs 1-3 merged and
+     confirmed live (PR 3, checkout wiring, verified as thoroughly as possible without
+     spending real money — see below; the owner has not yet run a real qualifying
+     order). PR 4 (customer-facing banner + Review-step notice) built and verified
+     (`tsc`/tests/lint/build all clean) in this batch, not yet merged.* First promo:
+     the first 10 prepaid orders with a
      final payable amount of
      ₹2000+ get a free Ganesha 3-inch polyresin idol (normally ₹250), running now
      through New Year. Owner wants reusable admin tooling to run similar campaigns
@@ -2435,9 +2437,38 @@ care, land behind tests, never "blind".
        line and correct stock deduction, check a second order once slots run out
        proceeds normally with no gift and no error, and abandon one checkout partway
        to confirm the slot releases immediately rather than waiting the 15-minute TTL.
-     - **Next:** PR 4 (public banner + checkout Review-step notice) — sequenced last so
-       it can honestly reflect what this batch actually does via the new `giftApplied`
-       field, rather than promising something before it's proven.
+     - **PR 4 (this batch): customer-facing banner + Review-step notice.** New public
+       `GET /api/gift-campaign` (`app/api/gift-campaign/route.ts`) — mirrors
+       `/api/offer`'s CDN cache headers (`max-age=60, s-maxage=300`) and uses the exact
+       same "soonest-ending wins" deterministic lookup query as `/api/razorpay`, so the
+       two can never disagree about which campaign is "the" active one. Returns
+       `{active:false}` or `{active:true, campaign:{title, giftProductName, minAmount,
+       endsAt, slotsLeft}}` — `slotsLeft` only populated once ≤5 remain (same
+       "don't show urgency when there's plenty" reasoning as the public coupon banner).
+       New `useActiveGiftCampaign` hook (mirrors `useSpendTierOffer`) and
+       `GiftCampaignBanner` component (mirrors `SpendOfferBanner`: same
+       `.offer-ticker` marquee CSS, same sessionStorage-dismiss pattern, same
+       `daysLeft` countdown computed in a `useEffect` rather than during render), wired
+       into `layout.tsx` right after `SpendOfferBanner` in a distinct emerald gradient
+       so the two don't read as one banner if both are running at once (they can be —
+       Spend & Save still applies on top of a qualifying gift order). Review step
+       (`ReviewStep.tsx`) gets a new `giftCampaign` field on `ReviewBag`, populated in
+       `CheckoutSheet.tsx` via the same hook, and a notice comparing the
+       already-computed `finalTotal` (post-discount, matching the server's own
+       threshold check) against `giftCampaign.minAmount` — "add ₹X more" below
+       threshold, "you qualify" at/above it — hidden entirely for COD since the
+       campaign is prepaid-only. **This is a preview only, same contract as PR 3's
+       eligibility check**: the actual grant (or not, if the campaign sells out between
+       this preview and payment) is decided by `/api/razorpay` alone, whose
+       `giftApplied` response field is what the post-payment flow trusts.
+       Verified: `npx tsc --noEmit` clean, `npm test` (365 passed / 1 skipped, no
+       change), `npx eslint` on all changed/new files — 0 errors (2 pre-existing-pattern
+       `react-hooks/set-state-in-effect` warnings, identical to the ones already present
+       in `SpendOfferBanner.tsx`, the file this mirrors — not new debt), `npx next build`
+       clean (`/api/gift-campaign` registered). Not visually verified in a browser (no
+       browser automation available here) — the owner should click through both the
+       homepage banner and a qualifying/non-qualifying Review step once for real.
+     - **Feature complete pending merge + owner's own live order test.**
 
 ---
 

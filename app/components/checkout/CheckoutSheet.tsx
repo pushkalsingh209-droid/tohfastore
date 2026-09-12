@@ -25,6 +25,7 @@ import DeliveryStep, { type PincodeLookupStatus } from "@/app/components/checkou
 import ReviewStep from "@/app/components/checkout/steps/ReviewStep";
 import { useCheckoutMachine } from "@/app/components/checkout/useCheckoutMachine";
 import { useSpendTierOffer } from "@/app/components/checkout/useSpendTierOffer";
+import { useActiveGiftCampaign } from "@/app/components/checkout/useActiveGiftCampaign";
 import { tierDiscountFor, nextSpendTier } from "@/app/utils/spendTierOffer";
 import { trackMetaInitiateCheckout } from "@/app/utils/metaPixel";
 
@@ -109,6 +110,8 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
   const offerRunning = spendOffer !== null;
   const offerDiscount = spendOffer ? tierDiscountFor(spendOffer.tiers, cartTotal) : 0;
   const offerNextTier = spendOffer ? nextSpendTier(spendOffer.tiers, cartTotal) : null;
+  // Same "preview only" contract as spendOffer above -- see ReviewBag.giftCampaign.
+  const giftCampaign = useActiveGiftCampaign(true);
   const [discountChoice, setDiscountChoice] = useState<"offer" | "coupon">("offer");
   // Payment method (0057). Defaults to prepaid: it is both the cheaper
   // option for the shopper and the one that actually collects money.
@@ -889,6 +892,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
               paymentMethod: isCodOrder ? "cod" : "prepaid",
               onChoosePrepaid: () => setPaymentMethod("prepaid"),
               onChooseCod: chooseCod,
+              giftCampaign,
               }}
             />
           )}

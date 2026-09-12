@@ -11,6 +11,7 @@ import { calculateGstBreakdown, GST_RATE } from "@/app/utils/gst";
 import { calculateSlashedPrice } from "@/app/utils/pricing";
 import PriceDisplay from "@/app/components/PriceDisplay";
 import { useAvailableCoupons, couponUrgencyText, type AvailableCoupon } from "@/app/components/checkout/useAvailableCoupons";
+import type { ActiveGiftCampaign } from "@/app/components/checkout/useActiveGiftCampaign";
 import type { CartItem } from "@/app/types/product";
 
 export interface ReviewBag {
@@ -66,6 +67,13 @@ export interface ReviewBag {
   onChoosePrepaid: () => void;
   onChooseCod: () => void;
 
+  // Live "Gift With Purchase" campaign preview (#14a) -- null when none is
+  // running. Prepaid-only by owner decision, so this notice never shows
+  // while `paymentMethod === "cod"`. A PREVIEW only: the actual gift is
+  // granted (or not, if the campaign sells out in the meantime) by
+  // /api/razorpay at order creation, whose `giftApplied` response field is
+  // what the post-payment flow trusts -- never this.
+  giftCampaign: ActiveGiftCampaign | null;
 }
 
 export default function ReviewStep({ bag }: { bag: ReviewBag }) {
@@ -109,6 +117,13 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
   // The whole strip hides once a coupon is applied (the applied-state card
   // replaces the input + list).
   const suggestions = b.appliedCoupon ? [] : available;
+
+  // Gift campaign is prepaid-only (owner decision) and its threshold is
+  // checked against the same final payable amount /api/razorpay itself
+  // re-checks server-side -- this is a client-side preview of that same
+  // comparison, not a separate rule.
+  const giftGap = b.giftCampaign && !isCod ? Math.max(0, b.giftCampaign.minAmount - finalTotal) : 0;
+  const giftQualifies = b.giftCampaign != null && !isCod && giftGap === 0;
 
   return (
     <div className="space-y-4">
@@ -182,6 +197,28 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           </div>
         </div>
       </details>
+
+      {/* --- Gift With Purchase notice (#14a) -- preview only, see the
+          ReviewBag.giftCampaign doc comment. Hidden entirely for COD since
+          the campaign is prepaid-only. */}
+      {b.giftCampaign && !isCod && (
+        <div
+          className={`rounded-lg border px-3 py-2.5 text-xs ${
+            giftQualifies ? "border-success-border bg-success-soft text-success" : "border-border bg-surface-2 text-muted"
+          }`}
+        >
+          {giftQualifies ? (
+            <span className="font-bold">
+              &#127873; You qualify for a FREE {b.giftCampaign.giftProductName}!
+            </span>
+          ) : (
+            <span>
+              Add <span className="font-mono font-bold text-fg">₹{giftGap.toLocaleString("en-IN")}</span> more to get a FREE{" "}
+              {b.giftCampaign.giftProductName}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* --- Discount: storewide offer vs coupon --- both exist, never
           stacked; while the offer is running the shopper picks which one
