@@ -24,7 +24,7 @@
 import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
-import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import { sendReviewReminderWhatsapp } from "@/app/utils/msg91Whatsapp";
 import { productHref } from "@/app/utils/slug";
 import { asCustomerDetails, asOrderItems } from "@/app/utils/orderTypes";
 
@@ -32,11 +32,6 @@ const SITE_URL = "https://tohfaonline.com";
 const MIN_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // don't resurrect very stale deliveries if this job hasn't run in a while
 const MAX_REMINDERS_PER_RUN = 50; // safety cap if the job hasn't run in a while
-
-function reminderMessage(name: string, orderId: string, reviewUrl: string): string {
-  const firstName = (name || "there").split(" ")[0];
-  return `Hi ${firstName}! It's been a week since your TOHFA order ${orderId} was delivered. We'd love to hear what you think -- leave a quick review here: ${reviewUrl}. Thank you for shopping with us!`;
-}
 
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -124,7 +119,8 @@ export async function GET(req: Request) {
         if (claimError) throw claimError;
 
         const reviewUrl = `${SITE_URL}${productHref({ id: firstItem.id, name: firstItem.name })}`;
-        await sendWhatsappMessage(cd.contact, reminderMessage(cd.name || "", order.order_id ?? "", reviewUrl));
+        const firstName = (cd.name || "there").split(" ")[0];
+        await sendReviewReminderWhatsapp(cd.contact, firstName, order.order_id ?? "", reviewUrl);
         reminded++;
       } catch (err) {
         failed++;

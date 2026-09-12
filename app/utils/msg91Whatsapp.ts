@@ -58,9 +58,17 @@
 
 import { normalizeIndianPhone } from "@/app/utils/phone";
 import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import { buildEnquiryNotifyMessage } from "@/app/utils/enquiryNotify";
 
 // Template names -- confirmed exact matches to what's approved in MSG91's Template
-// Manager (2026-09-12).
+// Manager. The first 6 (2026-09-12) cover OTP, order status, and back-in-stock;
+// the 9 below (also 2026-09-12, all approved) are Stage 4 batch 1 -- the
+// best-effort side-channel sends (alerts, leads, reminders, referral, enquiry).
+// Content for several was redesigned to fit a fixed-template shape -- see
+// IMPROVEMENTS.md Tier 3 WhatsApp item and the individual sender functions
+// below for what changed and why. order_note and referral_share (also
+// approved) are deferred to the order-status batch, since they're embedded in
+// or follow that flow rather than being standalone sends.
 export const MSG91_WHATSAPP_TEMPLATES = {
   otp: "tohfa_otp",
   orderConfirmed: "order_confirmed",
@@ -68,6 +76,15 @@ export const MSG91_WHATSAPP_TEMPLATES = {
   orderDelivered: "order_delivered",
   orderCancelled: "order_cancelled",
   backInStock: "back_in_stock",
+  rlsAlert: "rls_alert",
+  stockDriftAlert: "stock_drift_alert",
+  reviewReminder: "review_reminder",
+  checkoutNudge: "checkout_nudge",
+  leadProductEnquiry: "lead_product_enquiry",
+  leadCorporateGifting: "lead_corporate_gifting",
+  leadCatalogueDownload: "lead_catalogue_download",
+  referralReward: "referral_reward",
+  enquiryAlert: "enquiry_alert",
 } as const;
 
 export type Msg91TemplateName = (typeof MSG91_WHATSAPP_TEMPLATES)[keyof typeof MSG91_WHATSAPP_TEMPLATES];
@@ -253,4 +270,205 @@ export async function sendOtpWhatsapp(phone: string, code: string): Promise<void
     return;
   }
   await sendWhatsappMessage(phone, `Your TOHFA verification code is *${code}*. It expires in 5 minutes. Do not share this code with anyone.`);
+}
+
+// ============================================================================
+// Stage 4 batch 1 -- best-effort side-channel sends (alerts, leads,
+// reminders, referral, enquiry). Every function below follows the same
+// provider-dispatch shape as sendBackInStockWhatsapp: Green API's existing
+// exact wording by default, the approved MSG91 template only when
+// WHATSAPP_PROVIDER=msg91. Best-effort contract throughout -- every call
+// site already wraps its own send in try/catch, same as before this batch.
+// ============================================================================
+
+// rls_alert redesigns the Green API alert, which lists every violated
+// policy as its own bullet line (unbounded count) -- WhatsApp templates
+// can't render a variable-length list, only fixed positional variables. The
+// MSG91 path collapses to a count; the itemized detail is unchanged on the
+// Green API path and always available in Vercel/Supabase logs regardless of
+// which provider actually sent the alert.
+export async function sendRlsAlertWhatsapp(phone: string, violations: string[]): Promise<void> {
+  if (activeWhatsappProvider() === "msg91") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.rlsAlert,
+      variables: [String(violations.length)],
+    });
+    return;
+  }
+  await sendWhatsappMessage(
+    phone,
+    `⚠️ RLS PERIMETER ALERT -- the anon Supabase key can now do things it shouldn't:\n\n` +
+      violations.map((v) => `• ${v}`).join("\n") +
+      `\n\nCheck pg_policies in the Supabase SQL editor for a stray permissive policy.`
+  );
+}
+
+// stock_drift_alert has the same variable-length-list problem as rls_alert
+// (up to 10 itemized product lines plus a "...and N more"), so the MSG91
+// path collapses to just the count and the heal-suffix -- same detail
+// trade-off as above.
+export async function sendStockDriftAlertWhatsapp(
+  phone: string,
+  driftCount: number,
+  healed: number,
+  heal: boolean,
+  topLines: string,
+  moreLine: string
+): Promise<void> {
+  const healedSuffix = heal ? ` Auto-healed ${healed}.` : "";
+  if (activeWhatsappProvider() === "msg91") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.stockDriftAlert,
+      variables: [String(driftCount), healedSuffix],
+    });
+    return;
+  }
+  await sendWhatsappMessage(
+    phone,
+    `TOHFA: product_sales tally drift on ${driftCount} product(s).${healedSuffix}\n${topLines}${moreLine}\n\nRun /api/cron/product-sales-reconcile?heal=1 to correct, or fix by hand (see ARCHITECTURE.html #7).`
+  );
+}
+
+// review_reminder's current wording is already template-safe (fixed 3
+// variables, static text at both ends) -- no content change either path.
+export async function sendReviewReminderWhatsapp(phone: string, firstName: string, orderId: string, reviewUrl: string): Promise<void> {
+  if (activeWhatsappProvider() === "msg91") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.reviewReminder,
+      variables: [firstName, orderId, reviewUrl],
+    });
+    return;
+  }
+  await sendWhatsappMessage(
+    phone,
+    `Hi ${firstName}! It's been a week since your TOHFA order ${orderId} was delivered. We'd love to hear what you think -- leave a quick review here: ${reviewUrl}. Thank you for shopping with us!`
+  );
+}
+
+// checkout_nudge is reused for two call sites that already send identical
+// wording today: the automatic abandoned-checkout cron and the admin's
+// manual "checkout_started" lead resend.
+export async function sendCheckoutNudgeWhatsapp(phone: string, firstName: string): Promise<void> {
+  if (activeWhatsappProvider() === "msg91") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.checkoutNudge,
+      variables: [firstName],
+    });
+    return;
+  }
+  await sendWhatsappMessage(
+    phone,
+    `Hi ${firstName}! Noticed you were checking out on TOHFA but didn't quite finish -- your bag's still saved if you'd like to complete the order. Let us know here on WhatsApp if you have any questions or need a hand.`
+  );
+}
+
+// lead_product_enquiry consolidates Green API's two variants (with/without a
+// known product name) into one MSG91 template -- "this piece" fills {{1}}
+// when the name isn't known, instead of a separate zero-variable template.
+// The Green API path keeps both original variants unchanged.
+export async function sendLeadProductEnquiryWhatsapp(phone: string, productName?: string): Promise<void> {
+  if (activeWhatsappProvider() === "msg91") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.leadProductEnquiry,
+      variables: [productName || "this piece"],
+    });
+    return;
+  }
+  await sendWhatsappMessage(
+    phone,
+    productName
+      ? `Hi! You were looking at *${productName}* on TOHFA. Happy to answer anything about it -- size, weight, finish, delivery time. Just reply here.`
+      : `Hi! Thanks for your interest in TOHFA. Happy to answer anything about the piece you were looking at -- just reply here.`
+  );
+}
+
+// lead_corporate_gifting: Green API has two slightly different wordings
+// today depending on caller ("auto" = the lead-capture route's immediate
+// follow-up, "admin" = a manual resend from the Leads tab) -- both keep
+// their own existing text unchanged. MSG91 uses one consolidated approved
+// wording for both, since the difference was incidental, not deliberate.
+export async function sendLeadCorporateGiftingWhatsapp(phone: string, firstName: string, variant: "auto" | "admin"): Promise<void> {
+  if (activeWhatsappProvider() === "msg91") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.leadCorporateGifting,
+      variables: [firstName],
+    });
+    return;
+  }
+  await sendWhatsappMessage(
+    phone,
+    variant === "admin"
+      ? `Hi ${firstName}! Following up on your corporate/bulk gifting inquiry with TOHFA -- happy to help with options and pricing. Reply here on WhatsApp anytime.`
+      : `Hi ${firstName}! Thanks for reaching out to TOHFA about corporate/bulk gifting. We'll follow up shortly with options and pricing -- feel free to share more details here on WhatsApp anytime.`
+  );
+}
+
+// lead_catalogue_download: same "two Green API wordings, one consolidated
+// MSG91 template" pattern as lead_corporate_gifting above.
+export async function sendLeadCatalogueDownloadWhatsapp(phone: string, firstName: string, variant: "auto" | "admin"): Promise<void> {
+  if (activeWhatsappProvider() === "msg91") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.leadCatalogueDownload,
+      variables: [firstName],
+    });
+    return;
+  }
+  await sendWhatsappMessage(
+    phone,
+    variant === "admin"
+      ? `Hi ${firstName}! Following up on the TOHFA catalogue you downloaded -- if anything caught your eye, reply here on WhatsApp and we'll help you pick the perfect piece.`
+      : `Hi ${firstName}! Thanks for downloading the TOHFA catalogue. If anything catches your eye, reply here on WhatsApp and we'll help you pick the perfect piece.`
+  );
+}
+
+// referral_reward's approved MSG91 wording adds a closing "-- Thank you,
+// TOHFA!" bookend -- the original Green API text ends on the coupon code
+// itself, which WhatsApp templates don't allow (can't start or end on a
+// variable). Green API keeps the original ending unchanged.
+export async function sendReferralRewardWhatsapp(phone: string, discountPercent: number, code: string): Promise<void> {
+  if (activeWhatsappProvider() === "msg91") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.referralReward,
+      variables: [String(discountPercent), code],
+    });
+    return;
+  }
+  await sendWhatsappMessage(
+    phone,
+    `🎉 Great news! A friend just used your TOHFA referral code. As a thank-you, here's ${discountPercent}% off your next order: ${code}`
+  );
+}
+
+// enquiry_alert's approved MSG91 wording adds a closing "-- please respond
+// promptly" bookend (the original ends on the product URL, same
+// start/end-on-a-variable restriction as referral_reward) and always fills
+// a price slot ("price on request" when the product has none) instead of
+// Green API's optional price clause. Green API keeps its original shape
+// (optional clause, no closing line) unchanged.
+export async function sendEnquiryAlertWhatsapp(
+  phone: string,
+  productName: string,
+  price: number | null | undefined,
+  outOfStock: boolean,
+  productUrl: string
+): Promise<void> {
+  if (activeWhatsappProvider() === "msg91") {
+    const stockText = outOfStock ? "out of stock" : "in stock";
+    const priceText = typeof price === "number" && price > 0 ? `₹${price.toLocaleString("en-IN")}` : "price on request";
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.enquiryAlert,
+      variables: [productName, priceText, stockText, productUrl],
+    });
+    return;
+  }
+  await sendWhatsappMessage(phone, buildEnquiryNotifyMessage({ productName, price, outOfStock, productUrl }));
 }

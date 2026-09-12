@@ -6,17 +6,29 @@
 import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
-import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import {
+  sendLeadCorporateGiftingWhatsapp,
+  sendCheckoutNudgeWhatsapp,
+  sendLeadCatalogueDownloadWhatsapp,
+} from "@/app/utils/msg91Whatsapp";
 
-function followUpMessage(name: string, source: string): string {
+// Note: a manually-resent product_enquiry lead falls through to the
+// catalogue-download wording below, same as it always has -- this route
+// never had a product_enquiry-specific branch (only the automatic
+// lead-capture send in app/api/leads/route.ts does), and this batch
+// preserves that existing quirk rather than changing behavior beyond wiring
+// MSG91 in.
+async function sendFollowUp(phone: string, name: string, source: string): Promise<void> {
   const firstName = name.split(" ")[0];
   if (source === "corporate_gifting") {
-    return `Hi ${firstName}! Following up on your corporate/bulk gifting inquiry with TOHFA -- happy to help with options and pricing. Reply here on WhatsApp anytime.`;
+    await sendLeadCorporateGiftingWhatsapp(phone, firstName, "admin");
+    return;
   }
   if (source === "checkout_started") {
-    return `Hi ${firstName}! Noticed you were checking out on TOHFA but didn't quite finish -- your bag's still saved if you'd like to complete the order. Let us know here on WhatsApp if you have any questions or need a hand.`;
+    await sendCheckoutNudgeWhatsapp(phone, firstName);
+    return;
   }
-  return `Hi ${firstName}! Following up on the TOHFA catalogue you downloaded -- if anything caught your eye, reply here on WhatsApp and we'll help you pick the perfect piece.`;
+  await sendLeadCatalogueDownloadWhatsapp(phone, firstName, "admin");
 }
 
 export async function POST(req: Request) {
@@ -31,7 +43,7 @@ export async function POST(req: Request) {
 
     if (!markOnly) {
       if (!lead.phone) return NextResponse.json({ error: "This lead has no phone number on file." }, { status: 400 });
-      await sendWhatsappMessage(lead.phone, followUpMessage(lead.name, lead.source));
+      await sendFollowUp(lead.phone, lead.name, lead.source);
     }
 
     const { data: updated, error: updateError } = await supabase

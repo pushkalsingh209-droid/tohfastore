@@ -1644,7 +1644,7 @@ paths produce an identical row because both re-read from Razorpay&rsquo;s own AP
 <tr><td><code>ADMIN_PASSWORD</code></td><td>server</td><td>Admin password (constant-time compare). Missing &rarr; login 500 (fails closed, no default).</td></tr>
 <tr><td><code>ADMIN_TOTP_SECRET</code></td><td>server</td><td>Base32 TOTP secret (RFC 6238, SHA1, 6 digits, 30s, &plusmn;1 step drift). Static &mdash; the QR tool just re-renders it.</td></tr>
 <tr><td><code>GREEN_API_URL</code>, <code>GREEN_API_ID_INSTANCE</code>, <code>GREEN_API_TOKEN_INSTANCE</code></td><td>server</td><td>Green API instance (unofficial WhatsApp Web automation). All three required or every WhatsApp feature silently no-ops (OTP send surfaces an explicit error instead). Primary WhatsApp channel today &mdash; see <code>WHATSAPP_PROVIDER</code> for the MSG91 migration in progress.</td></tr>
-<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server &mdash; <strong>Production scope only</strong>, not Preview</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. <code>MSG91_WHATSAPP_NUMBER</code> is the real production number, running in parallel with Green API. Wired behind <code>WHATSAPP_PROVIDER=msg91</code> for both back-in-stock notify (stage 2, <strong>confirmed working live 2026-09-12</strong>) and checkout OTP (stage 3 &mdash; first live attempt got a <code>200 OK</code> from MSG91 but silently failed to deliver, briefly breaking Production checkout OTP until the var was unset; root cause was two OTP-template-specific requirements the generic sender didn't know about, since fixed &mdash; <strong>not yet re-tested live</strong>). See IMPROVEMENTS.md for the phased-cutover plan and the incident writeup.</td></tr>
+<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server &mdash; <strong>Production scope only</strong>, not Preview</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. <code>MSG91_WHATSAPP_NUMBER</code> is the real production number, running in parallel with Green API. Wired behind <code>WHATSAPP_PROVIDER=msg91</code> for back-in-stock notify and checkout OTP (stages 2&ndash;3, both <strong>confirmed working live</strong>), plus 9 more best-effort message types as of Stage 4 batch 1 (alerts, leads, reminders, referral reward, enquiry alert &mdash; <strong>not yet live-tested</strong>, each is low-frequency and none gate checkout). Order confirmations and admin status-update notifications (Stage 4 batch 2) are <strong>not yet wired</strong> &mdash; Green API still handles 100% of those. See IMPROVEMENTS.md for the full phased-cutover plan.</td></tr>
 <tr><td><code>WHATSAPP_PROVIDER</code></td><td>server</td><td>Optional. <code>"green-api"</code> (default, unset behaves the same) or <code>"msg91"</code>. Selects which provider a send uses once call sites are wired in stage 2/3 of the migration &mdash; currently read by <code>activeWhatsappProvider()</code> but not yet consulted by any live send path.</td></tr>
 <tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code>, <code>/api/cron/abandoned-checkout</code>, <code>/api/cron/product-sales-reconcile</code>, <code>/api/cron/rls-check</code>.</td></tr>
 <tr><td><code>RESEND_API_KEY</code></td><td>server</td><td>Missing &rarr; order-confirmation <em>and</em> shipped/delivered/status emails skipped silently; contact form returns 500.</td></tr>
@@ -3069,6 +3069,68 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-12<br>12:30</code></td>
+  <td><strong>MSG91 WhatsApp &mdash; stage 3 confirmed live + stage 4 batch 1 (9 more message types)</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item)</td>
+  <td>
+    <strong>Stage 3 confirmed working live</strong> &mdash; owner watched a real checkout: OTP
+    arrived via MSG91, verified, a COD order completed end-to-end.
+    <br><br>
+    <strong>Stage 4 batch 1.</strong> Green API is used for far more than OTP/back-in-stock/
+    order-status &mdash; 9 more best-effort message types (RLS-violation alert, stock-tally
+    drift alert, review reminder, abandoned-checkout nudge, 3 lead-follow-up variants,
+    referral reward, and the enquiry-click alert) had zero MSG91 coverage. All 9 new
+    templates drafted, submitted, and approved by Meta same day. Two required content
+    redesigns since WhatsApp templates can't render a variable-length list: the RLS and
+    stock-drift alerts collapse from an itemized per-issue/per-product list to a plain count
+    on the MSG91 path (Green API keeps the full list unchanged). Two lead-follow-up
+    templates consolidate what were two slightly different Green API wordings (automatic
+    send vs. admin manual resend) into one approved wording for both; a third consolidates
+    the &ldquo;known product name&rdquo; / &ldquo;unknown product name&rdquo; variants into
+    one template. The referral-reward and enquiry-alert templates each needed a closing
+    bookend added, since their original wording ends on a variable (the coupon code / the
+    product URL) &mdash; not allowed in a WhatsApp template.
+    <br><br>
+    New provider-dispatch wrapper per message type in <code>msg91Whatsapp.ts</code>
+    (<code>sendRlsAlertWhatsapp</code>, <code>sendStockDriftAlertWhatsapp</code>,
+    <code>sendReviewReminderWhatsapp</code>, <code>sendCheckoutNudgeWhatsapp</code>,
+    <code>sendLeadProductEnquiryWhatsapp</code>, <code>sendLeadCorporateGiftingWhatsapp</code>,
+    <code>sendLeadCatalogueDownloadWhatsapp</code>, <code>sendReferralRewardWhatsapp</code>,
+    <code>sendEnquiryAlertWhatsapp</code>) &mdash; same pattern as
+    <code>sendBackInStockWhatsapp</code>: Green API's exact existing wording by default, the
+    approved MSG91 template only when <code>WHATSAPP_PROVIDER=msg91</code>. 9 call sites
+    updated across the <code>rls-check</code> / <code>product-sales-reconcile</code> /
+    <code>review-reminder</code> / <code>abandoned-checkout</code> crons,
+    <code>/api/leads</code>, <code>/api/admin/leads/follow-up</code>,
+    <code>/api/enquiries</code>, and <code>fulfilOrder.ts</code>'s referral-reward send.
+    <code>/api/enquiries</code>'s MSG91 path reuses the existing unit-tested
+    <code>buildEnquiryNotifyMessage</code> pure builder for its Green API branch rather than
+    duplicating that string logic.
+    <br><br>
+    <strong>Deferred to batch 2 (not started):</strong> <code>order_confirmed</code>/
+    <code>order_shipped</code>/<code>order_delivered</code>/<code>order_cancelled</code>
+    already exist and are approved but were never wired to MSG91 at all &mdash; Green API
+    still handles 100% of order confirmations and admin status-update notifications. Higher
+    stakes than batch 1 (the main order-confirmation flow, business+customer+supplier
+    copies, a hero image the approved templates don't support) and needs an owner decision
+    on the content difference (shortened summary + link vs. today's full itemized invoice).
+    Also deferred: <code>order_note</code> (the admin's free-text one-off note) and
+    <code>referral_share</code> (needs to become its own follow-up send instead of a
+    variable-conditional block inside the delivered message).
+  </td>
+  <td><em>edited:</em> <code>app/utils/msg91Whatsapp.ts</code>, <code>app/utils/msg91Whatsapp.test.ts</code>,
+  <code>app/api/cron/rls-check/route.ts</code>, <code>app/api/cron/product-sales-reconcile/route.ts</code>,
+  <code>app/api/cron/review-reminder/route.ts</code>, <code>app/api/cron/abandoned-checkout/route.ts</code>,
+  <code>app/api/leads/route.ts</code>, <code>app/api/admin/leads/follow-up/route.ts</code>,
+  <code>app/api/enquiries/route.ts</code>, <code>app/utils/fulfilOrder.ts</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> (all changed files) 0 errors &middot;
+  <code>npm test</code> 345/346 (1 pre-existing skip, unchanged; 1 test updated for the 2 new template
+  registry keys) &middot; <code>next build</code> exit 0. <strong>Batch 1 not yet live-tested</strong>
+  &mdash; each of the 9 is low-frequency and best-effort (none gate checkout or a payment), so the blast
+  radius is far smaller than stage 3's OTP, but owner should still watch at least one real trigger of
+  each (submit a lead, click an enquiry, wait for the abandoned-checkout/review-reminder cron, or run
+  the reconcile job with a deliberately drifted row) before fully trusting it live.</td>
+</tr>
 <tr>
   <td><code>2026-09-12<br>11:15</code></td>
   <td><strong>MSG91 WhatsApp &mdash; fix OTP template's missing namespace + button (incident)</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item)</td>

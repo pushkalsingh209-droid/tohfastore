@@ -23,8 +23,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { serverErrorResponse } from "@/app/utils/apiError";
-import { sendWhatsappMessage } from "@/app/utils/greenApi";
-import { buildEnquiryNotifyMessage } from "@/app/utils/enquiryNotify";
+import { sendEnquiryAlertWhatsapp } from "@/app/utils/msg91Whatsapp";
 import { productHref } from "@/app/utils/slug";
 import { getClientIp } from "@/app/utils/clientIp";
 import { isRateLimited, recordRateLimitEvent } from "@/app/utils/rateLimit";
@@ -88,13 +87,12 @@ export async function POST(req: Request) {
             const live = new Set((liveRows ?? []).map((r) => r.phone_number));
             const targets = attached.filter((n) => live.has(n));
             if (targets.length > 0) {
-              const message = buildEnquiryNotifyMessage({
-                productName: product.name || "a product",
-                price: product.price,
-                outOfStock: Boolean(body.outOfStock),
-                productUrl: `${SITE_URL}${productHref({ id: product.id, name: product.name })}`,
-              });
-              const results = await Promise.allSettled(targets.map((n) => sendWhatsappMessage(n, message)));
+              const productName = product.name || "a product";
+              const productUrl = `${SITE_URL}${productHref({ id: product.id, name: product.name })}`;
+              const outOfStock = Boolean(body.outOfStock);
+              const results = await Promise.allSettled(
+                targets.map((n) => sendEnquiryAlertWhatsapp(n, productName, product.price, outOfStock, productUrl))
+              );
               const sentCount = results.filter((r) => r.status === "fulfilled").length;
               // Best-effort visibility only (0054) -- an UPDATE failure here
               // never undoes the WhatsApp sends already made above.
