@@ -1161,7 +1161,13 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
     <p>Storefront defaults; the <b>Spend &amp; Save Offer</b> (see below); the <b>Featured Spotlight</b>
     campaign (0050 &mdash; enable, title, description, start/end window for <code>/spotlight</code>, a live
     count of currently-featured products with a one-click &ldquo;Clear all&rdquo; &mdash; <em>which</em>
-    products is set from the Products tab's own toggle, not here); the WhatsApp-numbers pool + bulk
+    products is set from the Products tab's own toggle, not here); <b>Gift With Purchase Campaigns</b>
+    (0063, IMPROVEMENTS.md #14a &mdash; a list of campaigns, each with a title, a gift product picked via
+    a name search, a minimum order amount, a max redemption count,
+    Active/Upcoming/Ended/Full/Disabled status, and a quick Enable/Disable/Edit per row; the create/edit
+    form's start/end fields have a day/week/month &ldquo;set it to run for&hellip;&rdquo; quick-fill on top
+    of the usual two date pickers &mdash; <strong>not yet wired to checkout</strong>, creating a campaign
+    here doesn't do anything at the register until a follow-up batch lands); the WhatsApp-numbers pool + bulk
     reassignment; <b>Order Notification Numbers</b> (supplier list &mdash; up to 10 extra WhatsApp numbers
     that get order notifications for the products they're attached to, on top of the main business number);
     the "Chat for&hellip;" button labels; product labels + bulk-assign; the <b>Referral discount %</b> and
@@ -2036,6 +2042,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/admin/orders/manual</code></td><td><span class="tag t-post">post</span></td><td>Records a sale that happened <strong>off the website</strong> &mdash; a WhatsApp conversation closed on a payment link, a phone order, a walk-in. Such a sale otherwise arrives as a webhook with no <code>order.notes</code>, so it lands with placeholder customer details and an <strong>empty items array</strong>: the amount counts as revenue, but stock never decrements, the units-sold tally never moves, and the GST report (which derives taxable value from <code>orders.items</code>) shows it with <strong>zero taxable supply</strong>. This route puts it through the same <code>fulfilOrder()</code> path a website order uses, so all of those agree. Re-prices from the DB (the admin chooses products, not prices) but deliberately does <strong>not</strong> filter <code>hidden</code> &mdash; a past sale may be for a product since hidden, and refusing to record history because the catalogue moved on would defeat the point. <code>amountCollected</code> may be <em>lower</em> than the items total (recorded as a discount, GST split follows); a <em>higher</em> figure is refused as a typo. Notifications default <strong>off</strong> (the customer has usually just been spoken to). A <code>randomUUID</code> checkout token is the idempotency key via 0057's partial unique index, so a double-submitted form can't record the sale twice.</td></tr>
 <tr><td><code>/api/admin/orders/notification-log</code></td><td><span class="tag t-get">get</span></td><td>Full <code>order_notification_log</code> (0048), newest first &mdash; <code>{ id, order_id, status, sent_at }[]</code>. The Orders tab fetches it whole on load and derives both the per-order/per-status send counter and the date-range notification-analytics panel client-side; no server-side aggregation.</td></tr>
 <tr><td><code>/api/admin/coupons</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span> <span class="tag t-del">delete</span></td><td>Coupon CRUD. <code>revalidateTag("coupons","max")</code>.</td></tr>
+<tr><td><code>/api/admin/gift-campaigns</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span></td><td>&ldquo;Gift With Purchase&rdquo; campaign CRUD (IMPROVEMENTS.md #14a, migration 0063). No DELETE on purpose &mdash; disable via PATCH <code>{"{enabled:false}"}</code> instead, so campaign history stays visible. <code>sanitizeGiftCampaign()</code> validates on both POST and PATCH (id in the body, same as coupons &mdash; no <code>[id]</code> dynamic route exists anywhere in this admin API). <code>revalidateTag("gift-campaigns","max")</code>. Not yet wired to checkout &mdash; see IMPROVEMENTS.md #14a for the remaining PRs.</td></tr>
 <tr><td><code>/api/admin/categories</code></td><td><span class="tag t-get">get</span> <span class="tag t-post">post</span> <span class="tag t-patch">patch</span> <span class="tag t-del">delete</span></td><td>Category CRUD incl. <code>show_on_home</code>, <code>gst_rate</code> (0&ndash;100), <code>discount_percent</code> (0&ndash;&lt;100), <code>default_page_size</code>, <code>whatsapp_number</code> (0049, PATCH-only, trim-or-null &mdash; sourced from a <code>&lt;select&gt;</code> over the managed <code>whatsapp_numbers</code> pool, no format validation needed here). <code>revalidateTag("categories","max")</code>.</td></tr>
 <tr><td><code>/api/admin/reviews</code></td><td><span class="tag t-get">get</span> <span class="tag t-patch">patch</span> <span class="tag t-del">delete</span></td><td>List (joined with product name), approve, reject. <code>revalidateTag("reviews","max")</code>.</td></tr>
 <tr><td><code>/api/admin/leads</code></td><td><span class="tag t-get">get</span> <span class="tag t-del">delete</span></td><td>List / delete leads.</td></tr>
@@ -2606,7 +2613,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>phone.ts</code></td><td><code>normalizeIndianPhone(raw)</code> &mdash; the <em>one</em> canonical Indian-phone normaliser (&rarr; bare digits <code>91XXXXXXXXXX</code>). Replaced 4 near-identical local copies (<code>whatsappOtp.ts</code>, <code>greenApi.ts</code> &times;2, <code>stock-alerts</code>, admin <code>whatsapp-numbers</code>) + an inline one in admin <code>orders/update-status</code>. Does not validate &mdash; callers keep their own <code>/^91[6-9]\d{9}$/</code> check. Unit-tested (7). <em>(#18)</em></td></tr>
 <tr><td><code>whatsapp.ts</code></td><td>Enquiry-link builder (<code>getProductWhatsappLink</code>) + number-resolution priority (<code>resolveProductWhatsappNumber</code>) &mdash; product &gt; category (0049) &gt; legacy Misc-out-of-stock hardcode &gt; site default. <strong>11 unit tests</strong> (<code>whatsapp.test.ts</code>, new).</td></tr>
 <tr><td><code>featuredSpotlight.ts</code></td><td>The <code>/spotlight</code> campaign window &mdash; one JSON row (<code>site_settings.featured_spotlight</code>), same lenient-parse/strict-sanitize split as <code>spendTierOffer.ts</code>. <code>parseFeaturedSpotlight(raw)</code> fail-closed &rarr; inert (disabled) campaign for every read path; <code>sanitizeFeaturedSpotlight(input)</code> strict, returns <code>{campaign, errors[]}</code> for the admin PATCH branch &mdash; rejects an inverted window and (campaign-specific rule spendTierOffer.ts doesn't have) an enabled campaign with no end date. <code>isFeaturedSpotlightActive(campaign, now?)</code>. <strong>Which products show is NOT here</strong> &mdash; that's <code>products.is_spotlight</code> (0050), a per-product column, deliberately not a product-id array in this JSON (read-modify-write race risk against a second open admin tab &mdash; see the migration's header comment). <strong>18 unit tests</strong> (<code>featuredSpotlight.test.ts</code>, new).</td></tr>
-<tr><td><code>giftCampaigns.ts</code></td><td>&ldquo;Gift With Purchase&rdquo; campaigns (IMPROVEMENTS.md #14a, migration 0063) &mdash; pure logic only, no Supabase calls. <code>sanitizeGiftCampaign(input)</code> strict, same <code>{campaign, errors[]}</code> contract as <code>sanitizeFeaturedSpotlight</code>, adapted to a DB row instead of a JSON string (always requires an end date, regardless of <code>enabled</code> &mdash; a campaign with no close date would leave <code>max_redemptions</code> the only thing ever stopping it). <code>toGiftCampaign(row)</code> maps the table's snake_case columns (and PostgREST's string-typed <code>numeric</code> columns) to the app's camelCase shape. <code>isGiftCampaignActive(campaign, now?)</code> &mdash; window check <em>and</em> <code>redeemedCount &lt; maxRedemptions</code>; the checkout path's authoritative decision is a DB query + the <code>claim_gift_campaign_slot</code> RPC, not this function directly, so the two can never disagree. <strong>18 unit tests</strong> (<code>giftCampaigns.test.ts</code>, new). Not yet wired to any route &mdash; see &sect;playbooks/IMPROVEMENTS.md for the remaining PRs.</td></tr>
+<tr><td><code>giftCampaigns.ts</code></td><td>&ldquo;Gift With Purchase&rdquo; campaigns (IMPROVEMENTS.md #14a, migration 0063) &mdash; pure logic only, no Supabase calls. <code>sanitizeGiftCampaign(input)</code> strict, same <code>{campaign, errors[]}</code> contract as <code>sanitizeFeaturedSpotlight</code>, adapted to a DB row instead of a JSON string (always requires an end date, regardless of <code>enabled</code> &mdash; a campaign with no close date would leave <code>max_redemptions</code> the only thing ever stopping it). <code>toGiftCampaign(row)</code> maps the table's snake_case columns (and PostgREST's string-typed <code>numeric</code> columns) to the app's camelCase shape. <code>isGiftCampaignActive(campaign, now?)</code> &mdash; window check <em>and</em> <code>redeemedCount &lt; maxRedemptions</code>; the checkout path's authoritative decision is a DB query + the <code>claim_gift_campaign_slot</code> RPC, not this function directly, so the two can never disagree. <strong>18 unit tests</strong> (<code>giftCampaigns.test.ts</code>, new). Used by <code>/api/admin/gift-campaigns</code> for admin CRUD; not yet wired to checkout &mdash; see IMPROVEMENTS.md #14a for the remaining PRs.</td></tr>
 <tr><td><code>whatsappOtp.ts</code></td><td>OTP send/verify/token-check + all abuse limits + opportunistic verification-row pruning. Phone form via <code>phone.ts</code> (<code>normalizePhoneForRecord</code> re-exports it for <code>/api/razorpay</code>). The actual send goes through <code>msg91Whatsapp.ts</code>'s <code>sendOtpWhatsapp</code> (provider-dispatch: Green API by default, MSG91's <code>tohfa_otp</code> template if <code>WHATSAPP_PROVIDER=msg91</code> &mdash; stage 3 of the MSG91 migration, see &sect;whatsapp) rather than <code>greenApi.ts</code> directly.</td></tr>
 <tr><td><code>greenApi.ts</code></td><td>Green API send (text / image+caption) + <code>checkWhatsappNumber</code>. Chat-id / phone form via <code>phone.ts</code>.</td></tr>
 <tr><td><code>razorpaySignature.ts</code></td><td><code>isValidPaymentSignature</code> (client path) + <code>isValidWebhookSignature</code> (Dashboard path). Unit-tested.</td></tr>
@@ -3076,6 +3083,51 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-12<br>18:00</code></td>
+  <td><strong>Gift With Purchase campaigns &mdash; PR 2 of 4: admin CRUD + UI</strong><br>(<code>IMPROVEMENTS.md</code> #14a)</td>
+  <td>
+    New <code>app/api/admin/gift-campaigns/route.ts</code> (GET/POST/PATCH &mdash; id in the body,
+    no <code>[id]</code> dynamic route, matching this codebase's only real-CRUD-resource
+    precedent, <code>/api/admin/coupons</code>; no DELETE on purpose, so campaign history stays
+    visible &mdash; disable via PATCH <code>{"{enabled:false}"}</code> instead). New &ldquo;Gift
+    With Purchase Campaigns&rdquo; card in the Settings tab: a campaign list (title, product,
+    redeemed/max, an Active/Upcoming/Ended/Full/Disabled status badge, quick Enable/Disable +
+    Edit) and a create/edit form &mdash; a product-name search built from the same
+    <code>getAutocompleteMatches</code> primitive <code>ProductsTab</code> already uses (no
+    single-product picker component existed anywhere in this admin panel to reuse), min amount,
+    max redemptions, the same two <code>datetime-local</code> fields every other campaign config
+    here uses, <strong>plus the requested day/week/month quick-duration-fill</strong>: a
+    quantity + unit selector with a &ldquo;Set end date&rdquo; button that computes and fills the
+    same End field &mdash; a convenience on the existing fields, not a new storage concept (no
+    duration-picker precedent existed anywhere in this admin panel before this feature).
+    <code>giftCampaigns</code>/<code>setGiftCampaigns</code> added to <code>AdminDataContext</code>/
+    <code>page.tsx</code>'s shared <code>fetchData()</code>, following this codebase's one
+    established data-loading pattern (no tab fetches its own data independently).
+    <br><br>
+    <strong>PR 1 follow-up fix:</strong> <code>npm run gen:types</code> initially failed silently
+    &mdash; <code>npx supabase gen types ...</code> pipes straight into <code>types/db.ts</code> via
+    shell redirect, and without <code>--yes</code> its &ldquo;install the CLI?&rdquo; confirmation
+    prompt got written into the file instead of real types, truncating it from ~950 lines to 3.
+    Fixed by restoring from git history and rerunning with <code>npx --yes</code>.
+    <br><br>
+    <strong>End-to-end verified against the real dev environment</strong>, not just unit tests:
+    logged into the local admin panel for real, then drove the new route directly &mdash; GET, a
+    valid POST (created a real row against an actual catalog product), an intentionally invalid
+    POST (confirmed all 5 validation messages fire correctly), a PATCH edit, and cleaned up the
+    test row afterward (confirmed 0 rows remaining). The React form's own click-through (the
+    product-search dropdown, button states) was not visually verified in a browser &mdash; no
+    browser automation available in this environment.
+  </td>
+  <td><em>new:</em> <code>app/api/admin/gift-campaigns/route.ts</code><br>
+  <em>edited:</em> <code>app/admin/tabs/SettingsTab.tsx</code>, <code>app/admin/AdminDataContext.tsx</code>,
+  <code>app/admin/page.tsx</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> (all changed files) 0 new errors (2
+  pre-existing warnings in <code>page.tsx</code>, unchanged, confirmed by diffing against <code>main</code>)
+  &middot; <code>npm test</code> 365/366 (1 pre-existing skip, unchanged) &middot; <code>next build</code>
+  exit 0 &middot; <strong>live end-to-end API test against the real dev Supabase</strong> (see above).
+  Owner should still click through the new Settings tab card once for real before relying on it.</td>
+</tr>
 <tr>
   <td><code>2026-09-12<br>16:45</code></td>
   <td><strong>Gift With Purchase campaigns &mdash; PR 1 of 4: schema + pure logic</strong><br>(<code>IMPROVEMENTS.md</code> #14a &mdash; new marketing feature, planned via a full design-review pass before any code, given it's a payment-path change)</td>

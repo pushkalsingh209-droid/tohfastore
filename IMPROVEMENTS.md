@@ -2292,8 +2292,10 @@ care, land behind tests, never "blind".
     medium (prospecting + outreach). **Cost:** ~₹2–5k per influencer.
     **Timeline:** 2–4 weeks per batch. *Recommended after organic reach plateaus.*
 
-14a. **⚠️ Gift With Purchase campaigns** — *in progress, PR 1 of 4 (schema + pure
-     logic).* First promo: the first 10 prepaid orders with a final payable amount of
+14a. **⚠️ Gift With Purchase campaigns** — *in progress, PR 2 of 4 (admin CRUD + UI)
+     merged; PR 1 (schema + pure logic) confirmed live, end-to-end tested against a
+     real dev login + real Supabase.* First promo: the first 10 prepaid orders with a
+     final payable amount of
      ₹2000+ get a free Ganesha 3-inch polyresin idol (normally ₹250), running now
      through New Year. Owner wants reusable admin tooling to run similar campaigns
      going forward (pick a gift product, a minimum order amount, a max redemption
@@ -2338,14 +2340,44 @@ care, land behind tests, never "blind".
        `spendTierOffer.ts`/`featuredSpotlight.ts` adapted to a DB row instead of a
        JSON string. **Nothing reads or writes these tables yet — zero storefront/
        checkout risk in this batch.**
-     - **Owner must run `npm run gen:types`** after applying this migration to the
-       live DB, so `types/db.ts` picks up the two new tables before PR 2 (admin CRUD)
-       needs typed Supabase queries against them.
-     - **Next:** PR 2 (admin CRUD + UI — a campaign list, create/edit form with a
-       product picker and a day/week/month quick-duration-fill convenience on top of
-       the same start/end datetime inputs every other campaign config uses); PR 3
-       (checkout wiring — the highest-scrutiny batch, see the plan file for the full
-       edge-case list: same-product-in-cart duplicate-line guard, the
+     - **PR 1 follow-up:** `npm run gen:types` initially failed silently — `npx
+       supabase gen types ...` piped straight into `types/db.ts` via shell redirect,
+       and without `--yes` its "install the CLI?" confirmation prompt got written
+       into the file instead of real types, truncating it from ~950 lines to 3. Fixed
+       by restoring from git history and rerunning with `npx --yes`; `types/db.ts` now
+       correctly includes both new tables and functions.
+     - **PR 2 (this batch): admin CRUD + UI.** New `app/api/admin/gift-campaigns/route.ts`
+       (GET list, POST create, PATCH update — id in the body, no `[id]` dynamic route,
+       matching this codebase's only precedent for a real CRUD resource,
+       `app/api/admin/coupons/route.ts`; no DELETE on purpose, since the owner wants
+       campaign history to stay visible — disable via PATCH instead). New "Gift With
+       Purchase Campaigns" card in the Settings tab: a campaign list (title, product,
+       redeemed/max, Active/Upcoming/Ended/Full/Disabled status badge, quick
+       Enable/Disable + Edit buttons) plus a create/edit form — a product-name search
+       (built from the same `getAutocompleteMatches` primitive `ProductsTab` already
+       uses; no single-product picker component existed anywhere in the admin panel to
+       reuse), min amount, max redemptions, the two `datetime-local` start/end fields
+       every other campaign config here uses, **plus the requested day/week/month
+       quick-duration-fill**: a quantity + unit selector with a "Set end date" button
+       that computes and fills the same End field — a UI convenience on top of the
+       existing fields, not a new storage concept. `giftCampaigns`/`setGiftCampaigns`
+       added to `AdminDataContext`/`page.tsx`'s shared `fetchData()`, following this
+       codebase's one established data-loading pattern (no tab fetches its own data
+       independently).
+     - **End-to-end verified against the real dev environment**, not just unit tests:
+       logged into the local admin panel for real (using the actual `ADMIN_PASSWORD`/
+       `ADMIN_TOTP_SECRET`), then drove the new route directly — GET, a valid POST
+       (created a real row against product #167, "Ganesha small 3inch 100gm" — the
+       actual product this promo is likely to use), an intentionally invalid POST
+       (confirmed all 5 validation messages fire correctly), a PATCH edit, and cleaned
+       up the test row afterward (confirmed 0 rows remaining). The React form's own
+       click-through (the product-search dropdown, button states) was not visually
+       verified in a browser — no browser automation available in this environment —
+       so the owner should still click through the new Settings tab card once for
+       real before relying on it, per CLAUDE.md's "say so explicitly" rule for UI that
+       can't be tested end-to-end from here.
+     - **Next:** PR 3 (checkout wiring — the highest-scrutiny batch, see the plan file
+       for the full edge-case list: same-product-in-cart duplicate-line guard, the
        `categoryGstRates` gap for a product not in the cart, fail-open on any promo-
        code error, an unconditionally-minted `checkoutToken` fix in
        `/api/razorpay/route.ts` needed regardless of the stock-reservation kill
