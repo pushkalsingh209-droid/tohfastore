@@ -3,8 +3,12 @@
 // Green API (unofficial WhatsApp Web automation, carries account-ban risk). See
 // IMPROVEMENTS.md Tier 3 SMS/WhatsApp section for the phased cutover plan:
 // Stage 1 (this file): build + unit-test in isolation, not wired into any call site.
-// Stage 2: wire low-stakes sends (stock alerts) behind WHATSAPP_PROVIDER flag.
-// Stage 3: wire OTP last, only after live sends succeed on stage 2.
+// Stage 2: wire low-stakes sends (stock alerts) behind WHATSAPP_PROVIDER flag --
+// DONE, confirmed working live 2026-09-12 (a real restock notification arrived).
+// Stage 3 (this batch): wire OTP, now that stage 2 has proven the endpoint/body
+// shape in production. Highest-scrutiny swap -- OTP gates checkout, so a failed
+// send here isn't just a missed notification, it blocks a sale. Same
+// WHATSAPP_PROVIDER flag, same instant fallback to Green API.
 // Stage 4: retire Green API once MSG91 runs clean across all message types.
 //
 // CORRECTED 2026-09-12 (twice): the original endpoint below returned 404
@@ -138,4 +142,39 @@ export async function sendBackInStockWhatsapp(phone: string, productName: string
     return;
   }
   await sendWhatsappMessage(phone, `Good news! "${productName}" is back in stock on TOHFA -- ${productUrl}`);
+}
+
+// Whether the currently-active provider (per activeWhatsappProvider()) is
+// actually configured. app/utils/whatsappOtp.ts checks this *before* sending
+// so a misconfigured provider surfaces as an explicit "try again" error to
+// the shopper rather than a silent no-op that reports success for a code
+// that never arrives -- unlike sendBackInStockWhatsapp's best-effort
+// contract, OTP is on the checkout critical path.
+export function isActiveWhatsappProviderConfigured(): boolean {
+  return activeWhatsappProvider() === "msg91" ? isMsg91WhatsappConfigured() : isGreenApiConfigured();
+}
+
+function isGreenApiConfigured(): boolean {
+  return Boolean(process.env.GREEN_API_URL && process.env.GREEN_API_ID_INSTANCE && process.env.GREEN_API_TOKEN_INSTANCE);
+}
+
+// Stage 3 of the phased cutover. `tohfa_otp` is a Meta Authentication-category
+// template, which forces a fixed, Meta-authored body ("{{1}} is your
+// verification code.") -- unlike the Utility/Marketing templates above, no
+// custom wording is allowed, so there's no equivalent of the "Good news!
+// ... in stock" free text to fall back to describing here. Same
+// throw-on-failure contract as sendMsg91WhatsappTemplate; the caller
+// (sendOtp in whatsappOtp.ts) already wraps every send in try/catch and
+// turns a failure into a user-facing "try again" error, identical to how it
+// already handles a Green API failure today.
+export async function sendOtpWhatsapp(phone: string, code: string): Promise<void> {
+  if (activeWhatsappProvider() === "msg91") {
+    await sendMsg91WhatsappTemplate({
+      to: phone,
+      templateName: MSG91_WHATSAPP_TEMPLATES.otp,
+      variables: [code],
+    });
+    return;
+  }
+  await sendWhatsappMessage(phone, `Your TOHFA verification code is *${code}*. It expires in 5 minutes. Do not share this code with anyone.`);
 }
