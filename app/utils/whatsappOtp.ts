@@ -12,7 +12,7 @@
 // bypassed by skipping the client-side UI.
 import crypto from "crypto";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
-import { sendWhatsappMessage } from "@/app/utils/greenApi";
+import { sendOtpWhatsapp, isActiveWhatsappProviderConfigured } from "@/app/utils/msg91Whatsapp";
 import { normalizeIndianPhone } from "@/app/utils/phone";
 
 const CODE_LENGTH = 6;
@@ -46,10 +46,6 @@ function timingSafeEqualStr(a: string, b: string): boolean {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
-function isGreenApiConfigured(): boolean {
-  return Boolean(process.env.GREEN_API_URL && process.env.GREEN_API_ID_INSTANCE && process.env.GREEN_API_TOKEN_INSTANCE);
-}
-
 // Opportunistic cleanup (not a cron) -- same pattern as app/utils/rateLimit.ts
 // and /api/track-view. A sent code is enterable for 5 minutes and a verified
 // record proves anything for at most 60 (see the TTLs above), so any row
@@ -75,11 +71,11 @@ export async function sendOtp(rawPhone: string, ip: string): Promise<{ ok: true 
     return { ok: false, error: "Please enter a valid 10-digit Indian WhatsApp number first." };
   }
 
-  // sendWhatsappMessage silently no-ops when Green API isn't configured
-  // (by design, elsewhere it's a best-effort notification) -- here a
-  // silent no-op would leave the customer stuck waiting for a code that
-  // never arrives, so it's checked explicitly rather than relied on.
-  if (!isGreenApiConfigured()) {
+  // sendOtpWhatsapp silently no-ops when its active provider isn't
+  // configured (by design, elsewhere it's a best-effort notification) --
+  // here a silent no-op would leave the customer stuck waiting for a code
+  // that never arrives, so it's checked explicitly rather than relied on.
+  if (!isActiveWhatsappProviderConfigured()) {
     return { ok: false, error: "WhatsApp verification isn't available right now -- please try again shortly or contact us on WhatsApp directly." };
   }
 
@@ -117,10 +113,7 @@ export async function sendOtp(rawPhone: string, ip: string): Promise<{ ok: true 
   }
 
   try {
-    await sendWhatsappMessage(
-      phone,
-      `Your TOHFA verification code is *${code}*. It expires in 5 minutes. Do not share this code with anyone.`
-    );
+    await sendOtpWhatsapp(phone, code);
   } catch (err) {
     console.error("WhatsApp OTP send failed:", err);
     return { ok: false, error: "Could not send the verification code via WhatsApp. Please try again or contact us directly." };

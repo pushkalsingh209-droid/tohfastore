@@ -2123,20 +2123,34 @@ care, land behind tests, never "blind".
        number), understanding this risk; "Add Number"-style full re-verification actions
        remain the specific danger, not Campaign creation/config generally (confirmed
        checkout OTP stayed up through Campaign creation on the real number).
-     - **Not yet live-tested against MSG91's real API with the corrected direct-send
-       endpoint** — code is written, unit-tested, `tsc`/lint/`npm test`/`next build` all
-       clean, but no real send has been attempted against it yet. `MSG91_WHATSAPP_NUMBER`
-       is the real number (`916302672351`), which is deliberately still live on Green API
-       in parallel — checkout OTP + order confirmations keep flowing through Green API
-       regardless of `WHATSAPP_PROVIDER`, since that flag only gates
-       `sendBackInStockWhatsapp` (Stage 2) so far, not OTP (Stage 3, not yet wired).
-       **Owner: set `WHATSAPP_PROVIDER=msg91`, trigger a genuine 0→positive inventory
-       transition on a product with a pending `stock_alert_subscriptions` row, and confirm
-       the WhatsApp arrives with the right product name + link.** Flip the var back (or
-       unset it) to fall back to Green API instantly if anything looks wrong.
-     - **Next:** confirm the live send above works; once clean, proceed to stage 3
-       (OTP) — the highest-scrutiny swap since it gates checkout — using this same
-       corrected endpoint/body shape for `tohfa_otp`.
+     - **✅ Confirmed working live, 2026-09-12.** Owner set `WHATSAPP_PROVIDER=msg91`,
+       triggered a real restock, and received the `back_in_stock` WhatsApp message —
+       the corrected endpoint/body shape is now proven in production, not just
+       unit-tested. **Stage 2 is done.** `MSG91_WHATSAPP_NUMBER` is the real number
+       (`916302672351`), running in parallel with Green API — checkout OTP + order
+       confirmations still flow through Green API exclusively, since `WHATSAPP_PROVIDER`
+       only gates `sendBackInStockWhatsapp` so far, not OTP.
+     - **Stage 3 (OTP) wired same batch.** New `sendOtpWhatsapp(phone, code)` and
+       `isActiveWhatsappProviderConfigured()` in `msg91Whatsapp.ts`; `whatsappOtp.ts`'s
+       `sendOtp()` now calls these instead of `greenApi.ts`'s `sendWhatsappMessage`
+       directly — same provider-dispatch pattern as Stage 2, defaults to Green API's exact
+       existing message text unchanged, switches to the `tohfa_otp` template only when
+       `WHATSAPP_PROVIDER=msg91`. `tohfa_otp` is a Meta **Authentication**-category
+       template (fixed body "`{{1}}` is your verification code.", no custom wording
+       allowed), single variable = the code. The prior explicit
+       `isGreenApiConfigured()` pre-check (so a misconfigured provider surfaces as a
+       clear "try again" error instead of a silent no-op reporting false success) is
+       now provider-aware via `isActiveWhatsappProviderConfigured()`.
+     - **Highest-scrutiny swap since it gates checkout** — a failed OTP send doesn't just
+       miss a notification, it blocks a sale. Ships behind the same `WHATSAPP_PROVIDER`
+       flag as stage 2 for an instant fallback to Green API. **Not yet live-tested** —
+       `tsc`/lint/`npm test`/`next build` all clean, but no real checkout has gone through
+       MSG91 for OTP yet. **Owner: only flip `WHATSAPP_PROVIDER=msg91` for OTP after
+       watching 2–3 real checkout attempts complete cleanly** (code arrives, verifies,
+       order completes) — per the CLAUDE.md payment-path guardrail, this is treated as a
+       proposal until proven, not done just because it built and unit-tested clean.
+     - **Next:** the live OTP test above; once clean, Stage 4 (retire Green API entirely)
+       becomes viable.
 
 13. **💰 Blog / Content Hub** — *foundation exists.* Already have:
     - `/guides` index + 4 gift guides (Diwali, housewarming, wedding, puja room)

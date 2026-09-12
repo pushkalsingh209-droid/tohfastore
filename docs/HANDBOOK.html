@@ -1618,7 +1618,7 @@ paths produce an identical row because both re-read from Razorpay&rsquo;s own AP
 
 <h3>Order lifecycle (text)</h3>
 <pre><code>CartDrawer (client)
-  1. POST /api/whatsapp-otp/send   {phone}                -&gt; Green API sends 6-digit code
+  1. POST /api/whatsapp-otp/send   {phone}                -&gt; sends 6-digit code (Green API, or MSG91 if WHATSAPP_PROVIDER=msg91)
   2. POST /api/whatsapp-otp/verify {phone,code}           -&gt; returns single-use verificationToken
      (also POST /api/leads {source:"checkout_started"} for abandoned-cart tracking)
   3. POST /api/razorpay {items, couponCode, phone, whatsappVerificationToken, customerName, shippingAddress}
@@ -1644,7 +1644,7 @@ paths produce an identical row because both re-read from Razorpay&rsquo;s own AP
 <tr><td><code>ADMIN_PASSWORD</code></td><td>server</td><td>Admin password (constant-time compare). Missing &rarr; login 500 (fails closed, no default).</td></tr>
 <tr><td><code>ADMIN_TOTP_SECRET</code></td><td>server</td><td>Base32 TOTP secret (RFC 6238, SHA1, 6 digits, 30s, &plusmn;1 step drift). Static &mdash; the QR tool just re-renders it.</td></tr>
 <tr><td><code>GREEN_API_URL</code>, <code>GREEN_API_ID_INSTANCE</code>, <code>GREEN_API_TOKEN_INSTANCE</code></td><td>server</td><td>Green API instance (unofficial WhatsApp Web automation). All three required or every WhatsApp feature silently no-ops (OTP send surfaces an explicit error instead). Primary WhatsApp channel today &mdash; see <code>WHATSAPP_PROVIDER</code> for the MSG91 migration in progress.</td></tr>
-<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. <code>MSG91_WHATSAPP_NUMBER</code> is the real production number, deliberately still live on Green API in parallel. Wired behind <code>WHATSAPP_PROVIDER=msg91</code> for back-in-stock notify only (stage 2 of the phased cutover, see IMPROVEMENTS.md); OTP (stage 3) not yet wired. Not yet live-tested against MSG91's real API.</td></tr>
+<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. <code>MSG91_WHATSAPP_NUMBER</code> is the real production number, running in parallel with Green API. Wired behind <code>WHATSAPP_PROVIDER=msg91</code> for both back-in-stock notify (stage 2, <strong>confirmed working live 2026-09-12</strong>) and checkout OTP (stage 3, wired same day &mdash; <strong>not yet live-tested</strong>, watch 2&ndash;3 real checkouts before relying on it). See IMPROVEMENTS.md for the phased-cutover plan.</td></tr>
 <tr><td><code>WHATSAPP_PROVIDER</code></td><td>server</td><td>Optional. <code>"green-api"</code> (default, unset behaves the same) or <code>"msg91"</code>. Selects which provider a send uses once call sites are wired in stage 2/3 of the migration &mdash; currently read by <code>activeWhatsappProvider()</code> but not yet consulted by any live send path.</td></tr>
 <tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code>, <code>/api/cron/abandoned-checkout</code>, <code>/api/cron/product-sales-reconcile</code>, <code>/api/cron/rls-check</code>.</td></tr>
 <tr><td><code>RESEND_API_KEY</code></td><td>server</td><td>Missing &rarr; order-confirmation <em>and</em> shipped/delivered/status emails skipped silently; contact form returns 500.</td></tr>
@@ -2600,7 +2600,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <tr><td><code>phone.ts</code></td><td><code>normalizeIndianPhone(raw)</code> &mdash; the <em>one</em> canonical Indian-phone normaliser (&rarr; bare digits <code>91XXXXXXXXXX</code>). Replaced 4 near-identical local copies (<code>whatsappOtp.ts</code>, <code>greenApi.ts</code> &times;2, <code>stock-alerts</code>, admin <code>whatsapp-numbers</code>) + an inline one in admin <code>orders/update-status</code>. Does not validate &mdash; callers keep their own <code>/^91[6-9]\d{9}$/</code> check. Unit-tested (7). <em>(#18)</em></td></tr>
 <tr><td><code>whatsapp.ts</code></td><td>Enquiry-link builder (<code>getProductWhatsappLink</code>) + number-resolution priority (<code>resolveProductWhatsappNumber</code>) &mdash; product &gt; category (0049) &gt; legacy Misc-out-of-stock hardcode &gt; site default. <strong>11 unit tests</strong> (<code>whatsapp.test.ts</code>, new).</td></tr>
 <tr><td><code>featuredSpotlight.ts</code></td><td>The <code>/spotlight</code> campaign window &mdash; one JSON row (<code>site_settings.featured_spotlight</code>), same lenient-parse/strict-sanitize split as <code>spendTierOffer.ts</code>. <code>parseFeaturedSpotlight(raw)</code> fail-closed &rarr; inert (disabled) campaign for every read path; <code>sanitizeFeaturedSpotlight(input)</code> strict, returns <code>{campaign, errors[]}</code> for the admin PATCH branch &mdash; rejects an inverted window and (campaign-specific rule spendTierOffer.ts doesn't have) an enabled campaign with no end date. <code>isFeaturedSpotlightActive(campaign, now?)</code>. <strong>Which products show is NOT here</strong> &mdash; that's <code>products.is_spotlight</code> (0050), a per-product column, deliberately not a product-id array in this JSON (read-modify-write race risk against a second open admin tab &mdash; see the migration's header comment). <strong>18 unit tests</strong> (<code>featuredSpotlight.test.ts</code>, new).</td></tr>
-<tr><td><code>whatsappOtp.ts</code></td><td>OTP send/verify/token-check + all abuse limits + opportunistic verification-row pruning. Phone form via <code>phone.ts</code> (<code>normalizePhoneForRecord</code> re-exports it for <code>/api/razorpay</code>).</td></tr>
+<tr><td><code>whatsappOtp.ts</code></td><td>OTP send/verify/token-check + all abuse limits + opportunistic verification-row pruning. Phone form via <code>phone.ts</code> (<code>normalizePhoneForRecord</code> re-exports it for <code>/api/razorpay</code>). The actual send goes through <code>msg91Whatsapp.ts</code>'s <code>sendOtpWhatsapp</code> (provider-dispatch: Green API by default, MSG91's <code>tohfa_otp</code> template if <code>WHATSAPP_PROVIDER=msg91</code> &mdash; stage 3 of the MSG91 migration, see &sect;whatsapp) rather than <code>greenApi.ts</code> directly.</td></tr>
 <tr><td><code>greenApi.ts</code></td><td>Green API send (text / image+caption) + <code>checkWhatsappNumber</code>. Chat-id / phone form via <code>phone.ts</code>.</td></tr>
 <tr><td><code>razorpaySignature.ts</code></td><td><code>isValidPaymentSignature</code> (client path) + <code>isValidWebhookSignature</code> (Dashboard path). Unit-tested.</td></tr>
 <tr><td><code>adminSession.ts</code></td><td>DB-backed session create/validate/revoke/revoke-all. <code>SESSION_COOKIE_NAME="admin_session"</code>, 12h.</td></tr>
@@ -3069,6 +3069,43 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-12<br>10:05</code></td>
+  <td><strong>MSG91 WhatsApp &mdash; stage 2 confirmed live + stage 3 (OTP) wired</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item; one PR combining a status update with the next stage, at the owner's request to keep deployments fewer)</td>
+  <td>
+    <strong>Stage 2 confirmed working live.</strong> After the endpoint fix in the row below, the
+    owner set <code>WHATSAPP_PROVIDER=msg91</code>, triggered a real restock, and received the
+    <code>back_in_stock</code> WhatsApp message &mdash; the corrected endpoint/body shape is now
+    proven in production, not just unit-tested.
+    <br><br>
+    <strong>Stage 3 (OTP) wired in the same batch.</strong> New
+    <code>sendOtpWhatsapp(phone, code)</code> and <code>isActiveWhatsappProviderConfigured()</code> in
+    <code>msg91Whatsapp.ts</code>; <code>whatsappOtp.ts</code>'s <code>sendOtp()</code> now calls these
+    instead of <code>greenApi.ts</code>'s <code>sendWhatsappMessage</code> directly &mdash; identical
+    provider-dispatch pattern to stage 2 (defaults to Green API's exact existing message text,
+    switches to the <code>tohfa_otp</code> template only when <code>WHATSAPP_PROVIDER=msg91</code>).
+    <code>tohfa_otp</code> is a Meta <strong>Authentication</strong>-category template with a fixed
+    Meta-authored body (&ldquo;<code>{"{{1}}"}</code> is your verification code.&rdquo;, no custom
+    wording allowed) and a single variable, the code itself. The prior explicit
+    <code>isGreenApiConfigured()</code> pre-check (so a misconfigured provider surfaces as a clear
+    &ldquo;try again&rdquo; error rather than a silent no-op reporting false success) is now
+    provider-aware via the new <code>isActiveWhatsappProviderConfigured()</code>.
+    <br><br>
+    <strong>Highest-scrutiny swap since it gates checkout</strong> &mdash; a failed OTP send doesn't
+    just miss a notification, it blocks a sale. Ships behind the same <code>WHATSAPP_PROVIDER</code>
+    flag as stage 2 for an instant fallback to Green API.
+  </td>
+  <td><em>edited:</em> <code>app/utils/msg91Whatsapp.ts</code>, <code>app/utils/whatsappOtp.ts</code>,
+  <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> (both changed files) 0 errors &middot;
+  <code>npm test</code> 342/343 (1 pre-existing skip, unchanged &mdash; network-I/O sends aren't
+  unit-tested, same convention as <code>sendBackInStockWhatsapp</code>) &middot; <code>next build</code>
+  exit 0. <strong>Stage 3 not yet live-tested</strong> &mdash; per the CLAUDE.md payment-path
+  guardrail, treated as a proposal until proven: <strong>owner should only flip
+  <code>WHATSAPP_PROVIDER=msg91</code> for OTP after watching 2&ndash;3 real checkout attempts
+  complete cleanly</strong> (code arrives, verifies, order completes). Flip back (unset the var) to
+  fall back to Green API instantly if anything looks wrong.</td>
+</tr>
 <tr>
   <td><code>2026-09-12<br>09:20</code></td>
   <td><strong>MSG91 WhatsApp &mdash; corrected the send endpoint</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item; fixes the stage-2 send that has never yet succeeded live)</td>
