@@ -2292,6 +2292,65 @@ care, land behind tests, never "blind".
     medium (prospecting + outreach). **Cost:** ~₹2–5k per influencer.
     **Timeline:** 2–4 weeks per batch. *Recommended after organic reach plateaus.*
 
+14a. **⚠️ Gift With Purchase campaigns** — *in progress, PR 1 of 4 (schema + pure
+     logic).* First promo: the first 10 prepaid orders with a final payable amount of
+     ₹2000+ get a free Ganesha 3-inch polyresin idol (normally ₹250), running now
+     through New Year. Owner wants reusable admin tooling to run similar campaigns
+     going forward (pick a gift product, a minimum order amount, a max redemption
+     count, and a start/end window), not a one-off hardcoded promo. Full design plan:
+     `C:\Users\DELL\.claude\plans\resilient-growing-heron.md`. This is a payment-path
+     change (⚠️ CLAUDE.md guardrail) since it injects a free line item into real orders
+     and consumes real stock — split into 4 sequential PRs precisely so the riskiest
+     part (checkout wiring) is its own small, reviewable, carefully-tested batch.
+     - **Owner's explicit decisions:** the gift product is **also sold at full price**
+       (not dedicated giveaway stock) — the redemption cap needs its own atomic
+       counter, decoupled from the product's own inventory (the free unit still
+       consumes 1 real unit of stock like any other line). The ₹2000+ threshold is
+       checked against the **final payable amount, after** any coupon/Spend & Save
+       discount, not the raw cart subtotal. The campaign is **advertised to
+       customers** before checkout (a banner + a Review-step notice), not a silent
+       surprise. **Prepaid orders only** — Cash-on-Delivery (`/api/orders/cod`) is out
+       of scope, not touched.
+     - **Why a real table, not a `site_settings` JSON blob** (the existing pattern for
+       `spend_tier_offer`/`featured_spotlight`): this feature needs a hard redemption
+       cap enforced under concurrency, which isn't safely expressible against a JSON
+       blob, and the owner wants to run multiple campaigns over time with visible
+       history, which a single overwritten blob can't hold either.
+     - **Why the atomicity design mirrors stock reservations (migration 0043), not
+       coupons:** traced `coupons.used_count`'s actual increment
+       (`fulfilOrder.ts`) and confirmed it's a **non-atomic, racy JS read-modify-write**
+       — reads `used_count`, adds 1 in JS, writes the literal number back, no `WHERE`
+       guard, no DB constraint. Explicitly not copied. The proven, correct pattern
+       here is `reserve_stock`/`consume_reservation`'s `SECURITY DEFINER` plpgsql
+       functions with `SELECT ... FOR UPDATE` row locks.
+     - **PR 1 (this batch):** new migration `0063_add_gift_campaigns.sql` —
+       `gift_campaigns` (the campaign config + a maintained `redeemed_count`) and
+       `gift_campaign_claims` (a `held`/`consumed`/`released` hold ledger keyed by the
+       same `checkout_token` `stock_reservations` uses, for the identical reason: a
+       hold must survive the gap between order-creation and payment-capture, which a
+       bare counter can't represent). Two new functions,
+       `claim_gift_campaign_slot(campaign_id, token, ttl_seconds)` and
+       `consume_gift_campaign_claim(token)`, both RLS-locked to service_role only
+       (with the explicit post-revoke `grant ... to service_role` — the documented
+       0041/0042/0043 grant gotcha). New `app/utils/giftCampaigns.ts`
+       (`sanitizeGiftCampaign`, `toGiftCampaign`, `isGiftCampaignActive`) — pure,
+       unit-tested (18 new tests), same lenient-shape/strict-sanitize split as
+       `spendTierOffer.ts`/`featuredSpotlight.ts` adapted to a DB row instead of a
+       JSON string. **Nothing reads or writes these tables yet — zero storefront/
+       checkout risk in this batch.**
+     - **Owner must run `npm run gen:types`** after applying this migration to the
+       live DB, so `types/db.ts` picks up the two new tables before PR 2 (admin CRUD)
+       needs typed Supabase queries against them.
+     - **Next:** PR 2 (admin CRUD + UI — a campaign list, create/edit form with a
+       product picker and a day/week/month quick-duration-fill convenience on top of
+       the same start/end datetime inputs every other campaign config uses); PR 3
+       (checkout wiring — the highest-scrutiny batch, see the plan file for the full
+       edge-case list: same-product-in-cart duplicate-line guard, the
+       `categoryGstRates` gap for a product not in the cart, fail-open on any promo-
+       code error, an unconditionally-minted `checkoutToken` fix in
+       `/api/razorpay/route.ts` needed regardless of the stock-reservation kill
+       switch); PR 4 (public banner + checkout Review-step notice).
+
 ---
 
 ## Active — Tier 4 Marketing (analytics / insights)
