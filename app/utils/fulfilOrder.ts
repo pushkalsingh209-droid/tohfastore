@@ -370,6 +370,28 @@ export async function fulfilOrder(params: FulfilOrderParams): Promise<FulfilOrde
     console.error("Stock deduction after sale failed:", stockError);
   }
 
+  // 1b-bis. "Gift With Purchase" campaign redemption (migration 0063,
+  // IMPROVEMENTS.md #14a) -- confirmed payment is what actually counts
+  // against a campaign's limited slots, not order-creation (not every
+  // created Razorpay order converts to a paid one). Flips this
+  // checkout's held claim (if any -- most orders were never granted one)
+  // to consumed and increments the campaign's redeemed_count, atomically,
+  // in one RPC call. No-ops cleanly (ok=false) if there's no held claim
+  // under this token, same "best-effort, never blocks fulfilment"
+  // treatment as consume_reservation above.
+  if (checkoutToken) {
+    try {
+      const { error: giftConsumeError } = await supabase.rpc("consume_gift_campaign_claim", {
+        p_token: checkoutToken,
+      });
+      if (giftConsumeError) {
+        console.error(`consume_gift_campaign_claim failed for ${checkoutToken} (is migration 0063 applied?):`, giftConsumeError);
+      }
+    } catch (giftConsumeErr) {
+      console.error("Gift campaign claim consumption failed:", giftConsumeErr);
+    }
+  }
+
   // 1c. Bump the per-product units-sold tally (product_sales, migration
   // 0042) so the customer-facing "N sold" figure stops being recomputed
   // from only the last 300 orders once volume passes that. One RPC for

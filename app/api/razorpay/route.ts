@@ -195,24 +195,112 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Order total must be greater than zero." }, { status: 400 });
     }
 
+    // Minted unconditionally (not just when stock reservations are on) --
+    // "Gift With Purchase" campaign claims (below) need it regardless of
+    // that unrelated kill switch. Safe either way: consume_reservation and
+    // consume_gift_campaign_claim (fulfilOrder.ts) both no-op cleanly when
+    // there's nothing held under a token, falling through to their own
+    // legacy/no-op paths -- see fulfilOrder.ts's own comment on this.
+    const checkoutToken = randomUUID();
+
+    // 4b. "Gift With Purchase" campaigns (migration 0063, IMPROVEMENTS.md
+    // #14a) -- best-effort and fully fail-open: any error here must never
+    // block checkout, the single highest-value code path in the app.
+    // Checked AFTER totalAmount is settled (owner's explicit choice: the
+    // ₹-threshold is the final payable amount, after any coupon/Spend &
+    // Save discount -- not the raw subtotal), and BEFORE stock reservation,
+    // so a granted gift's real inventory reserves through the exact same
+    // atomic reserve_stock call as every paid line below, with zero new
+    // concurrency-control code of its own.
+    let giftClaimCampaignId: number | null = null;
+    let giftApplied: { title: string } | null = null;
+    try {
+      const nowIso = new Date().toISOString();
+      // Soonest-ending campaign wins if more than one is somehow enabled +
+      // in-window at once -- deliberately not blocked at admin-write time
+      // (see app/utils/giftCampaigns.ts / IMPROVEMENTS.md #14a), so this
+      // read has to be the single deterministic tie-breaker.
+      const { data: campaignRow } = await supabase
+        .from("gift_campaigns")
+        .select("id, title, gift_product_id, min_amount")
+        .eq("enabled", true)
+        .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
+        .gte("ends_at", nowIso)
+        .order("ends_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (campaignRow && totalAmount >= Number(campaignRow.min_amount)) {
+        // A shopper who already has this exact product in their own cart is
+        // skipped rather than merged into a second line for the same id --
+        // reserve_stock checks each line independently within one call, so
+        // two lines for one product id could together reserve more than is
+        // actually in stock (each sees the same starting availability).
+        const alreadyInCart = pricedItems.some((it) => String(it.id) === String(campaignRow.gift_product_id));
+        if (!alreadyInCart) {
+          const { data: giftProduct } = await supabase
+            .from("products")
+            .select("id, name, category, image_url, hidden, enquire_only, inventory")
+            .eq("id", campaignRow.gift_product_id)
+            .maybeSingle();
+
+          if (giftProduct && !giftProduct.hidden && !giftProduct.enquire_only && Number(giftProduct.inventory) > 0) {
+            // The gift product usually isn't in the shopper's own cart, so
+            // its category is usually missing from categoryGstRates (built
+            // only from categories of products actually in the cart) --
+            // look it up rather than silently falling back to the default.
+            let giftGstRate = giftProduct.category ? categoryGstRates.get(giftProduct.category) : undefined;
+            if (giftGstRate === undefined && giftProduct.category) {
+              const { data: giftCategoryRow } = await supabase
+                .from("categories")
+                .select("gst_rate")
+                .eq("name", giftProduct.category)
+                .maybeSingle();
+              giftGstRate = giftCategoryRow ? Number(giftCategoryRow.gst_rate) : GST_RATE * 100;
+            }
+
+            const { data: claimRows } = await supabase.rpc("claim_gift_campaign_slot", {
+              p_campaign_id: campaignRow.id,
+              p_token: checkoutToken,
+              p_ttl_seconds: RESERVATION_TTL_SECONDS,
+            });
+            const claimResult = Array.isArray(claimRows) ? claimRows[0] : claimRows;
+            if (claimResult?.ok) {
+              giftClaimCampaignId = campaignRow.id;
+              giftApplied = { title: campaignRow.title };
+              pricedItems.push({
+                id: giftProduct.id,
+                name: giftProduct.name ?? "Free gift",
+                price: 0,
+                quantity: 1,
+                gstRate: giftGstRate ?? GST_RATE * 100,
+                image_url: giftProduct.image_url,
+                category: giftProduct.category,
+              });
+            }
+          }
+        }
+      }
+    } catch (giftErr) {
+      console.error("Gift-with-purchase eligibility check failed (checkout continues without it):", giftErr);
+    }
+
     // 5. Reserve the stock for the length of this checkout (migration 0043,
     // IMPROVEMENTS.md T1 #1) BEFORE minting a payable Razorpay order, so two
     // shoppers racing for the last unit can't both reach payment -- the
     // second one is stopped right here. Gated behind a site_settings kill
     // switch: default off => this whole block is skipped and behaviour is
-    // exactly as before (the webhook then sees no checkoutToken in notes and
-    // runs its legacy decrement_inventory path). Reserving BEFORE
-    // orders.create means we never create an order we can't honour; if
-    // orders.create then throws, the hold just TTL-expires. Fail closed: a
-    // reserve_stock error creates no order.
-    let checkoutToken: string | null = null;
+    // exactly as before (the webhook then sees no held reservation under
+    // this token and runs its legacy decrement_inventory path). Reserving
+    // BEFORE orders.create means we never create an order we can't honour;
+    // if orders.create then throws, the hold just TTL-expires. Fail closed:
+    // a reserve_stock error creates no order.
     const { data: killRow } = await supabase
       .from("site_settings")
       .select("value")
       .eq("key", STOCK_RESERVATIONS_ENABLED_KEY)
       .maybeSingle();
     if (killRow?.value === "1") {
-      checkoutToken = randomUUID();
       const { data: reserveRows, error: reserveErr } = await supabase.rpc("reserve_stock", {
         p_token: checkoutToken,
         p_items: pricedItems as unknown as Json, // {id, quantity, ...} array -> jsonb arg
@@ -228,6 +316,18 @@ export async function POST(req: Request) {
       }
       const reserveResult = Array.isArray(reserveRows) ? reserveRows[0] : reserveRows;
       if (!reserveResult?.ok) {
+        // A real-stock shortfall on ANY line (not necessarily the gift
+        // one) must not permanently burn one of the campaign's limited
+        // slots for an order that's about to fail anyway -- best-effort,
+        // never blocks the error response below either way.
+        if (giftClaimCampaignId) {
+          const { error: releaseErr } = await supabase
+            .from("gift_campaign_claims")
+            .update({ status: "released" })
+            .eq("checkout_token", checkoutToken)
+            .eq("status", "held");
+          if (releaseErr) console.error("Could not release gift campaign claim after a stock shortfall:", releaseErr);
+        }
         const name = reserveResult?.product_name || "an item";
         const available = Number(reserveResult?.available ?? 0);
         return NextResponse.json(
@@ -283,10 +383,13 @@ export async function POST(req: Request) {
           // rest of shippingAddress.
           recipientPhone: String(shippingAddress?.recipientPhone || "").trim().slice(0, 20),
         }),
-        // Present only when the reservation feature is on. Immutable by the
-        // client after creation; the webhook reads it via orders.fetch and
-        // calls consume_reservation(token) instead of the legacy loop.
-        ...(checkoutToken ? { checkoutToken } : {}),
+        // Always present now (minted unconditionally above, regardless of
+        // the stock-reservation kill switch -- gift campaign claims need it
+        // too). Immutable by the client after creation; the webhook reads
+        // it via orders.fetch and calls consume_reservation(token) /
+        // consume_gift_campaign_claim(token), both of which no-op cleanly
+        // when nothing was actually held under it.
+        checkoutToken,
       }
     };
 
@@ -299,9 +402,13 @@ export async function POST(req: Request) {
     const gst = calculateOrderGstBreakdown(pricedItems as { price: number; quantity: number; gstRate: number }[], discount);
 
     // Pass structural tokens back to client interceptor drawers cleanly.
-    // checkoutToken (when set) lets the client free the hold immediately on
-    // a dismissed / failed payment via POST /api/checkout/release instead of
-    // waiting out the TTL.
+    // checkoutToken lets the client free the hold immediately on a
+    // dismissed / failed payment via POST /api/checkout/release instead of
+    // waiting out the TTL. giftApplied (null if no campaign was live, the
+    // cart didn't reach its threshold, or slots had run out) lets the
+    // client honestly reflect whether a gift actually made it into this
+    // specific order, rather than a banner elsewhere promising one that
+    // silently didn't apply.
     return NextResponse.json({
       orderId: order.id,
       amount: order.amount,
@@ -311,6 +418,7 @@ export async function POST(req: Request) {
       offerLabel: appliedOfferLabel,
       gst,
       checkoutToken,
+      giftApplied,
     });
 
   } catch (err: unknown) {
