@@ -2292,12 +2292,11 @@ care, land behind tests, never "blind".
     medium (prospecting + outreach). **Cost:** ~₹2–5k per influencer.
     **Timeline:** 2–4 weeks per batch. *Recommended after organic reach plateaus.*
 
-14a. **⚠️ Gift With Purchase campaigns** — *all 4 PRs complete. PRs 1-3 merged and
-     confirmed live (PR 3, checkout wiring, verified as thoroughly as possible without
-     spending real money — see below; the owner has not yet run a real qualifying
-     order). PR 4 (customer-facing banner + Review-step notice) built and verified
-     (`tsc`/tests/lint/build all clean) in this batch, not yet merged.* First promo:
-     the first 10 prepaid orders with a
+14a. **✅ Gift With Purchase campaigns** — *shipped and confirmed live end-to-end.*
+     All 4 PRs merged; owner confirmed the banner and the Review-step "you qualify"
+     notice both display correctly on a real qualifying cart. Live campaign
+     ("Festive Seasons Giveaway", ₹2500 minimum, product #167, 10 slots) is
+     running. First promo: the first 10 prepaid orders with a
      final payable amount of
      ₹2000+ get a free Ganesha 3-inch polyresin idol (normally ₹250), running now
      through New Year. Owner wants reusable admin tooling to run similar campaigns
@@ -2465,10 +2464,17 @@ care, land behind tests, never "blind".
        change), `npx eslint` on all changed/new files — 0 errors (2 pre-existing-pattern
        `react-hooks/set-state-in-effect` warnings, identical to the ones already present
        in `SpendOfferBanner.tsx`, the file this mirrors — not new debt), `npx next build`
-       clean (`/api/gift-campaign` registered). Not visually verified in a browser (no
-       browser automation available here) — the owner should click through both the
-       homepage banner and a qualifying/non-qualifying Review step once for real.
-     - **Feature complete pending merge + owner's own live order test.**
+       clean (`/api/gift-campaign` registered).
+     - **Owner confirmed live** (2026-09-12): banner and Review-step "you qualify"
+       notice both display correctly on a real qualifying cart. **Found during this
+       check:** the live campaign's `starts_at` had been saved as the *next* day
+       (9:24pm IST) rather than immediately — the admin form's `datetime-local`
+       input defaults to the current moment but a manual edit had pushed it forward
+       a day, so both the banner and the checkout gift correctly showed nothing
+       until that time. Not a code bug — cleared `starts_at` to `null` (= active
+       immediately) directly against the live row. A real completed payment through
+       to `redeemed_count` incrementing has still not been observed — worth a final
+       confirmation once an order actually gets marked paid.
 
 ---
 

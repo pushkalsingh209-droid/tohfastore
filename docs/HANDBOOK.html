@@ -2735,8 +2735,14 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
       reads, no writes). Env-gated; run it after any schema or policy change.</li>
   <li><strong>Headers / CSP</strong> &mdash; <code>next.config.ts</code> sets (production only) a
       <code>Content-Security-Policy</code> (explicit allow-list for Razorpay / GA / GTM / Meta / Google Translate /
-      Supabase), <code>X-Content-Type-Options</code>, <code>Referrer-Policy</code>, <code>Permissions-Policy</code>
-      (<code>payment=(self)</code>, everything else denied), <code>X-Frame-Options: SAMEORIGIN</code>.</li>
+      the Google Maps embed on <code>/contact</code> / Supabase), <code>X-Content-Type-Options</code>,
+      <code>Referrer-Policy</code>, <code>Permissions-Policy</code>
+      (<code>payment=(self)</code>, everything else denied), <code>X-Frame-Options: SAMEORIGIN</code>.
+      <strong>frame-src gotcha (fixed 2026-09-12):</strong> CSP is only enforced in production (not the dev
+      server), so an origin missing from an allow-list directive breaks silently in prod with no local repro
+      &mdash; <code>frame-src</code> was missing <code>https://www.google.com</code>, which the
+      <code>/contact</code> page's Maps embed (<code>MAPS_EMBED_SRC</code>) needs, so the map rendered as a
+      broken image icon in production only until this was added.</li>
   <li><strong>JSON-LD XSS</strong> &mdash; <code>&lt;</code> escaped to its unicode form in every
       <code>&lt;script type="application/ld+json"&gt;</code>.</li>
 </ul>
@@ -3109,6 +3115,33 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-12<br>21:15</code></td>
+  <td><strong>Fix: /contact Google Maps embed broken in production</strong><br>(reported by the owner with a screenshot &mdash; a broken-image icon in place of the map)</td>
+  <td>
+    Root cause: the production-only CSP's <code>frame-src</code> directive
+    (<code>next.config.ts</code>) allow-listed Razorpay and Google Translate's iframe
+    origins but not <code>https://www.google.com</code>, which the <code>/contact</code>
+    page's <code>MAPS_EMBED_SRC</code> iframe (<code>https://www.google.com/maps?
+    &hellip;&amp;output=embed</code>) needs &mdash; the browser silently blocked the
+    iframe. Not caught earlier because CSP is deliberately only enforced in
+    production (<code>next.config.ts</code>'s own comment: dev tooling relies on
+    patterns a real CSP would restrict), so there was no local repro. Fix: added
+    <code>https://www.google.com</code> to <code>frame-src</code>.
+    <br><br>
+    Deferred until now at the owner's own explicit instruction ("finish the campaign
+    plan first, fix the map after") since it landed mid-way through the Gift With
+    Purchase campaign batch (IMPROVEMENTS.md #14a) and CLAUDE.md's one-PR-at-a-time
+    rule meant it had to wait its turn.
+  </td>
+  <td><em>edited:</em> <code>next.config.ts</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint next.config.ts</code> 0 errors &middot;
+  <code>npm test</code> 365/366 (1 pre-existing skip, unchanged) &middot; <code>next build</code>
+  exit 0 &middot; confirmed the built <code>frame-src</code> string includes
+  <code>https://www.google.com</code>. Not verified in a real production deploy (Vercel only
+  enforces this header once deployed) &mdash; owner should confirm the map renders on
+  tohfaonline.com/contact after this ships.</td>
+</tr>
 <tr>
   <td><code>2026-09-12<br>20:45</code></td>
   <td><strong>Gift With Purchase campaigns &mdash; PR 4 of 4: customer-facing banner + Review-step notice</strong><br>(<code>IMPROVEMENTS.md</code> #14a &mdash; final PR, sequenced last so it could honestly reflect PR 3's real behavior via <code>giftApplied</code>)</td>
