@@ -2292,9 +2292,10 @@ care, land behind tests, never "blind".
     medium (prospecting + outreach). **Cost:** ~₹2–5k per influencer.
     **Timeline:** 2–4 weeks per batch. *Recommended after organic reach plateaus.*
 
-14a. **⚠️ Gift With Purchase campaigns** — *in progress, PR 2 of 4 (admin CRUD + UI)
-     merged; PR 1 (schema + pure logic) confirmed live, end-to-end tested against a
-     real dev login + real Supabase.* First promo: the first 10 prepaid orders with a
+14a. **⚠️ Gift With Purchase campaigns** — *in progress, PR 3 of 4 (checkout wiring)
+     ready — the highest-scrutiny batch, end-to-end tested against a real dev login +
+     real Supabase (order creation only, no real payment — see below). PRs 1-2 merged
+     and confirmed live.* First promo: the first 10 prepaid orders with a
      final payable amount of
      ₹2000+ get a free Ganesha 3-inch polyresin idol (normally ₹250), running now
      through New Year. Owner wants reusable admin tooling to run similar campaigns
@@ -2375,13 +2376,68 @@ care, land behind tests, never "blind".
        verified in a browser — no browser automation available in this environment —
        so the owner should still click through the new Settings tab card once for
        real before relying on it, per CLAUDE.md's "say so explicitly" rule for UI that
-       can't be tested end-to-end from here.
-     - **Next:** PR 3 (checkout wiring — the highest-scrutiny batch, see the plan file
-       for the full edge-case list: same-product-in-cart duplicate-line guard, the
-       `categoryGstRates` gap for a product not in the cart, fail-open on any promo-
-       code error, an unconditionally-minted `checkoutToken` fix in
-       `/api/razorpay/route.ts` needed regardless of the stock-reservation kill
-       switch); PR 4 (public banner + checkout Review-step notice).
+       can't be tested end-to-end from here. **Owner confirmed live: click-through
+       done, working as expected.**
+     - **PR 3 (this batch): checkout wiring, in `app/api/razorpay/route.ts`.**
+       `checkoutToken` is now minted unconditionally (previously only inside the
+       stock-reservation kill-switch block, so it didn't exist at all when that
+       unrelated flag was off) — gift claims need it regardless of that switch;
+       `consume_reservation`/`consume_gift_campaign_claim` both no-op cleanly when
+       nothing was actually held under a token, so this is a safe behavior change,
+       confirmed by tracing both call sites. Right after `totalAmount` is settled and
+       before stock reservation: look up the single active campaign (soonest-ending
+       wins if more than one is somehow enabled — deliberately not blocked at
+       admin-write time, see `giftCampaigns.ts`), check the threshold against
+       `totalAmount` (post-discount, per the owner's decision), skip granting if the
+       gift product is hidden/enquire-only/out of stock **or already in the shopper's
+       own cart** (two lines for one product id would let `reserve_stock` independently
+       pass each line's availability check and together reserve more than is in stock —
+       traced and confirmed during design review), look up the gift product's own GST
+       rate if its category isn't already in `categoryGstRates` (that map is built only
+       from categories of products actually in the cart), then atomically
+       `claim_gift_campaign_slot`. The whole block is wrapped in one try/catch — any
+       failure here (a bug, a missing migration, a DB hiccup) logs and checkout
+       continues without the gift, never blocking the single highest-value code path
+       in the app. If `reserve_stock` then fails for an unrelated line, the just-claimed
+       slot is released so a doomed order never permanently burns one of the campaign's
+       limited slots. New `giftApplied` field on the success response (`{title}` or
+       `null`) so the client can honestly reflect whether a gift actually made it into
+       *this* order. `/api/checkout/release` also releases a held gift claim alongside
+       the stock hold on modal dismiss/failure (same TTL, same reasoning).
+       `fulfilOrder.ts` calls `consume_gift_campaign_claim(checkoutToken)` best-effort
+       alongside `consume_reservation` — this is what actually increments
+       `redeemed_count`, on confirmed payment only, never at order-creation, since not
+       every created Razorpay order converts to a paid one.
+     - **Verified as thoroughly as possible without spending real money** (Razorpay is
+       LIVE-only here, no test keys — see CLAUDE.md's payment-path caution). Created a
+       real test campaign via the real admin API, faked a verified WhatsApp-OTP row
+       directly (service role) to pass the checkout gate without a real WhatsApp send,
+       then drove `/api/razorpay` for real against the live dev Supabase — creating a
+       genuine (but unpaid, zero-cost) Razorpay order is safe since nothing charges
+       until someone actually pays it. Confirmed, with both `stock_reservations_enabled`
+       off and (temporarily, restored after) on: `giftApplied` populated correctly on a
+       qualifying cart; the charged `amount` unaffected by the free line; a `held` claim
+       row created; `redeemed_count` staying at 0 (no payment happened); the gift
+       product's own row appearing in `stock_reservations` — reserving its real
+       inventory through the exact same atomic call as the paid line, exactly as
+       designed; the duplicate-in-cart guard correctly returning `giftApplied: null`
+       when the gift product was already in the test cart; and the Spend & Save tier
+       discount applying normally alongside the gift on the same order, confirming the
+       original "discounts will also apply" requirement. Could not verify an actual
+       completed payment or a live WhatsApp confirmation showing the gift line — that
+       needs the owner's own real order. **Found (not caused) during testing:**
+       `stock_reservations_enabled` is currently `'0'` in the live DB, despite
+       HANDBOOK.html recording it as flipped to `'1'` on 2026-09-11 — a pre-existing
+       state, not something this batch changed; worth the owner confirming whether
+       that's intentional.
+     - **Owner: run the manual test plan from the design plan file before trusting
+       this in general use** — place a real order that qualifies, confirm the gift
+       line and correct stock deduction, check a second order once slots run out
+       proceeds normally with no gift and no error, and abandon one checkout partway
+       to confirm the slot releases immediately rather than waiting the 15-minute TTL.
+     - **Next:** PR 4 (public banner + checkout Review-step notice) — sequenced last so
+       it can honestly reflect what this batch actually does via the new `giftApplied`
+       field, rather than promising something before it's proven.
 
 ---
 
