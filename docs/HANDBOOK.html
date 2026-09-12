@@ -1644,7 +1644,7 @@ paths produce an identical row because both re-read from Razorpay&rsquo;s own AP
 <tr><td><code>ADMIN_PASSWORD</code></td><td>server</td><td>Admin password (constant-time compare). Missing &rarr; login 500 (fails closed, no default).</td></tr>
 <tr><td><code>ADMIN_TOTP_SECRET</code></td><td>server</td><td>Base32 TOTP secret (RFC 6238, SHA1, 6 digits, 30s, &plusmn;1 step drift). Static &mdash; the QR tool just re-renders it.</td></tr>
 <tr><td><code>GREEN_API_URL</code>, <code>GREEN_API_ID_INSTANCE</code>, <code>GREEN_API_TOKEN_INSTANCE</code></td><td>server</td><td>Green API instance (unofficial WhatsApp Web automation). All three required or every WhatsApp feature silently no-ops (OTP send surfaces an explicit error instead). Primary WhatsApp channel today &mdash; see <code>WHATSAPP_PROVIDER</code> for the MSG91 migration in progress.</td></tr>
-<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. Not yet wired into any call site (stage 1 of the phased cutover, see IMPROVEMENTS.md) &mdash; template approval on MSG91's side is the current blocker.</td></tr>
+<tr><td><code>MSG91_AUTH_KEY</code>, <code>MSG91_WHATSAPP_NUMBER</code></td><td>server</td><td>Official Meta WhatsApp Business API via MSG91 &mdash; migration target replacing Green API (ban-risk on the unofficial channel). <code>app/utils/msg91Whatsapp.ts</code>. Both required or every send silently no-ops, same pattern as Green API. <code>MSG91_WHATSAPP_NUMBER</code> is the real production number, deliberately still live on Green API in parallel. Wired behind <code>WHATSAPP_PROVIDER=msg91</code> for back-in-stock notify only (stage 2 of the phased cutover, see IMPROVEMENTS.md); OTP (stage 3) not yet wired. Not yet live-tested against MSG91's real API.</td></tr>
 <tr><td><code>WHATSAPP_PROVIDER</code></td><td>server</td><td>Optional. <code>"green-api"</code> (default, unset behaves the same) or <code>"msg91"</code>. Selects which provider a send uses once call sites are wired in stage 2/3 of the migration &mdash; currently read by <code>activeWhatsappProvider()</code> but not yet consulted by any live send path.</td></tr>
 <tr><td><code>CRON_SECRET</code></td><td>server</td><td>Optional bearer token for <code>/api/keepalive</code>, <code>/api/cron/abandoned-checkout</code>, <code>/api/cron/product-sales-reconcile</code>, <code>/api/cron/rls-check</code>.</td></tr>
 <tr><td><code>RESEND_API_KEY</code></td><td>server</td><td>Missing &rarr; order-confirmation <em>and</em> shipped/delivered/status emails skipped silently; contact form returns 500.</td></tr>
@@ -3069,6 +3069,42 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-12<br>09:20</code></td>
+  <td><strong>MSG91 WhatsApp &mdash; corrected the send endpoint</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item; fixes the stage-2 send that has never yet succeeded live)</td>
+  <td>
+    The Stage-2 code shipped in the row below this one has never worked live. First live send
+    returned <code>404 "WhatsApp not integrated"</code>; that was chased down a dead end (a
+    per-template &ldquo;Campaign&rdquo; API requiring a dashboard-created Campaign per template,
+    briefly wired and unit-tested) before the owner noticed manual &ldquo;Send WhatsApp&rdquo; from
+    MSG91's dashboard worked with no Campaign involved &mdash; which didn't add up for an API that
+    supposedly required one. Confirmed directly against MSG91's live docs page
+    (<code>docs.msg91.com/whatsapp/template-bulk</code>, &ldquo;Send WhatsApp Template&rdquo;): the
+    original Stage-1 request <em>body</em> shape
+    (<code>integrated_number</code> / <code>content_type: "template"</code> /
+    <code>payload.template.name</code> + <code>language</code> + <code>to_and_components[]</code>) was
+    correct all along &mdash; only the URL was wrong. Corrected
+    <code>sendMsg91WhatsappTemplate</code> in <code>app/utils/msg91Whatsapp.ts</code> to POST to
+    <code>https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/</code> (previous
+    code used <code>api.msg91.com</code> with no trailing <code>/bulk/</code>) with an added
+    <code>accept: application/json</code> header. Removed the Campaign-API dead-end code
+    (<code>buildMsg91CampaignPayload</code>, <code>sendMsg91Campaign</code>,
+    <code>MSG91_CAMPAIGN_NAMES</code>) and its tests &mdash; <code>sendBackInStockWhatsapp</code> calls
+    the (now-corrected) direct template sender again, same shape as originally designed. No
+    per-template Campaign setup needed for the other 5 templates either, since this direct endpoint
+    takes the template name in the body.
+  </td>
+  <td><em>edited:</em> <code>app/utils/msg91Whatsapp.ts</code>, <code>app/utils/msg91Whatsapp.test.ts</code>,
+  <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> (both changed files) 0 errors &middot;
+  <code>npm test</code> 342/343 (1 pre-existing skip, unchanged) &middot; <code>next build</code> exit 0.
+  <strong>Not yet live-tested</strong> &mdash; owner has set <code>MSG91_WHATSAPP_NUMBER</code> to the real
+  number (<code>916302672351</code>, deliberately still live on Green API in parallel for OTP/order
+  confirmations &mdash; <code>WHATSAPP_PROVIDER</code> only gates the back-in-stock send so far). Owner:
+  set <code>WHATSAPP_PROVIDER=msg91</code>, trigger a genuine 0&rarr;positive inventory transition on a
+  product with a pending stock-alert subscriber, confirm the WhatsApp arrives. Flip back (unset the var)
+  to fall back to Green API instantly if anything looks wrong.</td>
+</tr>
 <tr>
   <td><code>2026-09-12<br>02:10</code></td>
   <td><strong>MSG91 WhatsApp stage 2 &mdash; back-in-stock notify wired</strong><br>(<code>IMPROVEMENTS.md</code> Tier 3 WhatsApp item; first live call site to actually read <code>WHATSAPP_PROVIDER</code>)</td>

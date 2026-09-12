@@ -2073,17 +2073,70 @@ care, land behind tests, never "blind".
        matching how `sendWhatsappMessage`/`sendMsg91WhatsappTemplate` are already left
        untested at that layer (only pure helpers like `buildMsg91TemplatePayload` get unit
        tests in this file).
-     - **Not yet live-tested against MSG91's real API** — `WHATSAPP_PROVIDER` stays unset
-       (defaults to `"green-api"`) until the owner flips it in one environment and watches
-       a real restock notification send cleanly via MSG91. **Owner: to test, set
-       `WHATSAPP_PROVIDER=msg91` in Vercel (or `.env.local` for a dev-server check),
-       trigger a genuine 0→positive inventory transition on a product with a pending
-       `stock_alert_subscriptions` row, and confirm the WhatsApp arrives with the right
-       product name + link.** Flip the var back (or unset it) to fall back to Green API
-       instantly if anything looks wrong — no redeploy needed for env var changes on
-       Vercel, though a redeploy or restart is needed to pick up the new value.
-     - **Next:** once a real MSG91 send is confirmed clean, proceed to stage 3 (OTP) —
-       the highest-scrutiny swap since it gates checkout.
+     - **First live test failed 2026-09-12** — `404 "WhatsApp not integrated:15553982256"`.
+       Root cause: the request shape (`sendMsg91WhatsappTemplate` /
+       `buildMsg91TemplatePayload`, generic `whatsapp-outbound-message` endpoint) was built
+       without live API access and was **structurally wrong**, not an account-permission
+       issue as the error text suggested.
+     - **First correction attempt (2026-09-12, later found wrong): Campaign API.** Owner
+       found what looked like MSG91's actual API — a per-template Campaign endpoint
+       (`POST control.msg91.com/api/v5/campaign/api/campaigns/{campaign-name}/run`,
+       requiring a dashboard-created "Campaign" per template). Wired and unit-tested, but
+       never confirmed live — the Campaign's "Launch" step hit a blocker. Owner then
+       noticed manual "Send WhatsApp" from MSG91's dashboard worked with **no** Campaign
+       involved, which didn't add up for an API that supposedly required one — this
+       correctly flagged the Campaign approach as a wrong turn before it shipped.
+     - **Actual root cause + fix (2026-09-12), confirmed against MSG91's live docs page
+       (`docs.msg91.com/whatsapp/template-bulk`, "Send WhatsApp Template"):** the
+       *original* Stage 1 request body shape (`buildMsg91TemplatePayload` —
+       `integrated_number` / `content_type: "template"` / `payload.template.name` +
+       `language` + `to_and_components[]`) was correct all along. Only the URL was wrong:
+       ```
+       POST https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/
+       Headers: accept: application/json, authkey: {authkey}, content-type: application/json
+       ```
+       vs. the original `https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/`
+       (wrong host, missing the trailing `/bulk/`) — that mismatch alone produced the 404
+       "WhatsApp not integrated" error; it was never an account/permission issue nor a
+       Campaign-vs-direct-send distinction. `sendMsg91WhatsappTemplate` in
+       `msg91Whatsapp.ts` now posts to the corrected URL/headers; the Campaign-only code
+       (`buildMsg91CampaignPayload`, `sendMsg91Campaign`, `MSG91_CAMPAIGN_NAMES`) and its
+       tests were removed as dead ends. `sendBackInStockWhatsapp` calls the (now-corrected)
+       direct template sender again, same as originally designed in Stage 1.
+     - Since this direct endpoint takes the template name (not a Campaign name) in the
+       body, **no per-template Campaign setup is needed for the other 5 templates** either
+       — the open question from the Campaign detour is now moot.
+     - **⚠️ Incident during this debugging (2026-09-12):** while investigating the "not
+       integrated" error, the owner added the REAL WhatsApp number (`916302672351` —
+       live on Green API for checkout OTP + order confirmations) to MSG91's Number list to
+       test whether the error was number-specific. This alone (no explicit "integration"
+       step completing) was enough for Meta to log the number out of the WhatsApp Business
+       App, breaking Green API's session and taking down live checkout OTP for real
+       customers. **Fixed same day**: re-registered the number directly in the WhatsApp
+       Business App, re-linked Green API's instance via a fresh QR scan. Confirmed working
+       again. **Finding from testing both numbers**: the "not integrated" error reproduced
+       identically on both — consistent with it being the wrong-endpoint bug above, not an
+       account-permission gap specific to either number. **Standing lesson: never add the
+       real number to any other WhatsApp BSP's dashboard while it's live on Green API, not
+       even for troubleshooting** — owner has since made an informed decision to proceed
+       with the real number for the Campaign setup going forward (not the virtual test
+       number), understanding this risk; "Add Number"-style full re-verification actions
+       remain the specific danger, not Campaign creation/config generally (confirmed
+       checkout OTP stayed up through Campaign creation on the real number).
+     - **Not yet live-tested against MSG91's real API with the corrected direct-send
+       endpoint** — code is written, unit-tested, `tsc`/lint/`npm test`/`next build` all
+       clean, but no real send has been attempted against it yet. `MSG91_WHATSAPP_NUMBER`
+       is the real number (`916302672351`), which is deliberately still live on Green API
+       in parallel — checkout OTP + order confirmations keep flowing through Green API
+       regardless of `WHATSAPP_PROVIDER`, since that flag only gates
+       `sendBackInStockWhatsapp` (Stage 2) so far, not OTP (Stage 3, not yet wired).
+       **Owner: set `WHATSAPP_PROVIDER=msg91`, trigger a genuine 0→positive inventory
+       transition on a product with a pending `stock_alert_subscriptions` row, and confirm
+       the WhatsApp arrives with the right product name + link.** Flip the var back (or
+       unset it) to fall back to Green API instantly if anything looks wrong.
+     - **Next:** confirm the live send above works; once clean, proceed to stage 3
+       (OTP) — the highest-scrutiny swap since it gates checkout — using this same
+       corrected endpoint/body shape for `tohfa_otp`.
 
 13. **💰 Blog / Content Hub** — *foundation exists.* Already have:
     - `/guides` index + 4 gift guides (Diwali, housewarming, wedding, puja room)
