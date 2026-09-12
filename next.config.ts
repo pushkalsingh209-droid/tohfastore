@@ -5,7 +5,11 @@ import type { NextConfig } from "next";
 // modal, Google Analytics/Ads (via @next/third-parties), the Google
 // Translate widget (which pulls sub-resources from googleapis.com/gstatic
 // beyond the translate.google.com script it directly loads), Meta Pixel,
-// and Supabase Storage for every product photo. Compiled by grepping the
+// the Google Maps embed on /contact (MAPS_EMBED_SRC, an
+// https://www.google.com/maps?...&output=embed iframe -- missing from
+// frame-src until 2026-09-12, which silently broke the map in production
+// only, since CSP isn't enforced in dev), and Supabase Storage for every
+// product photo. Compiled by grepping the
 // codebase for every https:// reference plus each of those integrations'
 // own documented CSP requirements -- getting this list wrong in the
 // restrictive direction breaks real functionality (most importantly
@@ -18,7 +22,7 @@ const CSP_DIRECTIVES = [
   "img-src 'self' data: blob: https://gxlervcazzddqcoagewy.supabase.co https://images.unsplash.com https://www.facebook.com https://www.google-analytics.com https://www.gstatic.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://connect.facebook.net https://translate.googleapis.com https://gxlervcazzddqcoagewy.supabase.co",
-  "frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com https://translate.google.com",
+  "frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com https://translate.google.com https://www.google.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
