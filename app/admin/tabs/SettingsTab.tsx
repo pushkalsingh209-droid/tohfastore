@@ -28,6 +28,7 @@ import { MAX_ORDER_NOTIFICATION_NUMBERS } from "@/app/utils/orderNotificationNum
 import { parseReferralProgramEnabled } from "@/app/utils/referralCoupon";
 import { parseCodEnabled } from "@/app/utils/codSettings";
 import { getAutocompleteMatches } from "@/app/utils/searchProducts";
+import ImageUploadField from "@/app/components/admin/ImageUploadField";
 
 // --- "Spend & Save" offer editor (Storefront Settings) -------------------
 // The offer lives as one JSON row in site_settings; the strict validation
@@ -98,10 +99,19 @@ function spotlightToDraft(stored: string | undefined): SpotlightDraft {
 // row's Edit button) -- the admin always submits the full field set either
 // way, matching sanitizeGiftCampaign's "always validate the whole draft"
 // contract server-side.
+// "product" picks a real catalog item (unchanged flow); "custom" is an
+// off-catalog gift (migration 0064) -- a name + declared value the admin
+// types in directly, plus an optional photo uploaded through the same
+// /api/admin/upload widget every product photo already uses.
+type GiftSource = "product" | "custom";
 interface GiftCampaignFormDraft {
   title: string;
+  giftSource: GiftSource;
   giftProductId: string;
   giftProductName: string; // display only, for the picker's "selected" chip
+  customGiftName: string;
+  customGiftValue: string;
+  customGiftImageUrl: string;
   minAmount: string;
   maxRedemptions: string;
   startsAt: string; // datetime-local value; "" = active as soon as enabled
@@ -110,8 +120,12 @@ interface GiftCampaignFormDraft {
 }
 const EMPTY_GIFT_CAMPAIGN_DRAFT: GiftCampaignFormDraft = {
   title: "",
+  giftSource: "product",
   giftProductId: "",
   giftProductName: "",
+  customGiftName: "",
+  customGiftValue: "",
+  customGiftImageUrl: "",
   minAmount: "",
   maxRedemptions: "10",
   startsAt: "",
@@ -353,8 +367,12 @@ export default function SettingsTab() {
     setGiftCampaignEditingId(c.id);
     setGiftCampaignDraft({
       title: c.title,
-      giftProductId: String(c.gift_product_id),
-      giftProductName: (product?.name as string) || `Product #${c.gift_product_id}`,
+      giftSource: c.gift_product_id ? "product" : "custom",
+      giftProductId: c.gift_product_id ? String(c.gift_product_id) : "",
+      giftProductName: c.gift_product_id ? (product?.name as string) || `Product #${c.gift_product_id}` : "",
+      customGiftName: c.custom_gift_name ?? "",
+      customGiftValue: c.custom_gift_value != null ? String(c.custom_gift_value) : "",
+      customGiftImageUrl: c.custom_gift_image_url ?? "",
       minAmount: String(c.min_amount),
       maxRedemptions: String(c.max_redemptions),
       startsAt: isoToLocalInput(c.starts_at),
@@ -380,7 +398,11 @@ export default function SettingsTab() {
     try {
       const payload = {
         title: giftCampaignDraft.title,
-        giftProductId: giftCampaignDraft.giftProductId ? Number(giftCampaignDraft.giftProductId) : null,
+        giftSource: giftCampaignDraft.giftSource,
+        giftProductId: giftCampaignDraft.giftSource === "product" && giftCampaignDraft.giftProductId ? Number(giftCampaignDraft.giftProductId) : null,
+        customGiftName: giftCampaignDraft.giftSource === "custom" ? giftCampaignDraft.customGiftName : null,
+        customGiftValue: giftCampaignDraft.giftSource === "custom" && giftCampaignDraft.customGiftValue ? Number(giftCampaignDraft.customGiftValue) : null,
+        customGiftImageUrl: giftCampaignDraft.giftSource === "custom" ? giftCampaignDraft.customGiftImageUrl || null : null,
         minAmount: giftCampaignDraft.minAmount,
         maxRedemptions: giftCampaignDraft.maxRedemptions,
         startsAt: giftCampaignDraft.startsAt || null,
@@ -415,7 +437,11 @@ export default function SettingsTab() {
         body: JSON.stringify({
           id: c.id,
           title: c.title,
+          giftSource: c.gift_product_id ? "product" : "custom",
           giftProductId: c.gift_product_id,
+          customGiftName: c.custom_gift_name,
+          customGiftValue: c.custom_gift_value,
+          customGiftImageUrl: c.custom_gift_image_url,
           minAmount: c.min_amount,
           maxRedemptions: c.max_redemptions,
           startsAt: c.starts_at,
@@ -1516,10 +1542,11 @@ export default function SettingsTab() {
       <div className="border-b border-border pb-4 mb-6">
         <h2 className="text-xl font-serif text-fg">Gift With Purchase Campaigns</h2>
         <p className="text-faint text-xs mt-1">
-          Give the first N qualifying orders a free product. The order total is checked <strong className="text-fg">after</strong>{" "}
+          Give the first N qualifying prepaid orders a free gift. The order total is checked <strong className="text-fg">after</strong>{" "}
           any coupon/Spend &amp; Save discount is applied. Redemptions are capped atomically at the database level, so the
-          campaign can never hand out more than the limit even if many shoppers check out at the same moment. Not yet wired to
-          checkout &mdash; creating a campaign here doesn&rsquo;t do anything at the register until that lands in a follow-up batch.
+          campaign can never hand out more than the limit even if many shoppers check out at the same moment. The gift can be a
+          real catalog product (its own stock is reserved and deducted like any paid line) or a custom, off-catalog item you
+          name and price yourself &mdash; only its redemption count is capped, since there&rsquo;s no real stock to track.
         </p>
       </div>
 
@@ -1529,6 +1556,9 @@ export default function SettingsTab() {
         <div className="space-y-3 mb-6">
           {giftCampaigns.map((c) => {
             const product = products.find((p) => String(p.id) === String(c.gift_product_id));
+            const giftLabel = c.gift_product_id
+              ? (product?.name as string) || `Product #${c.gift_product_id}`
+              : `${c.custom_gift_name} (custom${c.custom_gift_value != null ? `, worth ₹${Number(c.custom_gift_value).toLocaleString("en-IN")}` : ""})`;
             const started = !c.starts_at || new Date(c.starts_at).getTime() <= nowMs;
             const ended = new Date(c.ends_at).getTime() < nowMs;
             const full = c.redeemed_count >= c.max_redemptions;
@@ -1542,7 +1572,7 @@ export default function SettingsTab() {
                     <span className={`ml-2 text-[10px] uppercase tracking-wider font-semibold ${statusColor}`}>{statusLabel}</span>
                   </p>
                   <p className="text-xs text-faint mt-0.5">
-                    {(product?.name as string) || `Product #${c.gift_product_id}`} free on orders &#8377;
+                    {giftLabel} free on orders &#8377;
                     {Number(c.min_amount).toLocaleString("en-IN")}+ &middot; {c.redeemed_count}/{c.max_redemptions} redeemed
                     &middot; ends {new Date(c.ends_at).toLocaleString("en-IN")}
                   </p>
@@ -1584,45 +1614,107 @@ export default function SettingsTab() {
           />
         </div>
 
-        <div className="mt-4 relative">
-          <label className="block text-sm text-muted font-medium mb-1">Gift product</label>
-          {giftCampaignDraft.giftProductId ? (
-            <div className="flex items-center gap-3">
-              <span className="px-3 py-2 rounded border border-border-strong text-sm bg-surface-2">{giftCampaignDraft.giftProductName}</span>
-              <button
-                type="button"
-                onClick={() => setGiftCampaignDraft((d) => ({ ...d, giftProductId: "", giftProductName: "" }))}
-                className="text-xs text-faint hover:underline"
-              >
-                Change
-              </button>
-            </div>
-          ) : (
-            <>
+        <div className="mt-4">
+          <label className="block text-sm text-muted font-medium mb-1">Gift source</label>
+          <div role="radiogroup" aria-label="Gift source" className="inline-flex rounded border border-border-strong overflow-hidden text-xs font-semibold">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={giftCampaignDraft.giftSource === "product"}
+              onClick={() => setGiftCampaignDraft((d) => ({ ...d, giftSource: "product" }))}
+              className={`px-3 py-2 transition ${giftCampaignDraft.giftSource === "product" ? "bg-fg text-bg" : "bg-surface-2 text-muted hover:text-fg"}`}
+            >
+              Catalog product
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={giftCampaignDraft.giftSource === "custom"}
+              onClick={() => setGiftCampaignDraft((d) => ({ ...d, giftSource: "custom" }))}
+              className={`px-3 py-2 transition border-l border-border-strong ${giftCampaignDraft.giftSource === "custom" ? "bg-fg text-bg" : "bg-surface-2 text-muted hover:text-fg"}`}
+            >
+              Custom gift (not sold here)
+            </button>
+          </div>
+        </div>
+
+        {giftCampaignDraft.giftSource === "product" ? (
+          <div className="mt-4 relative">
+            <label className="block text-sm text-muted font-medium mb-1">Gift product</label>
+            {giftCampaignDraft.giftProductId ? (
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-2 rounded border border-border-strong text-sm bg-surface-2">{giftCampaignDraft.giftProductName}</span>
+                <button
+                  type="button"
+                  onClick={() => setGiftCampaignDraft((d) => ({ ...d, giftProductId: "", giftProductName: "" }))}
+                  className="text-xs text-faint hover:underline"
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={giftProductSearch}
+                  onChange={(e) => setGiftProductSearch(e.target.value)}
+                  placeholder="Search products by name..."
+                  className="w-full max-w-sm px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+                />
+                {giftProductMatches.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full max-w-sm bg-surface border border-border rounded shadow-sm max-h-48 overflow-y-auto">
+                    {giftProductMatches.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => handleSelectGiftProduct(m.id, m.name)}
+                        className="block w-full text-left px-3 py-2 text-sm text-fg hover:bg-surface-2"
+                      >
+                        {m.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <div>
+              <label className="block text-sm text-muted font-medium mb-1">Gift name</label>
               <input
                 type="text"
-                value={giftProductSearch}
-                onChange={(e) => setGiftProductSearch(e.target.value)}
-                placeholder="Search products by name..."
+                maxLength={80}
+                value={giftCampaignDraft.customGiftName}
+                onChange={(e) => setGiftCampaignDraft((d) => ({ ...d, customGiftName: e.target.value }))}
+                placeholder="e.g. Branded keychain"
                 className="w-full max-w-sm px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
               />
-              {giftProductMatches.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full max-w-sm bg-surface border border-border rounded shadow-sm max-h-48 overflow-y-auto">
-                  {giftProductMatches.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => handleSelectGiftProduct(m.id, m.name)}
-                      className="block w-full text-left px-3 py-2 text-sm text-fg hover:bg-surface-2"
-                    >
-                      {m.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+            </div>
+            <div>
+              <label className="block text-sm text-muted font-medium mb-1">Declared value (&#8377;)</label>
+              <input
+                type="number"
+                min={1}
+                value={giftCampaignDraft.customGiftValue}
+                onChange={(e) => setGiftCampaignDraft((d) => ({ ...d, customGiftValue: e.target.value }))}
+                placeholder="e.g. 250"
+                className="w-32 px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+              />
+              <span className="block text-[11px] text-faint mt-1">
+                Shown to shoppers as &ldquo;worth &#8377;X&rdquo; &mdash; there&rsquo;s no product listing to price this from.
+              </span>
+            </div>
+            <div>
+              <label className="block text-sm text-muted font-medium mb-1">Photo (optional)</label>
+              <ImageUploadField
+                value={giftCampaignDraft.customGiftImageUrl}
+                onChange={(url) => setGiftCampaignDraft((d) => ({ ...d, customGiftImageUrl: url }))}
+                placeholder="https://gxlervcazzddqcoagewy.supabase.co/storage/v1/object/sign/..."
+              />
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-3 flex-wrap mt-4">
           <label className="text-sm text-muted font-medium">Minimum order amount (&#8377;)</label>

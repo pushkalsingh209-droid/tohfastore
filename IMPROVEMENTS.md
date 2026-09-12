@@ -2292,7 +2292,8 @@ care, land behind tests, never "blind".
     medium (prospecting + outreach). **Cost:** ~₹2–5k per influencer.
     **Timeline:** 2–4 weeks per batch. *Recommended after organic reach plateaus.*
 
-14a. **✅ Gift With Purchase campaigns** — *shipped and confirmed live end-to-end.*
+14a. **✅ Gift With Purchase campaigns** — *shipped and confirmed live end-to-end,
+     plus a follow-up (migration 0064) adding off-catalog gift support.*
      All 4 PRs merged; owner confirmed the banner and the Review-step "you qualify"
      notice both display correctly on a real qualifying cart. Live campaign
      ("Festive Seasons Giveaway", ₹2500 minimum, product #167, 10 slots) is
@@ -2475,6 +2476,76 @@ care, land behind tests, never "blind".
        immediately) directly against the live row. A real completed payment through
        to `redeemed_count` incrementing has still not been observed — worth a final
        confirmation once an order actually gets marked paid.
+     - **Follow-up (migration 0064): off-catalog gift support.** Owner's own words:
+       "we should be able to add gifts name from within the website or those not
+       present in the website also... those not present in the website we can declare
+       the value and may be optional pic." `gift_campaigns.gift_product_id` is now
+       nullable; three new columns (`custom_gift_name`, `custom_gift_value`,
+       `custom_gift_image_url`) hold the alternate path, with a DB-level xor check
+       constraint (`gift_campaigns_gift_source_xor`) enforcing exactly one gift
+       source is ever set — mirrors `sanitizeGiftCampaign`'s own strict-write
+       validation, so a direct/manual write can't leave a campaign ambiguous either.
+       `claim_gift_campaign_slot`/`consume_gift_campaign_claim` (migration 0063)
+       needed **zero changes** — traced and confirmed neither function references
+       `gift_product_id` at all, only `campaign_id`/`checkout_token`, so the
+       redemption-cap mechanism was already fully product-agnostic.
+       - **The one real risk, found during design research and confirmed against the
+         live DB:** `reserve_stock` (migration 0043) casts each item's id straight to
+         `bigint` inside the function body (`(v_item->>'id')::bigint`) — a non-numeric
+         placeholder id for an off-catalog gift line would **throw inside Postgres**,
+         not just fail gracefully, breaking checkout entirely for every order while a
+         custom-gift campaign is running. Fixed by giving the custom-gift line a
+         sentinel string id (`"gift-custom"`, `app/api/razorpay/route.ts`) and
+         filtering it out of `reserve_stock`'s `p_items` array before that call —
+         confirmed nothing else needed the same treatment: `fulfilOrder.ts`'s legacy
+         `decrement_inventory` fallback already guards with
+         `Number.isFinite(productId)` before calling out, and `apply_product_sales`
+         (0042) already regex-filters non-numeric ids before its own cast.
+       - **Checkout wiring** (`app/api/razorpay/route.ts`): the gift-eligibility block
+         now branches on `gift_product_id` vs. `custom_gift_name`. The custom path
+         skips the hidden/enquire-only/inventory check and the duplicate-in-cart guard
+         entirely (nothing to check — no real product row), calls
+         `claim_gift_campaign_slot` exactly as before, and pushes a `price: 0` line
+         using the sentinel id, the admin's custom name, and `custom_gift_image_url`.
+       - **Admin UI** (`SettingsTab.tsx`): a "Catalog product" / "Custom gift (not sold
+         here)" toggle swaps the existing product-search picker for a name field, a
+         "Declared value (₹)" number field (shown to shoppers as "worth ₹X", since
+         there's no product listing to price it from), and an optional photo via the
+         existing `ImageUploadField` (same `/api/admin/upload` → Supabase Storage
+         path every product photo already uses — deliberately reused instead of a
+         plain URL text field, since a URL from anywhere else would be silently
+         blocked by the CSP `img-src` allow-list, the exact class of bug just fixed on
+         `/contact`'s map).
+       - **Customer-facing surfaces**: `/api/gift-campaign` and `useActiveGiftCampaign`
+         gained `giftValue`/`giftImageUrl` fields (`giftValue` only populated for a
+         custom gift — a catalog product's own price already speaks for itself).
+         `GiftCampaignBanner`'s marquee text and the Review-step notice both append
+         "(worth ₹X)" when set; the Review-step notice also shows a small thumbnail
+         when `giftImageUrl` is present.
+       - **Verified end-to-end against the real live database and dev server** —
+         necessarily so, since there's no separate staging Supabase project and a real
+         campaign ("Festive Seasons Giveaway") was actively running at the time.
+         Sequence: paused the real campaign (`enabled:false`), inserted a throwaway
+         custom-gift test campaign, ran the dev server against the same live DB, faked
+         a verified-OTP row, and created two real (unpaid, zero-cost) Razorpay orders
+         — one with `stock_reservations_enabled` off, one with it temporarily on.
+         Confirmed: `giftApplied` populated with the custom campaign's title; charged
+         `amount` unaffected by the free line; a `held` `gift_campaign_claims` row
+         created each time; with reservations on, a `stock_reservations` row was
+         created **only** for the real cart product (id 69) and **not** for the
+         sentinel gift line, and the RPC call did not error (confirming the
+         bigint-cast risk above is actually averted, not just reasoned about);
+         `/api/checkout/release` correctly released both the stock hold and the gift
+         claim for both tokens. Cleaned up completely afterward: deleted the test
+         campaign, its claim rows, the test stock reservation, and the fake OTP row;
+         restored `stock_reservations_enabled` to `'0'` and the real campaign to
+         `enabled:true` — confirmed via a final read that `gift_campaigns` is back to
+         exactly its pre-test single live row (`redeemed_count` still 0 throughout,
+         since order-creation alone never increments it).
+       - **Not verified**: a real off-catalog campaign has not yet been run by the
+         owner through an actual completed payment. `/api/admin/upload`'s image
+         upload widget was exercised by precedent (`ProductsTab.tsx` already uses it
+         successfully) but not re-tested live in this batch.
 
 ---
 

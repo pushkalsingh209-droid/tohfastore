@@ -200,21 +200,30 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
 
       {/* --- Gift With Purchase notice (#14a) -- preview only, see the
           ReviewBag.giftCampaign doc comment. Hidden entirely for COD since
-          the campaign is prepaid-only. */}
+          the campaign is prepaid-only. giftValue/giftImageUrl only exist
+          for an off-catalog gift (migration 0064) -- a catalog product
+          speaks for itself, so both stay null on that path. */}
       {b.giftCampaign && !isCod && (
         <div
-          className={`rounded-lg border px-3 py-2.5 text-xs ${
+          className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-xs ${
             giftQualifies ? "border-success-border bg-success-soft text-success" : "border-border bg-surface-2 text-muted"
           }`}
         >
+          {b.giftCampaign.giftImageUrl && (
+            <div className="relative w-8 h-8 rounded overflow-hidden border border-border bg-surface flex-shrink-0">
+              <Image src={b.giftCampaign.giftImageUrl} alt="" fill sizes="32px" className="object-cover" />
+            </div>
+          )}
           {giftQualifies ? (
             <span className="font-bold">
-              &#127873; You qualify for a FREE {b.giftCampaign.giftProductName}!
+              &#127873; You qualify for a FREE {b.giftCampaign.giftProductName}
+              {b.giftCampaign.giftValue != null ? ` (worth ₹${b.giftCampaign.giftValue.toLocaleString("en-IN")})` : ""}!
             </span>
           ) : (
             <span>
               Add <span className="font-mono font-bold text-fg">₹{giftGap.toLocaleString("en-IN")}</span> more to get a FREE{" "}
               {b.giftCampaign.giftProductName}
+              {b.giftCampaign.giftValue != null ? ` (worth ₹${b.giftCampaign.giftValue.toLocaleString("en-IN")})` : ""}
             </span>
           )}
         </div>

@@ -21,7 +21,9 @@ export async function GET() {
     // campaign is "the" active one.
     const { data: campaignRow } = await supabase
       .from("gift_campaigns")
-      .select("title, gift_product_id, min_amount, max_redemptions, redeemed_count, ends_at")
+      .select(
+        "title, gift_product_id, custom_gift_name, custom_gift_value, custom_gift_image_url, min_amount, max_redemptions, redeemed_count, ends_at"
+      )
       .eq("enabled", true)
       .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
       .gte("ends_at", nowIso)
@@ -33,11 +35,19 @@ export async function GET() {
       return NextResponse.json({ active: false as const }, { headers: CACHE_HEADERS });
     }
 
-    const { data: productRow } = await supabase
-      .from("products")
-      .select("name")
-      .eq("id", campaignRow.gift_product_id)
-      .maybeSingle();
+    // Off-catalog gift (migration 0064): no products row to name/image it
+    // from, so custom_gift_name/custom_gift_image_url stand in directly.
+    let giftProductName = campaignRow.custom_gift_name;
+    let giftImageUrl = campaignRow.custom_gift_image_url;
+    if (campaignRow.gift_product_id) {
+      const { data: productRow } = await supabase
+        .from("products")
+        .select("name, image_url")
+        .eq("id", campaignRow.gift_product_id)
+        .maybeSingle();
+      giftProductName = productRow?.name ?? "a free gift";
+      giftImageUrl = productRow?.image_url ?? null;
+    }
 
     const slotsLeft = campaignRow.max_redemptions - campaignRow.redeemed_count;
 
@@ -46,7 +56,12 @@ export async function GET() {
         active: true as const,
         campaign: {
           title: campaignRow.title,
-          giftProductName: productRow?.name ?? "a free gift",
+          giftProductName: giftProductName ?? "a free gift",
+          // Only set for an off-catalog gift (the admin-declared "worth ₹X"
+          // figure) -- a catalog product's own price already speaks for
+          // itself, so this stays null for that path rather than duplicating it.
+          giftValue: campaignRow.gift_product_id ? null : campaignRow.custom_gift_value != null ? Number(campaignRow.custom_gift_value) : null,
+          giftImageUrl,
           minAmount: Number(campaignRow.min_amount),
           endsAt: campaignRow.ends_at,
           // Only surface urgency once it's actually low, same reasoning as

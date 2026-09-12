@@ -23,6 +23,13 @@ interface CartItem {
   quantity: number;
 }
 
+// Sentinel id for an off-catalog "Gift With Purchase" line (migration 0064,
+// IMPROVEMENTS.md #14a) -- there's no real products row behind it, so it
+// must never reach reserve_stock's p_items (that RPC casts each item's id
+// straight to bigint and would throw on a non-numeric string, not just
+// return ok=false). No real product id can ever collide with this string.
+const CUSTOM_GIFT_ITEM_ID = "gift-custom";
+
 // 1. Safe Build Fallback architecture to satisfy the isolated Vercel static compiler
 const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_build_placeholder";
 const keySecret = process.env.RAZORPAY_KEY_SECRET || "build_secret_placeholder";
@@ -222,7 +229,7 @@ export async function POST(req: Request) {
       // read has to be the single deterministic tie-breaker.
       const { data: campaignRow } = await supabase
         .from("gift_campaigns")
-        .select("id, title, gift_product_id, min_amount")
+        .select("id, title, gift_product_id, custom_gift_name, custom_gift_image_url, min_amount")
         .eq("enabled", true)
         .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
         .gte("ends_at", nowIso)
@@ -231,53 +238,82 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       if (campaignRow && totalAmount >= Number(campaignRow.min_amount)) {
-        // A shopper who already has this exact product in their own cart is
-        // skipped rather than merged into a second line for the same id --
-        // reserve_stock checks each line independently within one call, so
-        // two lines for one product id could together reserve more than is
-        // actually in stock (each sees the same starting availability).
-        const alreadyInCart = pricedItems.some((it) => String(it.id) === String(campaignRow.gift_product_id));
-        if (!alreadyInCart) {
-          const { data: giftProduct } = await supabase
-            .from("products")
-            .select("id, name, category, image_url, hidden, enquire_only, inventory")
-            .eq("id", campaignRow.gift_product_id)
-            .maybeSingle();
+        if (campaignRow.gift_product_id) {
+          // A shopper who already has this exact product in their own cart is
+          // skipped rather than merged into a second line for the same id --
+          // reserve_stock checks each line independently within one call, so
+          // two lines for one product id could together reserve more than is
+          // actually in stock (each sees the same starting availability).
+          const alreadyInCart = pricedItems.some((it) => String(it.id) === String(campaignRow.gift_product_id));
+          if (!alreadyInCart) {
+            const { data: giftProduct } = await supabase
+              .from("products")
+              .select("id, name, category, image_url, hidden, enquire_only, inventory")
+              .eq("id", campaignRow.gift_product_id)
+              .maybeSingle();
 
-          if (giftProduct && !giftProduct.hidden && !giftProduct.enquire_only && Number(giftProduct.inventory) > 0) {
-            // The gift product usually isn't in the shopper's own cart, so
-            // its category is usually missing from categoryGstRates (built
-            // only from categories of products actually in the cart) --
-            // look it up rather than silently falling back to the default.
-            let giftGstRate = giftProduct.category ? categoryGstRates.get(giftProduct.category) : undefined;
-            if (giftGstRate === undefined && giftProduct.category) {
-              const { data: giftCategoryRow } = await supabase
-                .from("categories")
-                .select("gst_rate")
-                .eq("name", giftProduct.category)
-                .maybeSingle();
-              giftGstRate = giftCategoryRow ? Number(giftCategoryRow.gst_rate) : GST_RATE * 100;
-            }
+            if (giftProduct && !giftProduct.hidden && !giftProduct.enquire_only && Number(giftProduct.inventory) > 0) {
+              // The gift product usually isn't in the shopper's own cart, so
+              // its category is usually missing from categoryGstRates (built
+              // only from categories of products actually in the cart) --
+              // look it up rather than silently falling back to the default.
+              let giftGstRate = giftProduct.category ? categoryGstRates.get(giftProduct.category) : undefined;
+              if (giftGstRate === undefined && giftProduct.category) {
+                const { data: giftCategoryRow } = await supabase
+                  .from("categories")
+                  .select("gst_rate")
+                  .eq("name", giftProduct.category)
+                  .maybeSingle();
+                giftGstRate = giftCategoryRow ? Number(giftCategoryRow.gst_rate) : GST_RATE * 100;
+              }
 
-            const { data: claimRows } = await supabase.rpc("claim_gift_campaign_slot", {
-              p_campaign_id: campaignRow.id,
-              p_token: checkoutToken,
-              p_ttl_seconds: RESERVATION_TTL_SECONDS,
-            });
-            const claimResult = Array.isArray(claimRows) ? claimRows[0] : claimRows;
-            if (claimResult?.ok) {
-              giftClaimCampaignId = campaignRow.id;
-              giftApplied = { title: campaignRow.title };
-              pricedItems.push({
-                id: giftProduct.id,
-                name: giftProduct.name ?? "Free gift",
-                price: 0,
-                quantity: 1,
-                gstRate: giftGstRate ?? GST_RATE * 100,
-                image_url: giftProduct.image_url,
-                category: giftProduct.category,
+              const { data: claimRows } = await supabase.rpc("claim_gift_campaign_slot", {
+                p_campaign_id: campaignRow.id,
+                p_token: checkoutToken,
+                p_ttl_seconds: RESERVATION_TTL_SECONDS,
               });
+              const claimResult = Array.isArray(claimRows) ? claimRows[0] : claimRows;
+              if (claimResult?.ok) {
+                giftClaimCampaignId = campaignRow.id;
+                giftApplied = { title: campaignRow.title };
+                pricedItems.push({
+                  id: giftProduct.id,
+                  name: giftProduct.name ?? "Free gift",
+                  price: 0,
+                  quantity: 1,
+                  gstRate: giftGstRate ?? GST_RATE * 100,
+                  image_url: giftProduct.image_url,
+                  category: giftProduct.category,
+                });
+              }
             }
+          }
+        } else if (campaignRow.custom_gift_name) {
+          // Off-catalog gift (migration 0064) -- no real products row, so
+          // there's nothing to check for hidden/enquire-only/inventory and
+          // no duplicate-in-cart guard (no product id to collide with). Its
+          // line uses CUSTOM_GIFT_ITEM_ID and is deliberately excluded from
+          // the reserve_stock call below -- there's no real inventory to
+          // lock for it, and reserve_stock would error (not just fail) on a
+          // non-numeric id.
+          const { data: claimRows } = await supabase.rpc("claim_gift_campaign_slot", {
+            p_campaign_id: campaignRow.id,
+            p_token: checkoutToken,
+            p_ttl_seconds: RESERVATION_TTL_SECONDS,
+          });
+          const claimResult = Array.isArray(claimRows) ? claimRows[0] : claimRows;
+          if (claimResult?.ok) {
+            giftClaimCampaignId = campaignRow.id;
+            giftApplied = { title: campaignRow.title };
+            pricedItems.push({
+              id: CUSTOM_GIFT_ITEM_ID,
+              name: campaignRow.custom_gift_name,
+              price: 0,
+              quantity: 1,
+              gstRate: GST_RATE * 100,
+              image_url: campaignRow.custom_gift_image_url,
+              category: null,
+            });
           }
         }
       }
@@ -303,7 +339,10 @@ export async function POST(req: Request) {
     if (killRow?.value === "1") {
       const { data: reserveRows, error: reserveErr } = await supabase.rpc("reserve_stock", {
         p_token: checkoutToken,
-        p_items: pricedItems as unknown as Json, // {id, quantity, ...} array -> jsonb arg
+        // Excludes a custom-gift line (CUSTOM_GIFT_ITEM_ID) if one was
+        // pushed above -- no-op filter for every other order, since no real
+        // product id is ever that string.
+        p_items: pricedItems.filter((it) => it.id !== CUSTOM_GIFT_ITEM_ID) as unknown as Json,
         p_ttl_seconds: RESERVATION_TTL_SECONDS,
       });
       if (reserveErr) {

@@ -149,7 +149,11 @@ export interface AdminGiftCampaign {
   id: number;
   enabled: boolean;
   title: string;
-  gift_product_id: number;
+  // Exactly one gift source is set (migration 0064's xor constraint).
+  gift_product_id: number | null;
+  custom_gift_name: string | null;
+  custom_gift_value: number | string | null;
+  custom_gift_image_url: string | null;
   min_amount: number | string;
   max_redemptions: number;
   redeemed_count: number;

@@ -17,6 +17,10 @@ import { useEffect, useState } from "react";
 export interface ActiveGiftCampaign {
   title: string;
   giftProductName: string;
+  // Only set for an off-catalog gift (migration 0064) -- the admin-declared
+  // "worth ₹X" figure, since there's no product row to read a price from.
+  giftValue: number | null;
+  giftImageUrl: string | null;
   minAmount: number;
   endsAt: string;
   slotsLeft: number | null; // null = plenty left, don't show an urgency count

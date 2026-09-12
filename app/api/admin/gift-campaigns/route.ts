@@ -19,14 +19,19 @@ import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { sanitizeGiftCampaign, type GiftCampaignDraft } from "@/app/utils/giftCampaigns";
 
-// campaign.giftProductId/endsAt are typed nullable (sanitizeGiftCampaign's
-// "always return a best-effort draft" contract), but errors.length === 0
-// guarantees both are actually set -- this narrows that for the DB write
-// below without a bare non-null assertion.
+// campaign.endsAt is typed nullable (sanitizeGiftCampaign's "always return a
+// best-effort draft" contract), but errors.length === 0 guarantees it's
+// actually set -- narrowed here without a bare non-null assertion.
+// gift_product_id/custom_gift_* stay nullable straight through (migration
+// 0064's xor check constraint enforces exactly one is set at the DB level;
+// sanitizeGiftCampaign already guarantees the same at the app level).
 function toDbColumns(campaign: GiftCampaignDraft) {
   return {
     title: campaign.title,
-    gift_product_id: campaign.giftProductId as number,
+    gift_product_id: campaign.giftProductId,
+    custom_gift_name: campaign.customGiftName,
+    custom_gift_value: campaign.customGiftValue,
+    custom_gift_image_url: campaign.customGiftImageUrl,
     min_amount: campaign.minAmount,
     max_redemptions: campaign.maxRedemptions,
     starts_at: campaign.startsAt,
