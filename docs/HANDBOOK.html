@@ -2606,7 +2606,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 </ul>
 <h4>Checkout / forms</h4>
 <ul class="tight">
-<li><code>CartDrawer</code> / <code>LazyCartDrawer</code> &mdash; the whole checkout flow</li>
+<li><code>CartDrawer</code> / <code>LazyCartDrawer</code> &mdash; the whole checkout flow. Also shows the live &ldquo;Spend &amp; Save&rdquo; preview (added 2026-09-13 &mdash; same <code>useSpendTierOffer</code> hook the checkout Review step and site-wide banner already use, gated on the drawer's own <code>isOpen</code>) one step earlier than before: &ldquo;add &#8377;X more to save &#8377;Y&rdquo; below a tier, the amount already saved once the cart clears one &mdash; so the nudge lands before a shopper who'd otherwise check out just short of a tier, not only once they reach Review.</li>
 <li><code>CartSuggestions</code> &mdash; the &ldquo;Complete Your Gifting&rdquo; cross-sell strip inside the cart drawer, fetched client-side from <code>/api/cart-suggestions</code> (bestsellers blended with up to 2 same-category picks, both pools excluding out-of-stock lines and whatever's already in the cart, added 2026-09-13); renders nothing while loading or once there's nothing left to suggest</li>
 <li><code>ContactForm</code>, <code>SearchBar</code></li>
 <li><code>EnquirySheet</code> &mdash; the step between tapping &ldquo;Chat on WhatsApp&rdquo; and the wa.me handoff: one phone field, then <em>Continue to WhatsApp</em>. Exists because wa.me is a <strong>one-way</strong> handoff &mdash; WhatsApp never tells the site who tapped, so an enquirer who doesn't press send inside WhatsApp was previously unreachable forever (23 logged clicks, 0 conversations). Writes a <code>product_enquiry</code> lead so the business can open the conversation itself. Always skippable via &ldquo;Just open WhatsApp&rdquo;. Mobile-first bottom sheet, centred card from <code>sm:</code>. The lead POST is fire-and-forget with <code>keepalive</code> and the CTA is a real <code>&lt;a&gt;</code>, so the WhatsApp tab opens from the user's own gesture &mdash; an awaited fetch before <code>window.open()</code> is what popup blockers kill. Used by <code>ProductCard</code> (both faces) and <code>WhatsappEnquiryLink</code> (product detail).</li>
@@ -3141,6 +3141,28 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-13<br>18:00</code></td>
+  <td><strong>Spend &amp; Save preview moved into the cart drawer</strong><br>(next backlog item per &ldquo;start taking up the backlog&rdquo; &mdash; the earlier recommendation session flagged this as a quick win: the nudge only showed at checkout Review, one step later than it could)</td>
+  <td>
+    <code>CartDrawer.tsx</code> now calls the exact same <code>useSpendTierOffer</code> hook the checkout
+    Review step and site-wide <code>SpendOfferBanner</code> already use, gated on the drawer's own
+    <code>isOpen</code> (costs nothing while the drawer is closed, same pattern <code>CheckoutSheet</code>
+    already follows). Shows &ldquo;add &#8377;X more to save &#8377;Y&rdquo; once the offer is running and
+    the cart hasn't cleared the next tier yet, or the amount already saved once it has &mdash; in the
+    sticky footer, above the Subtotal line, so it's visible before &ldquo;Proceed to Checkout&rdquo; rather
+    than only after opening the sheet. <strong>Preview only</strong>, identical contract to every other
+    place this offer is shown &mdash; <code>/api/razorpay</code> is still the only thing that actually
+    prices the order.
+  </td>
+  <td><em>edited:</em> <code>app/components/CartDrawer.tsx</code>, <code>docs/HANDBOOK.html</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint app/components/CartDrawer.tsx</code> 0 errors
+    &middot; <code>npm test</code> 371 passed (1 pre-existing skip) &middot; <code>next build</code> exit 0.
+    Not click-tested against a running dev server here (no live cart/offer to exercise) &mdash; owner
+    should open the drawer while the Spend &amp; Save offer is live and confirm the nudge text/amount
+    matches what Review already shows. Not a payment-path change (preview only, same hook already used
+    at checkout).</td>
+</tr>
 <tr>
   <td><code>2026-09-13<br>17:30</code></td>
   <td><strong>#TOHFACRAFTS UGC: admin moderation queue + PDP display (closes the loop)</strong><br>(next backlog item per &ldquo;start taking up the backlog&rdquo; &mdash; IMPROVEMENTS.md's own #11 flagged &ldquo;admin panel integration&rdquo; as the next follow-up batch when the submission form shipped 2026-09-11)</td>

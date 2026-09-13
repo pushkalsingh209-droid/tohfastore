@@ -7,6 +7,8 @@ import { useDefaultWhatsappNumber } from "@/app/context/DefaultWhatsappNumberCon
 import PriceDisplay from "@/app/components/PriceDisplay";
 import CheckoutSheet from "@/app/components/checkout/CheckoutSheet";
 import CartSuggestions from "@/app/components/CartSuggestions";
+import { useSpendTierOffer } from "@/app/components/checkout/useSpendTierOffer";
+import { nextSpendTier, tierDiscountFor } from "@/app/utils/spendTierOffer";
 
 // The cart drawer is now just the bag list + a "Proceed to Checkout" button.
 // That button opens the 3-step <CheckoutSheet> (#17b), which takes over the
@@ -16,6 +18,16 @@ import CartSuggestions from "@/app/components/CartSuggestions";
 export default function CartDrawer() {
   const { cart, isOpen, setIsOpen, removeFromCart, updateQuantity, cartTotal } = useCart();
   const defaultWhatsappNumber = useDefaultWhatsappNumber();
+  // Same "Spend & Save" preview the checkout Review step and the site-wide
+  // banner already show -- surfaced a step earlier, in the drawer itself,
+  // so the "add ₹X more to save ₹Y" nudge lands before a shopper who'd
+  // otherwise check out just short of a tier. Preview only, same as
+  // everywhere else it appears; /api/razorpay is still what actually
+  // prices the order. Gated on `isOpen` so it costs nothing while the
+  // drawer is closed.
+  const spendOffer = useSpendTierOffer(isOpen);
+  const offerDiscount = spendOffer ? tierDiscountFor(spendOffer.tiers, cartTotal) : 0;
+  const offerNextTier = spendOffer ? nextSpendTier(spendOffer.tiers, cartTotal) : null;
 
   // While true, the drawer is replaced by <CheckoutSheet>. Reset on every
   // close path (backdrop / ✕ / the sheet's own exit).
@@ -132,6 +144,21 @@ export default function CartDrawer() {
               whole drawer (see the early return above). */}
           {cart.length > 0 && (
             <div className="p-6 border-t border-border bg-surface-2 space-y-3">
+              {spendOffer && (offerDiscount > 0 || offerNextTier) && (
+                <div className="rounded border border-success-border bg-success-soft p-2.5">
+                  {offerDiscount > 0 ? (
+                    <p className="text-xs font-bold text-success">
+                      🎉 {spendOffer.label}: &minus;&#8377;{offerDiscount.toLocaleString("en-IN")} off at checkout
+                    </p>
+                  ) : (
+                    offerNextTier && (
+                      <p className="text-[11px] font-medium text-success">
+                        Add &#8377;{(offerNextTier.minSubtotal - cartTotal).toLocaleString("en-IN")} more to save &#8377;{offerNextTier.discount.toLocaleString("en-IN")}
+                      </p>
+                    )
+                  )}
+                </div>
+              )}
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted font-medium">Subtotal:</span>
                 <span className="text-lg font-mono font-bold text-fg">
