@@ -47,6 +47,7 @@ import {
   type RawSettings,
 } from "@/app/utils/bootstrapSettings";
 import { parseFeaturedSpotlight, FEATURED_SPOTLIGHT_KEY } from "@/app/utils/featuredSpotlight";
+import { aggregateRatings, type RatingRow, type RatingSummary } from "@/app/utils/productComparison";
 
 // PostgREST's "in"/"not.in" list literal: comma-separated, with any value
 // containing a comma or quote wrapped in double quotes (quotes doubled).
@@ -661,6 +662,27 @@ const getProductsByIdsCached = unstable_cache(
   ["products-by-ids"],
   { tags: ["products"], revalidate: 86400 }
 );
+
+// Average rating + review count per product, for /compare (IMPROVEMENTS.md
+// Tier 1 Marketing #5). Not cache-wrapped -- that page is force-dynamic
+// (comparing a handful of ids at a time is rare and cheap), same reasoning
+// as the page's own getProductsByIds-adjacent freshness needs; the actual
+// averaging is the pure, unit-tested aggregateRatings in
+// productComparison.ts, kept separate from this DB read.
+export async function getRatingSummaries(productIds: number[]): Promise<Record<number, RatingSummary>> {
+  if (productIds.length === 0) return {};
+  try {
+    const { data, error } = await supabase
+      .from("reviews")
+      .select("product_id, rating")
+      .in("product_id", productIds)
+      .eq("approved", true);
+    if (error || !data) return {};
+    return aggregateRatings(data as RatingRow[]);
+  } catch {
+    return {};
+  }
+}
 
 // "Often Viewed Together" (product page) -- distinct from "Customers Also
 // Bought" (getRelatedProducts, order history): this is a session-level
