@@ -2175,12 +2175,16 @@ care, land behind tests, never "blind".
    search intent and addresses hesitation objections (care, durability, customization).
    Easy to expand — one category entry in the map per 3–5 questions.
 
-4. **Verify & enhance JSON-LD for Google Search** — *implemented (2026-09-11).*
-   Product JSON-LD already includes `AggregateRating` when reviews exist (rating +
-   count). Verified to match the rendered reviews section. Consider adding review items
-   to the JSON-LD schema for Rich Snippets if Google starts indexing individual reviews.
-   Current structure is sufficient for Google Search star ratings. **Owner: test in
-   Google's Rich Results Tester** (`https://search.google.com/test/rich-results`).
+4. **✅ Verify & enhance JSON-LD for Google Search** — *implemented (2026-09-11), confirmed
+   in Google's Rich Results Tester (2026-09-13).* Product JSON-LD already includes
+   `AggregateRating` when reviews exist (rating + count). Owner ran a real product page
+   through `https://search.google.com/test/rich-results`: "3 valid items detected" —
+   Product snippets, Merchant listings, and Breadcrumbs all valid and rich-results
+   eligible (each shows a non-critical warning, almost certainly the expected missing
+   `gtin`/`mpn` — handmade pieces never had one, same reasoning already in the Merchant
+   Center feed's `identifier_exists=no`). Consider adding review items to the JSON-LD
+   schema for Rich Snippets if Google starts indexing individual reviews — current
+   structure is already sufficient for star ratings.
 
 5. **✅ Product Comparison Tool** — *implemented (2026-09-13).* `/compare?ids=1,5,12`,
    exactly the spec'd route shape. Zero schema change. See that date's Done entry.
