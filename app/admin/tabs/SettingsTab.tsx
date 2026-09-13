@@ -27,6 +27,7 @@ import { parseFeaturedSpotlight } from "@/app/utils/featuredSpotlight";
 import { MAX_ORDER_NOTIFICATION_NUMBERS } from "@/app/utils/orderNotificationNumbers";
 import { parseReferralProgramEnabled } from "@/app/utils/referralCoupon";
 import { parseCodEnabled } from "@/app/utils/codSettings";
+import { parseNewsletterPopupSettings, MAX_NEWSLETTER_OFFER_TEXT_LENGTH } from "@/app/utils/bootstrapSettings";
 import { getAutocompleteMatches } from "@/app/utils/searchProducts";
 import ImageUploadField from "@/app/components/admin/ImageUploadField";
 
@@ -602,6 +603,32 @@ export default function SettingsTab() {
       setSettings((prev) => ({ ...prev, ...result.settings }));
     } catch (err: unknown) {
       alert(`Could not update referral program: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Homepage exit-intent popup (IMPROVEMENTS.md #10). Ships OFF -- the
+  // owner opts in explicitly rather than it nagging visitors on deploy.
+  const handleUpdateNewsletterPopupEnabled = async (enabled: boolean) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ newsletter_popup_enabled: enabled }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: unknown) {
+      alert(`Could not update newsletter popup: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const handleUpdateNewsletterPopupOfferText = async (value: string) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ newsletter_popup_offer_text: value }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: unknown) {
+      alert(`Could not update newsletter popup offer text: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -1278,6 +1305,49 @@ export default function SettingsTab() {
         <span className="text-faint text-xs w-full">
           The mascot popup auto-shows on a visitor&rsquo;s 1st, 2nd, ... page load/reload up to the count above (1-10, default 2), then stays quiet for the cooldown length before the cycle repeats. A floating &ldquo;Show Ganesha&rdquo; button lets a visitor bring it back manually during the quiet window -- it collapses to a small arrow after the trigger delay above (2-60 seconds, default 5) and expands again on tap. Cooldown range: 5 minutes to 720 minutes (12 hours).
         </span>
+      </div>
+    </div>
+
+    {/* SECTION D.0.15: HOMEPAGE NEWSLETTER POPUP (IMPROVEMENTS.md #10) */}
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Newsletter Popup</h2>
+        <p className="text-faint text-xs mt-1">
+          A homepage-only popup asking for an email address, shown once per browser when a visitor
+          looks like they&rsquo;re about to leave (mouse toward the tab bar on desktop, a fast
+          scroll back to the top after scrolling down on any device). Ships off &mdash; nothing
+          shows until you switch it on here.
+        </p>
+      </div>
+      <label className="flex items-center gap-2 text-sm text-muted font-medium">
+        <input
+          type="checkbox"
+          checked={parseNewsletterPopupSettings(settings).enabled}
+          onChange={(e) => handleUpdateNewsletterPopupEnabled(e.target.checked)}
+          className="accent-[var(--accent)]"
+        />
+        Show the newsletter popup
+      </label>
+      <div className="mt-3">
+        <label className="text-sm text-muted font-medium block mb-1">Offer line (optional)</label>
+        <input
+          type="text"
+          maxLength={MAX_NEWSLETTER_OFFER_TEXT_LENGTH}
+          key={settings.newsletter_popup_offer_text ?? ""}
+          defaultValue={settings.newsletter_popup_offer_text ?? ""}
+          placeholder="e.g. Use code WELCOME15 for 15% off your first order"
+          onBlur={(e) => {
+            const next = e.target.value.trim();
+            if (next !== (settings.newsletter_popup_offer_text ?? "")) handleUpdateNewsletterPopupOfferText(next);
+          }}
+          className="w-full px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+        />
+        <p className="text-faint text-xs mt-1.5">
+          Only shown if you type something here &mdash; leave it blank for a plain &ldquo;join our
+          list&rdquo; ask with no discount claim. This is free text, not a live coupon lookup: create
+          the actual coupon in the Coupons tab first, then describe it here yourself, so the popup
+          never advertises a code that&rsquo;s expired or doesn&rsquo;t exist.
+        </p>
       </div>
     </div>
 

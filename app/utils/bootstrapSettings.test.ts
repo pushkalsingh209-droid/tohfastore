@@ -4,7 +4,9 @@ import {
   parseGaneshaSettings,
   parsePhotoFilterIndex,
   parseDefaultWhatsappNumber,
+  parseNewsletterPopupSettings,
   GANESHA_DEFAULTS,
+  MAX_NEWSLETTER_OFFER_TEXT_LENGTH,
 } from "./bootstrapSettings";
 import { DEFAULT_CHAT_LABELS } from "@/app/utils/chatLabels";
 import { PHOTO_FILTER_PRESETS, DEFAULT_PHOTO_FILTER_INDEX } from "@/app/utils/photoFilters";
@@ -68,5 +70,26 @@ describe("parseDefaultWhatsappNumber", () => {
   it("falls back to WHATSAPP_NUMBER for missing / blank", () => {
     expect(parseDefaultWhatsappNumber({})).toBe(WHATSAPP_NUMBER);
     expect(parseDefaultWhatsappNumber({ default_whatsapp_number: "   " })).toBe(WHATSAPP_NUMBER);
+  });
+});
+
+describe("parseNewsletterPopupSettings", () => {
+  it("is disabled with no offer text when unset (fail-closed, unlike most marketing toggles)", () => {
+    expect(parseNewsletterPopupSettings({})).toEqual({ enabled: false, offerText: null });
+  });
+  it("only '1' turns it on -- any other value stays off", () => {
+    expect(parseNewsletterPopupSettings({ newsletter_popup_enabled: "0" }).enabled).toBe(false);
+    expect(parseNewsletterPopupSettings({ newsletter_popup_enabled: "true" }).enabled).toBe(false);
+    expect(parseNewsletterPopupSettings({ newsletter_popup_enabled: "1" }).enabled).toBe(true);
+  });
+  it("trims configured offer text within the length cap", () => {
+    expect(parseNewsletterPopupSettings({ newsletter_popup_offer_text: "  15% off!  " }).offerText).toBe("15% off!");
+  });
+  it("falls back to null for blank or over-long offer text", () => {
+    expect(parseNewsletterPopupSettings({ newsletter_popup_offer_text: "   " }).offerText).toBeNull();
+    expect(
+      parseNewsletterPopupSettings({ newsletter_popup_offer_text: "x".repeat(MAX_NEWSLETTER_OFFER_TEXT_LENGTH + 1) })
+        .offerText,
+    ).toBeNull();
   });
 });

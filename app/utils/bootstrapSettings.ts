@@ -87,3 +87,29 @@ export function parseDefaultWhatsappNumber(raw: RawSettings): string {
   const configured = raw.default_whatsapp_number;
   return configured && String(configured).trim() ? String(configured).trim() : WHATSAPP_NUMBER;
 }
+
+// --- Homepage exit-intent / "leaving" popup (IMPROVEMENTS.md Tier 2
+// Marketing #10) -- ships OFF by default, deliberately: unlike most
+// marketing features here, a new customer-facing popup is a product/brand
+// call the owner should explicitly opt into rather than one that starts
+// nagging visitors the moment this deploys. `offerText` is free text the
+// owner types themselves once they've created a real coupon in the Coupons
+// tab (e.g. "Use code WELCOME15 for 15% off your first order") --
+// deliberately not auto-computed from a coupon lookup, so the popup can
+// never show a stale/wrong discount if that coupon changes or expires
+// after the fact. Blank means the popup just asks to join the list with no
+// discount claim. ---
+export const MAX_NEWSLETTER_OFFER_TEXT_LENGTH = 140;
+
+export interface NewsletterPopupSettings {
+  enabled: boolean;
+  offerText: string | null;
+}
+
+export function parseNewsletterPopupSettings(raw: RawSettings): NewsletterPopupSettings {
+  const trimmed = String(raw.newsletter_popup_offer_text ?? "").trim();
+  return {
+    enabled: raw.newsletter_popup_enabled === "1",
+    offerText: trimmed && trimmed.length <= MAX_NEWSLETTER_OFFER_TEXT_LENGTH ? trimmed : null,
+  };
+}
