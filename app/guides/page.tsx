@@ -8,13 +8,13 @@ import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 import { GIFT_GUIDES } from "@/app/utils/giftGuides";
 
 export const metadata: Metadata = {
-  title: "Gift Guides — Diwali, Housewarming, Wedding & Puja | TOHFA",
+  title: "Gift Guides — Diwali, Corporate, Weddings & More | TOHFA",
   description:
-    "Occasion-by-occasion gifting guides from TOHFA — handcrafted brass idols, diyas, lamps, pocket temples and deity photo frames for Diwali, housewarming, weddings and the home mandir.",
+    "Occasion-by-occasion gifting guides from TOHFA — handcrafted brass idols, diyas, lamps and pocket temples for Diwali, Ganesh Chaturthi, housewarmings, weddings and corporate gifting, plus board games and resin jewelry for the non-devotional picks.",
   alternates: { canonical: "/guides" },
   openGraph: {
     title: "TOHFA Gift Guides",
-    description: "What to give for Diwali, a housewarming, a wedding, or a new puja room — in handcrafted brass.",
+    description: "What to give, occasion by occasion — handcrafted brass for the home mandir, corporate gifting at volume, and a few picks outside the brass line.",
     url: "https://tohfaonline.com/guides",
     images: [DEFAULT_OG_IMAGE],
   },

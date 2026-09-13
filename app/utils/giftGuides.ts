@@ -94,6 +94,81 @@ export const GIFT_GUIDES: GiftGuide[] = [
     ],
   },
   {
+    slug: "corporate-gifting-guide",
+    eyebrow: "Gift Guide",
+    title: "Corporate Gifting Guide",
+    metaTitle: "Corporate Gift Ideas in Brass — Bulk Orders | TOHFA",
+    metaDescription:
+      "Corporate gift ideas that hold up at scale: brass idols, pocket temples and pan-stand deity frames for clients, staff and Diwali hampers — with GST invoicing and bulk pricing.",
+    intro:
+      "A corporate gift has to work at volume without looking like it was bought at volume — brass does that better than most categories we've tried.",
+    body: [
+      "For a client list or a staff gift, the pocket temples and pan-stand frames are the easiest to give in numbers: they pack flat, arrive undamaged, and still read as a considered gift rather than a bulk order. A small brass idol steps it up a notch for a senior client or a founder-level relationship; a wall hanging works well for an office or a new branch opening.",
+      "Everything below is in stock and ships across India with a GST invoice on every order — useful when the gift is going on a company's books. For volume pricing, custom packaging notes, or a fixed budget per hamper, see our dedicated corporate &amp; bulk gifting page rather than ordering piece by piece.",
+    ],
+    sections: [
+      { category: "Pocket Temples", heading: "Pocket Temples", blurb: "Flat-packing, individually giftable — the easiest brass gift to send in bulk." },
+      { category: "Pan Stands", heading: "Pan-Leaf Deity Frames", blurb: "Gold- and silver-finish deity portraits, a step up from a plain photo frame for a client desk." },
+      { category: "Idols", heading: "Brass Idols", blurb: "For a senior client or a founder-level relationship where the gift should stand out a little more." },
+      { category: "Wall Hanging", heading: "Wall Hangings", blurb: "For an office reception, a new branch, or a client's own mandir corner." },
+    ],
+  },
+  {
+    slug: "ganesh-chaturthi-gifts",
+    eyebrow: "Gift Guide",
+    title: "Ganesh Chaturthi Gift Ideas",
+    metaTitle: "Ganesh Chaturthi Gift Ideas — Brass Ganesha Idols & Diyas | TOHFA",
+    metaDescription:
+      "Ganesh Chaturthi gift ideas: handcrafted brass Ganesha idols for the home mandir, plus diyas and foldable pocket temples — traditional gifts that outlast the festival.",
+    intro:
+      "The obvious gift for Ganesh Chaturthi is a Ganesha idol, and it's obvious for a reason — it's the one gift almost every home actually wants that week.",
+    body: [
+      "A brass Ganesha idol is the centrepiece pick, in a size that suits the household's own mandir; a pair of diyas or a foldable pocket temple rounds it out for a smaller budget or a second gift for the same family. Brass ages well through years of daily aarti, which a painted or plaster idol doesn't.",
+      "All in stock, shipped across India with a GST invoice, in time for the festival if ordered ahead of it.",
+    ],
+    sections: [
+      { category: "Idols", heading: "Brass Ganesha & Deity Idols", blurb: "The centrepiece gift for the mandir this Ganesh Chaturthi." },
+      { category: "Diyas", heading: "Diyas", blurb: "For the daily aarti through the festival and after." },
+      { category: "Pocket Temples", heading: "Pocket Temples", blurb: "A compact second gift, or the whole mandir for a smaller home." },
+    ],
+  },
+  {
+    slug: "board-game-night-gifts",
+    eyebrow: "Gift Guide",
+    title: "Gift Ideas for Board Game Night",
+    metaTitle: "Board Game Gift Ideas — Catan, Wingspan & More | TOHFA",
+    metaDescription:
+      "Gift ideas for board game lovers: Catan, Wingspan, Ticket to Ride, Terraforming Mars and a Harry Potter-themed wizard chess set — premium titles for a real game night.",
+    intro:
+      "For someone who already has the obvious titles, the gift that actually lands is a game they don't own yet, not a beginner's pick.",
+    body: [
+      "This isn't the brass side of the catalogue — it's a small, curated shelf of premium tabletop games for people who host game nights or collect: Catan, Wingspan, Ticket to Ride, Terraforming Mars, and a Harry Potter-themed wizard chess set for a fan who's past the standard sets. Good for a birthday, a housewarming for a gaming household, or a genuinely different corporate gift.",
+      "In stock, ships across India with a GST invoice.",
+    ],
+    sections: [
+      { category: "Board Games", heading: "Premium Board Games", blurb: "Catan, Wingspan, Ticket to Ride, Terraforming Mars and more, for a serious game night." },
+    ],
+    perSection: 8,
+  },
+  {
+    slug: "resin-jewelry-gifts",
+    eyebrow: "Gift Guide",
+    title: "Handmade Resin Jewelry Gift Ideas",
+    metaTitle: "Resin Earrings & Keychains — Handmade Gift Ideas | TOHFA",
+    metaDescription:
+      "Handmade UV resin earrings and keychains — vibrant, one-of-a-kind pieces individually cast and cured by hand, a lighter gift than our brass collections.",
+    intro:
+      "Not everyone on your list wants brass — this is the lighter, more personal pick for a friend, a colleague, or anyone who'd rather wear the gift than display it.",
+    body: [
+      "Each piece is cast and cured by hand, so no two are quite identical — that's the actual selling point, not a marketing line, since it's a genuinely small-batch process. Earrings work as a birthday or thank-you gift on their own; a keychain is the easy add-on or a gift for someone you don't know quite well enough for jewelry.",
+      "In stock, ships across India with a GST invoice.",
+    ],
+    sections: [
+      { category: "UV Resin Earrings", heading: "Handmade Resin Earrings & Keychains", blurb: "Vibrant, individually cast pieces — no two exactly alike." },
+    ],
+    perSection: 8,
+  },
+  {
     slug: "puja-room-essentials",
     eyebrow: "Guide",
     title: "Puja Room Essentials",
