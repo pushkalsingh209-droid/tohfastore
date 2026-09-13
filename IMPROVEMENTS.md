@@ -12,6 +12,41 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Video Testimonials (#9) — 2026-09-13 IST
+- #9's spec calls for a collection form + moderation + a player component. No new schema at all —
+  reuses `product_ugc`'s `content_type`/`content_url` columns (migration 0062), previously written
+  by nothing (submissions were text-only until now), per the owner's explicit "exhaust database"
+  instruction.
+- Self-hosted video, not YouTube/Instagram: a bare `<video>` tag against a Supabase Storage signed
+  URL, same shape as every other media asset on the site — no third-party embed, no ongoing
+  per-view cost beyond Storage/egress already in use.
+- Deliberately **no public upload endpoint** — an unauthenticated route accepting arbitrary video
+  files is a real abuse/storage-cost surface on the Hobby plan. Instead: the customer sends their
+  clip over WhatsApp (a new "Have a video? Send it on WhatsApp" link in `UgcSubmissionForm.tsx`,
+  same one-way `wa.me` handoff pattern used everywhere else on the site, prefilled with the product
+  name so the business knows what the clip is for) → the admin uploads the received file through a
+  new admin-only (password+TOTP-gated) route → it attaches to that submission's row.
+- New `POST /api/admin/ugc/upload-video`: mirrors `/api/admin/upload` (product photos) — same
+  bucket (`brass-images`), its own `ugc-videos/` prefix, random-hex immutable filename, 10-year
+  signed URL — but a 25MB cap sized for a 5–10s phone clip (vs. a product photo) and no thumbnail
+  step (that route's `sharp` resize doesn't apply to video).
+- Extended `PATCH /api/admin/ugc` to accept `content_url`/`content_type` alongside the existing
+  approved/featured fields, validated against a fixed `content_type` set.
+- New `UgcVideoUploadField.tsx` in the Reviews tab's UGC row: paired URL box + file picker like
+  `ImageUploadField`, but — since there's no surrounding form + Save button here, unlike the
+  product form — the manual URL box only commits (PATCHes) on blur, not per keystroke; a completed
+  upload still commits immediately as a single final value. Re-syncing the draft when the
+  committed value changes externally (e.g. a fresh admin data reload) is done as derived state
+  during render (`prevValue` comparison), not a `useEffect` + `setState` — caught this deliberately
+  to avoid a new `set-state-in-effect` warning.
+- `UgcHighlights.tsx` now renders a `<video controls playsInline>` for `content_type === "video"`
+  submissions instead of the quote card, same featured-only gating as before.
+- Verified: `tsc` clean · `eslint` 6 changed/new files → 0 new errors (1 pre-existing
+  `no-unescaped-entities` baseline error, untouched line) · `npm test` 384/384 (unchanged — no new
+  pure-logic module) · `next build` exit 0, both `/api/admin/ugc` and
+  `/api/admin/ugc/upload-video` registered. Not payment-path; no schema/migration change; no public
+  upload surface.
+
 ### 4 new gift guides + influencer-code attribution helper (#13, #14) — 2026-09-13 IST
 - Both #13 and #14 carry a 💰 flag because their full scope is a real recurring spend (a
   content-writer budget; ~₹2–5k/influencer product packages) — neither is something to act on
@@ -2065,11 +2100,10 @@ care, land behind tests, never "blind".
    categories (Idols → Diyas/Lamps/Pocket Temples, etc.), not a real co-purchase model.
    See that date's Done entry for the full writeup.
 
-9. **Video Testimonials** — Short 5–10s clips of real customers unboxing/using
-   products. Offer WhatsApp form for customers to submit videos. Feature best ones on
-   PDP or homepage carousel. **Impact:** very high (60%+ of shoppers watch videos before
-   buying). **Effort:** medium (collection + moderation + player component). **Liability:**
-   user-submitted content — moderation SOP required.
+9. **✅ Video Testimonials** — *implemented (2026-09-13).* Collection via a WhatsApp
+   handoff (no public upload endpoint), admin attaches the received clip in the Reviews
+   tab, `UgcHighlights` plays it on the PDP. No schema change — reuses `product_ugc`'s
+   existing `content_type`/`content_url` columns. See that date's Done entry.
 
 10. **✅ Exit Intent Popup** — *implemented (2026-09-13), ships OFF.* Homepage-only email
     capture, triggered by a desktop mouse-leave-toward-tabs or a mobile

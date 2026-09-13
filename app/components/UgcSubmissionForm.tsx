@@ -1,12 +1,18 @@
 // app/components/UgcSubmissionForm.tsx
-// "Share your unboxing" form — collects customer photos/videos/testimonials for #TOHFACRAFTS
+// "Share your unboxing" form — collects customer photos/testimonials for #TOHFACRAFTS
 // campaign. Opt-in, zero friction, moderated in admin panel before featuring.
-// Featured content displayed on PDP + homepage for social proof.
+// Featured content displayed on PDP + homepage for social proof. Video
+// testimonials (IMPROVEMENTS.md #9) skip this form entirely -- a file that
+// size has no business going through a text API route -- and instead hand
+// off to WhatsApp via the link below; the admin attaches the clip to a
+// submission afterwards (see ReviewsTab's UgcVideoUploadField).
 
 "use client";
 import { useState } from "react";
+import { useDefaultWhatsappNumber } from "@/app/context/DefaultWhatsappNumberContext";
 
 export default function UgcSubmissionForm({ productId, productName }: { productId: number; productName: string }) {
+  const defaultWhatsappNumber = useDefaultWhatsappNumber();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -76,6 +82,15 @@ export default function UgcSubmissionForm({ productId, productName }: { productI
     );
   }
 
+  // Video testimonials (IMPROVEMENTS.md #9) don't go through this form --
+  // there's no public upload endpoint (see /api/admin/ugc/upload-video's
+  // comment for why). Instead this hands off to WhatsApp, same one-way
+  // wa.me pattern as the rest of the site; the admin attaches the received
+  // clip to a submission from the Reviews tab once it arrives.
+  const videoWhatsappLink = `https://wa.me/${defaultWhatsappNumber}?text=${encodeURIComponent(
+    `Hi! I have a video testimonial to share for ${productName} (#TOHFACRAFTS).`
+  )}`;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3 p-4 border border-border rounded-lg bg-surface-2">
       <h4 className="text-xs font-serif font-bold text-fg uppercase tracking-wider">
@@ -83,6 +98,18 @@ export default function UgcSubmissionForm({ productId, productName }: { productI
       </h4>
       <p className="text-xs text-muted">
         Love your purchase? Share a photo or testimonial — we feature the best submissions on Instagram!
+      </p>
+      <p className="text-[11px] text-muted">
+        Have a video?{" "}
+        <a
+          href={videoWhatsappLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-link hover:text-link-hover transition underline"
+        >
+          Send it on WhatsApp
+        </a>{" "}
+        instead — too big to attach here.
       </p>
 
       {error && (

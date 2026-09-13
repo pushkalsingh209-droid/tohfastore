@@ -9,6 +9,7 @@
 "use client";
 import { apiRequest } from "@/app/admin/lib/apiRequest";
 import { useAdminData } from "@/app/admin/AdminDataContext";
+import UgcVideoUploadField from "@/app/components/admin/UgcVideoUploadField";
 
 export default function ReviewsTab() {
   const { reviews, setReviews, ugcSubmissions, setUgcSubmissions } = useAdminData();
@@ -51,6 +52,24 @@ export default function ReviewsTab() {
       setUgcSubmissions(ugcSubmissions.filter((u) => u.id !== id));
     } catch (err: unknown) {
       alert(`Could not remove submission: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Video testimonials (IMPROVEMENTS.md #9). The customer's clip arrives
+  // over WhatsApp, not a public upload form (see UgcSubmissionForm's "have
+  // a video?" CTA) -- this attaches it to the submission once the admin has
+  // it, via UgcVideoUploadField -> /api/admin/ugc/upload-video.
+  const handleUgcAttachVideo = async (id: number, url: string) => {
+    try {
+      await apiRequest("/api/admin/ugc", {
+        method: "PATCH",
+        body: JSON.stringify({ id, content_url: url, content_type: "video" }),
+      });
+      setUgcSubmissions(
+        ugcSubmissions.map((u) => (u.id === id ? { ...u, content_url: url, content_type: "video" } : u))
+      );
+    } catch (err: unknown) {
+      alert(`Could not attach video: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -141,8 +160,24 @@ export default function ReviewsTab() {
                       Featured
                     </span>
                   )}
+                  {ugc.content_type === "video" && ugc.content_url && (
+                    <a
+                      href={ugc.content_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-surface-2 text-link hover:underline"
+                    >
+                      &#9654; View video
+                    </a>
+                  )}
                 </div>
                 {ugc.caption && <p className="text-muted text-xs font-light mt-1.5">{ugc.caption}</p>}
+                <div className="mt-2 max-w-sm">
+                  <UgcVideoUploadField
+                    value={ugc.content_url ?? ""}
+                    onChange={(url) => handleUgcAttachVideo(ugc.id, url)}
+                  />
+                </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {!ugc.approved && (
