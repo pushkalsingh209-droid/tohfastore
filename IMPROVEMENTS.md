@@ -12,6 +12,21 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### "Complete Your Puja Set" bundle suggestions at checkout Review (#8) — 2026-09-13 IST
+- Exactly the MVP #8 specced: hardcoded complementary categories, not a real co-purchase model — an
+  Idol in the cart suggests Diyas/Lamps/Pocket Temples, never another Idol (that same-category case is
+  already `CartSuggestions` in the cart drawer).
+- New `app/utils/bundleRecommendations.ts`: pure `COMPLEMENTARY_CATEGORIES` map +
+  `getComplementaryCategories(cartCategories)` — union of every cart category's mapped complements,
+  minus what's already in the cart, sorted for a stable cache key. One-directional pairs by design (Pan
+  Stands → Pocket Temples/Idols, not the reverse); categories with no natural complement in this catalog
+  (Board Games, Polyresin, UV Resin Earrings, Misc) are left unmapped on purpose. **9 unit tests.**
+- New `GET /api/bundle-suggestions` reuses `getCategoryCrossSellPicks` (no new query logic), excludes
+  out-of-stock + cart items, capped at 4. New `BundleSuggestions.tsx` renders it in `ReviewStep.tsx`
+  right after the order summary; renders nothing when there's no mapped complement or nothing in stock.
+- Verified: `tsc` clean · `eslint` 5 changed/new files 0 errors · `npm test` 380/380 (+9 new) ·
+  `next build` exit 0, route registered. Not payment-path — preview-only suggestion strip.
+
 ### Spend & Save preview moved into the cart drawer — 2026-09-13 IST
 - Quick win flagged in the earlier engagement-recommendation session: the "add ₹X more to save ₹Y"
   nudge only showed at checkout Review, one step later than it could — a shopper could open Review
@@ -1993,11 +2008,10 @@ care, land behind tests, never "blind".
    medium (email scheduling + template design). **Requires:** Resend integration
    (already have API key).
 
-8. **Product Bundle Recommendations** — *quick follow-up to social badges.* Show
-   "frequently bought together" or themed bundles (e.g., "Complete your Puja set") at
-   checkout Review step. Increases AOV by 15–30%. **Effort:** low (manual bundles JSON +
-   UI component to suggest at checkout). MVP: hardcode complementary categories (if cart
-   has Idols, suggest Diyas/Lamps/Pocket Temples).
+8. **✅ Product Bundle Recommendations** — *implemented (2026-09-13).* "Complete Your Puja
+   Set" strip at checkout Review, exactly the MVP spec'd here: hardcoded complementary
+   categories (Idols → Diyas/Lamps/Pocket Temples, etc.), not a real co-purchase model.
+   See that date's Done entry for the full writeup.
 
 9. **Video Testimonials** — Short 5–10s clips of real customers unboxing/using
    products. Offer WhatsApp form for customers to submit videos. Feature best ones on
