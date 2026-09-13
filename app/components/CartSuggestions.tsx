@@ -11,15 +11,23 @@ import { useCart } from "@/app/context/CartContext";
 import PriceDisplay from "@/app/components/PriceDisplay";
 import type { BestsellerItem } from "@/app/utils/storeQueries";
 
-export default function CartSuggestions({ excludeIds }: { excludeIds: Array<string | number> }) {
+export default function CartSuggestions({
+  excludeIds,
+  categories,
+}: {
+  excludeIds: Array<string | number>;
+  categories: Array<string | null | undefined>;
+}) {
   const { addToCart } = useCart();
   const [suggestions, setSuggestions] = useState<BestsellerItem[]>([]);
   const [addedIds, setAddedIds] = useState<Set<string | number>>(new Set());
   const excludeKey = excludeIds.join(",");
+  const categoryKey = Array.from(new Set(categories.filter(Boolean))).sort().join(",");
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/cart-suggestions?ids=${excludeKey}`)
+    const params = new URLSearchParams({ ids: excludeKey, categories: categoryKey });
+    fetch(`/api/cart-suggestions?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled) setSuggestions(data.suggestions || []);
@@ -30,9 +38,10 @@ export default function CartSuggestions({ excludeIds }: { excludeIds: Array<stri
     return () => {
       cancelled = true;
     };
-    // excludeKey (not excludeIds) is the real dependency -- a stable string
-    // for the same set of ids, so this doesn't re-fetch on every render.
-  }, [excludeKey]);
+    // excludeKey/categoryKey (not the raw arrays) are the real dependencies
+    // -- stable strings for the same basket composition, so this doesn't
+    // re-fetch on every render.
+  }, [excludeKey, categoryKey]);
 
   if (suggestions.length === 0) return null;
 
