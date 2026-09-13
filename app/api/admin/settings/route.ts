@@ -30,6 +30,7 @@ import {
   validateCodMaxItemPrice,
   validateCodMaxOrderTotal,
 } from "@/app/utils/codSettings";
+import { MAX_NEWSLETTER_OFFER_TEXT_LENGTH } from "@/app/utils/bootstrapSettings";
 
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 500;
@@ -335,6 +336,28 @@ export async function PATCH(req: Request) {
         );
       }
       updates.push({ key: "referral_coupon_valid_days", value: String(days) });
+    }
+
+    // Homepage exit-intent popup (IMPROVEMENTS.md #10). Ships OFF -- a new
+    // customer-facing popup is a product/brand call the owner opts into,
+    // not one that starts nagging visitors the moment this deploys.
+    if (body.newsletter_popup_enabled !== undefined) {
+      updates.push({ key: "newsletter_popup_enabled", value: body.newsletter_popup_enabled ? "1" : "0" });
+    }
+    // Free text the owner writes themselves once they've created a real
+    // coupon in the Coupons tab (e.g. "Use code WELCOME15 for 15% off") --
+    // deliberately not computed from a coupon lookup here, so the popup can
+    // never show a stale discount if that coupon later changes or expires.
+    // Blank is valid (clears it back to a plain "join our list" ask).
+    if (body.newsletter_popup_offer_text !== undefined) {
+      const trimmed = String(body.newsletter_popup_offer_text).trim();
+      if (trimmed.length > MAX_NEWSLETTER_OFFER_TEXT_LENGTH) {
+        return NextResponse.json(
+          { error: `Newsletter popup offer text must be ${MAX_NEWSLETTER_OFFER_TEXT_LENGTH} characters or fewer.` },
+          { status: 400 }
+        );
+      }
+      updates.push({ key: "newsletter_popup_offer_text", value: trimmed });
     }
 
     if (updates.length === 0) {

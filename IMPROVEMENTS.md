@@ -12,6 +12,31 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Homepage exit-intent popup (#10) — 2026-09-13 IST
+- #10's spec: "15% off your first order for newsletter signup," triggered by browser scroll
+  detection. Built the mechanic in full but deliberately did **not** hardcode a discount claim or
+  auto-mint a coupon — granting a live, unlimited 15%-off code to anyone who fills a popup is a
+  real financial-liability decision (the cost/liability guardrail), not something to ship silently
+  on a feature request phrased as UI work.
+- **Ships off entirely** (`newsletter_popup_enabled`, fail-closed — the deliberate opposite of
+  `referral_program_enabled`): a new customer-facing popup is a product/brand call the owner opts
+  into, not one that starts nagging visitors the moment this deploys.
+- New `parseNewsletterPopupSettings` (`bootstrapSettings.ts`) rides the existing bootstrap
+  pipeline — no client fetch, same discipline as every other bootstrap value. **4 unit tests.**
+- New `ExitIntentPopup.tsx`, homepage-only. Two trigger signals: desktop mouse-leave toward the
+  tab bar (`clientY <= 0`), or on any device a scroll back near the top after scrolling down a
+  meaningful amount (the touch-friendly "browser scroll detection" the backlog item itself
+  specified). Shown at most once ever per browser; gated on `onCookieConsentResolved` so it can't
+  stack with the cookie banner / Ganesha popup / install prompt on a first visit.
+- Posts to `/api/leads` with a new `source: "newsletter_signup"` (email only, no phone — can never
+  reach the auto-WhatsApp-follow-up branch, explicitly excluded there too for future-proofing).
+- The actual "X% off" claim is a free-text Settings field (`newsletter_popup_offer_text`, ≤140
+  chars, blank by default) the owner writes themselves once they've created a real coupon in the
+  Coupons tab — never computed from a coupon lookup, so it can't show a stale/expired discount.
+- Verified: `tsc` clean · `eslint` 9 changed/new files 0 errors · `npm test` 384/384 (+4 new) ·
+  `next build` exit 0. Ships off — no behaviour change until the owner enables it. Not
+  payment-path; no coupon created or auto-granted.
+
 ### "Complete Your Puja Set" bundle suggestions at checkout Review (#8) — 2026-09-13 IST
 - Exactly the MVP #8 specced: hardcoded complementary categories, not a real co-purchase model — an
   Idol in the cart suggests Diyas/Lamps/Pocket Temples, never another Idol (that same-category case is
@@ -2019,9 +2044,12 @@ care, land behind tests, never "blind".
    buying). **Effort:** medium (collection + moderation + player component). **Liability:**
    user-submitted content — moderation SOP required.
 
-10. **Exit Intent Popup** — Trigger when visitor scrolls off homepage: "15% off your
-    first order for newsletter signup." Builds email list with near-zero friction.
-    **Impact:** 2–5% list growth. **Effort:** low (browser scroll detection + modal).
+10. **✅ Exit Intent Popup** — *implemented (2026-09-13), ships OFF.* Homepage-only email
+    capture, triggered by a desktop mouse-leave-toward-tabs or a mobile
+    scroll-down-then-back-up. Deliberately did **not** hardcode a "15% off" claim or
+    auto-mint a coupon — that's a real financial-liability decision (💰-adjacent), not UI
+    work, so the discount line is a free-text Settings field the owner writes once they've
+    created a real coupon themselves; blank by default. See that date's Done entry.
 
 ---
 

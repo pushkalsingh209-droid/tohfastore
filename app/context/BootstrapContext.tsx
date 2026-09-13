@@ -100,3 +100,9 @@ export function useCodSettings(): {
 } {
   return useBootstrap().cod;
 }
+
+// Homepage exit-intent popup (IMPROVEMENTS.md #10) -- ships OFF until the
+// owner explicitly enables it in Settings. See bootstrapSettings.ts.
+export function useNewsletterPopupSettings(): { enabled: boolean; offerText: string | null } {
+  return useBootstrap().newsletterPopup;
+}

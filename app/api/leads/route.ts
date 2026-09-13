@@ -30,7 +30,10 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // actually press send in WhatsApp was unreachable forever. 23 logged
 // clicks had produced 0 conversations. Asking for the number BEFORE the
 // handoff inverts it: the business can now open the conversation itself.
-const VALID_SOURCES = ["catalogue_download", "corporate_gifting", "checkout_started", "product_enquiry"];
+// newsletter_signup: the homepage exit-intent popup (ExitIntentPopup.tsx,
+// IMPROVEMENTS.md #10) -- email only, no phone field, so it never reaches
+// the auto-WhatsApp-follow branch below regardless.
+const VALID_SOURCES = ["catalogue_download", "corporate_gifting", "checkout_started", "product_enquiry", "newsletter_signup"];
 
 // Indian mobile, as the client sends it (10 digits, no country code) --
 // same rule ContactStep uses at checkout. Only enforced for
@@ -44,6 +47,8 @@ const INDIAN_MOBILE_REGEX = /^[6-9]\d{9}$/;
 // column means "the person", and the product travels in `details` where
 // the admin Leads table renders it.
 const ENQUIRY_PLACEHOLDER_NAME = "WhatsApp enquiry";
+// Same idea for the newsletter popup -- a bare email box, no name field.
+const NEWSLETTER_PLACEHOLDER_NAME = "Newsletter signup";
 
 export async function POST(req: Request) {
   try {
@@ -64,9 +69,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid lead source." }, { status: 400 });
     }
     // Every other source is a real form with a name field; a product
-    // enquiry is a single phone box, so it supplies its own placeholder
-    // rather than blocking on a field the shopper was never shown.
-    if (!name && source !== "product_enquiry") {
+    // enquiry and a newsletter signup are each a single box (phone / email),
+    // so they supply their own placeholder rather than blocking on a field
+    // the shopper was never shown.
+    if (!name && source !== "product_enquiry" && source !== "newsletter_signup") {
       return NextResponse.json({ error: "Please enter your name." }, { status: 400 });
     }
     if (source === "product_enquiry" && !INDIAN_MOBILE_REGEX.test(phone)) {
@@ -75,6 +81,9 @@ export async function POST(req: Request) {
     if (source === "catalogue_download" && !phone) {
       return NextResponse.json({ error: "Please enter your WhatsApp number so we can send you the catalogue." }, { status: 400 });
     }
+    if (source === "newsletter_signup" && !EMAIL_REGEX.test(email)) {
+      return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
+    }
     if (!email && !phone) {
       return NextResponse.json({ error: "Please enter an email or phone number so we can reach you." }, { status: 400 });
     }
@@ -82,9 +91,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
     }
 
+    const placeholderName =
+      source === "newsletter_signup" ? NEWSLETTER_PLACEHOLDER_NAME : ENQUIRY_PLACEHOLDER_NAME;
     const { data: inserted, error } = await supabase
       .from("leads")
-      .insert([{ name: name || ENQUIRY_PLACEHOLDER_NAME, email: email || null, phone: phone || null, source, details }])
+      .insert([{ name: name || placeholderName, email: email || null, phone: phone || null, source, details }])
       .select()
       .single();
     if (error) return serverErrorResponse("Lead insert failed", error);
@@ -95,16 +106,20 @@ export async function POST(req: Request) {
     // never for checkout_started -- that number just received an OTP code
     // seconds ago, and "thanks for downloading the catalogue" makes no
     // sense mid-checkout anyway; any follow-up for an abandoned checkout is
-    // a deliberate admin action instead (see the Leads section).
+    // a deliberate admin action instead (see the Leads section). Also never
+    // for newsletter_signup -- structurally moot (that form only ever
+    // collects an email, never a phone) but excluded explicitly so a future
+    // edit adding a phone field there can't accidentally wire up an
+    // unrelated "here's your catalogue" WhatsApp to a newsletter signup.
     //
     // Warm, source-specific opener -- the goal is to catch the lead while
     // they're still on-site/thinking about the products, not a hard sales
     // pitch. product_enquiry is the one source where we message first and
     // they never wrote to us, so it has to say what it's about or it reads
     // like a cold blast.
-    if (phone && source !== "checkout_started") {
+    if (phone && source !== "checkout_started" && source !== "newsletter_signup") {
       try {
-        const firstName = (name || ENQUIRY_PLACEHOLDER_NAME).split(" ")[0];
+        const firstName = (name || placeholderName).split(" ")[0];
         if (source === "product_enquiry") {
           const enquiryProduct =
             details && typeof (details as { productName?: unknown }).productName === "string"

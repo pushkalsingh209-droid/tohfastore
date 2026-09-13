@@ -43,6 +43,7 @@ import {
   parseGaneshaSettings,
   parsePhotoFilterIndex,
   parseDefaultWhatsappNumber,
+  parseNewsletterPopupSettings,
   type RawSettings,
 } from "@/app/utils/bootstrapSettings";
 import { parseFeaturedSpotlight, FEATURED_SPOTLIGHT_KEY } from "@/app/utils/featuredSpotlight";
@@ -306,6 +307,11 @@ export const getPublicSettingsMap = unstable_cache(
           "cod_fee",
           "cod_max_item_price",
           "cod_max_order_total",
+          // Homepage exit-intent popup (IMPROVEMENTS.md #10). Ships OFF
+          // (newsletter_popup_enabled unset -> disabled) until the owner
+          // opts in.
+          "newsletter_popup_enabled",
+          "newsletter_popup_offer_text",
         ]);
       if (error || !data) return {};
       const map: RawSettings = {};
@@ -406,6 +412,7 @@ export interface BootstrapData {
   categoryDiscounts: Record<string, number>;
   categoryWhatsappNumbers: Record<string, string>;
   cod: { enabled: boolean; fee: number; maxItemPrice: number; maxOrderTotal: number; disabledCategories: string[] };
+  newsletterPopup: ReturnType<typeof parseNewsletterPopupSettings>;
 }
 
 // One server-side read of everything the storefront's client contexts used
@@ -439,6 +446,7 @@ export async function getBootstrapData(): Promise<BootstrapData> {
       maxOrderTotal: parseCodMaxOrderTotal(rawSettings.cod_max_order_total),
       disabledCategories: codDisabledCategories,
     },
+    newsletterPopup: parseNewsletterPopupSettings(rawSettings),
   };
 }
 

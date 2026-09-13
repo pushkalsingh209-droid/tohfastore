@@ -12,6 +12,7 @@ import TestimonialsStrip from "@/app/components/TestimonialsStrip";
 import HeroProductRotator from "@/app/components/HeroProductRotator";
 import PromoBanner from "@/app/components/PromoBanner";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
+import ExitIntentPopup from "@/app/components/ExitIntentPopup";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
 import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
 import { getCategoryContent } from "@/app/utils/categoryContent";
@@ -328,6 +329,11 @@ export default async function StorefrontPage({
 
         <RecentlyViewedStrip />
       </div>
+
+      {/* Homepage-only, per the backlog item's own spec (IMPROVEMENTS.md
+          #10) -- ships OFF (see useNewsletterPopupSettings) until the
+          owner explicitly enables it in Settings. */}
+      {!category && <ExitIntentPopup />}
 
       {/* MANDATORY COMPLIANCE LINK FOOTER SECTION */}
       <footer className="bg-footer-bg text-footer-fg text-xs py-8 border-t border-white/10">
