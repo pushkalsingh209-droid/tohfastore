@@ -1458,7 +1458,7 @@ takes a second arg.</p>
 <tr><td>PDF</td><td><code>@react-pdf/renderer</code> 4.5</td><td>Catalogue PDF (pure JS). <code>sharp</code> re-encodes photos to thumbnails first.</td></tr>
 <tr><td>Spreadsheet</td><td><code>exceljs</code> 4.4 (MIT, free)</td><td>The admin Overview &ldquo;Download Excel&rdquo; report (<code>/api/admin/reports</code>) &mdash; a 3-sheet <code>.xlsx</code> (Orders, GST summary, GST by state). Server-side only.</td></tr>
 <tr><td>QR</td><td><code>qrcode</code> 1.5</td><td>Admin TOTP re-provisioning QR (SVG).</td></tr>
-<tr><td>Analytics / RUM</td><td><code>@vercel/analytics</code>, <code>@vercel/speed-insights</code>, <code>@next/third-parties</code> (GA4)</td><td>All free-tier. Purchase conversions fired client-side on <code>/success</code> with the real server-verified total. Meta Pixel also carries the middle funnel &mdash; <code>ViewContent</code> (product page), <code>AddToCart</code> (cart context), <code>InitiateCheckout</code> (checkout sheet mount, <em>before</em> the OTP gate) &mdash; which is what makes retargeting audiences and drop-off analysis possible.</td></tr>
+<tr><td>Analytics / RUM</td><td><code>@vercel/analytics</code>, <code>@vercel/speed-insights</code>, <code>@next/third-parties</code> (GA4)</td><td>All free-tier. Purchase conversions fired client-side on <code>/success</code> with the real server-verified total. Meta Pixel also carries the middle funnel &mdash; <code>ViewContent</code> (product page), <code>AddToCart</code> (cart context), <code>InitiateCheckout</code> (checkout sheet mount, <em>before</em> the OTP gate) &mdash; which is what makes retargeting audiences and drop-off analysis possible. The GA4 <code>purchase</code> event's <code>items[]</code> carry <code>item_id</code>/<code>item_category</code> alongside name/price/quantity (added 2026-09-13, IMPROVEMENTS.md Tier 4 Marketing #16) &mdash; combined with GA4's own automatic per-session source/medium capture from <code>utm_*</code> params (needs no code here), this lets &ldquo;which channel drove which product&rdquo; be answered entirely inside GA4's free dashboard (Reports &rarr; Monetization &rarr; Ecommerce purchases, Item name as the primary dimension, Session source / medium as a secondary one) &mdash; no custom admin report, no payment-path change; the <code>id</code> just rides the same client-side, post-payment analytics stash (<code>sessionStorage.tohfa_last_order</code>) that was already being read here, and <code>/api/orders/receipt</code> now forwards the same <code>id</code> the order's own stored <code>items</code> jsonb already had (<code>repriceCart</code> always included it) for the phone-gated re-fetch path.</td></tr>
 <tr><td>Tests</td><td>Vitest 4</td><td><code>npm test</code> (~167 pure-unit). Co-located <code>*.test.ts</code>: <code>backupCodes</code>, <code>bootstrapSettings</code>, <code>clientIp</code>, <code>coupons</code>, <code>gst</code>, <code>orderNotifications</code>, <code>orderNotificationNumbers</code>, <code>orderTally</code>, <code>razorpaySignature</code>, <code>reports</code>, <code>repricing</code>, <code>reservation</code>, <code>spendTierOffer</code>, <code>totp</code>, <code>useCheckoutMachine</code>, <code>normalizeOrderItems</code>, + <code>rls</code> (env-gated live integration &mdash; skips without Supabase creds).</td></tr>
 <tr><td>Lint</td><td>ESLint 9 + <code>eslint-config-next</code></td><td><code>npm run lint</code>. (Next 16 no longer runs ESLint during <code>next build</code>.)</td></tr>
 </tbody></table></div>
@@ -1984,7 +1984,7 @@ optimizer. (IMPROVEMENTS.md #9 is closed as won&rsquo;t-do.)</p>
 <tr><td><code>/collections/[category]</code></td><td>app/collections/[category]/page.tsx</td><td>dynamic over cached queries; <code>generateStaticParams</code> from category names</td><td>Slug &rarr; real name via <code>findCategoryBySlug</code>. Unknown &rarr; <code>notFound()</code>. Non-canonical slug &rarr; <code>permanentRedirect</code>.</td></tr>
 <tr><td><code>/product/[id]</code></td><td>app/product/[id]/page.tsx</td><td><strong><code>force-dynamic</code></strong> (SSR per request) over <code>unstable_cache</code>d Supabase reads. <em>Was SSG + <code>revalidate = 86400</code> + <code>generateStaticParams</code> &mdash; that was one ISR cache entry per product (~156), so every deploy + every <code>revalidateTag("products")</code> regenerated all of them and it hit 95% of the Hobby ISR quota. See Change log 2026-08-30.</em></td><td>Param is <code>&lt;id&gt;-&lt;slug&gt;</code>; <code>productIdFromParam</code> extracts the id. Bare/stale slug &rarr; <code>permanentRedirect</code> to canonical. Hidden/missing &rarr; &ldquo;not found&rdquo; body. Live stock &amp; recent-viewer count still fetched client-side.</td></tr>
 <tr><td><code>/catalogue</code></td><td>app/catalogue/page.tsx</td><td>client</td><td>Lead-capture form &rarr; <code>POST /api/leads {source:"catalogue_download"}</code> &rarr; opens <code>/api/catalogue</code> PDF.</td></tr>
-<tr><td><code>/success</code></td><td>app/success/page.tsx</td><td>client</td><td>Reads <code>sessionStorage.tohfa_last_order</code>; clears cart; fires deduped GA4/Meta purchase events; printable invoice. If sessionStorage is gone but <code>?order_id=</code> is present, offers a phone-gated re-fetch via <code>/api/orders/receipt</code> (no analytics on that path).</td></tr>
+<tr><td><code>/success</code></td><td>app/success/page.tsx</td><td>client</td><td>Reads <code>sessionStorage.tohfa_last_order</code>; clears cart; fires deduped GA4/Meta purchase events (GA4's <code>items[]</code> now include <code>item_id</code>/<code>item_category</code>, added 2026-09-13, IMPROVEMENTS.md Tier 4 Marketing #16); printable invoice. If sessionStorage is gone but <code>?order_id=</code> is present, offers a phone-gated re-fetch via <code>/api/orders/receipt</code> (no analytics on that path).</td></tr>
 <tr><td><code>/track</code></td><td>app/track/page.tsx</td><td>client</td><td>Reference (order id or AWB) + phone &rarr; <code>POST /api/orders/track</code>.</td></tr>
 <tr><td><code>/refer</code></td><td>app/refer/page.tsx</td><td>client</td><td>Public &ldquo;get my referral code&rdquo; page. Phone &rarr; WhatsApp OTP (the <em>same</em> send/verify routes checkout uses) &rarr; <code>POST /api/refer</code> looks up the customer's <code>FRIEND&hellip;</code> share code (never mints one &mdash; the earn-on-Delivered gate stands) + Copy / &ldquo;Share on WhatsApp&rdquo; (<code>wa.me/?text=</code>). No code yet &rarr; &ldquo;unlocks once your first order is delivered&rdquo;; referral programme off (<code>referral_program_enabled='0'</code>) &rarr; &ldquo;paused&rdquo;. In <code>sitemap.ts</code>; linked from <code>/success</code>. Bare utility page (own footer, no header nav), same as <code>/track</code>.</td></tr>
 <tr><td><code>/guides</code></td><td>app/guides/page.tsx</td><td>static</td><td>Index of the editorial gift guides (<code>app/utils/giftGuides.ts</code>) as cards. Hand-written copy, no DB &mdash; static. <code>ItemList</code> JSON-LD. Linked from the desktop header nav (next to &ldquo;Collections&rdquo;) and in <code>sitemap.ts</code>.</td></tr>
@@ -3171,6 +3171,47 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-13<br>23:00</code></td>
+  <td><strong>Product-Level Attribution (#16) &mdash; GA4 item_id/item_category</strong><br>(owner: &ldquo;do the next 2 items&rdquo; &mdash; Product-Level Attribution + the owner-action checklist, from a recommended punch list)</td>
+  <td>
+    #16 asks which traffic source drives orders per product, needing &ldquo;UTM tracking + an
+    analytics dashboard&rdquo;. GA4 already auto-captures per-session source/medium from
+    <code>utm_*</code> params with zero custom code, and the <code>/success</code> page already fires
+    a GA4 <code>purchase</code> event with real server-verified totals &mdash; the only missing piece
+    was that its <code>items[]</code> carried just name/price/quantity, with no <code>item_id</code> or
+    <code>item_category</code> for GA4 to actually break ecommerce revenue down by product/category.
+    <br><br>
+    Deliberately did <strong>not</strong> build a bespoke in-admin cross-tab (source &times; product)
+    report: that would mean either writing a new attribution snapshot into the order at checkout time
+    (touching the payment path for a reporting-only feature) or paying for GA4's BigQuery
+    export/Looker Studio connector (&#128176;, out of scope without explicit go-ahead). Enriching the
+    existing, already-firing, already-free GA4 event gets the same answer inside GA4's own dashboard
+    (Reports &rarr; Monetization &rarr; Ecommerce purchases, Item name as the primary dimension,
+    Session source/medium as a secondary one) at zero further cost or payment-path risk.
+    <br><br>
+    <code>item.id</code> (already on every cart line) now rides both <code>sessionStorage.tohfa_last_order</code>
+    stash sites in <code>CheckoutSheet.tsx</code> (prepaid + COD). <code>/api/orders/receipt</code> now
+    forwards the same <code>id</code> too &mdash; it was already sitting in the order's own stored
+    <code>items</code> jsonb (<code>repriceCart</code> in <code>repricing.ts</code> always includes
+    <code>id</code>), the receipt route just wasn't selecting it through. <code>StashedOrder.items</code>
+    widened to carry an optional <code>id</code> (optional so an already-stashed order from before this
+    shipped doesn't fail the type). The GA4 event now sends <code>item_id</code>/<code>item_category</code>
+    alongside the existing fields.
+  </td>
+  <td><em>edited:</em> <code>app/components/checkout/CheckoutSheet.tsx</code>, <code>app/success/page.tsx</code>,
+    <code>app/api/orders/receipt/route.ts</code>, <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> on all 3 changed source files 0 new
+    warnings (1 pre-existing <code>set-state-in-effect</code> warning in <code>success/page.tsx</code>,
+    untouched line) &middot; <code>npm test</code> 394 passed (1 pre-existing skip, unchanged &mdash; no
+    pure-logic module touched) &middot; <code>next build</code> exit 0. Not a payment-path change in the
+    risk sense the guardrail cares about &mdash; every edit is either a client-side analytics stash built
+    <em>after</em> payment already succeeded, or an existing already-computed value (<code>repriceCart</code>'s
+    own <code>id</code>) a read-only receipt route now forwards; nothing here touches pricing, stock, or
+    order creation. Not click-tested against a live GA4 property (no real purchase run in this session)
+    &mdash; owner should place one real test order and confirm <code>item_id</code>/<code>item_category</code>
+    show up in GA4 DebugView or the Realtime report.</td>
+</tr>
 <tr>
   <td><code>2026-09-13<br>22:30</code></td>
   <td><strong>Fix: product gallery stuck zoomed after clicking a nav arrow</strong><br>(owner: &ldquo;it starts to zoom as soon as we move the mouse to the photo and if we click the navigation button it stays zoomed which is very odd&rdquo;, then a screenshot showing the follow-up image rendering zoomed too)</td>

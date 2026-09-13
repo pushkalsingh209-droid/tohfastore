@@ -12,6 +12,53 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Product-Level Attribution (#16) — GA4 item_id/item_category — 2026-09-13 IST
+- #16 asks which traffic source drives orders per product, needing "UTM tracking + an
+  analytics dashboard". GA4 already auto-captures per-session source/medium from
+  `utm_*` params with zero custom code, and `/success` already fires a GA4 `purchase`
+  event with the real server-verified total — the only gap was its `items[]` carrying
+  just name/price/quantity, nothing GA4 could break revenue down by product/category
+  with.
+- Deliberately did **not** build a bespoke in-admin (source × product) report: that
+  would mean either writing a new attribution snapshot into the order at checkout time
+  (touching the payment path for a reporting-only feature) or paying for GA4's BigQuery
+  export/Looker Studio connector (💰, out of scope without explicit go-ahead).
+  Enriching the already-firing, already-free GA4 event gets the same answer inside
+  GA4's own dashboard (Monetization → Ecommerce purchases, Item name × Session
+  source/medium) at zero further cost or payment-path risk.
+- `item.id` (already on every cart line) now rides both `sessionStorage.tohfa_last_order`
+  stash sites in `CheckoutSheet.tsx` (prepaid + COD). `/api/orders/receipt` now forwards
+  the same `id` too — it was already in the order's own stored `items` jsonb
+  (`repriceCart` always includes it), the receipt route just wasn't selecting it
+  through. GA4's `purchase` event now sends `item_id`/`item_category` alongside the
+  existing fields.
+- Verified: `tsc` clean · `eslint` 3 changed files 0 new warnings (1 pre-existing,
+  untouched line) · `npm test` 394/394 (unchanged — no pure-logic module touched) ·
+  `next build` exit 0. Not payment-path in the risk sense the guardrail cares about —
+  every edit is a client-side post-payment analytics stash or an existing value a
+  read-only route now forwards; nothing touches pricing, stock, or order creation.
+  **Owner: place one real test order and confirm `item_id`/`item_category` show up in
+  GA4 DebugView or Realtime** — not live-tested against a real GA4 property here.
+
+### Owner-action checklist (Pinterest / Google Merchant Center / Rich Results) — 2026-09-13 IST
+- The other half of "do the next 2 items" — three IMPROVEMENTS.md items (Tier 1
+  Marketing #4, Tier 5 Marketing #18–19) that were always owner-action-only (they need
+  the owner's own logins to Pinterest Business Hub / Google Merchant Center / Search
+  Console — nothing for me to build). No code changed; this is a checklist entry so the
+  ask isn't silently dropped:
+  1. **Pinterest domain verification** (#18) — the `facebook-domain-verification`-style
+     meta tag groundwork is already in `app/layout.tsx`; owner needs to click "Verify"
+     in Pinterest Business Hub once, ~5 min. Unlocks Product Pins pulling live
+     price/stock from the site's own JSON-LD automatically.
+  2. **Google Merchant Center feed check** (#19) — `/api/google-merchant-feed` is live;
+     owner should confirm in Merchant Center that the feed is submitted + syncing daily,
+     `availability` values look right (`InStock`/`OutOfStock`/`InStoreOnly`), and prices
+     stay in sync after a promo.
+  3. **Google Rich Results Tester** (#4's own follow-up) — owner should paste a product
+     URL into `https://search.google.com/test/rich-results` and confirm the
+     `AggregateRating` JSON-LD (already shipped) is recognised for star ratings in
+     Search.
+
 ### Fix: product gallery stuck zoomed after clicking a nav arrow — 2026-09-13 IST
 - Owner-reported: on the product detail page (zoomable gallery), moving the mouse onto
   the photo triggers hover-zoom as designed, but clicking the prev/next arrows (or the
@@ -2804,9 +2851,12 @@ care, land behind tests, never "blind".
     drop off on PDP / checkout. Complements pixel events (shows *why*, not just *what*).
     **Impact:** identify UX friction. **Cost:** 💰 (Hotjar Pro ~$39–99/mo).
 
-16. **Product-Level Attribution** — Which traffic source (organic, Pinterest, Instagram,
-    Google Shopping, referral) drives orders per product? Helps double down on high-ROI
-    channels. **Requires:** UTM tracking + analytics dashboard. **Effort:** medium.
+16. **✅ Product-Level Attribution** — *the safe half implemented (2026-09-13).* GA4's
+    `purchase` event now carries `item_id`/`item_category`, and GA4 already auto-captures
+    session source/medium from `utm_*` params — the owner can already cross the two in
+    GA4's own free dashboard. A bespoke in-admin cross-tab report was deliberately not
+    built (would mean touching the payment path, or paying for GA4's BigQuery export).
+    See that date's Done entry.
 
 17. **Customer Segmentation** — Cohort repeat buyers vs. one-time. Send different
     campaigns (retention for repeats, reactivation for dormant). **Requires:** email

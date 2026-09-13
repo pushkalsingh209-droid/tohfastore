@@ -547,6 +547,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
                 customerPhone: cleanPhone,
                 customerEmail,
                 items: cart.map((item) => ({
+                  id: item.id,
                   name: item.name,
                   price: Number(item.price) || 0,
                   quantity: item.quantity,
@@ -710,6 +711,7 @@ export default function CheckoutSheet({ onExit }: { onExit: () => void }) {
             customerPhone: cleanPhone,
             customerEmail,
             items: cart.map((item) => ({
+              id: item.id,
               name: item.name,
               price: Number(item.price) || 0,
               quantity: item.quantity,

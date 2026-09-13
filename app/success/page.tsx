@@ -22,7 +22,11 @@ interface StashedOrder {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
-  items: { name: string; price: number; quantity: number; category?: string | null }[];
+  // Optional rather than required -- an old already-stashed order from
+  // before this field existed would otherwise fail this type at runtime;
+  // the GA4 event below just omits item_id for one rather than sending a
+  // fabricated id.
+  items: { id?: number | string; name: string; price: number; quantity: number; category?: string | null }[];
   subtotal: number;
   discount: number;
   couponCode: string | null;
@@ -81,8 +85,17 @@ export default function CheckoutSuccessPage() {
           value: parsed.total,
           currency: "INR",
           coupon: parsed.couponCode || undefined,
+          // item_id/item_category (added 2026-09-13, IMPROVEMENTS.md Tier 4
+          // Marketing #16) let GA4's own Monetization reports break revenue
+          // down by product/category, and -- combined with GA4's own
+          // automatic per-session source/medium capture from utm_* params,
+          // which needs no code here -- crossed against Acquisition reports
+          // to answer "which channel drives which product", entirely inside
+          // GA4's existing free dashboard.
           items: parsed.items.map((item) => ({
+            item_id: item.id != null ? String(item.id) : undefined,
             item_name: item.name,
+            item_category: item.category || undefined,
             price: item.price,
             quantity: item.quantity,
           })),
