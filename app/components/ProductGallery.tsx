@@ -42,6 +42,32 @@ export default function ProductGallery({
   const [isFlipped, setIsFlipped] = useState(false);
   const [slideOffset, setSlideOffset] = useState(0);
   const [slideTransitioning, setSlideTransitioning] = useState(false);
+  // Which way the slide track is laid out for the transition currently in
+  // flight: 1 = next image slides in from the right (auto-advance and the
+  // "next" arrow), -1 = previous image slides in from the left (the "prev"
+  // arrow only -- auto-advance never goes backwards). Always reset to 1 once
+  // a transition settles, since the resting layout (see the sliding-mode
+  // render below) always assumes "current, then incoming-next".
+  const [slideDirection, setSlideDirection] = useState<1 | -1>(1);
+  // Guards against overlapping transitions (auto-advance firing mid manual
+  // swipe, or a double arrow-tap) -- a transition in flight simply ignores
+  // further requests until it settles.
+  const slideBusyRef = useRef(false);
+  const slideSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (slideSettleTimerRef.current) clearTimeout(slideSettleTimerRef.current);
+    };
+  }, []);
+  // "Hold" lets a shopper stop the auto-advance entirely to look at one photo
+  // as long as they want -- unlike the zoom-hover pause below, this is a
+  // deliberate, sticky choice (only cleared by pressing the button again),
+  // not released just by moving the pointer off the image.
+  const [held, setHeld] = useState(false);
+  const heldRef = useRef(false);
+  useEffect(() => {
+    heldRef.current = held;
+  }, [held]);
 
   const [isZooming, setIsZooming] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
@@ -113,6 +139,8 @@ export default function ProductGallery({
       setIsFlipped(false);
       setSlideOffset(0);
       setSlideTransitioning(false);
+      setSlideDirection(1);
+      setHeld(false);
       return;
     }
 
@@ -126,7 +154,7 @@ export default function ProductGallery({
 
     const triggerFlip = () => {
       if (cancelled) return;
-      if (isZoomingRef.current || filterPausedRef.current) {
+      if (isZoomingRef.current || filterPausedRef.current || heldRef.current) {
         loopTimer = setTimeout(triggerFlip, SLIDE_INTERVAL_MS);
         return;
       }
@@ -183,26 +211,50 @@ export default function ProductGallery({
     if (active) setEverActivated(true);
   }, [active]);
 
+  // Shared by auto-advance and the manual arrow buttons. direction 1 = next
+  // (slides in from the right), -1 = prev (slides in from the left, arrows
+  // only). For -1 the track is flipped to [prevIndex, currentIndex] and
+  // snapped to -100% with transitions off first, then nudged to 0% a couple
+  // of frames later so the browser actually animates the change instead of
+  // jumping straight there -- the standard "force a reflow before
+  // transitioning" trick, needed because the pre- and post-transition DOM
+  // states aren't a plain 0 -> -100 move like the forward case.
+  function runSlideTransition(direction: 1 | -1) {
+    if (!hasMultiple || slideBusyRef.current) return;
+    slideBusyRef.current = true;
+    setSlideDirection(direction);
+    if (direction === 1) {
+      setSlideTransitioning(true);
+      setSlideOffset(-100);
+    } else {
+      setSlideTransitioning(false);
+      setSlideOffset(-100);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setSlideTransitioning(true);
+          setSlideOffset(0);
+        });
+      });
+    }
+    slideSettleTimerRef.current = setTimeout(() => {
+      setCurrentIndex((prev) => (prev + direction + gallery.length) % gallery.length);
+      setSlideOffset(0);
+      setSlideTransitioning(false);
+      setSlideDirection(1);
+      slideBusyRef.current = false;
+    }, SLIDE_TRANSITION_MS);
+  }
+
   // Drives the looping slide auto-advance once the flip has revealed the gallery.
   useEffect(() => {
     if (!active || phase !== "sliding" || !hasMultiple) return;
 
-    let settleTimer: ReturnType<typeof setTimeout> | undefined;
     const interval = setInterval(() => {
-      if (isZoomingRef.current || filterPausedRef.current) return;
-      setSlideTransitioning(true);
-      setSlideOffset(-100);
-      settleTimer = setTimeout(() => {
-        setSlideTransitioning(false);
-        setSlideOffset(0);
-        setCurrentIndex((prev) => (prev + 1) % gallery.length);
-      }, SLIDE_TRANSITION_MS);
+      if (isZoomingRef.current || filterPausedRef.current || heldRef.current) return;
+      runSlideTransition(1);
     }, SLIDE_INTERVAL_MS);
 
-    return () => {
-      clearInterval(interval);
-      clearTimeout(settleTimer);
-    };
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, active, hasMultiple]);
 
@@ -311,6 +363,82 @@ export default function ProductGallery({
       </button>
     ) : null;
 
+  // Manual arrows + hold-to-pause only make sense on the full-size detail
+  // view with more than one photo -- a product-card thumbnail in a grid
+  // stays auto-only (arrows there would be clutter nobody asked for, and
+  // most never even get hovered long enough to matter).
+  const showNavControls = size === "detail" && hasMultiple;
+
+  function stopBubble(e: React.SyntheticEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  function handlePrevClick(e: React.SyntheticEvent) {
+    stopBubble(e);
+    setFilterPaused(false);
+    runSlideTransition(-1);
+  }
+  function handleNextClick(e: React.SyntheticEvent) {
+    stopBubble(e);
+    setFilterPaused(false);
+    runSlideTransition(1);
+  }
+  function toggleHeld(e: React.SyntheticEvent) {
+    stopBubble(e);
+    setHeld((h) => !h);
+  }
+
+  const navControls = showNavControls ? (
+    <>
+      <button
+        type="button"
+        onClick={handlePrevClick}
+        onTouchStart={stopBubble}
+        onMouseEnter={stopBubble}
+        aria-label="Previous image"
+        className="absolute z-10 left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/55 hover:bg-black/70 backdrop-blur-sm text-white flex items-center justify-center shadow transition active:scale-90"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={handleNextClick}
+        onTouchStart={stopBubble}
+        onMouseEnter={stopBubble}
+        aria-label="Next image"
+        className="absolute z-10 right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/55 hover:bg-black/70 backdrop-blur-sm text-white flex items-center justify-center shadow transition active:scale-90"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={toggleHeld}
+        onTouchStart={stopBubble}
+        onMouseEnter={stopBubble}
+        aria-label={held ? "Resume auto-slide" : "Hold this image"}
+        title={held ? "Resume auto-slide" : "Hold to view at your own pace"}
+        className="absolute z-10 bottom-3 left-1/2 -translate-x-1/2 h-8 px-3 rounded-full bg-black/55 hover:bg-black/70 backdrop-blur-sm text-white flex items-center gap-1.5 text-[11px] font-medium tracking-wide shadow transition active:scale-95"
+      >
+        {held ? (
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path d="M8 5v14l11-7z" /></svg>
+        ) : (
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
+        )}
+        {held ? "Resume" : "Hold"}
+      </button>
+      <div
+        aria-hidden
+        className="absolute z-10 top-3 left-3 h-6 px-2 rounded-full bg-black/55 backdrop-blur-sm text-white flex items-center text-[11px] font-medium tracking-wide shadow"
+      >
+        {currentIndex + 1} / {gallery.length}
+      </div>
+    </>
+  ) : null;
+
   if (gallery.length === 0) {
     return (
       <div className={`w-full ${heightClass} bg-white relative overflow-hidden`}>
@@ -378,12 +506,22 @@ export default function ProductGallery({
           </div>
         </div>
         {filterButton}
+        {navControls}
       </div>
     );
   }
 
-  // Sliding mode: current image + pre-loaded incoming image, translated between them.
+  // Sliding mode: current image + pre-loaded neighbour, translated between
+  // them. Which neighbour sits in the second slot depends on slideDirection:
+  // forward (auto-advance / "next") pairs [current, next] and slides to
+  // -100%; backward ("prev" arrow only) pairs [prev, current] starting
+  // already at -100% (so "current" is what's on screen, matching the resting
+  // forward layout) and slides to 0%, revealing prev from the left. See
+  // runSlideTransition above.
   const incomingIndex = (currentIndex + 1) % gallery.length;
+  const prevIndex = (currentIndex - 1 + gallery.length) % gallery.length;
+  const [firstSlotIndex, secondSlotIndex] =
+    slideDirection === 1 ? [currentIndex, incomingIndex] : [prevIndex, currentIndex];
   return (
     <div
       className={`w-full ${heightClass} bg-white relative overflow-hidden`}
@@ -398,14 +536,15 @@ export default function ProductGallery({
           }}
         >
           <div className="gallery-slide-item relative">
-            <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
+            <Image src={gallery[firstSlotIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
           </div>
           <div className="gallery-slide-item relative">
-            <Image src={gallery[incomingIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
+            <Image src={gallery[secondSlotIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
           </div>
         </div>
       </div>
       {filterButton}
+      {navControls}
     </div>
   );
 }
