@@ -12,6 +12,72 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Fix: product gallery stuck zoomed after clicking a nav arrow — 2026-09-13 IST
+- Owner-reported: on the product detail page (zoomable gallery), moving the mouse onto
+  the photo triggers hover-zoom as designed, but clicking the prev/next arrows (or the
+  Hold button) left the photo stuck zoomed in — and since the zoom wrapper scales the
+  *entire* slide track, the incoming image after a manual arrow click rendered zoomed
+  too, at whatever origin point the mouse last zoomed to on the previous photo.
+- Root cause: `handlePrevClick`/`handleNextClick`/`toggleHeld` in `ProductGallery.tsx`
+  already reset `filterPaused` but never touched `isZooming` — the buttons sit inside
+  the same wrapper `onMouseEnter`/`onMouseLeave` zoom trigger, and since the mouse never
+  actually *leaves* that wrapper while clicking a button nested inside it, nothing ever
+  cleared the zoom. Auto-advance was never affected (it explicitly skips running a
+  transition at all while zoomed), so this only ever hit the manual arrows/Hold button.
+- Fix: all three handlers now also call `setIsZooming(false)`, exactly mirroring the
+  existing `setFilterPaused(false)` pattern already in the same handlers.
+- Verified: `tsc` clean · `eslint app/components/ProductGallery.tsx` 0 new warnings (4
+  pre-existing `set-state-in-effect` warnings, untouched lines — the same accepted
+  hydrate-on-mount baseline) · `npm test` 394/394 (no pure-logic module touched) ·
+  `next build` exit 0. Not payment-path; UI-only.
+
+### Product Comparison Tool (#5) — 2026-09-13 IST
+- #5's spec: compare up to 3–4 products side-by-side (dimensions, materials, price,
+  stock, rating), minimal DB impact, `/compare?ids=1,5,12` route shape. Built exactly
+  that, zero schema change.
+- **`/compare?ids=...`** (`app/compare/page.tsx`, force-dynamic, same pattern as
+  `/wishlist/shared`): re-fetches fresh product data for the ids via the existing
+  `getProductsByIds` rather than trusting anything client-supplied. New
+  `getRatingSummaries(productIds)` in `storeQueries.ts` batches an approved-reviews
+  query and hands off to a new pure `aggregateRatings` (averages per product, a
+  product with no reviews gets no entry rather than a fabricated 0) — kept in
+  `app/utils/productComparison.ts` alongside `bestValueIndex` (picks which column
+  "wins" a row — lowest price, highest rating — for a one-cell highlight; a tie or an
+  all-null row highlights nothing rather than guessing). **10 new unit tests** on
+  both.
+- **Getting products onto the list**: a "+ Add to Compare" toggle on `ProductCard`'s
+  spec-heavy back face (not the front — every front-face corner is already a badge or
+  the wishlist heart), backed by a new `CompareContext` (localStorage-only, same shape
+  as `WishlistContext`, capped at `MAX_COMPARE_ITEMS` = 4). A floating `CompareBar`
+  pill (mini thumbnails + a Compare link + clear), deferred via `DeferredWidgets.tsx`
+  and gated off `/admin*` like the Ganesha popup, appears once anything's added; offset
+  above `StickyAddToCartBar` on a product page's mobile view via the same
+  `isProductPage` trick `FloatingContactButtons` already uses, so the two never
+  overlap.
+- **Removing a column** on the table itself (`CompareRemoveButton`, a small Client
+  Component) both updates the `?ids=` URL and calls `removeFromCompare` on the same
+  `CompareContext`, so a column removed from the table doesn't silently reappear next
+  time the floating bar's own link is clicked — the two views share one source of
+  truth.
+  The table itself reuses `PriceDisplay`, `StockStatusBadge`, and `AddToCartButton`
+  as-is (the last one already degrades gracefully outside a `LiveStockProvider`, using
+  the row's own `inventory` snapshot, exactly like a card rendered on `/spotlight` or
+  `/wishlist/shared`) — no new purchase-path code.
+- Pulled the existing `?ids=1,2,3` parser out of `/wishlist/shared` into a shared
+  `app/utils/parseIdsParam.ts` now that a second call site needs the identical rule
+  (CLAUDE.md's "shared constants over keep-in-sync comments") — `/wishlist/shared`
+  updated to import it, no behaviour change there.
+- Verified: `tsc` clean · `eslint` 12 changed/new files → 0 new errors (`CompareContext`'s
+  hydrate-from-localStorage-on-mount effect carries the same pre-existing
+  `set-state-in-effect` warning `WishlistContext` already has — the accepted baseline
+  pattern, not a new one) · `npm test` 394/394 (+10 new) · `next build` exit 0, `/compare`
+  registered. **Smoke-tested against the real dev server and live DB** (read-only): real
+  product names/prices/stock badges render correctly for a 3-id comparison, the empty
+  state renders at `/compare` with no ids, a 5-id URL correctly caps to 4
+  ("Comparing 4 of up to 4 pieces"), and the "+ Add to Compare" button renders on a real
+  category page. Not payment-path; no schema change; no public write endpoint (the
+  bar/table are pure reads plus the existing, already-tested Add to Cart action).
+
 ### Video Testimonials (#9) — 2026-09-13 IST
 - #9's spec calls for a collection form + moderation + a player component. No new schema at all —
   reuses `product_ugc`'s `content_type`/`content_url` columns (migration 0062), previously written
@@ -2069,11 +2135,8 @@ care, land behind tests, never "blind".
    Current structure is sufficient for Google Search star ratings. **Owner: test in
    Google's Rich Results Tester** (`https://search.google.com/test/rich-results`).
 
-5. **Product Comparison Tool** — *proposed for next batch.* Allow users to compare up
-   to 3–4 products side-by-side (dimensions, materials, price, stock, rating). Minimal
-   DB impact. Could be a simple modal or dedicated `/compare?ids=1,5,12` route. Helps
-   shoppers with similar items (e.g., brass idols at different price points). **Impact:**
-   increases AOV by reducing friction for multi-item decisions. **Effort:** medium.
+5. **✅ Product Comparison Tool** — *implemented (2026-09-13).* `/compare?ids=1,5,12`,
+   exactly the spec'd route shape. Zero schema change. See that date's Done entry.
 
 ---
 

@@ -376,15 +376,18 @@ export default function ProductGallery({
   function handlePrevClick(e: React.SyntheticEvent) {
     stopBubble(e);
     setFilterPaused(false);
+    setIsZooming(false);
     runSlideTransition(-1);
   }
   function handleNextClick(e: React.SyntheticEvent) {
     stopBubble(e);
     setFilterPaused(false);
+    setIsZooming(false);
     runSlideTransition(1);
   }
   function toggleHeld(e: React.SyntheticEvent) {
     stopBubble(e);
+    setIsZooming(false);
     setHeld((h) => !h);
   }
 

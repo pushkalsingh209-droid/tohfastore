@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/app/context/CartContext";
 import { useWishlist } from "@/app/context/WishlistContext";
+import { useCompare } from "@/app/context/CompareContext";
+import { MAX_COMPARE_ITEMS } from "@/app/utils/productComparison";
 import ProductGallery from "@/app/components/ProductGallery";
 import { getProductCardGallery } from "@/app/utils/productImages";
 import { getProductWhatsappLink, resolveProductWhatsappNumber } from "@/app/utils/whatsapp";
@@ -44,6 +46,7 @@ export default function ProductCard({
 }) {
   const { addToCart, cart } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
+  const { isComparing, toggleCompare } = useCompare();
   const [active, setActive] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
   const [cardFlipped, setCardFlipped] = useState(false);
@@ -385,6 +388,25 @@ export default function ProductCard({
             </div>
           </details>
         )}
+
+        {/* IMPROVEMENTS.md Tier 1 Marketing #5 -- lives on the spec-heavy
+            back face rather than crowding the front's badge corners, since
+            comparison is inherently about the specs shown right above it. */}
+        <button
+          type="button"
+          onClick={() => {
+            if (!toggleCompare(product)) {
+              alert(`You can compare up to ${MAX_COMPARE_ITEMS} products at a time -- remove one to add another.`);
+            }
+          }}
+          className={`w-full text-[11px] uppercase tracking-wider font-semibold py-2 rounded border transition ${
+            isComparing(product.id)
+              ? "border-accent bg-accent-soft text-accent"
+              : "border-border-strong text-muted hover:bg-surface-2"
+          }`}
+        >
+          {isComparing(product.id) ? "✓ Added to Compare" : "+ Add to Compare"}
+        </button>
 
         <Link
           href={productHref(product)}

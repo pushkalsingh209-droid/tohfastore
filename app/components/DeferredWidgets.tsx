@@ -15,6 +15,7 @@ const CookieConsent = dynamic(() => import("@/app/components/CookieConsent"), { 
 const InstallPrompt = dynamic(() => import("@/app/components/InstallPrompt"), { ssr: false });
 const AbandonedCartNudge = dynamic(() => import("@/app/components/AbandonedCartNudge"), { ssr: false });
 const WelcomeGaneshaPopup = dynamic(() => import("@/app/components/WelcomeGaneshaPopup"), { ssr: false });
+const CompareBar = dynamic(() => import("@/app/components/CompareBar"), { ssr: false });
 
 export default function DeferredWidgets() {
   // The Ganesha mascot is a storefront greeting -- it has no business
@@ -34,6 +35,13 @@ export default function DeferredWidgets() {
       {!isAdminRoute && (
         <Suspense fallback={null}>
           <WelcomeGaneshaPopup />
+        </Suspense>
+      )}
+      {/* Same admin gate -- comparing products is a storefront concept, not
+          one the admin's own product management UI needs. */}
+      {!isAdminRoute && (
+        <Suspense fallback={null}>
+          <CompareBar />
         </Suspense>
       )}
     </>

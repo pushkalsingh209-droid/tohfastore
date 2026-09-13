@@ -16,6 +16,7 @@ import type { Metadata } from "next";
 import ProductCard from "@/app/components/ProductCard";
 import { getProductsByIds } from "@/app/utils/storeQueries";
 import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
+import { parseIdsParam } from "@/app/utils/parseIdsParam";
 
 export const metadata: Metadata = {
   title: "A Shared Wishlist | TOHFA",
@@ -23,14 +24,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true }, // one-off shared links, not a page meant for search discovery
   openGraph: { title: "A Shared Wishlist | TOHFA", images: [DEFAULT_OG_IMAGE] },
 };
-
-function parseIds(raw: string | undefined): number[] {
-  if (!raw) return [];
-  return raw
-    .split(",")
-    .map((s) => Number(s.trim()))
-    .filter((n) => Number.isFinite(n) && n > 0);
-}
 
 function EmptySharedWishlist() {
   return (
@@ -55,7 +48,7 @@ export default async function SharedWishlistPage({
   searchParams: Promise<{ ids?: string }>;
 }) {
   const sp = await searchParams;
-  const ids = parseIds(sp.ids);
+  const ids = parseIdsParam(sp.ids);
   const products = ids.length > 0 ? await getProductsByIds(ids) : [];
 
   if (products.length === 0) {

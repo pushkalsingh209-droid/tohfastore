@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { CartProvider } from "@/app/context/CartContext";
 import { WishlistProvider } from "@/app/context/WishlistContext";
+import { CompareProvider } from "@/app/context/CompareContext";
 import { CatalogLoadingProvider } from "@/app/context/CatalogLoadingContext";
 import { BootstrapProvider } from "@/app/context/BootstrapContext";
 import { getBootstrapData } from "@/app/utils/storeQueries";
@@ -139,6 +140,7 @@ export default async function RootLayout({
       <BootstrapProvider value={bootstrap}>
       <CartProvider>
       <WishlistProvider>
+      <CompareProvider>
       <CatalogLoadingProvider>
         <body className="bg-bg text-fg antialiased min-h-screen flex flex-col transition-colors">
 
@@ -272,6 +274,7 @@ export default async function RootLayout({
           <SpeedInsights />
         </body>
       </CatalogLoadingProvider>
+      </CompareProvider>
       </WishlistProvider>
       </CartProvider>
       </BootstrapProvider>
