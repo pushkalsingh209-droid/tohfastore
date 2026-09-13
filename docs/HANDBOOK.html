@@ -3172,6 +3172,31 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-09-13<br>22:30</code></td>
+  <td><strong>Fix: product gallery stuck zoomed after clicking a nav arrow</strong><br>(owner: &ldquo;it starts to zoom as soon as we move the mouse to the photo and if we click the navigation button it stays zoomed which is very odd&rdquo;, then a screenshot showing the follow-up image rendering zoomed too)</td>
+  <td>
+    Root cause: <code>handlePrevClick</code>/<code>handleNextClick</code>/<code>toggleHeld</code> in
+    <code>ProductGallery.tsx</code> already reset <code>filterPaused</code> on click but never touched
+    <code>isZooming</code> &mdash; the arrows/Hold button sit <em>inside</em> the same wrapper whose
+    <code>onMouseEnter</code>/<code>onMouseLeave</code> drive the zoom, and the mouse never actually
+    leaves that wrapper while clicking a button nested inside it, so nothing ever cleared the zoom.
+    Since the zoom wrapper (<code>zoomWrapperStyle</code>) scales the whole
+    <code>gallery-slide-track</code> (both the current and incoming slide-track slots together), a
+    manual arrow click while zoomed also carried the incoming image in zoomed, at whatever origin
+    point the mouse last set on the previous photo &mdash; matching the owner's screenshot exactly.
+    Auto-advance was never affected: it already explicitly skips running a transition at all while
+    <code>isZoomingRef.current</code> is true, so this bug only ever hit the manual controls.
+  </td>
+  <td><em>edited:</em> <code>app/components/ProductGallery.tsx</code>, <code>docs/HANDBOOK.html</code>,
+    <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint app/components/ProductGallery.tsx</code> 0 new
+    warnings (4 pre-existing <code>set-state-in-effect</code> warnings on untouched lines &mdash; the same
+    accepted hydrate-on-mount baseline) &middot; <code>npm test</code> 394 passed (1 pre-existing skip,
+    unchanged &mdash; no pure-logic module touched) &middot; <code>next build</code> exit 0. Not a
+    payment-path change; UI-only. Riding the still-open Product Comparison Tool PR (same branch) rather
+    than opening a second PR, per the one-PR-at-a-time rule.</td>
+</tr>
+<tr>
   <td><code>2026-09-13<br>22:00</code></td>
   <td><strong>Product Comparison Tool (#5)</strong><br>(owner: &ldquo;Build product comparison tool&rdquo; &mdash; picked from a recommended punch list after declining #7 Abandoned Cart Email until a proper email plan is in place)</td>
   <td>

@@ -12,6 +12,25 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Fix: product gallery stuck zoomed after clicking a nav arrow — 2026-09-13 IST
+- Owner-reported: on the product detail page (zoomable gallery), moving the mouse onto
+  the photo triggers hover-zoom as designed, but clicking the prev/next arrows (or the
+  Hold button) left the photo stuck zoomed in — and since the zoom wrapper scales the
+  *entire* slide track, the incoming image after a manual arrow click rendered zoomed
+  too, at whatever origin point the mouse last zoomed to on the previous photo.
+- Root cause: `handlePrevClick`/`handleNextClick`/`toggleHeld` in `ProductGallery.tsx`
+  already reset `filterPaused` but never touched `isZooming` — the buttons sit inside
+  the same wrapper `onMouseEnter`/`onMouseLeave` zoom trigger, and since the mouse never
+  actually *leaves* that wrapper while clicking a button nested inside it, nothing ever
+  cleared the zoom. Auto-advance was never affected (it explicitly skips running a
+  transition at all while zoomed), so this only ever hit the manual arrows/Hold button.
+- Fix: all three handlers now also call `setIsZooming(false)`, exactly mirroring the
+  existing `setFilterPaused(false)` pattern already in the same handlers.
+- Verified: `tsc` clean · `eslint app/components/ProductGallery.tsx` 0 new warnings (4
+  pre-existing `set-state-in-effect` warnings, untouched lines — the same accepted
+  hydrate-on-mount baseline) · `npm test` 394/394 (no pure-logic module touched) ·
+  `next build` exit 0. Not payment-path; UI-only.
+
 ### Product Comparison Tool (#5) — 2026-09-13 IST
 - #5's spec: compare up to 3–4 products side-by-side (dimensions, materials, price,
   stock, rating), minimal DB impact, `/compare?ids=1,5,12` route shape. Built exactly
