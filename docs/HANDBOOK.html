@@ -2606,7 +2606,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>StorefrontPage</code> &mdash; shared home/category shell (RSC)</li>
 <li><code>CatalogSection</code> &mdash; grid + progressive reveal + batch live-stock fetch</li>
 <li><code>CatalogFilters</code>, <code>CatalogPagination</code></li>
-<li><code>ProductCard</code> (shows a &ldquo;New&rdquo; badge, bottom-left of the image, for a product created within the last 14 days -- <code>created_at</code> is only selected by the two queries that feed cards, <code>getCatalogPage</code>/<code>getSpotlightProducts</code>/<code>getProductsByIds</code>; resolved on mount, not during render, since <code>Date.now()</code> can't run in a render body), <code>ProductGallery</code>, <code>PriceDisplay</code>, <code>TempleCardFrame</code></li>
+<li><code>ProductCard</code> (shows a &ldquo;New&rdquo; badge, bottom-left of the image, for a product created within the last 14 days -- <code>created_at</code> is only selected by the two queries that feed cards, <code>getCatalogPage</code>/<code>getSpotlightProducts</code>/<code>getProductsByIds</code>; resolved on mount, not during render, since <code>Date.now()</code> can't run in a render body), <code>ProductGallery</code> (auto flip/slide on every instance; <code>size="detail"</code> &mdash; the product page only, never a grid card &mdash; additionally gets prev/next arrows, a &ldquo;Hold&rdquo;/&ldquo;Resume&rdquo; button that sticks until pressed again (unlike the zoom-hover pause, it isn't cleared just by moving the pointer off the photo), and a &ldquo;2 / 5&rdquo; position counter, added 2026-09-13), <code>PriceDisplay</code>, <code>TempleCardFrame</code></li>
 <li><code>HeroProductRotator</code>, <code>CategorySlider</code>, <code>BestsellersStrip</code> (reused as-is, just a different <code>title</code>, for the product page's &ldquo;Often Viewed Together&rdquo; strip &mdash; fed by <code>getViewedTogether</code>, a <code>product_views</code> session-affinity signal distinct from &ldquo;Customers Also Bought&rdquo;'s order-history one)</li>
 <li><code>RecentlyViewedStrip</code>, <code>RecentViewersNote(Live)</code>, <code>RecordProductView</code></li>
 <li><code>LiveStock</code>, <code>StockStatusBadge</code> (shows &ldquo;Available on enquiry&rdquo; ahead of every stock state for an <code>enquire_only</code> piece), <code>NotifyWhenInStockButton</code> (never rendered for one &mdash; it is not coming back in stock, so the alert could never fire)</li>
@@ -3128,6 +3128,40 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-13<br>15:00</code></td>
+  <td><strong>Product detail gallery: manual arrows + hold-to-pause + position counter</strong><br>(owner ask: keep the existing auto-slide, but let a shopper step through photos one at a time and pause on one at their own pace)</td>
+  <td>
+    <code>ProductGallery.tsx</code>'s auto flip/auto-slide (card grids and the detail page share this one
+    component) is unchanged. Three additions, all gated to <code>size==="detail"</code> with more than one
+    photo &mdash; so a <code>ProductCard</code> grid tile never renders them:
+    <br><br>
+    <strong>Prev/next arrows</strong> step the slide track on demand via a new shared
+    <code>runSlideTransition(direction)</code> helper (also used by auto-advance, so the two paths can't race
+    each other &mdash; a <code>slideBusyRef</code> ignores a second request while one transition is still in
+    flight). Forward reuses the existing <code>[current, incoming]</code> track layout; backward flips the
+    track to <code>[prev, current]</code>, snaps it to <code>-100%</code> with transitions off, then nudges it
+    to <code>0%</code> two <code>requestAnimationFrame</code>s later so the browser actually animates the
+    change instead of jumping &mdash; the standard forced-reflow trick, needed because unlike the forward case
+    the pre/post-transition DOM states aren't a plain two-point move.
+    <br><br>
+    <strong>Hold/Resume button</strong> (bottom-centre pill) sets a <code>held</code> flag that both the flip
+    loop and the auto-slide interval now check alongside the existing zoom/filter pause refs. Deliberately
+    sticky &mdash; cleared only by pressing the button again, not by the pointer leaving the image (that's
+    what the pre-existing zoom-hover pause already does, and the two stay independent).
+    <br><br>
+    <strong>Position counter</strong> (&ldquo;2 / 5&rdquo;, top-left) is a plain read of <code>currentIndex</code>,
+    no new state.
+    <br><br>
+    Everything is additive and no-op'd for every other caller (<code>ProductCard</code> front/back,
+    <code>size="card"</code>/<code>"frame"</code>): auto-slide, the flip reveal, zoom, and the photo-filter
+    button all behave exactly as before.
+  </td>
+  <td><em>edited:</em> <code>app/components/ProductGallery.tsx</code>, <code>docs/HANDBOOK.html</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 371 passed (1 pre-existing skip) &middot;
+    <code>next build</code> exit 0. No live-DB or payment-path involvement (pure client-side UI on an
+    already-fetched gallery), so no Supabase/Razorpay verification needed.</td>
+</tr>
 <tr>
   <td><code>2026-09-12<br>23:00</code></td>
   <td><strong>Gift With Purchase campaigns &mdash; follow-up: off-catalog gift support</strong><br>(migration 0064, <code>IMPROVEMENTS.md</code> #14a &mdash; owner's own words: &ldquo;we should be able to add gifts name from within the website or those not present in the website also&hellip; we can declare the value and may be optional pic&rdquo;)</td>
