@@ -12,6 +12,26 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### #TOHFACRAFTS UGC: admin moderation queue + PDP display — 2026-09-13 IST
+- Closes out item #11's flagged follow-up: submissions (`product_ugc`, 0062) have existed since
+  2026-09-11 with nowhere to go — no admin view, and no display component even for a manually-approved
+  one. Two independent flags on the row matter, not one: `approved` (safe to show at all) and `featured`
+  (actually rendered) — a genuine, approved testimonial doesn't have to clutter a product page just
+  because it's approved.
+- New `GET/PATCH/DELETE /api/admin/ugc`, same shape as `/api/admin/reviews` except PATCH is a partial
+  update (`{id, approved?, featured?}`) since there are two flags to toggle; server-side refuses to
+  feature an unapproved row even if a client tried. Queue rendered in the existing **Reviews** tab below
+  Product Reviews, not an eighth tab — same moderation-queue shape already there.
+- New `GET /api/ugc/highlights/[id]` (public, uncached, same reasoning as `LiveStock` — moderation can
+  flip `featured` at any time) + `UgcHighlights.tsx` rendering approved+featured submissions (capped 4)
+  as quote cards above the existing submission form on the PDP.
+- Small cleanup on the way: `/api/ugc/submit`'s `(supabase as any)` cast (left in when the migration
+  hadn't run / types hadn't regenerated) is gone — `types/db.ts` already has `product_ugc` typed.
+- Verified: `tsc` clean · `eslint` 8 changed/new files 0 new errors · `npm test` 371/371 · `next build`
+  exit 0, both new routes registered. Not click-tested against a running admin session or a real
+  submission (no live app) — owner should submit a test one, approve + feature it, confirm it renders.
+  Not a payment-path or schema change (0062 already covers every column used).
+
 ### Cart cross-sell: exclude out-of-stock, blend same-category picks — 2026-09-13 IST
 - Owner: "in crosssell dont show out of stock products but also shows 1 or two same categories products".
 - `/api/cart-suggestions`'s `getBestsellers` pool only checked for non-null fields (`isRenderableProduct`),
@@ -1993,9 +2013,11 @@ care, land behind tests, never "blind".
     - New `UgcSubmissionForm.tsx`: appears below product reviews on PDP
     - New `/api/ugc/submit` route: validates, rate-limits (5/hour/IP), stores submissions
     - Hashtag framework ready: #TOHFACRAFTS for social coordination
-    - Admin panel integration TBD: view/moderate/feature submissions
-    - **✅ Migration 0062 run by owner 2026-09-11 — live.** Admin UGC moderation
-      dashboard (view/approve/feature) is the next follow-up batch.
+    - **✅ Migration 0062 run by owner 2026-09-11 — live.**
+    - **✅ Admin moderation + PDP display shipped 2026-09-13** — see that date's Done entry below.
+      View/approve/feature/reject in the Reviews tab; featured ones render via new `UgcHighlights.tsx`
+      on the product's own page. Text-only still (photos/videos remain a future batch — the submission
+      form and DB column already support `content_type`/`content_url` for that).
     - Verified: `tsc` clean, `npm test` 337/338, `next build` 146/146 static
 
 12. **✅ SMS Notification Infrastructure** — *framework implemented (2026-09-11).*

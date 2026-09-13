@@ -16,6 +16,7 @@ import ReviewForm from "@/app/components/ReviewForm";
 import CategoryFaqSection from "@/app/components/CategoryFaqSection";
 import SocialProofBadge from "@/app/components/SocialProofBadge";
 import UgcSubmissionForm from "@/app/components/UgcSubmissionForm";
+import UgcHighlights from "@/app/components/UgcHighlights";
 import RecordProductView from "@/app/components/RecordProductView";
 import BackToCollectionsLink from "@/app/components/BackToCollectionsLink";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
@@ -520,8 +521,10 @@ export default async function ProductDetailPage({
             <ReviewForm productId={product.id} />
           </div>
 
-          {/* UGC submission for #TOHFACRAFTS campaign — collect unboxings/testimonials */}
+          {/* UGC for #TOHFACRAFTS campaign — admin-featured unboxings/testimonials for
+              this product first (if any), then the form to add one */}
           <div className="mt-12 max-w-2xl">
+            <UgcHighlights productId={product.id} />
             <UgcSubmissionForm productId={product.id} productName={product.name} />
           </div>
 

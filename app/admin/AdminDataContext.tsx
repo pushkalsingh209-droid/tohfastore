@@ -26,6 +26,24 @@ export interface AdminReview {
   products?: { name?: string } | null;
 }
 
+// #TOHFACRAFTS UGC submissions (migration 0062) -- customer unboxing
+// photos/testimonials collected via UgcSubmissionForm on the PDP, moderated
+// here before a featured one shows on UgcHighlights (also PDP).
+export interface AdminUgcSubmission {
+  id: number;
+  created_at: string;
+  product_id: number;
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string | null;
+  content_type: string;
+  content_url?: string | null;
+  caption?: string | null;
+  approved: boolean;
+  featured: boolean;
+  products?: { name?: string } | null;
+}
+
 export interface AdminCoupon {
   id: number;
   code: string;
@@ -222,6 +240,9 @@ export interface AdminData {
   // --- reviews tab ---
   reviews: AdminReview[];
   setReviews: (value: AdminReview[]) => void;
+  // #TOHFACRAFTS UGC moderation queue, shown in the same tab as reviews.
+  ugcSubmissions: AdminUgcSubmission[];
+  setUgcSubmissions: (value: AdminUgcSubmission[]) => void;
   // --- coupons tab ---
   coupons: AdminCoupon[];
   setCoupons: (value: AdminCoupon[]) => void;
