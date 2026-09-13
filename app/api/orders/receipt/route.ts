@@ -62,6 +62,7 @@ export async function POST(req: Request) {
       customerName: cd.name || "",
       customerPhone: cd.contact || "",
       items: items.map((i) => ({
+        id: i.id,
         name: i.name,
         price: Number(i.price),
         quantity: Number(i.quantity),
