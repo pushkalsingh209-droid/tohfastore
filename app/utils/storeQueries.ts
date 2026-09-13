@@ -976,6 +976,42 @@ export const getRelatedProducts = unstable_cache(
   { tags: ["orders", "products"], revalidate: 86400 }
 );
 
+// Cart cross-sell's "same category as what's already in your bag" pool --
+// distinct from getRelatedProducts (anchored on one product, for the PDP's
+// "customers also bought"), since a cart can span several categories at
+// once. Caller sorts+dedupes the category list first so the same basket
+// composition always hits the same cache entry regardless of item order.
+// Unranked (no order-history tally, just display_order) -- good enough for
+// "here's more from a category you're already buying", and cheap.
+type CategoryCrossSellRow = { id: number; name: string | null; price: number | null; image_url: string | null; inventory: number | null; category: string | null };
+
+export const getCategoryCrossSellPicks = unstable_cache(
+  async (categories: string[], limit = 8): Promise<BestsellerItem[]> => {
+    try {
+      if (categories.length === 0) return [];
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, price, image_url, inventory, category")
+        .in("category", categories)
+        .eq("hidden", false)
+        .order("display_order", { ascending: true, nullsFirst: false })
+        .limit(limit * 3);
+      if (error || !data) return [];
+
+      const rows = data as CategoryCrossSellRow[];
+      const withThumbs = await attachThumbUrls(rows);
+      return withThumbs
+        .filter(isRenderableProduct)
+        .slice(0, limit)
+        .map((p) => ({ ...p, unitsSold: 0 }));
+    } catch {
+      return [];
+    }
+  },
+  ["category-cross-sell-picks"],
+  { tags: ["products"], revalidate: 86400 }
+);
+
 // Get 30-day purchase count for social proof badges ("867 customers bought this")
 // Counts distinct orders (not units) for the product in the last 30 days,
 // excluding cancelled/test orders.

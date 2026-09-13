@@ -120,7 +120,10 @@ export default function CartDrawer() {
                   Have a question? Chat with us
                 </a>
 
-                <CartSuggestions excludeIds={cart.map((item) => item.id)} />
+                <CartSuggestions
+                  excludeIds={cart.map((item) => item.id)}
+                  categories={cart.map((item) => item.category)}
+                />
               </>
             )}
           </div>

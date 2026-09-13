@@ -2041,7 +2041,7 @@ inside pages degrade to a client meta-refresh / 200-with-noindex. <code>proxy.ts
 <tr><td><code>/api/orders/receipt</code></td><td><span class="tag t-post">post</span></td><td>Phone-gated invoice rebuild for <code>/success</code> when the client stash is gone. Same guard as <code>/api/orders/track</code> (Order ID + last-10-digits phone). Recomputes subtotal/discount/GST from the stored order; also returns <code>courierName</code> / <code>awbNumber</code> if the order has shipped. Fires no analytics.</td></tr>
 <tr><td><code>/api/stock</code></td><td><span class="tag t-get">get</span></td><td><code>?ids=1,2,3</code> (&le; 200) &rarr; <code>{id: {inventory, outOfStock, lowStock}}</code>. <code>force-dynamic</code> + <code>no-store</code>. Hidden &rarr; inventory 0. Used by <code>CatalogSection</code>.</td></tr>
 <tr><td><code>/api/stock/[id]</code></td><td><span class="tag t-get">get</span></td><td>Single-product live stock. Used by <code>LiveStockProvider</code> on the detail page.</td></tr>
-<tr><td><code>/api/cart-suggestions</code></td><td><span class="tag t-get">get</span></td><td><code>?ids=1,2,3</code> (the cart's current product ids) &rarr; <code>{ suggestions: BestsellerItem[] }</code>, up to 6. A thin filter over the already-cached <code>getBestsellers()</code> excluding whatever's passed in &mdash; no new query logic or cache layer. Feeds <code>CartSuggestions.tsx</code>'s &ldquo;Complete Your Gifting&rdquo; strip in the cart drawer (a Client Component with no server-side data of its own).</td></tr>
+<tr><td><code>/api/cart-suggestions</code></td><td><span class="tag t-get">get</span></td><td><code>?ids=1,2,3&amp;categories=Diyas,Idols</code> (the cart's current product ids + its distinct categories, the latter sorted/deduped client-side for a stable cache key) &rarr; <code>{ suggestions: BestsellerItem[] }</code>, up to 6. Blends up to 2 same-category picks (<code>getCategoryCrossSellPicks</code>, added 2026-09-13 &mdash; a shopper buying a diya set is more likely to add another diya than a random top-seller) with the already-cached <code>getBestsellers()</code> pool, filling the rest. <strong>Both pools exclude out-of-stock lines</strong> (<code>inventory &lt;= 0</code>, filtered in-route, not in the shared queries themselves &mdash; the homepage/PDP bestseller strips still show a sold-out badge rather than hide the product, but this strip's &ldquo;+ Add&rdquo; button expects to actually succeed) as well as whatever's already in the cart. Feeds <code>CartSuggestions.tsx</code>'s &ldquo;Complete Your Gifting&rdquo; strip in the cart drawer (a Client Component with no server-side data of its own).</td></tr>
 <tr><td><code>/api/recent-views/[id]</code></td><td><span class="tag t-get">get</span></td><td>Distinct viewers in the last 3h. <code>force-dynamic</code>. Used by <code>RecentViewersNoteLive</code>.</td></tr>
 <tr><td><code>/api/track-view</code></td><td><span class="tag t-post">post</span></td><td>Upsert a <code>product_views</code> row. Rate-limited <code>track-view</code> 60/10min. Prunes &gt;48h on 2%.</td></tr>
 <tr><td><code>/api/stock-alerts</code></td><td><span class="tag t-post">post</span></td><td>Subscribe to back-in-stock (no OTP &mdash; low stakes). Rate-limited 15/60min. <code>23505</code> &rarr; silent no-op.</td></tr>
@@ -2437,7 +2437,11 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       product, from <code>product_views</code>; ranks by <code>viewedTogether.ts</code>'s pure tally, re-fetches
       live data via <code>getProductsByIds</code>, then re-narrows with the exported <code>isRenderableProduct</code>
       and stamps <code>unitsSold: 0</code> so it can reuse <code>&lt;BestsellersStrip&gt;</code> as-is; tag
-      <code>products</code>).
+      <code>products</code>), <code>getCategoryCrossSellPicks(categories, limit?)</code> (added 2026-09-13
+      &mdash; the cart-suggestions strip's &ldquo;more from a category you're already buying&rdquo; pool;
+      unlike <code>getRelatedProducts</code> it takes a <em>set</em> of categories directly, since a cart
+      can span several at once, rather than being anchored on one product; unranked, <code>display_order</code>
+      only, no order-history tally; tag <code>products</code>).
       <strong>Storefront bootstrap (#11):</strong> <code>getPublicSettingsMap</code> (tag <code>site-settings</code>)
       + <code>getCategoryDiscountMap</code> + <code>getCategoryWhatsappNumberMap</code> (both tag <code>categories</code>,
       the latter new in 0049), composed with the existing
@@ -2595,7 +2599,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <h4>Checkout / forms</h4>
 <ul class="tight">
 <li><code>CartDrawer</code> / <code>LazyCartDrawer</code> &mdash; the whole checkout flow</li>
-<li><code>CartSuggestions</code> &mdash; the &ldquo;Complete Your Gifting&rdquo; cross-sell strip inside the cart drawer, fetched client-side from <code>/api/cart-suggestions</code> (a thin filter over the already-cached <code>getBestsellers()</code>, excluding whatever's already in the cart); renders nothing while loading or once there's nothing left to suggest</li>
+<li><code>CartSuggestions</code> &mdash; the &ldquo;Complete Your Gifting&rdquo; cross-sell strip inside the cart drawer, fetched client-side from <code>/api/cart-suggestions</code> (bestsellers blended with up to 2 same-category picks, both pools excluding out-of-stock lines and whatever's already in the cart, added 2026-09-13); renders nothing while loading or once there's nothing left to suggest</li>
 <li><code>ContactForm</code>, <code>SearchBar</code></li>
 <li><code>EnquirySheet</code> &mdash; the step between tapping &ldquo;Chat on WhatsApp&rdquo; and the wa.me handoff: one phone field, then <em>Continue to WhatsApp</em>. Exists because wa.me is a <strong>one-way</strong> handoff &mdash; WhatsApp never tells the site who tapped, so an enquirer who doesn't press send inside WhatsApp was previously unreachable forever (23 logged clicks, 0 conversations). Writes a <code>product_enquiry</code> lead so the business can open the conversation itself. Always skippable via &ldquo;Just open WhatsApp&rdquo;. Mobile-first bottom sheet, centred card from <code>sm:</code>. The lead POST is fire-and-forget with <code>keepalive</code> and the CTA is a real <code>&lt;a&gt;</code>, so the WhatsApp tab opens from the user's own gesture &mdash; an awaited fetch before <code>window.open()</code> is what popup blockers kill. Used by <code>ProductCard</code> (both faces) and <code>WhatsappEnquiryLink</code> (product detail).</li>
 </ul>
@@ -3128,6 +3132,39 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-13<br>16:15</code></td>
+  <td><strong>Cart cross-sell: exclude out-of-stock lines, blend in same-category picks</strong><br>(owner: &ldquo;in crosssell dont show out of stock products but also shows 1 or two same categories products&rdquo;)</td>
+  <td>
+    Two independent fixes to <code>/api/cart-suggestions</code>, the &ldquo;Complete Your Gifting&rdquo;
+    strip in the cart drawer.
+    <br><br>
+    <strong>Out-of-stock exclusion.</strong> <code>getBestsellers</code>'s <code>isRenderableProduct</code>
+    guard only checks for non-null fields, not <code>inventory &gt; 0</code> &mdash; a real gap here, since
+    unlike the homepage/PDP bestseller strips (which show a &ldquo;Sold Out&rdquo; badge and leave the
+    product visible on purpose), this strip's &ldquo;+ Add&rdquo; button expects to actually succeed. Fixed
+    with an in-route <code>inStock()</code> filter rather than changing the shared
+    <code>getBestsellers</code>/<code>getRelatedProducts</code> queries themselves, so the homepage and PDP
+    strips keep their existing (intentional) behaviour.
+    <br><br>
+    <strong>Same-category picks.</strong> New <code>getCategoryCrossSellPicks(categories, limit?)</code>
+    (<code>storeQueries.ts</code>) &mdash; unlike <code>getRelatedProducts</code> (anchored on one product,
+    for the PDP), this takes the cart's <em>distinct</em> category set directly, since a basket can span
+    several at once. The route now blends up to 2 same-category picks ahead of the bestseller pool, both
+    pools deduped against each other and against whatever's already in the cart.
+    <code>CartSuggestions.tsx</code>/<code>CartDrawer.tsx</code> now also pass <code>?categories=&hellip;</code>
+    (sorted + deduped client-side, so the same basket composition always hits the same cache entry
+    regardless of item order).
+  </td>
+  <td><em>edited:</em> <code>app/api/cart-suggestions/route.ts</code>, <code>app/utils/storeQueries.ts</code>,
+    <code>app/components/CartSuggestions.tsx</code>, <code>app/components/CartDrawer.tsx</code>,
+    <code>docs/HANDBOOK.html</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 371 passed (1 pre-existing skip) &middot;
+    <code>eslint</code> on all 4 changed source files 0 errors &middot; <code>next build</code> exit 0.
+    Not click-tested against a running dev server here (no live cart to exercise) &mdash; owner should add a
+    product, open the drawer, and confirm the strip never shows a sold-out item and includes at least one
+    same-category pick when the cart's category has other in-stock products. Not a payment-path change.</td>
+</tr>
 <tr>
   <td><code>2026-09-13<br>15:30</code></td>
   <td><strong>Product detail gallery: swap the text position counter for a dot indicator</strong><br>(owner preference, from the previous batch's own flagged optional nice-to-have &mdash; a cosmetic swap, not a defect)</td>
