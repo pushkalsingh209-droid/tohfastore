@@ -432,9 +432,16 @@ export default function ProductGallery({
       </button>
       <div
         aria-hidden
-        className="absolute z-10 top-3 left-3 h-6 px-2 rounded-full bg-black/55 backdrop-blur-sm text-white flex items-center text-[11px] font-medium tracking-wide shadow"
+        className="absolute z-10 top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-2 rounded-full bg-black/55 backdrop-blur-sm shadow"
       >
-        {currentIndex + 1} / {gallery.length}
+        {gallery.map((_, i) => (
+          <span
+            key={i}
+            className={`block rounded-full transition-all ${
+              i === currentIndex ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/50"
+            }`}
+          />
+        ))}
       </div>
     </>
   ) : null;

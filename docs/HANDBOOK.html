@@ -2606,7 +2606,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>StorefrontPage</code> &mdash; shared home/category shell (RSC)</li>
 <li><code>CatalogSection</code> &mdash; grid + progressive reveal + batch live-stock fetch</li>
 <li><code>CatalogFilters</code>, <code>CatalogPagination</code></li>
-<li><code>ProductCard</code> (shows a &ldquo;New&rdquo; badge, bottom-left of the image, for a product created within the last 14 days -- <code>created_at</code> is only selected by the two queries that feed cards, <code>getCatalogPage</code>/<code>getSpotlightProducts</code>/<code>getProductsByIds</code>; resolved on mount, not during render, since <code>Date.now()</code> can't run in a render body), <code>ProductGallery</code> (auto flip/slide on every instance; <code>size="detail"</code> &mdash; the product page only, never a grid card &mdash; additionally gets prev/next arrows, a &ldquo;Hold&rdquo;/&ldquo;Resume&rdquo; button that sticks until pressed again (unlike the zoom-hover pause, it isn't cleared just by moving the pointer off the photo), and a &ldquo;2 / 5&rdquo; position counter, added 2026-09-13), <code>PriceDisplay</code>, <code>TempleCardFrame</code></li>
+<li><code>ProductCard</code> (shows a &ldquo;New&rdquo; badge, bottom-left of the image, for a product created within the last 14 days -- <code>created_at</code> is only selected by the two queries that feed cards, <code>getCatalogPage</code>/<code>getSpotlightProducts</code>/<code>getProductsByIds</code>; resolved on mount, not during render, since <code>Date.now()</code> can't run in a render body), <code>ProductGallery</code> (auto flip/slide on every instance; <code>size="detail"</code> &mdash; the product page only, never a grid card &mdash; additionally gets prev/next arrows, a &ldquo;Hold&rdquo;/&ldquo;Resume&rdquo; button that sticks until pressed again (unlike the zoom-hover pause, it isn't cleared just by moving the pointer off the photo), and a top-centre dot-position indicator (added 2026-09-13; a pill-shaped active dot among smaller ones, swapped in 2026-09-13 for an earlier text &ldquo;2 / 5&rdquo; counter per owner preference), <code>PriceDisplay</code>, <code>TempleCardFrame</code></li>
 <li><code>HeroProductRotator</code>, <code>CategorySlider</code>, <code>BestsellersStrip</code> (reused as-is, just a different <code>title</code>, for the product page's &ldquo;Often Viewed Together&rdquo; strip &mdash; fed by <code>getViewedTogether</code>, a <code>product_views</code> session-affinity signal distinct from &ldquo;Customers Also Bought&rdquo;'s order-history one)</li>
 <li><code>RecentlyViewedStrip</code>, <code>RecentViewersNote(Live)</code>, <code>RecordProductView</code></li>
 <li><code>LiveStock</code>, <code>StockStatusBadge</code> (shows &ldquo;Available on enquiry&rdquo; ahead of every stock state for an <code>enquire_only</code> piece), <code>NotifyWhenInStockButton</code> (never rendered for one &mdash; it is not coming back in stock, so the alert could never fire)</li>
@@ -3128,6 +3128,20 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-13<br>15:30</code></td>
+  <td><strong>Product detail gallery: swap the text position counter for a dot indicator</strong><br>(owner preference, from the previous batch's own flagged optional nice-to-have &mdash; a cosmetic swap, not a defect)</td>
+  <td>
+    The &ldquo;2 / 5&rdquo; text pill (top-centre, added the same day) is now a row of small dots, one per
+    photo, the current one rendered as a wider pill-shaped dot among smaller translucent ones &mdash; the
+    common carousel-indicator look. Reuses <code>currentIndex</code> and <code>gallery</code> directly, no
+    new state. Same gating as the rest of the manual controls (<code>size==="detail"</code>, more than one
+    photo) and the same top-centre position; nothing else in that batch changed.
+  </td>
+  <td><em>edited:</em> <code>app/components/ProductGallery.tsx</code>, <code>docs/HANDBOOK.html</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>npm test</code> 371 passed (1 pre-existing skip) &middot;
+    <code>next build</code> exit 0. Purely presentational; no live-DB or payment-path involvement.</td>
+</tr>
 <tr>
   <td><code>2026-09-13<br>15:00</code></td>
   <td><strong>Product detail gallery: manual arrows + hold-to-pause + position counter</strong><br>(owner ask: keep the existing auto-slide, but let a shopper step through photos one at a time and pause on one at their own pace)</td>
