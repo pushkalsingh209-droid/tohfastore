@@ -12,6 +12,44 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Cart cross-sell: exclude out-of-stock, blend same-category picks — 2026-09-13 IST
+- Owner: "in crosssell dont show out of stock products but also shows 1 or two same categories products".
+- `/api/cart-suggestions`'s `getBestsellers` pool only checked for non-null fields (`isRenderableProduct`),
+  not `inventory > 0` — a real gap, since unlike the homepage/PDP bestseller strips (which show a
+  "Sold Out" badge and leave the product visible on purpose) this strip's "+ Add" button expects to
+  actually succeed. Filtered in-route rather than in the shared query, so the other strips keep their
+  existing (intentional) sold-out display.
+- New `getCategoryCrossSellPicks(categories, limit?)` (`storeQueries.ts`) — unlike `getRelatedProducts`
+  (anchored on one product, for the PDP), takes the cart's distinct category set directly, since a basket
+  can span several at once. Route blends up to 2 same-category picks ahead of the bestseller pool, both
+  deduped against each other and the cart. `CartSuggestions.tsx`/`CartDrawer.tsx` now also pass
+  `?categories=…` (sorted + deduped client-side for a stable cache key).
+- Verified: `tsc` clean · `npm test` 371/371 · `eslint` 0 new errors · `next build` exit 0. Not payment-path.
+
+### Admin Overview: Checkout Conversion card — 2026-09-13 IST
+- Follow-up to a recommendation session on engagement/conversion improvements. The Meta Pixel funnel
+  events (`ViewContent`/`AddToCart`/`InitiateCheckout`, added 2026-09-07) go straight to Meta and were
+  never stored in this app's own DB — so nothing in the admin panel showed *any* funnel/conversion figure,
+  even though the checkout-OTP drop-off this was meant to help diagnose is exactly the kind of thing an
+  owner needs to see without leaving the site. Building the full Pixel-shaped funnel would need the Meta
+  Graph API (a new integration); instead this surfaces the one funnel step that **is** already stored
+  server-side and costs nothing new to show.
+- New card in the Overview tab, computed entirely client-side from data `loadAll()` already fetches (no
+  new query, no new route): **Checkouts Started** (count of `leads` rows with `source === "checkout_started"`
+  — written once per checkout session the moment that session's WhatsApp OTP verifies, per
+  `CheckoutSheet.tsx`) vs. **Orders Completed** (`analytics.totalOrders`, already excludes
+  cancelled/test), with the resulting conversion %.
+- **Explicitly scoped, not oversold** — the card's own copy states the two approximations: (1)
+  `totalOrders` also includes manual/offline sales that never went through a checkout at all, inflating
+  the numerator slightly; (2) a repeat customer creates a new "started" row per session, not per person,
+  so this isn't a customer-level rate. And it says outright that everything *before* OTP verification
+  (views, cart adds, checkout opened) is Pixel-only and needs Meta Events Manager, not this panel — better
+  an honest partial number than a fabricated full funnel.
+- Verified: `tsc` clean · `eslint app/admin/tabs/OverviewTab.tsx` 0 errors · `npm test` 371/371 ·
+  `next build` exit 0. Not click-tested against a running admin session here (no live app) — owner should
+  confirm the card renders sane numbers against production's real `leads`/`orders` data. Not a payment-path
+  or schema change — pure read of already-loaded admin data.
+
 ### Fix the first-visit overlay pile-up — 2026-09-11 IST
 - UI/UX audit finding: three independent first-load overlays — `CookieConsent` (shows immediately),
   `InstallPrompt` (whenever Chrome fires `beforeinstallprompt`, often within a second or two), and
