@@ -20,16 +20,19 @@ export async function GET() {
   return NextResponse.json({ submissions: data || [] });
 }
 
-// Approve and/or feature a submission. Featuring an unapproved submission is
-// rejected -- the UI never offers that combination, but the route doesn't
-// trust the client to have enforced it.
+const VALID_CONTENT_TYPES = new Set(["text", "photo", "video"]);
+
+// Approve/feature a submission, and/or attach a photo or video URL (the
+// video-testimonials batch, IMPROVEMENTS.md #9). Featuring an unapproved
+// submission is rejected -- the UI never offers that combination, but the
+// route doesn't trust the client to have enforced it.
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
     const id = Number(body.id);
     if (!Number.isFinite(id)) return NextResponse.json({ error: "Missing submission id." }, { status: 400 });
 
-    const update: { approved?: boolean; featured?: boolean; moderated_at?: string } = {};
+    const update: { approved?: boolean; featured?: boolean; moderated_at?: string; content_url?: string; content_type?: string } = {};
     if (typeof body.approved === "boolean") {
       update.approved = body.approved;
       update.moderated_at = new Date().toISOString();
@@ -42,6 +45,20 @@ export async function PATCH(req: Request) {
         }
       }
       update.featured = body.featured;
+    }
+    // Attaching media: the customer sends the actual file over WhatsApp (see
+    // UgcSubmissionForm's "have a video?" CTA) -- there's no public upload
+    // endpoint for it, so the admin uploads it here after receiving it,
+    // pointing this row's content_url/content_type at the result.
+    if (typeof body.content_url === "string") {
+      const url = body.content_url.trim();
+      if (!url) return NextResponse.json({ error: "Content URL can't be blank." }, { status: 400 });
+      const contentType = typeof body.content_type === "string" ? body.content_type : undefined;
+      if (contentType && !VALID_CONTENT_TYPES.has(contentType)) {
+        return NextResponse.json({ error: "Invalid content type." }, { status: 400 });
+      }
+      update.content_url = url;
+      if (contentType) update.content_type = contentType;
     }
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
