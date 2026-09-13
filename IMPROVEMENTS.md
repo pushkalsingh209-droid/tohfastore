@@ -36,6 +36,9 @@ care, land behind tests, never "blind".
 - Verified: `tsc` clean · `eslint` 9 changed/new files 0 errors · `npm test` 384/384 (+4 new) ·
   `next build` exit 0. Ships off — no behaviour change until the owner enables it. Not
   payment-path; no coupon created or auto-granted.
+- **✅ Confirmed live 2026-09-13** — owner enabled it in Settings and tested on the real site:
+  triggers fire, the popup renders, and a submitted email lands in the Leads list. No longer a
+  proposal.
 
 ### "Complete Your Puja Set" bundle suggestions at checkout Review (#8) — 2026-09-13 IST
 - Exactly the MVP #8 specced: hardcoded complementary categories, not a real co-purchase model — an
