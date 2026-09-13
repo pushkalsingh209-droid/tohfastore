@@ -13,6 +13,7 @@ import PriceDisplay from "@/app/components/PriceDisplay";
 import { useAvailableCoupons, couponUrgencyText, type AvailableCoupon } from "@/app/components/checkout/useAvailableCoupons";
 import type { ActiveGiftCampaign } from "@/app/components/checkout/useActiveGiftCampaign";
 import type { CartItem } from "@/app/types/product";
+import BundleSuggestions from "@/app/components/BundleSuggestions";
 
 export interface ReviewBag {
   cart: CartItem[];
@@ -197,6 +198,8 @@ export default function ReviewStep({ bag }: { bag: ReviewBag }) {
           </div>
         </div>
       </details>
+
+      <BundleSuggestions cart={b.cart} />
 
       {/* --- Gift With Purchase notice (#14a) -- preview only, see the
           ReviewBag.giftCampaign doc comment. Hidden entirely for COD since
