@@ -96,6 +96,19 @@ export default function OverviewTab() {
     }
   };
 
+  // All-time, derived from already-loaded data -- no new query. One
+  // `checkout_started` lead is written per checkout session the first time
+  // that session's OTP verifies (see CheckoutSheet.tsx), so this counts
+  // distinct verified-checkout attempts, not distinct customers. This is
+  // the one funnel step actually visible server-side: the Meta Pixel's
+  // ViewContent/AddToCart/InitiateCheckout events (the stages upstream of
+  // OTP verification) go straight to Meta and were never stored here, so
+  // that earlier drop-off is only visible in Meta Events Manager, not this
+  // panel -- an honest limit, not an oversight.
+  const checkoutStarts = leads.filter((l) => l.source === "checkout_started").length;
+  const checkoutConversionRate =
+    analytics && checkoutStarts > 0 ? (analytics.totalOrders / checkoutStarts) * 100 : null;
+
   return (
     <>
     {/* REPORTS: server-generated .xlsx for a chosen period -- an Orders
@@ -396,6 +409,40 @@ export default function OverviewTab() {
             </div>
           </div>
         </>
+      )}
+    </div>
+
+    {/* SECTION OVERVIEW: CHECKOUT CONVERSION */}
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Checkout Conversion</h2>
+        <p className="text-faint text-xs mt-1">
+          Of the checkouts that verified their WhatsApp OTP, how many became a paid order &mdash; all time.
+          Approximate, not exact: the numerator (Total Orders) also includes manual/offline sales recorded
+          without a checkout, and a repeat customer creates a new &ldquo;started&rdquo; row per session, not
+          per person. Everything <em>before</em> OTP verification (product views, cart adds, checkout opened)
+          is only visible in Meta Events Manager &mdash; it&rsquo;s sent to the Pixel but never stored here.
+        </p>
+      </div>
+      {!analytics ? (
+        <p className="text-faint text-sm text-center py-6">Loading analytics...</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="bg-surface-2 border border-border rounded-lg p-4">
+            <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Checkouts Started (OTP verified)</p>
+            <p className="text-xl font-mono font-bold text-fg">{checkoutStarts}</p>
+          </div>
+          <div className="bg-surface-2 border border-border rounded-lg p-4">
+            <p className="text-[10px] uppercase tracking-wider text-faint font-semibold mb-1">Orders Completed</p>
+            <p className="text-xl font-mono font-bold text-fg">{analytics.totalOrders}</p>
+          </div>
+          <div className="bg-accent-soft border border-accent-soft-border rounded-lg p-4">
+            <p className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">Conversion</p>
+            <p className="text-xl font-mono font-bold text-accent">
+              {checkoutConversionRate === null ? "--" : `${Math.min(checkoutConversionRate, 999).toFixed(1)}%`}
+            </p>
+          </div>
+        </div>
       )}
     </div>
 

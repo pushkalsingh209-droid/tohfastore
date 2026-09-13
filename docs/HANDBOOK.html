@@ -2317,7 +2317,7 @@ untyped <code>any</code> the JSX always had (a follow-up typing pass, <code>IMPR
 <div class="x"><table>
 <thead><tr><th>Tab</th><th>Contents</th></tr></thead>
 <tbody>
-<tr><td><code>overview</code></td><td>A <strong>Keepalive heartbeat</strong> card (last-run timestamp + amber <em>Check</em> badge if &gt; 90 min stale), then Business Overview (revenue, orders, AOV, repeat-rate, 6-month revenue chart), WhatsApp Enquiries analytics (14-day trend, by category/product/number/source), Leads list (follow-up / mark-contacted / delete), all with CSV export.</td></tr>
+<tr><td><code>overview</code></td><td>A <strong>Keepalive heartbeat</strong> card (last-run timestamp + amber <em>Check</em> badge if &gt; 90 min stale), then Business Overview (revenue, orders, AOV, repeat-rate, 6-month revenue chart), a <strong>Checkout Conversion</strong> card (added 2026-09-13 &mdash; Checkouts Started vs. Orders Completed, all-time, computed client-side from already-loaded data, no new query or schema), WhatsApp Enquiries analytics (14-day trend, by category/product/number/source), Leads list (follow-up / mark-contacted / delete), all with CSV export.</td></tr>
 <tr><td><code>products</code></td><td>Add-product form (name, price, description, images via <code>ImageUploadField</code>, category, inventory, weight/dimensions with selectable input unit + converter, material/color/label dropdowns, per-product WhatsApp number, photo filter, cost price). <strong>Live Storefront Catalog &amp; Stock Tracker:</strong> inline stock steppers, spec drafts, a &ldquo;Lightweight Brass&rdquo; price calculator (<code>weight &times; &#8377;/kg &times; 1.20</code> &rarr; <code>roundUpBrassPrice</code>), bulk label assign, hide/unhide, and a per-row &ldquo;★ Featured&rdquo;/&ldquo;☆ Feature&rdquo; toggle (0050) for the <code>/spotlight</code> marketing page &mdash; any product, any category, any count.</td></tr>
 <tr><td><code>orders</code></td><td>A <strong>Record a manual order</strong> panel at the top &mdash; pick products and quantities, enter the customer, optionally override the amount collected, and it goes through the real fulfilment path so stock, the sold count and the GST report all stay correct for a sale closed on WhatsApp or a payment link. COD rows carry a <strong>Mark cash collected</strong> toggle (stamps <code>cod_collected_at</code>; undoable). Status sub-tabs now include <strong>Test</strong> (0058) for orders the owner placed as a dry run &mdash; kept out of every statistic <em>and</em> out of the &ldquo;All&rdquo; tab, so the default view is real trade only. Marking an order Test backs its units out of the sold tally, and the &ldquo;Notify customer&rdquo; action is refused for it. A <strong>Notifications sent</strong> analytics card (per-status totals over an admin-chosen date range, blank = all time &mdash; client-side over the full <code>order_notification_log</code>, 0048) above the order table. Table filtered by status (<code>ORDER_STATUS_TABS</code>), status updates + AWB entry, customer/address/items view (an amber &ldquo;Gift &mdash; receiver: &lt;number&gt;&rdquo; pill when <code>shipping_address.recipientPhone</code> is set, post-0049 &mdash; also in the search box), and a per-order/per-status send counter (e.g. <code>Shipped (2)</code>) next to the &ldquo;Notify customer&rdquo; button and on the notify dialog's status pill, both fed by the same log.</td></tr>
 <tr><td><code>coupons</code></td><td>Coupon CRUD, public/private toggle, usage vs limit. A Top Referrers card (all-time, by each referral share coupon's own <code>used_count</code>) sits above the list once there's at least one successful referral.</td></tr>
@@ -3132,6 +3132,38 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-13<br>16:45</code></td>
+  <td><strong>Admin Overview: Checkout Conversion card</strong><br>(follow-up to an engagement/conversion recommendation session &mdash; &ldquo;start taking up the backlog&rdquo;)</td>
+  <td>
+    The Meta Pixel funnel events (<code>ViewContent</code>/<code>AddToCart</code>/<code>InitiateCheckout</code>,
+    2026-09-07) go straight to Meta and were never stored in this app's own DB, so the admin panel showed
+    <strong>no</strong> funnel/conversion figure at all &mdash; exactly the visibility gap the Pixel work was
+    meant to help close, still invisible without leaving the site. Building the full Pixel-shaped funnel
+    would need the Meta Graph API (a new integration, not attempted here); instead this surfaces the one
+    step that's already stored server-side, at zero new query/schema cost.
+    <br><br>
+    New card in the Overview tab, computed entirely client-side from data <code>loadAll()</code> already
+    fetches: <strong>Checkouts Started</strong> (count of <code>leads</code> rows with
+    <code>source === "checkout_started"</code> &mdash; written once per checkout session the moment that
+    session's WhatsApp OTP verifies, per <code>CheckoutSheet.tsx</code>) vs. <strong>Orders Completed</strong>
+    (<code>analytics.totalOrders</code>, already excludes cancelled/test), with the resulting conversion %.
+    <br><br>
+    <strong>Explicitly scoped in its own copy, not oversold:</strong> the card states its two
+    approximations &mdash; <code>totalOrders</code> also includes manual/offline sales that never went
+    through a checkout at all (inflating the numerator slightly), and a repeat customer creates a new
+    &ldquo;started&rdquo; row per session, not per person, so this isn't a customer-level rate. It also says
+    outright that everything <em>before</em> OTP verification (product views, cart adds, checkout opened)
+    is Pixel-only and needs Meta Events Manager, not this panel.
+  </td>
+  <td><em>edited:</em> <code>app/admin/tabs/OverviewTab.tsx</code>, <code>docs/HANDBOOK.html</code>,
+    <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint app/admin/tabs/OverviewTab.tsx</code> 0 errors
+    &middot; <code>npm test</code> 371 passed (1 pre-existing skip) &middot; <code>next build</code> exit 0.
+    Not click-tested against a running admin session here (no live app) &mdash; owner should confirm the
+    card renders sane numbers against production's real <code>leads</code>/<code>orders</code> data. Not a
+    payment-path or schema change &mdash; a pure read of already-loaded admin data.</td>
+</tr>
 <tr>
   <td><code>2026-09-13<br>16:15</code></td>
   <td><strong>Cart cross-sell: exclude out-of-stock lines, blend in same-category picks</strong><br>(owner: &ldquo;in crosssell dont show out of stock products but also shows 1 or two same categories products&rdquo;)</td>
