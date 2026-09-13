@@ -12,6 +12,30 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### 4 new gift guides + influencer-code attribution helper (#13, #14) — 2026-09-13 IST
+- Both #13 and #14 carry a 💰 flag because their full scope is a real recurring spend (a
+  content-writer budget; ~₹2–5k/influencer product packages) — neither is something to act on
+  without the owner's go-ahead. Asked which concrete, no-cost slice to build now; owner picked
+  writing more guides directly (same discipline as the existing 4) and an attribution helper for
+  whenever seeding actually starts — no outreach or shipping attempted, that's still entirely the
+  owner's to run.
+- **#13** — 4 new `/guides` pages (`GIFT_GUIDES` 4 → 8): `corporate-gifting-guide`,
+  `ganesh-chaturthi-gifts`, and — the catalogue's first guide coverage for two categories that had
+  none — `board-game-night-gifts` and `resin-jewelry-gifts` (both deliberately not framed as
+  brass/devotional, since they aren't). New `perSection` field lets a single-category guide show a
+  fuller grid (8 instead of the 6 default). Zero other files needed touching for the new slugs —
+  `generateStaticParams`/`sitemap.ts` both map `GIFT_GUIDES` directly. Updated the index page's
+  stale hardcoded title/description (only named the original 4 occasions).
+- **#14** — "Create Influencer Code" quick-form in the Coupons tab: name + discount % → an
+  auto-suggested, editable code (a plain derived value each render, not synced via an effect, so
+  no `set-state-in-effect` warning) → the exact same `POST /api/admin/coupons` the main form
+  already calls, always private. Deliberately no schema change — attribution is just that
+  coupon's own `used_count` in the existing list, same as any other code.
+- Verified: `tsc` clean · `eslint` 3 changed files 0 errors/warnings · `npm test` 384/384
+  (unchanged — guides are data, the coupon helper reuses an already-tested route) · `next build`
+  exit 0. Not payment-path; no schema change; no influencer outreach, shipping, or writer budget
+  committed.
+
 ### Homepage exit-intent popup (#10) — 2026-09-13 IST
 - #10's spec: "15% off your first order for newsletter signup," triggered by browser scroll
   detection. Built the mechanic in full but deliberately did **not** hardcode a discount claim or
@@ -2395,17 +2419,30 @@ care, land behind tests, never "blind".
        the same phased pattern (draft content → submit to MSG91 → wait for approval → wire
        behind `WHATSAPP_PROVIDER` → verify → test live before trusting).
 
-13. **💰 Blog / Content Hub** — *foundation exists.* Already have:
-    - `/guides` index + 4 gift guides (Diwali, housewarming, wedding, puja room)
+13. **💰 Blog / Content Hub** — *expanded (2026-09-13), no-cost slice done.* Have:
+    - `/guides` index + **8** gift guides (was 4) — Diwali, housewarming, wedding-return,
+      puja-room-essentials, plus corporate gifting, Ganesh Chaturthi, board-game night, and
+      resin jewelry (the last two are the catalogue's first guide coverage for Board
+      Games / UV Resin Earrings). See 2026-09-13's Done entry.
     - Live product pull + JSON-LD breadcrumbs per guide
-    - No changes needed this batch; expand with more guides in next batch
+    - **Still open (the actual 💰 part):** a recurring writer budget (₹5–20k/mo) for a
+      sustained content operation past what one person hand-writing occasional guides can
+      sustain. Owner decision, not attempted here.
     - **Timeline:** 6–12 months to meaningful organic traffic (30–50% at scale)
-    - **Cost:** writer budget (₹5–20k/mo)
 
-14. **💰 Influencer Seeding** — *backlog.* Send free products to micro-influencers
-    (5k–50k followers). **Impact:** 2–5% new acquisition per 10 packages. **Effort:**
-    medium (prospecting + outreach). **Cost:** ~₹2–5k per influencer.
+14. **💰 Influencer Seeding** — *attribution tooling built (2026-09-13); outreach/shipping
+    still entirely owner-run.* Send free products to micro-influencers (5k–50k followers).
+    **Impact:** 2–5% new acquisition per 10 packages. **Effort:** medium (prospecting +
+    outreach — not something to automate). **Cost:** ~₹2–5k per influencer (real product
+    packages — 💰, owner's own spend when this actually starts).
     **Timeline:** 2–4 weeks per batch. *Recommended after organic reach plateaus.*
+    - **✅ Done now:** a "Create Influencer Code" quick-form in the admin Coupons tab —
+      name + discount % → an auto-suggested, editable code → the existing
+      `POST /api/admin/coupons`, always private. No schema change (no `influencer` flag
+      or new table for what's still speculative) — attribution is just that coupon's own
+      `used_count` once codes are actually sent out. See 2026-09-13's Done entry.
+    - **Not done, and not code:** finding real influencers, negotiating, and shipping
+      real products. Fully the owner's to run whenever this batch starts.
 
 14a. **✅ Gift With Purchase campaigns** — *shipped and confirmed live end-to-end,
      plus a follow-up (migration 0064) adding off-catalog gift support.*

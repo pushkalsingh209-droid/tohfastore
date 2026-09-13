@@ -35,6 +35,81 @@ export default function CouponsTab() {
   });
   const [couponStatus, setCouponStatus] = useState("");
 
+  // Influencer seeding (IMPROVEMENTS.md #14) -- a quick-create shortcut over
+  // the exact same POST /api/admin/coupons the form below uses, not a new
+  // route or schema. There's no dedicated "influencer" flag on the coupons
+  // table (a real column would need a migration for what's still a
+  // speculative feature) -- attribution instead comes for free from a
+  // private, one-code-per-influencer coupon's own `used_count` in the list
+  // below, same as any other coupon.
+  const [influencerForm, setInfluencerForm] = useState({ handle: "", discountPercent: "15", validDays: "60" });
+  // null = "follow the auto-suggestion below"; a string once the admin
+  // edits the code field directly -- they may want a different format than
+  // <HANDLE><PERCENT>, or need to dodge a collision with an existing code.
+  // A plain derived value (not synced via an effect) so typing in the
+  // handle/percent fields recomputes the suggestion in the same render,
+  // with no extra render pass.
+  const [influencerCodeOverride, setInfluencerCodeOverride] = useState<string | null>(null);
+  const [influencerStatus, setInfluencerStatus] = useState("");
+
+  const suggestedInfluencerCode =
+    influencerForm.handle.toUpperCase().replace(/[^A-Z0-9]/g, "") +
+    (() => {
+      const pct = parseInt(influencerForm.discountPercent, 10);
+      return Number.isFinite(pct) && pct > 0 ? String(pct) : "";
+    })();
+  const influencerCode = influencerCodeOverride ?? suggestedInfluencerCode;
+
+  const handleCreateInfluencerCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const handleName = influencerForm.handle.trim();
+    const pct = parseFloat(influencerForm.discountPercent);
+    const days = parseInt(influencerForm.validDays, 10);
+
+    if (!handleName) {
+      setInfluencerStatus("Please enter the influencer's name or handle.");
+      return;
+    }
+    if (!influencerCode.trim()) {
+      setInfluencerStatus("Please enter a code.");
+      return;
+    }
+    if (!Number.isFinite(pct) || pct <= 0 || pct > 90) {
+      setInfluencerStatus("Please enter a discount percent between 1 and 90.");
+      return;
+    }
+
+    let expiresAt = "";
+    if (Number.isFinite(days) && days > 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      expiresAt = d.toISOString().slice(0, 10);
+    }
+
+    setInfluencerStatus("Creating code...");
+    try {
+      const result = await apiRequest("/api/admin/coupons", {
+        method: "POST",
+        body: JSON.stringify({
+          code: influencerCode,
+          discountType: "percent",
+          discountValue: String(pct),
+          maxUses: "",
+          expiresAt,
+          isPublic: false, // shared directly with the influencer, never on the public promo banner
+        }),
+      });
+      setCoupons([result.coupon, ...coupons]);
+      setInfluencerForm({ handle: "", discountPercent: "15", validDays: "60" });
+      setInfluencerCodeOverride(null);
+      setInfluencerStatus(
+        `Code ${result.coupon.code} created for ${handleName} -- its "Used" count in the list below tracks every order it drives.`
+      );
+    } catch (err: unknown) {
+      setInfluencerStatus(`Could not create code: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   const handleCreateCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     setCouponStatus("Creating coupon...");
@@ -118,6 +193,64 @@ export default function CouponsTab() {
         </div>
       </div>
     )}
+
+    {/* SECTION C.5: INFLUENCER SEEDING -- QUICK-CREATE ATTRIBUTION CODE
+        (IMPROVEMENTS.md #14) */}
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8 mb-6">
+      <div className="border-b border-border pb-4 mb-4">
+        <h2 className="text-xl font-serif text-fg">Create Influencer Code</h2>
+        <p className="text-faint text-xs mt-1">
+          A shortcut for influencer seeding &mdash; creates a private, percent-off coupon (never shown
+          on the public promo banner) with a suggested code built from their name. Once you&rsquo;ve
+          sent it to them, that code&rsquo;s &ldquo;Used&rdquo; count in the Coupon Codes list below
+          tracks every order it drives &mdash; no separate reporting needed.
+        </p>
+      </div>
+      <form onSubmit={handleCreateInfluencerCode} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+        <input
+          type="text"
+          required
+          placeholder="Influencer name / handle"
+          value={influencerForm.handle}
+          onChange={(e) => setInfluencerForm((f) => ({ ...f, handle: e.target.value }))}
+          className="px-3 py-2.5 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+        />
+        <input
+          type="number"
+          required
+          min={1}
+          max={90}
+          placeholder="Discount %"
+          value={influencerForm.discountPercent}
+          onChange={(e) => setInfluencerForm((f) => ({ ...f, discountPercent: e.target.value }))}
+          className="px-3 py-2.5 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+        />
+        <input
+          type="number"
+          min={1}
+          placeholder="Valid for (days)"
+          value={influencerForm.validDays}
+          onChange={(e) => setInfluencerForm((f) => ({ ...f, validDays: e.target.value }))}
+          className="px-3 py-2.5 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+        />
+        <input
+          type="text"
+          required
+          placeholder="Code"
+          title="Auto-suggested from the name/percent above -- edit freely, e.g. to dodge a collision"
+          value={influencerCode}
+          onChange={(e) => setInfluencerCodeOverride(e.target.value.toUpperCase())}
+          className="px-3 py-2.5 rounded border border-border-strong text-sm font-mono focus:outline-none focus:border-accent bg-surface-2"
+        />
+        <button
+          type="submit"
+          className="px-4 py-2.5 rounded bg-fg hover:bg-accent-hover hover:text-accent-fg text-bg font-medium text-xs uppercase tracking-wider shadow transition whitespace-nowrap"
+        >
+          Create Code
+        </button>
+      </form>
+      {influencerStatus && <p className="text-xs text-faint mt-3">{influencerStatus}</p>}
+    </div>
 
     {/* SECTION D: COUPON / DISCOUNT CODES */}
     <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
