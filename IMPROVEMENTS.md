@@ -12,6 +12,16 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Spend & Save preview moved into the cart drawer — 2026-09-13 IST
+- Quick win flagged in the earlier engagement-recommendation session: the "add ₹X more to save ₹Y"
+  nudge only showed at checkout Review, one step later than it could — a shopper could open Review
+  already short of a tier with no earlier signal.
+- `CartDrawer.tsx` now calls the same `useSpendTierOffer` hook the Review step and `SpendOfferBanner`
+  already use, gated on the drawer's own `isOpen`. Shows the nudge (or the amount already saved) in the
+  sticky footer above Subtotal. Preview only — `/api/razorpay` is still the only authoritative pricer,
+  identical contract to every other place this offer appears.
+- Verified: `tsc` clean · `eslint` 0 errors · `npm test` 371/371 · `next build` exit 0. Not payment-path.
+
 ### #TOHFACRAFTS UGC: admin moderation queue + PDP display — 2026-09-13 IST
 - Closes out item #11's flagged follow-up: submissions (`product_ugc`, 0062) have existed since
   2026-09-11 with nowhere to go — no admin view, and no display component even for a manually-approved
