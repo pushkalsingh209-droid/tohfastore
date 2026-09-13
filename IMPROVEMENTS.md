@@ -2866,17 +2866,12 @@ care, land behind tests, never "blind".
 
 ## Active — Tier 5 Marketing (defensive / expansion)
 
-18. **Verify Pinterest domain claim** — You added the meta tag; owner must click
-    "Verify" in Pinterest Business Hub. Product Pins will then pull live price/stock
-    from JSON-LD automatically. **Effort:** 5 min (owner action).
+18. **✅ Verify Pinterest domain claim** — *owner confirmed done (2026-09-13).* Verified
+    in Pinterest Business Hub. Product Pins now pull live price/stock from the site's
+    own JSON-LD automatically.
 
-19. **Google Merchant Center feed validation** — Feed at `/api/google-merchant-feed` is
-    live. **Ensure:**
-    - Feed is submitted in Google Merchant Center + synced daily.
-    - Products show correct `availability` (`InStock` / `OutOfStock` / `InStoreOnly`).
-    - Pricing stays in sync (test after promos).
-    - Images load correctly.
-    **Effort:** low (owner setup).
+19. **✅ Google Merchant Center feed validation** — *owner confirmed done (2026-09-13).*
+    Feed at `/api/google-merchant-feed` submitted and syncing.
 
 20. **Avoid premature scaling** — Don't buy ads until:
     - Organic reach is saturated (typically 50–100 orders/month).

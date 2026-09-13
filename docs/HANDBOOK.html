@@ -2537,11 +2537,13 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
       them into <code>&lt;head&gt;</code>). Kept in sync with the schema.org <code>Offer</code> (same price, same
       in/out-of-stock).</li>
   <li><strong>Pinterest domain verification</strong> &mdash; <code>metadata.other["p:domain_verify"]</code> in
-      <code>app/layout.tsx</code> (a static, one-time value from Pinterest Business Hub, never rotates). Once
-      claimed, Pinterest's Product Pins read live price/availability from each product page's OG <code>product</code>
-      tags (above) &mdash; and the <code>Product</code> JSON-LD as a fallback (&sect;overview &mdash;
-      <code>offers.price</code> / <code>offers.availability</code>) &mdash; no separate feed needed. The Pinterest
-      profile is also listed in <code>organizationJsonLd.sameAs</code> alongside Instagram/Facebook.</li>
+      <code>app/layout.tsx</code> (a static, one-time value from Pinterest Business Hub, never rotates).
+      <strong>Owner confirmed verified in Pinterest Business Hub 2026-09-13</strong> (IMPROVEMENTS.md Tier 5
+      Marketing #18). Now that it's claimed, Pinterest's Product Pins read live price/availability from each
+      product page's OG <code>product</code> tags (above) &mdash; and the <code>Product</code> JSON-LD as a
+      fallback (&sect;overview &mdash; <code>offers.price</code> / <code>offers.availability</code>) &mdash; no
+      separate feed needed. The Pinterest profile is also listed in <code>organizationJsonLd.sameAs</code>
+      alongside Instagram/Facebook.</li>
   <li><strong>Meta (Facebook) Business domain verification</strong> &mdash;
       <code>metadata.other["facebook-domain-verification"]</code> in <code>app/layout.tsx</code>, same
       <code>other</code> object as the Pinterest tag above (a static, one-time value issued by Meta Business
@@ -2558,7 +2560,8 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
   <li><strong>Google Merchant Center feed</strong> &mdash; <code>GET /api/google-merchant-feed</code> (&sect;11), an
       RSS 2.0 + <code>g:</code> product feed of every non-hidden product, for free Google Shopping listings. Same
       brand/price/availability facts as the product-page JSON-LD, just in the XML shape Merchant Center ingests.
-      The owner still has to submit the feed URL in Merchant Center once (not done by this codebase).</li>
+      <strong>Owner confirmed the feed URL is submitted and syncing in Merchant Center 2026-09-13</strong>
+      (IMPROVEMENTS.md Tier 5 Marketing #19).</li>
   <li><strong>FAQ page + FAQPage JSON-LD</strong> &mdash; <code>/faq</code> (a visible accordion, <code>app/faq/page.tsx</code>)
       with a matching <code>schema.org FAQPage</code> script built from the exact same <code>FAQS</code> array that
       renders the accordion, so the two can't drift apart (Google's guidelines require the structured data to
@@ -3171,6 +3174,16 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-13<br>23:15</code></td>
+  <td><strong>Docs: Pinterest domain + Google Merchant Center confirmed live</strong><br>(owner: &ldquo;pintetest domain verification is done so is google merchant center done&rdquo;)</td>
+  <td>Owner-action checklist items from the previous batch (Tier 5 Marketing #18/#19) confirmed
+    complete: Pinterest domain verified in Business Hub, and the Merchant Center feed submitted and
+    syncing. No code change &mdash; both were already-shipped, owner-side-only steps; this batch just
+    marks them done in the docs.</td>
+  <td><em>edited:</em> <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td>Docs-only, nothing to run. Not payment-path.</td>
+</tr>
 <tr>
   <td><code>2026-09-13<br>23:00</code></td>
   <td><strong>Product-Level Attribution (#16) &mdash; GA4 item_id/item_category</strong><br>(owner: &ldquo;do the next 2 items&rdquo; &mdash; Product-Level Attribution + the owner-action checklist, from a recommended punch list)</td>
