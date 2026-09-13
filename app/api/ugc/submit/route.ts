@@ -70,9 +70,7 @@ export async function POST(req: Request) {
     await recordRateLimitEvent(RATE_LIMIT_BUCKET, ip);
 
     // Insert UGC submission (all go to moderation queue, not auto-approved)
-    // Note: types/db.ts will auto-update after migration 0062 is run
-    // Using 'as any' for the untyped table until migration runs and types regenerate
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("product_ugc")
       .insert({
         product_id: productId,
