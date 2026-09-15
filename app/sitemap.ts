@@ -1,7 +1,7 @@
 // app/sitemap.ts
 import type { MetadataRoute } from "next";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
-import { getAllCategoryNames } from "@/app/utils/storeQueries";
+import { getAllCategoryNames, getApprovedBlogSlugs } from "@/app/utils/storeQueries";
 import { productHref, categoryHref } from "@/app/utils/slug";
 import { GIFT_GUIDES } from "@/app/utils/giftGuides";
 
@@ -10,6 +10,7 @@ const SITE_URL = "https://tohfaonline.com";
 const STATIC_PAGES = [
   "", "/about", "/contact", "/privacy", "/terms", "/refunds", "/faq", "/wishlist", "/spotlight", "/refer",
   "/guides", ...GIFT_GUIDES.map((g) => `/guides/${g.slug}`),
+  "/blog",
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -32,6 +33,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  const blogSlugs = await getApprovedBlogSlugs();
+  const blogEntries: MetadataRoute.Sitemap = blogSlugs.map((post) => ({
+    url: `${SITE_URL}/blog/${post.slug}`,
+    lastModified: post.published_at ? new Date(post.published_at) : new Date(),
+    changeFrequency: "monthly",
+    priority: 0.5,
+  }));
+
   let productEntries: MetadataRoute.Sitemap = [];
   try {
     const { data, error } = await supabase.from("products").select("id, name, created_at").eq("hidden", false);
@@ -47,5 +56,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("Failed to build product sitemap entries:", err);
   }
 
-  return [...staticEntries, ...categoryEntries, ...productEntries];
+  return [...staticEntries, ...categoryEntries, ...productEntries, ...blogEntries];
 }

@@ -12,6 +12,76 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Blog section: public submission + admin approval (new) — 2026-09-15 IST
+- Owner: "Create a section which should have blogs. These blogs can be submitted online
+  with photos and on approval from admin panel can be posted. All features and final
+  layout should be mobile first" — a real, distinct feature from the existing `/guides`
+  (which stays exactly as-is: hand-curated, SEO-occasion pages, no submission flow). This
+  is new: anyone can write a post, submit it with photos from a phone, and it only goes
+  live at `/blog/<slug>` once approved in a new admin Blog tab.
+- **✅ Migration `supabase/migrations/0065_add_blog_posts.sql` run by the owner
+  2026-09-15 — live.** New `blog_posts` table (same "hand-run SQL, no CLI" workflow as
+  every migration in this repo). Every read/write was written to gracefully degrade
+  before the migration ran (`getApprovedBlogPosts` etc. all try/catch to `[]`/`null`),
+  which is exactly how it behaved when first shipped mid-session, before the run.
+- **Public submission** — `/blog/submit`, a single-column mobile-first form (title, name,
+  optional email, optional category, optional excerpt, body, cover photo, up to 4 more
+  photos). No login, same posture as every other public form in this codebase (UGC,
+  reviews, enquiries): rate-limited server-side (`blog-submit`, 5/24h/IP — a daily window,
+  not UGC's hourly one, since a real article is slower to write than a quick caption),
+  always lands `approved:false`. New `BlogPhotoPicker.tsx` (a grid of tap-target upload
+  slots, better for a phone than one shared "add" button) compresses each photo
+  in-browser (`compressImageFile`, already used by the admin's `ImageUploadField`) before
+  POSTing to a new public `/api/blog/upload-photo` (rate-limited `blog-photo-upload`,
+  20/hour/IP — a submission needs several uploads before the one final submit — 4MB cap,
+  same Storage bucket/signed-URL/immutable-filename shape as every other upload route,
+  own `blog-photos/` prefix, plus a thumbnail for the index grid). A public upload
+  endpoint here is a reasonable trade unlike the video-testimonials decision (#9) — these
+  are small, already-compressed images, not video, and nothing uploaded is visible
+  anywhere until approved.
+- **Admin moderation** — new **Blog** tab (8th tab, not folded into Reviews like UGC was
+  — a full article with photos needs real editing room, not a one-line approve/reject).
+  Pending posts listed first, then live ones; each row expands to show the photos and
+  **editable** title/excerpt/category/body (fixing a typo or tightening a draft before it
+  goes live) with Approve/Unpublish/Reject actions. `published_at` is only stamped the
+  first time a post is approved, so editing an already-live post's copy later doesn't
+  bump it back to the top of the feed.
+- **Public display** — `/blog` (index, photo-led card grid, mobile-first `grid-cols-1
+  sm:grid-cols-2 lg:grid-cols-3`) and `/blog/<slug>` (a narrow `max-w-2xl` reading column
+  — prose, not a product grid like `/guides/<slug>`). Both `force-dynamic` over
+  `unstable_cache`'d reads (`getApprovedBlogPosts`/`getBlogPostBySlug`, tag `"blog"`,
+  `revalidateTag`'d on every admin approve/edit/delete), same pattern as
+  `/guides/[slug]`. `Article` + `BreadcrumbList` JSON-LD on the detail page,
+  `ItemList` on the index. Linked from the desktop nav (next to Gift Guides) and
+  `PageNavLinks`' mobile menu (the only place either is reachable on a phone) — genuinely
+  discoverable on mobile, not just responsive.
+- Pure text logic split into `app/utils/blogContent.ts` (`splitParagraphs` — the
+  "blank line = new paragraph" convention, `GiftGuide.body`'s array shape scaled to one
+  textarea; `deriveExcerpt` — falls back to a truncated first paragraph when the writer
+  leaves the excerpt blank) and unit-tested rather than left inline in the routes.
+  **14 unit tests.**
+- `types/db.ts` (the hand-maintained stand-in for Supabase CLI type-gen, since Docker
+  still blocks that — Tier 1 general #3) gained a `blog_posts` entry matching the
+  migration exactly.
+- Verified: `tsc` clean · `eslint` 0 new errors across all changed/new files (2
+  pre-existing `set-state-in-effect` warnings in `admin/page.tsx`, untouched lines) ·
+  `npm test` 408/408 (+14 new) · `next build` exit 0, all 5 new routes registered
+  (`/blog`, `/blog/[slug]`, `/blog/submit`, `/api/blog/submit`, `/api/blog/upload-photo`,
+  `/api/admin/blog`). **Full live end-to-end test after the owner ran migration 0065**:
+  uploaded a real photo through `/api/blog/upload-photo` (landed in Storage under
+  `blog-photos/` with a thumbnail generated), submitted a real post through
+  `/api/blog/submit` (row landed `approved:false`, slug auto-generated correctly, excerpt
+  correctly auto-derived from the first paragraph since none was given), approved it
+  (the same DB write the admin PATCH route makes), and confirmed both `/blog` (card,
+  thumbnail, excerpt, author, date all correct) and `/blog/<slug>` (both paragraphs
+  rendered separately, confirming `splitParagraphs`) render it correctly -- then deleted
+  the test row and uploaded file. The admin Blog tab's own button clicks weren't driven
+  through a real browser session, but the route it calls is structurally identical to
+  the already-proven `/api/admin/reviews` pattern and the exact same DB write was
+  exercised directly.
+- Not payment-path. Real schema change (0065) -- migration run by the owner 2026-09-15,
+  confirmed working end-to-end above.
+
 ### Product-Level Attribution (#16) — GA4 item_id/item_category — 2026-09-13 IST
 - #16 asks which traffic source drives orders per product, needing "UTM tracking + an
   analytics dashboard". GA4 already auto-captures per-session source/medium from
@@ -2577,6 +2647,10 @@ care, land behind tests, never "blind".
       sustained content operation past what one person hand-writing occasional guides can
       sustain. Owner decision, not attempted here.
     - **Timeline:** 6–12 months to meaningful organic traffic (30–50% at scale)
+    - **Distinct from the new `/blog` section (2026-09-15)** — `/guides` stays
+      hand-curated, occasion-specific SEO pages with no submission flow; `/blog` is the
+      new public-submit-with-photos → admin-approve → published section, a separate
+      feature entirely. See that date's Done entry.
 
 14. **💰 Influencer Seeding** — *attribution tooling built (2026-09-13); outreach/shipping
     still entirely owner-run.* Send free products to micro-influencers (5k–50k followers).

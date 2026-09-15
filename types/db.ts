@@ -83,6 +83,57 @@ export type Database = {
         }
         Relationships: []
       }
+      blog_posts: {
+        Row: {
+          approved: boolean
+          author_email: string | null
+          author_name: string
+          body: string
+          category: string | null
+          cover_image_url: string
+          created_at: string
+          excerpt: string
+          id: number
+          images: string[]
+          moderated_at: string | null
+          published_at: string | null
+          slug: string
+          title: string
+        }
+        Insert: {
+          approved?: boolean
+          author_email?: string | null
+          author_name: string
+          body: string
+          category?: string | null
+          cover_image_url: string
+          created_at?: string
+          excerpt: string
+          id?: never
+          images?: string[]
+          moderated_at?: string | null
+          published_at?: string | null
+          slug: string
+          title: string
+        }
+        Update: {
+          approved?: boolean
+          author_email?: string | null
+          author_name?: string
+          body?: string
+          category?: string | null
+          cover_image_url?: string
+          created_at?: string
+          excerpt?: string
+          id?: never
+          images?: string[]
+          moderated_at?: string | null
+          published_at?: string | null
+          slug?: string
+          title?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           cod_disabled: boolean

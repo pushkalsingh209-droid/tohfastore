@@ -135,6 +135,7 @@ export default function HeaderNavbar() {
         <nav className="hidden md:flex items-center gap-6 sm:gap-8 font-medium text-sm tracking-wide text-muted md:ml-auto">
           <Link href="/" className="hover:text-link transition">Collections</Link>
           <Link href="/guides" className="hover:text-link transition">Gift Guides</Link>
+          <Link href="/blog" className="hover:text-link transition">Blog</Link>
 
           <ThemePicker />
 

@@ -44,6 +44,24 @@ export interface AdminUgcSubmission {
   products?: { name?: string } | null;
 }
 
+// Blog section (migration 0065) -- publicly submitted at /blog/submit,
+// moderated here before going live at /blog/<slug>.
+export interface AdminBlogPost {
+  id: number;
+  created_at: string;
+  slug: string;
+  title: string;
+  author_name: string;
+  author_email?: string | null;
+  excerpt: string;
+  body: string;
+  cover_image_url: string;
+  images: string[];
+  category?: string | null;
+  approved: boolean;
+  published_at?: string | null;
+}
+
 export interface AdminCoupon {
   id: number;
   code: string;
@@ -243,6 +261,9 @@ export interface AdminData {
   // #TOHFACRAFTS UGC moderation queue, shown in the same tab as reviews.
   ugcSubmissions: AdminUgcSubmission[];
   setUgcSubmissions: (value: AdminUgcSubmission[]) => void;
+  // --- blog tab ---
+  blogPosts: AdminBlogPost[];
+  setBlogPosts: (value: AdminBlogPost[]) => void;
   // --- coupons tab ---
   coupons: AdminCoupon[];
   setCoupons: (value: AdminCoupon[]) => void;
