@@ -12,6 +12,38 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Product page: full-screen lightbox on click (matching the blog fix) — 2026-09-15 IST
+- Owner: "IN product details page also the images should pop up on click similarly to
+  blog images so that users can view them properly and also mobile first" — a direct
+  follow-on from the same-day blog image-crop/lightbox fix.
+- Extracted the lightbox itself out of `BlogPostGallery.tsx` into a new, generic
+  `app/components/ImageLightbox.tsx` (images array, current index, alt, close/navigate
+  callbacks) rather than writing the same ~80 lines a second time — `BlogPostGallery`
+  now just renders it, no behaviour change there.
+- Wired it into `ProductGallery.tsx` (used by every product card **and** the product
+  detail page) as detail-view-only: a plain click on the photo opens the lightbox at
+  whatever's currently showing, but only when `size === "detail"`. A card instance
+  (grid/spotlight/wishlist/guides/compare) sits inside `ProductCard`'s own `<Link>`,
+  where a click should still navigate to the product page — untouched. Confirmed safe to
+  add without touching any existing interaction: `ProductGallery` had no click handler
+  of its own before this (`zoomHandlers` is hover/touch-move/leave only), and the
+  existing nav/filter/hold buttons already `stopPropagation` their own clicks, so none
+  of them can accidentally trigger it.
+- The lightbox's own prev/next now drives the gallery's real `currentIndex` (via
+  `onNavigate={setCurrentIndex}`), so closing it leaves the visible carousel on whatever
+  photo was last viewed full-screen, instead of snapping back to wherever the
+  auto-slide/flip loop happened to be.
+- On mobile, a quick tap already fell through to a synthesized click (none of the touch
+  handlers call `preventDefault`), so no separate touch wiring was needed — a quick tap
+  opens the lightbox, a press-and-hold still zooms in place exactly as before.
+- Verified: `tsc` clean · `eslint` 0 new errors (4 pre-existing `set-state-in-effect`
+  warnings in `ProductGallery.tsx`, all on untouched lines, confirmed via diff) ·
+  `npm test` 408/408 (unchanged) · `next build` exit 0. Live-tested against the real dev
+  server: product detail page and a category grid both render the gallery correctly, and
+  the grid cards' `<Link>` wrapper markup is intact (navigation unaffected). The
+  click-to-open interaction itself is client-side JS, not exercisable via curl — owner
+  should confirm it live. Not payment-path.
+
 ### SEO: individual Review JSON-LD + blog RSS feed — 2026-09-15 IST
 - Owner asked for SEO recommendations "without compromising design and existing things"
   while testing the blog. Recommended three items; **#1 (category page

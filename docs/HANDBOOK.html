@@ -2665,7 +2665,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>StorefrontPage</code> &mdash; shared home/category shell (RSC)</li>
 <li><code>CatalogSection</code> &mdash; grid + progressive reveal + batch live-stock fetch</li>
 <li><code>CatalogFilters</code>, <code>CatalogPagination</code></li>
-<li><code>ProductCard</code> (shows a &ldquo;New&rdquo; badge, bottom-left of the image, for a product created within the last 14 days -- <code>created_at</code> is only selected by the two queries that feed cards, <code>getCatalogPage</code>/<code>getSpotlightProducts</code>/<code>getProductsByIds</code>; resolved on mount, not during render, since <code>Date.now()</code> can't run in a render body; the back face also has a &ldquo;+ Add to Compare&rdquo;/&ldquo;&#10003; Added to Compare&rdquo; toggle, IMPROVEMENTS.md Tier 1 Marketing #5, added 2026-09-13, next to the spec details it's comparing), <code>ProductGallery</code> (auto flip/slide on every instance; <code>size="detail"</code> &mdash; the product page only, never a grid card &mdash; additionally gets prev/next arrows, a &ldquo;Hold&rdquo;/&ldquo;Resume&rdquo; button that sticks until pressed again (unlike the zoom-hover pause, it isn't cleared just by moving the pointer off the photo), and a top-centre dot-position indicator (added 2026-09-13; a pill-shaped active dot among smaller ones, swapped in 2026-09-13 for an earlier text &ldquo;2 / 5&rdquo; counter per owner preference), <code>PriceDisplay</code>, <code>TempleCardFrame</code></li>
+<li><code>ProductCard</code> (shows a &ldquo;New&rdquo; badge, bottom-left of the image, for a product created within the last 14 days -- <code>created_at</code> is only selected by the two queries that feed cards, <code>getCatalogPage</code>/<code>getSpotlightProducts</code>/<code>getProductsByIds</code>; resolved on mount, not during render, since <code>Date.now()</code> can't run in a render body; the back face also has a &ldquo;+ Add to Compare&rdquo;/&ldquo;&#10003; Added to Compare&rdquo; toggle, IMPROVEMENTS.md Tier 1 Marketing #5, added 2026-09-13, next to the spec details it's comparing), <code>ProductGallery</code> (auto flip/slide on every instance; <code>size="detail"</code> &mdash; the product page only, never a grid card &mdash; additionally gets prev/next arrows, a &ldquo;Hold&rdquo;/&ldquo;Resume&rdquo; button that sticks until pressed again (unlike the zoom-hover pause, it isn't cleared just by moving the pointer off the photo), a top-centre dot-position indicator (added 2026-09-13; a pill-shaped active dot among smaller ones, swapped in 2026-09-13 for an earlier text &ldquo;2 / 5&rdquo; counter per owner preference), and &mdash; <code>size="detail"</code> only, added 2026-09-15 &mdash; a plain click opens the current photo in a full-screen <code>ImageLightbox</code>; a card instance stays untouched since it sits inside <code>ProductCard</code>'s own <code>&lt;Link&gt;</code>, where a click should still navigate), <code>PriceDisplay</code>, <code>TempleCardFrame</code></li>
 <li><code>HeroProductRotator</code>, <code>CategorySlider</code>, <code>BestsellersStrip</code> (reused as-is, just a different <code>title</code>, for the product page's &ldquo;Often Viewed Together&rdquo; strip &mdash; fed by <code>getViewedTogether</code>, a <code>product_views</code> session-affinity signal distinct from &ldquo;Customers Also Bought&rdquo;'s order-history one)</li>
 <li><code>RecentlyViewedStrip</code>, <code>RecentViewersNote(Live)</code>, <code>RecordProductView</code></li>
 <li><code>LiveStock</code>, <code>StockStatusBadge</code> (shows &ldquo;Available on enquiry&rdquo; ahead of every stock state for an <code>enquire_only</code> piece), <code>NotifyWhenInStockButton</code> (never rendered for one &mdash; it is not coming back in stock, so the alert could never fire)</li>
@@ -2689,7 +2689,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>AbandonedCartNudge</code>, <code>CookieConsent</code>, <code>InstallPrompt</code></li>
 <li><code>admin/ImageUploadField</code>, <code>admin/DownloadCsvButton</code></li>
 <li><code>admin/UgcVideoUploadField</code> &mdash; attaches a video to a UGC submission in the Reviews tab (IMPROVEMENTS.md #9, added 2026-09-13) via <code>/api/admin/ugc/upload-video</code>. Same paired URL-box + file-picker shape as <code>ImageUploadField</code>, but since this row has no surrounding form + Save button, <code>onChange</code> PATCHes the server immediately &mdash; so the manual URL box only commits on blur (not per keystroke); a completed upload still commits right away as a single final value. Local <code>draft</code> state re-syncs to the committed <code>value</code> prop via a render-time <code>prevValue</code> comparison, not an effect.</li>
-<li><code>BlogPhotoPicker</code> &mdash; a grid of upload slots backing <code>/blog/submit</code>'s cover photo (1 slot) and gallery (4 slots) fields (new, added 2026-09-15). Each empty slot is its own tap target rather than one shared &ldquo;add&rdquo; button re-triggering for every photo &mdash; a mobile-first call, since this form's realistic device is a phone. Compresses each photo in-browser (<code>compressImageFile</code>, the same helper <code>ImageUploadField</code> uses) before POSTing to <code>/api/blog/upload-photo</code>. <code>BlogSubmitForm</code> &mdash; the actual <code>/blog/submit</code> form (a Client Component so <code>page.tsx</code> above it can stay a Server Component exporting <code>noindex</code> metadata); single column, no multi-step wizard, mirrors <code>UgcSubmissionForm</code>'s status-state shape (idle/submitting/done/error). <code>BlogPostGallery</code> &mdash; renders <code>/blog/[slug]</code>'s cover photo + gallery grid and the full-screen lightbox both open into (added 2026-09-15, fixing an owner-reported crop bug: the cover photo now sizes its own container to that exact photo's measured aspect ratio, via <code>onLoad</code> &rarr; <code>naturalWidth</code>/<code>naturalHeight</code>, capped at 75vh, with <code>object-contain</code> as a backstop, so nothing is ever cropped regardless of a submitted photo's shape; clicking the cover or any gallery photo opens a black-backdrop lightbox with prev/next + Escape/arrow-key navigation). The body paragraphs render as this component's <code>children</code> (server-rendered content passed through a client wrapper) so they land between the cover and the gallery, matching the page's original layout order.</li>
+<li><code>BlogPhotoPicker</code> &mdash; a grid of upload slots backing <code>/blog/submit</code>'s cover photo (1 slot) and gallery (4 slots) fields (new, added 2026-09-15). Each empty slot is its own tap target rather than one shared &ldquo;add&rdquo; button re-triggering for every photo &mdash; a mobile-first call, since this form's realistic device is a phone. Compresses each photo in-browser (<code>compressImageFile</code>, the same helper <code>ImageUploadField</code> uses) before POSTing to <code>/api/blog/upload-photo</code>. <code>BlogSubmitForm</code> &mdash; the actual <code>/blog/submit</code> form (a Client Component so <code>page.tsx</code> above it can stay a Server Component exporting <code>noindex</code> metadata); single column, no multi-step wizard, mirrors <code>UgcSubmissionForm</code>'s status-state shape (idle/submitting/done/error). <code>BlogPostGallery</code> &mdash; renders <code>/blog/[slug]</code>'s cover photo + gallery grid and opens <code>ImageLightbox</code> (below) when either is clicked (added 2026-09-15, fixing an owner-reported crop bug: the cover photo now sizes its own container to that exact photo's measured aspect ratio, via <code>onLoad</code> &rarr; <code>naturalWidth</code>/<code>naturalHeight</code>, capped at 75vh, with <code>object-contain</code> as a backstop, so nothing is ever cropped regardless of a submitted photo's shape). The body paragraphs render as this component's <code>children</code> (server-rendered content passed through a client wrapper) so they land between the cover and the gallery, matching the page's original layout order. <code>ImageLightbox</code> &mdash; the shared full-screen photo viewer (black backdrop, <code>object-contain</code>, prev/next + a counter, Escape/arrow-key navigation, click-outside or &times; to close); extracted out of <code>BlogPostGallery</code> the same day once <code>ProductGallery</code>'s own detail view needed the identical viewer (owner: &ldquo;images should pop up on click similarly to blog images&rdquo;) rather than duplicating it.</li>
 <li><code>admin/FinanceInsightsPanel</code>, <code>admin/InventoryInsightsPanel</code>, <code>admin/GroupStatsPanel</code></li>
 </ul>
 </div>
@@ -3196,6 +3196,43 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-15<br>14:30</code></td>
+  <td><strong>Product page: full-screen lightbox on click</strong><br>(owner: &ldquo;IN product details page also the images should pop up on click similarly to blog images so that users can view them properly and also mobile first&rdquo;)</td>
+  <td>
+    Direct follow-on from the same-day blog crop/lightbox fix. Extracted the lightbox out of
+    <code>BlogPostGallery.tsx</code> into a new, generic <code>app/components/ImageLightbox.tsx</code>
+    (images array, current index, alt, close/navigate callbacks) rather than writing the same ~80 lines
+    a second time &mdash; <code>BlogPostGallery</code> now just renders it, no behaviour change there.
+    <br><br>
+    Wired into <code>ProductGallery.tsx</code> (used by every product card <strong>and</strong> the
+    product detail page) as detail-view-only: a plain click opens the lightbox at whatever's currently
+    showing, but only when <code>size === "detail"</code>. A card instance
+    (grid/spotlight/wishlist/guides/compare) sits inside <code>ProductCard</code>'s own
+    <code>&lt;Link&gt;</code>, where a click should still navigate to the product page &mdash;
+    untouched. Confirmed safe to add without touching any existing interaction:
+    <code>ProductGallery</code> had no click handler of its own before this
+    (<code>zoomHandlers</code> is hover/touch-move/leave only), and the existing nav/filter/hold buttons
+    already <code>stopPropagation</code> their own clicks, so none of them can accidentally trigger it.
+    <br><br>
+    The lightbox's own prev/next now drives the gallery's real <code>currentIndex</code> (via
+    <code>onNavigate={setCurrentIndex}</code>), so closing it leaves the visible carousel on whatever
+    photo was last viewed full-screen. On mobile, a quick tap already fell through to a synthesized
+    click (none of the touch handlers call <code>preventDefault</code>), so no separate touch wiring was
+    needed &mdash; a quick tap opens the lightbox, a press-and-hold still zooms in place exactly as
+    before.
+  </td>
+  <td><em>new:</em> <code>app/components/ImageLightbox.tsx</code><br>
+    <em>edited:</em> <code>app/components/ProductGallery.tsx</code>, <code>app/components/BlogPostGallery.tsx</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> 0 new errors (4 pre-existing
+    <code>set-state-in-effect</code> warnings in <code>ProductGallery.tsx</code>, all on untouched lines,
+    confirmed via diff) &middot; <code>npm test</code> 408 passed (unchanged) &middot; <code>next build</code>
+    exit 0. Live-tested against the real dev server: the product detail page and a category grid both
+    render the gallery correctly, and the grid cards' <code>&lt;Link&gt;</code> wrapper markup is intact
+    (navigation unaffected). The click-to-open interaction itself is client-side JS, not exercisable via
+    curl &mdash; owner should confirm it live. Not payment-path.</td>
+</tr>
 <tr>
   <td><code>2026-09-15<br>14:00</code></td>
   <td><strong>SEO: individual Review JSON-LD + blog RSS feed</strong><br>(owner asked for SEO recommendations &ldquo;without compromising design and existing things&rdquo;; picked 3, built 2 &mdash; the 3rd, category-page Breadcrumb/ItemList schema, turned out to already exist)</td>
