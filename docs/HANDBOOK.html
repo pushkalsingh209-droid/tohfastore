@@ -1994,6 +1994,7 @@ optimizer. (IMPROVEMENTS.md #9 is closed as won&rsquo;t-do.)</p>
 <tr><td><code>/blog</code></td><td>app/blog/page.tsx</td><td><code>force-dynamic</code> over <code>unstable_cache</code>'d reads, same reasoning as <code>/guides/[slug]</code></td><td>Blog index (new, added 2026-09-15) &mdash; approved posts only, newest by <code>published_at</code>. Mobile-first photo-led card grid (<code>grid-cols-1 sm:grid-cols-2 lg:grid-cols-3</code>), unlike <code>/guides</code>' plain-text cards, since every post has a real cover photo. <code>ItemList</code> JSON-LD. Links to <code>/blog/submit</code> at the bottom. Linked from the desktop nav and <code>PageNavLinks</code>' mobile menu.</td></tr>
 <tr><td><code>/blog/[slug]</code></td><td>app/blog/[slug]/page.tsx</td><td><code>force-dynamic</code>, same reasoning as above</td><td>One blog post. Narrow <code>max-w-2xl</code> reading column (prose, not a product grid like <code>/guides/[slug]</code>) &mdash; cover photo, body (paragraphs split on blank lines via <code>splitParagraphs</code>), any additional photos in a small grid, all rendered through <code>BlogPostGallery</code> (below). <code>Article</code> + <code>BreadcrumbList</code> JSON-LD. Unknown/unapproved slug &rarr; real 404 (<code>notFound()</code>), unlike <code>/guides/[slug]</code>'s soft-404 (a guide's own slugs are all hardcoded and known-good, so an unknown one there really is a broken link; a blog slug is user-submitted).</td></tr>
 <tr><td><code>/blog/submit</code></td><td>app/blog/submit/page.tsx (server, <code>noindex</code> metadata only) + app/components/BlogSubmitForm.tsx (client)</td><td>static shell, client form</td><td>Public submission form (new, added 2026-09-15) &mdash; no login, same posture as every other public form in this codebase. Single-column, mobile-first: title, name, optional email, optional category, optional excerpt, body (with a live character count), a <code>BlogPhotoPicker</code> cover-photo slot, and up to 4 more via a second picker. Posts to <code>/api/blog/submit</code>; always lands in the admin Blog tab's queue, never live until approved.</td></tr>
+<tr><td><code>/blog/rss.xml</code></td><td>app/blog/rss.xml/route.ts</td><td>route handler (XML, not a page)</td><td>Standard RSS 2.0 feed for the Blog section (new, added 2026-09-15) &mdash; the 20 most recent approved posts, re-shaped from the same <code>getApprovedBlogPosts()</code> the <code>/blog</code> index itself renders from (not a second source of truth), same escape/CDATA-helper pattern as <code>/api/google-merchant-feed</code>. <code>/blog</code>'s metadata advertises it via the standard <code>&lt;link rel="alternate" type="application/rss+xml"&gt;</code> tag (feed readers auto-discover this) plus a small text link at the bottom of the page. <code>Cache-Control: public, max-age=1800, s-maxage=3600, stale-while-revalidate=86400</code> (a feed reader polls on its own schedule, not per-visitor traffic).</td></tr>
 <tr><td><code>/wishlist</code></td><td>app/wishlist/page.tsx</td><td>client</td><td>localStorage-backed wishlist grid. &ldquo;Share Wishlist&rdquo;/&ldquo;Copy Link&rdquo; build a <code>/wishlist/shared?ids=&hellip;</code> link.</td></tr>
 <tr><td><code>/wishlist/shared</code></td><td>app/wishlist/shared/page.tsx</td><td><code>force-dynamic</code> over <code>unstable_cache</code>'d reads, same reasoning as <code>/spotlight</code></td><td>A read-only view of someone else's wishlist -- re-fetches live product data for the <code>?ids=</code> in the URL via <code>getProductsByIds</code> rather than trusting anything client-supplied; reuses <code>&lt;ProductCard&gt;</code> so Add to Cart / add to the viewer's own wishlist work right from here. <code>noindex</code> (one-off shared links, not meant for search discovery). Empty/all-hidden id list &rarr; a &ldquo;this link isn't showing anything&rdquo; panel, still 200. Its own <code>?ids=</code> parser is the shared <code>parseIdsParam</code> (added 2026-09-13, pulled out once <code>/compare</code> below needed the identical rule).</td></tr>
 <tr><td><code>/compare</code></td><td>app/compare/page.tsx</td><td><code>force-dynamic</code>, same reasoning as <code>/wishlist/shared</code></td><td>Product Comparison Tool (IMPROVEMENTS.md Tier 1 Marketing #5, added 2026-09-13) &mdash; <code>?ids=1,5,12</code>, exactly the backlog item's own spec'd route shape. Same &ldquo;re-fetch fresh data, never trust the client&rdquo; pattern as <code>/wishlist/shared</code>: <code>getProductsByIds</code> for the products (capped at <code>MAX_COMPARE_ITEMS</code> = 4, silently slicing a longer id list rather than erroring) + new <code>getRatingSummaries</code> for per-product review averages. Renders a side-by-side table (price, rating, category, stock, material, colour, weight, height, depth, breadth, Add to Cart) with the cheapest price and highest rating cell highlighted (<code>bestValueIndex</code>, <code>productComparison.ts</code> &mdash; a tie or an all-null row highlights nothing). Reuses <code>PriceDisplay</code>/<code>StockStatusBadge</code>/<code>AddToCartButton</code> as-is, no new purchase-path code. <code>noindex</code> (a working view, not meant for search discovery). Empty id list &rarr; a &ldquo;nothing to compare yet&rdquo; panel, still 200.</td></tr>
@@ -2525,7 +2526,11 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
 <ul class="tight">
   <li><strong>JSON-LD</strong> (all with <code>&lt;</code> escaped to its unicode form per Next&rsquo;s guide):
       <code>Organization</code> + <code>WebSite</code> in the root layout; <code>Product</code> +
-      <code>BreadcrumbList</code> on detail pages (incl. <code>aggregateRating</code>, and an <code>offers</code>
+      <code>BreadcrumbList</code> on detail pages (incl. <code>aggregateRating</code> and, since 2026-09-15,
+      up to <code>REVIEW_JSONLD_CAP</code> (10) individual <code>review</code> items alongside it &mdash;
+      rating/author/date/body, a representative sample rather than a popular product's full review
+      history; not required for the star-rating rich result (<code>aggregateRating</code> alone already
+      covers that) but can make a richer result eligible per Google's own docs, and an <code>offers</code>
       block with <code>InStock</code>/<code>OutOfStock</code>/<code>InStoreOnly</code> (0059 &mdash; the precise schema.org term for a product that exists and is purchasable but not online; more honest than <code>OutOfStock</code>, which would be a lie), <code>shippingDetails</code> = free
       (<code>&#8377;0</code>) across India, and <code>hasMerchantReturnPolicy</code> =
       <code>MerchantReturnNotPermitted</code> for <code>IN</code> &mdash; the last two are store-wide consts
@@ -3191,6 +3196,42 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-15<br>14:00</code></td>
+  <td><strong>SEO: individual Review JSON-LD + blog RSS feed</strong><br>(owner asked for SEO recommendations &ldquo;without compromising design and existing things&rdquo;; picked 3, built 2 &mdash; the 3rd, category-page Breadcrumb/ItemList schema, turned out to already exist)</td>
+  <td>
+    Recommended three items; the first (category page structured data) turned out to already be
+    implemented &mdash; a mis-diagnosis (grepped <code>app/collections/[category]/page.tsx</code> directly
+    and missed that the actual JSON-LD lives in the shared <code>StorefrontPage.tsx</code> it renders,
+    which already has both <code>ItemList</code> and <code>BreadcrumbList</code>). Caught before building
+    anything redundant.
+    <br><br>
+    <strong>Individual <code>Review</code> items on product JSON-LD.</strong> Already had
+    <code>aggregateRating</code>; now also up to <code>REVIEW_JSONLD_CAP</code> (10) individual
+    <code>Review</code> objects (rating, author name, date, body when left) alongside it &mdash; the exact
+    &ldquo;consider adding review items&rdquo; follow-up already flagged, unimplemented, on Tier 1
+    Marketing #4.
+    <br><br>
+    <strong>RSS feed for the Blog section.</strong> New <code>GET /blog/rss.xml</code>, standard RSS 2.0,
+    the 20 most recent approved posts, re-shaped from the same <code>getApprovedBlogPosts()</code> the
+    <code>/blog</code> index renders from &mdash; same escape/CDATA pattern as
+    <code>/api/google-merchant-feed</code>. <code>/blog</code>'s metadata now advertises it via the
+    standard <code>&lt;link rel="alternate"&gt;</code> tag, plus a small, low-key text link at the page
+    bottom (deliberately not a prominent button, so it doesn't compete with &ldquo;Submit a post&rdquo;).
+  </td>
+  <td><em>new:</em> <code>app/blog/rss.xml/route.ts</code><br>
+    <em>edited:</em> <code>app/product/[id]/page.tsx</code>, <code>app/blog/page.tsx</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> 0 new errors across all 3 changed/new
+    files &middot; <code>npm test</code> 408 passed (unchanged &mdash; no pure-logic module touched)
+    &middot; <code>next build</code> exit 0, <code>/blog/rss.xml</code> registered. Live-tested against
+    the real dev server and production data: the RSS feed correctly picked up the real &ldquo;Dakshina
+    Kali&rdquo; post already live (valid XML, correct <code>application/rss+xml</code> content-type,
+    CDATA-escaped fields), the <code>&lt;link rel="alternate"&gt;</code> tag renders on <code>/blog</code>,
+    and a real product with an approved review (id 131) correctly emits both
+    <code>aggregateRating</code> and the new <code>review</code> array with real rating/author/date/body.
+    Not payment-path.</td>
+</tr>
 <tr>
   <td><code>2026-09-15<br>13:15</code></td>
   <td><strong>Fix: blog cover photo cropped + add a full-screen lightbox</strong><br>(owner tested live, with a screenshot: &ldquo;the image is cut from top and not visible fully both in desktop and mobile... The image should be visible completely... more images posted should popup to full screen in mobile and laptop on click&rdquo;)</td>

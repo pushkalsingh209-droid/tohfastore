@@ -47,6 +47,10 @@ import { permanentRedirect } from "next/navigation";
 // (a defective item is a separate statutory matter, handled via the
 // unboxing-video claim on /refunds -- not what schema.org's return-policy
 // field models, so the honest category here is "not permitted").
+// How many individual Review items the product JSON-LD includes alongside
+// the aggregateRating -- a representative sample, not the full history.
+const REVIEW_JSONLD_CAP = 10;
+
 const PRODUCT_SHIPPING_DETAILS = {
   "@type": "OfferShippingDetails",
   shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "INR" },
@@ -260,6 +264,22 @@ export default async function ProductDetailPage({
                 ratingValue: averageRating.toFixed(1),
                 reviewCount: reviews.length,
               },
+              // Individual Review items alongside the aggregate (added
+              // 2026-09-15, IMPROVEMENTS.md Tier 1 Marketing #4's own
+              // "consider adding review items" follow-up) -- not required
+              // for the star-rating rich result (aggregateRating alone
+              // already covers that), but Google's docs note it can make a
+              // richer result eligible. Capped rather than including every
+              // review verbatim: a popular product's full review history
+              // has no upper bound, and Google doesn't need more than a
+              // representative sample to recognise the markup.
+              review: reviews.slice(0, REVIEW_JSONLD_CAP).map((r) => ({
+                "@type": "Review",
+                reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5, worstRating: 1 },
+                author: { "@type": "Person", name: r.customer_name },
+                datePublished: r.created_at,
+                ...(r.review_text ? { reviewBody: r.review_text } : {}),
+              })),
             }
           : {}),
         offers: {
