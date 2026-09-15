@@ -7,14 +7,25 @@
 // the feature's own spec, since a phone is the realistic device for
 // writing this on the go.
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/db";
 import BlogPhotoPicker from "@/app/components/BlogPhotoPicker";
+import ProductPicker from "@/app/components/ProductPicker";
+import type { SearchableProduct } from "@/app/utils/searchProducts";
 
 const TITLE_MAX = 120;
 const EXCERPT_MAX = 200;
 const BODY_MAX = 8000;
 const CATEGORY_MAX = 40;
+
+// Same anon-key, client-side product list SearchBar.tsx already fetches --
+// no admin session to reuse here, and this is the same public, read-only,
+// non-hidden product list that widget already exposes.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gxlervcazzddqcoagewy.supabase.co";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_yfpUfp0RTaHs6nL3VEcnZQ_H_u-KA7C";
+const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
 export default function BlogSubmitForm() {
   const [title, setTitle] = useState("");
@@ -25,8 +36,24 @@ export default function BlogSubmitForm() {
   const [body, setBody] = useState("");
   const [coverImages, setCoverImages] = useState<string[]>([]);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [linkedProducts, setLinkedProducts] = useState<SearchableProduct[]>([]);
+  const [searchableProducts, setSearchableProducts] = useState<SearchableProduct[]>([]);
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadProducts() {
+      const { data, error: fetchError } = await supabase.from("products").select("id, name").eq("hidden", false).order("name");
+      if (!fetchError && data) {
+        setSearchableProducts(
+          data
+            .filter((p): p is { id: number; name: string } => p.name != null)
+            .map((p) => ({ id: String(p.id), name: p.name }))
+        );
+      }
+    }
+    loadProducts();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,6 +90,7 @@ export default function BlogSubmitForm() {
           body,
           coverImageUrl: coverImages[0],
           images: galleryImages,
+          productIds: linkedProducts.map((p) => p.id),
         }),
       });
       const data = await res.json();
@@ -192,6 +220,13 @@ export default function BlogSubmitForm() {
 
         <BlogPhotoPicker value={coverImages} onChange={setCoverImages} slots={1} label="Cover photo" />
         <BlogPhotoPicker value={galleryImages} onChange={setGalleryImages} slots={4} label="More photos (optional)" />
+
+        <ProductPicker
+          products={searchableProducts}
+          value={linkedProducts}
+          onChange={setLinkedProducts}
+          label="Link products from TOHFA (optional)"
+        />
 
         <p className="text-[11px] text-faint">
           By submitting, you agree we may edit and publish this post on tohfaonline.com/blog with your name.

@@ -12,6 +12,70 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Blog: linked products (multi, searchable) + SEO enhancements — 2026-09-15 IST
+- Owner, in sequence: "In blog post there should be optional product details page link
+  from tohfa which should be searchable" &rarr; "make option to add multiple product
+  links... there may be multiple products from same type like Ganesha etc" &rarr; "there
+  should be option to edit the blog post from admin panel to add product links or
+  anything related to that... add all those features in blog post which would be SEO
+  friendly and SEO enhancing."
+- **⚠️ Needs two migrations run before this works** —
+  `supabase/migrations/0066_add_product_link_to_blog_posts.sql` (`product_ids bigint[]`)
+  and `0067_add_blog_seo_fields.sql` (`meta_title`, `meta_description`). Every read/write
+  gracefully degrades before then (same try/catch-to-empty pattern as the rest of the
+  blog feature) — smoke-tested against the real dev server with neither migration run
+  yet: `/blog` and `/blog/submit` both still render fine.
+- **Multiple, searchable product links.** `product_ids bigint[]` (a plain array, same
+  shape as this table's own `images` column, not a join table — a handful of loosely
+  related ids per post, not a relation needing its own referential-integrity table; no
+  FK, since an array column can't carry one — display resolves ids through the existing
+  `getProductsByIds()`, which already drops anything hidden/deleted, so a stale id just
+  quietly stops appearing). New `app/components/ProductPicker.tsx` — a searchable
+  multi-select reusing the exact matching logic `SearchBar`'s own autocomplete already
+  uses (`getAutocompleteMatches`/`getSuggestions`), capped at `MAX_LINKED_PRODUCTS` (6).
+  Wired into **both** `/blog/submit` (public writer, fetches the product list client-side
+  the same anon-key way `SearchBar` does — no admin session to reuse) and the admin Blog
+  tab (reuses the product list `loadAll()` already fetched for the Products tab, zero
+  extra fetch). The submit route re-validates every id server-side (real, non-hidden
+  product) and silently drops anything that doesn't check out, rather than failing an
+  otherwise-good submission over a stale client id.
+- **Product display.** `/blog/<slug>` shows a "Shop This Piece" / "Shop the Pieces in
+  This Post" section (singular/plural by count) reusing `<ProductCard>` as-is, right
+  after the body — no new purchase-path code.
+- **SEO: admin-overridable title/description.** `meta_title`/`meta_description`
+  (nullable) — a writer's own title ("Dakshina Kali") often isn't what ranks best in
+  search; an admin can now set a better-optimised `<title>`/description in the Blog tab
+  without touching the post's own on-page heading. Both fall back to the exact
+  auto-generated versions this page already used (`${title} | TOHFA Blog`, the excerpt)
+  when left blank — purely additive, no behaviour change for any post that doesn't use
+  them.
+- **SEO: `mentions` structured data.** The Article JSON-LD now links to the real
+  `Product` entities a post references (name + URL) whenever it has linked products —
+  connects the article to each product's own already-existing full `Product` schema
+  elsewhere on the site, a genuine, free structured-data enhancement the new
+  product-linking feature made possible.
+- **SEO: `dateModified`.** Article JSON-LD now includes it (falls back through
+  `moderated_at` &rarr; `published_at` &rarr; `created_at`) — only meaningfully different
+  from `datePublished` once an admin edits an already-live post, which Google's own
+  guidance says to surface.
+- **SEO: internal linking ("More From the Blog").** A related-posts section at the
+  bottom of each post — same category first, then the most recent others, capped at 3,
+  always excluding the current post. Real internal links between posts (not just via the
+  `/blog` index), which search engines weigh as a relevance/crawl-depth signal.
+- **Sitemap accuracy.** `getApprovedBlogSlugs()` now also returns `moderated_at`;
+  `sitemap.ts` uses whichever of `published_at`/`moderated_at` is more recent as
+  `lastModified`, so an admin edit after publishing (adding a linked product, say) is
+  reflected the same way a fresh publish would be.
+- Verified: `tsc` clean · `eslint` 0 new errors across all 10 changed/new files ·
+  `npm test` 408/408 (unchanged — no pure-logic module touched) · `next build` exit 0,
+  all routes still register. Smoke-tested against the real dev server before the
+  migrations run: `/blog` and `/blog/submit` render without error. **Not yet
+  live-tested with the columns actually present** — owner needs to run both migrations
+  first, then this can be exercised end-to-end (submit with linked products, approve,
+  confirm the "Shop This Piece" section and SEO overrides render correctly).
+- Not payment-path. Real schema change (0066, 0067) — owner action required before this
+  is live, flagged above.
+
 ### ImageLightbox: swipe-to-navigate on mobile — 2026-09-15 IST
 - Owner: "when you expand the image in the lightbox is it possible for products with
   multiple images to allow users to navigate images in lightbox itself also? mobile

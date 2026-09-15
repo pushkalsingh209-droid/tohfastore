@@ -34,12 +34,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const blogSlugs = await getApprovedBlogSlugs();
-  const blogEntries: MetadataRoute.Sitemap = blogSlugs.map((post) => ({
-    url: `${SITE_URL}/blog/${post.slug}`,
-    lastModified: post.published_at ? new Date(post.published_at) : new Date(),
-    changeFrequency: "monthly",
-    priority: 0.5,
-  }));
+  const blogEntries: MetadataRoute.Sitemap = blogSlugs.map((post) => {
+    // The more recent of the two -- an admin edit after publishing (e.g.
+    // adding a linked product) should bump this the same way a fresh
+    // publish would, so crawlers know to revisit.
+    const published = post.published_at ? new Date(post.published_at) : null;
+    const modified = post.moderated_at ? new Date(post.moderated_at) : null;
+    const lastModified =
+      published && modified ? (modified > published ? modified : published) : modified || published || new Date();
+    return {
+      url: `${SITE_URL}/blog/${post.slug}`,
+      lastModified,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    };
+  });
 
   let productEntries: MetadataRoute.Sitemap = [];
   try {

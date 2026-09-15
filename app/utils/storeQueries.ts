@@ -700,12 +700,23 @@ export interface BlogPost {
   thumb_url?: string;
   images: string[];
   category: string | null;
+  product_ids: number[];
+  // Only resolved by getBlogPostBySlug (the detail page's own "shop these
+  // pieces" section) -- the index doesn't need full product rows for every
+  // card's linked products, just the post's own cover/excerpt.
+  linkedProducts?: Awaited<ReturnType<typeof getProductsByIds>>;
+  // Admin-overridable SEO title/description (migration 0067) -- null unless
+  // an admin has set one; callers fall back to the auto-generated
+  // title/excerpt-based versions when absent, so this is purely additive.
+  meta_title: string | null;
+  meta_description: string | null;
   published_at: string | null;
   created_at: string;
+  moderated_at: string | null;
 }
 
 const BLOG_POST_COLUMNS =
-  "id, slug, title, author_name, excerpt, body, cover_image_url, images, category, published_at, created_at";
+  "id, slug, title, author_name, excerpt, body, cover_image_url, images, category, product_ids, meta_title, meta_description, published_at, created_at, moderated_at";
 
 export const getApprovedBlogPosts = unstable_cache(
   async (): Promise<BlogPost[]> => {
@@ -740,23 +751,31 @@ export const getBlogPostBySlug = unstable_cache(
         .eq("approved", true)
         .maybeSingle();
       if (error || !data) return null;
-      return data;
+      // getProductsByIds already drops hidden/deleted ids and de-dupes, so a
+      // stale linked product (since removed or hidden) just quietly stops
+      // appearing rather than breaking the post.
+      const linkedProducts = data.product_ids.length > 0 ? await getProductsByIds(data.product_ids) : [];
+      return { ...data, linkedProducts };
     } catch {
       return null;
     }
   },
   ["blog-post-by-slug"],
-  { tags: ["blog"], revalidate: 86400 }
+  // Also tagged "products" (not just "blog") -- this result embeds each
+  // linked product's own price/image/stock via getProductsByIds, so an
+  // admin editing one of those products (which already revalidateTag's
+  // "products") needs to bust this cache entry too, not just a blog edit.
+  { tags: ["blog", "products"], revalidate: 86400 }
 );
 
 // Every approved slug, for sitemap.ts -- not cached (built once per sitemap
 // request, which is infrequent crawler/owner traffic, not a hot storefront
 // path worth a cache entry of its own).
-export async function getApprovedBlogSlugs(): Promise<{ slug: string; published_at: string | null }[]> {
+export async function getApprovedBlogSlugs(): Promise<{ slug: string; published_at: string | null; moderated_at: string | null }[]> {
   try {
     const { data, error } = await supabase
       .from("blog_posts")
-      .select("slug, published_at")
+      .select("slug, published_at, moderated_at")
       .eq("approved", true);
     if (error || !data) return [];
     return data;
