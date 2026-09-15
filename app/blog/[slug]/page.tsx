@@ -6,12 +6,12 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getBlogPostBySlug } from "@/app/utils/storeQueries";
 import { splitParagraphs } from "@/app/utils/blogContent";
 import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
+import BlogPostGallery from "@/app/components/BlogPostGallery";
 
 export async function generateMetadata({
   params,
@@ -103,34 +103,15 @@ export default async function BlogPostPage({
         </p>
       </header>
 
-      <div className="relative w-full aspect-[4/3] sm:aspect-video rounded-lg overflow-hidden bg-surface-2 mb-8">
-        <Image
-          src={post.cover_image_url}
-          alt={post.title}
-          fill
-          sizes="(max-width: 672px) 100vw, 672px"
-          className="object-cover"
-          priority
-        />
-      </div>
-
-      <div className="space-y-4 mb-10">
-        {paragraphs.map((para, i) => (
-          <p key={i} className="text-sm sm:text-base text-muted leading-relaxed">
-            {para}
-          </p>
-        ))}
-      </div>
-
-      {post.images.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-10">
-          {post.images.map((url, i) => (
-            <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-surface-2">
-              <Image src={url} alt={`${post.title} — photo ${i + 1}`} fill sizes="200px" className="object-cover" />
-            </div>
+      <BlogPostGallery coverUrl={post.cover_image_url} images={post.images} title={post.title}>
+        <div className="space-y-4 mb-10">
+          {paragraphs.map((para, i) => (
+            <p key={i} className="text-sm sm:text-base text-muted leading-relaxed">
+              {para}
+            </p>
           ))}
         </div>
-      )}
+      </BlogPostGallery>
 
       <div className="text-center border-t border-border pt-10">
         <Link
