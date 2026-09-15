@@ -9,13 +9,17 @@
 import { useState } from "react";
 import { apiRequest } from "@/app/admin/lib/apiRequest";
 import { useAdminData, type AdminBlogPost } from "@/app/admin/AdminDataContext";
+import ProductPicker from "@/app/components/ProductPicker";
+import type { SearchableProduct } from "@/app/utils/searchProducts";
 
 function BlogPostRow({
   post,
+  searchableProducts,
   onSave,
   onReject,
 }: {
   post: AdminBlogPost;
+  searchableProducts: SearchableProduct[];
   onSave: (id: number, fields: Partial<AdminBlogPost>, approve?: boolean) => Promise<void>;
   onReject: (id: number) => void;
 }) {
@@ -24,14 +28,44 @@ function BlogPostRow({
   const [excerpt, setExcerpt] = useState(post.excerpt);
   const [category, setCategory] = useState(post.category || "");
   const [body, setBody] = useState(post.body);
+  const [metaTitle, setMetaTitle] = useState(post.meta_title || "");
+  const [metaDescription, setMetaDescription] = useState(post.meta_description || "");
+  // Resolved once from the post's own product_ids against the admin's
+  // already-loaded product list -- a stale id (since hidden/deleted) just
+  // silently drops out of this list rather than showing a broken chip.
+  const [linkedProducts, setLinkedProducts] = useState<SearchableProduct[]>(() =>
+    post.product_ids
+      .map((id) => searchableProducts.find((p) => p.id === String(id)))
+      .filter((p): p is SearchableProduct => Boolean(p))
+  );
   const [saving, setSaving] = useState(false);
 
-  const dirty = title !== post.title || excerpt !== post.excerpt || category !== (post.category || "") || body !== post.body;
+  const linkedProductIds = linkedProducts.map((p) => Number(p.id));
+  const dirty =
+    title !== post.title ||
+    excerpt !== post.excerpt ||
+    category !== (post.category || "") ||
+    body !== post.body ||
+    metaTitle !== (post.meta_title || "") ||
+    metaDescription !== (post.meta_description || "") ||
+    linkedProductIds.join(",") !== post.product_ids.join(",");
 
   async function handleSave(approve?: boolean) {
     setSaving(true);
     try {
-      await onSave(post.id, { title, excerpt, category, body }, approve);
+      await onSave(
+        post.id,
+        {
+          title,
+          excerpt,
+          category,
+          body,
+          meta_title: metaTitle,
+          meta_description: metaDescription,
+          product_ids: linkedProductIds,
+        },
+        approve
+      );
     } finally {
       setSaving(false);
     }
@@ -140,6 +174,43 @@ function BlogPostRow({
               className="w-full px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2 font-mono"
             />
           </div>
+          <ProductPicker
+            products={searchableProducts}
+            value={linkedProducts}
+            onChange={setLinkedProducts}
+            label="Linked products (optional)"
+          />
+          <div className="border-t border-border pt-3 space-y-3">
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-faint">
+              SEO overrides (optional -- blank uses the title/excerpt above)
+            </p>
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider font-semibold text-faint mb-1">
+                SEO title
+              </label>
+              <input
+                type="text"
+                value={metaTitle}
+                onChange={(e) => setMetaTitle(e.target.value)}
+                placeholder={`${title} | TOHFA Blog`}
+                maxLength={200}
+                className="w-full px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider font-semibold text-faint mb-1">
+                SEO description
+              </label>
+              <input
+                type="text"
+                value={metaDescription}
+                onChange={(e) => setMetaDescription(e.target.value)}
+                placeholder={excerpt}
+                maxLength={300}
+                className="w-full px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+              />
+            </div>
+          </div>
           {dirty && (
             <button
               type="button"
@@ -157,7 +228,12 @@ function BlogPostRow({
 }
 
 export default function BlogTab() {
-  const { blogPosts, setBlogPosts } = useAdminData();
+  const { blogPosts, setBlogPosts, products } = useAdminData();
+  // Reuses the product list loadAll() already fetched for the Products tab
+  // -- ProductPicker only needs id/name, so no separate fetch here.
+  const searchableProducts: SearchableProduct[] = products
+    .filter((p) => p.name != null)
+    .map((p) => ({ id: String(p.id), name: p.name as string }));
 
   const handleSave = async (id: number, fields: Partial<AdminBlogPost>, approve?: boolean) => {
     try {
@@ -195,8 +271,8 @@ export default function BlogTab() {
         <h2 className="text-xl font-serif text-fg">Blog</h2>
         <p className="text-faint text-xs mt-1">
           Posts submitted at <code className="text-[11px]">/blog/submit</code>. Approve to publish at{" "}
-          <code className="text-[11px]">/blog/&lt;slug&gt;</code> -- you can edit the title, excerpt, category, or
-          body before approving.
+          <code className="text-[11px]">/blog/&lt;slug&gt;</code> -- you can edit the title, excerpt, category,
+          body, linked products, or the SEO title/description before approving.
         </p>
       </div>
 
@@ -211,7 +287,7 @@ export default function BlogTab() {
               </h3>
               <div className="divide-y divide-border">
                 {pending.map((post) => (
-                  <BlogPostRow key={post.id} post={post} onSave={handleSave} onReject={handleReject} />
+                  <BlogPostRow key={post.id} post={post} searchableProducts={searchableProducts} onSave={handleSave} onReject={handleReject} />
                 ))}
               </div>
             </div>
@@ -223,7 +299,7 @@ export default function BlogTab() {
               </h3>
               <div className="divide-y divide-border">
                 {live.map((post) => (
-                  <BlogPostRow key={post.id} post={post} onSave={handleSave} onReject={handleReject} />
+                  <BlogPostRow key={post.id} post={post} searchableProducts={searchableProducts} onSave={handleSave} onReject={handleReject} />
                 ))}
               </div>
             </div>

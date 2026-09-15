@@ -4,6 +4,11 @@ export interface SearchableProduct {
   name: string;
 }
 
+// Shared with ProductPicker.tsx (the UI) and /api/blog/submit (the server
+// validation) -- a handful of related pieces per blog post, not an
+// unbounded product feed.
+export const MAX_LINKED_PRODUCTS = 6;
+
 // Substring match against product names, used for live autocomplete while typing.
 export function getAutocompleteMatches(
   products: SearchableProduct[],

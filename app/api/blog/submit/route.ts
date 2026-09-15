@@ -11,6 +11,7 @@ import { getClientIp } from "@/app/utils/clientIp";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { slugify } from "@/app/utils/slug";
 import { deriveExcerpt } from "@/app/utils/blogContent";
+import { MAX_LINKED_PRODUCTS } from "@/app/utils/searchProducts";
 
 // Blog submissions are heavier (an article's worth of writing + photos
 // already uploaded) and rarer by nature than a quick UGC caption -- a
@@ -61,6 +62,9 @@ export async function POST(req: Request) {
     const category = String(body.category || "").trim();
     const coverImageUrl = body.coverImageUrl;
     const images = Array.isArray(body.images) ? body.images : [];
+    const requestedProductIds = Array.isArray(body.productIds)
+      ? body.productIds.map(Number).filter((n: number) => Number.isFinite(n) && n > 0)
+      : [];
 
     if (title.length < TITLE_MIN || title.length > TITLE_MAX) {
       return NextResponse.json({ error: `Title must be ${TITLE_MIN}-${TITLE_MAX} characters.` }, { status: 400 });
@@ -89,6 +93,23 @@ export async function POST(req: Request) {
     if (images.length > MAX_ADDITIONAL_IMAGES) {
       return NextResponse.json({ error: `Please keep it to ${MAX_ADDITIONAL_IMAGES} additional photos.` }, { status: 400 });
     }
+    if (requestedProductIds.length > MAX_LINKED_PRODUCTS) {
+      return NextResponse.json({ error: `Please link up to ${MAX_LINKED_PRODUCTS} products.` }, { status: 400 });
+    }
+
+    // A stale/tampered id (since hidden or deleted) is silently dropped
+    // rather than failing the whole submission -- the product-picker only
+    // ever offers real, live products, so this only ever fires for a
+    // request that didn't go through the real form.
+    let productIds: number[] = [];
+    if (requestedProductIds.length > 0) {
+      const { data: realProducts } = await supabase
+        .from("products")
+        .select("id")
+        .in("id", requestedProductIds)
+        .eq("hidden", false);
+      productIds = (realProducts || []).map((p) => p.id);
+    }
 
     const excerpt = deriveExcerpt(articleBody, excerptInput);
     const baseSlug = slugify(title) || "post";
@@ -106,6 +127,7 @@ export async function POST(req: Request) {
         body: articleBody,
         cover_image_url: coverImageUrl,
         images,
+        product_ids: productIds,
         category: category || null,
         approved: false, // always requires moderation
       });

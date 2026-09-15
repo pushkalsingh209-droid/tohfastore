@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
+import { MAX_LINKED_PRODUCTS } from "@/app/utils/searchProducts";
 
 export async function GET() {
   const { data, error } = await supabase
@@ -24,12 +25,19 @@ export async function GET() {
 // The non-nullable text fields -- "category" is handled separately since
 // it alone is allowed to be blanked out to null.
 const REQUIRED_TEXT_FIELDS = ["title", "excerpt", "body"] as const;
+// Generous ceilings, not the "ideal" ~60/~160 SEO guideline lengths --
+// that's advisory, an admin's own call, not something to enforce.
+const META_TITLE_MAX = 200;
+const META_DESCRIPTION_MAX = 300;
 
 interface BlogPostUpdate {
   title?: string;
   excerpt?: string;
   body?: string;
   category?: string | null;
+  product_ids?: number[];
+  meta_title?: string | null;
+  meta_description?: string | null;
   approved?: boolean;
   moderated_at?: string;
   published_at?: string;
@@ -51,6 +59,25 @@ export async function PATCH(req: Request) {
     }
     if (typeof raw.category === "string") {
       update.category = raw.category.trim() || null;
+    }
+    if (typeof raw.meta_title === "string") {
+      if (raw.meta_title.length > META_TITLE_MAX) {
+        return NextResponse.json({ error: `SEO title is too long (max ${META_TITLE_MAX}).` }, { status: 400 });
+      }
+      update.meta_title = raw.meta_title.trim() || null;
+    }
+    if (typeof raw.meta_description === "string") {
+      if (raw.meta_description.length > META_DESCRIPTION_MAX) {
+        return NextResponse.json({ error: `SEO description is too long (max ${META_DESCRIPTION_MAX}).` }, { status: 400 });
+      }
+      update.meta_description = raw.meta_description.trim() || null;
+    }
+    if (Array.isArray(raw.product_ids)) {
+      const productIds = raw.product_ids.map(Number).filter((n: number) => Number.isFinite(n) && n > 0);
+      if (productIds.length > MAX_LINKED_PRODUCTS) {
+        return NextResponse.json({ error: `Please link up to ${MAX_LINKED_PRODUCTS} products.` }, { status: 400 });
+      }
+      update.product_ids = productIds;
     }
     if (typeof raw.approved === "boolean") {
       update.approved = raw.approved;
