@@ -1,8 +1,15 @@
 // app/components/ShareButtons.tsx
+// Generic share mechanics (native share sheet, falling back to a wa.me
+// link, plus copy-link) -- the caller supplies the title/message text, so
+// this same component works for a product (see product/[id]/page.tsx,
+// which builds its own price-inclusive message) or a blog post
+// (blog/[slug]/page.tsx) without knowing anything about either. Was
+// product-specific (productName/price props) until the blog page needed
+// the identical mechanics for different content, added 2026-09-15.
 "use client";
 import { useState } from "react";
 
-export default function ShareButtons({ productName, price }: { productName: string; price?: number | string | null }) {
+export default function ShareButtons({ title, message }: { title: string; message: string }) {
   const [copied, setCopied] = useState(false);
 
   function getUrl() {
@@ -16,22 +23,12 @@ export default function ShareButtons({ productName, price }: { productName: stri
     });
   }
 
-  // Same wording either way (native share sheet's `text` field or the wa.me
-  // fallback) -- price included when we have one, since "what's it cost" is
-  // the first thing whoever receives this asks anyway.
-  function getMessage() {
-    const priceNum = Number(price);
-    const priceText = Number.isFinite(priceNum) && priceNum > 0 ? ` for ₹${priceNum.toLocaleString("en-IN")}` : "";
-    return `Check out ${productName}${priceText} on TOHFA`;
-  }
-
   function handleShare() {
     const url = getUrl();
-    const text = getMessage();
     if (navigator.share) {
-      navigator.share({ title: productName, text, url }).catch(() => {});
+      navigator.share({ title, text: message, url }).catch(() => {});
     } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(`${text}: ${url}`)}`, "_blank", "noopener,noreferrer");
+      window.open(`https://wa.me/?text=${encodeURIComponent(`${message}: ${url}`)}`, "_blank", "noopener,noreferrer");
     }
   }
 

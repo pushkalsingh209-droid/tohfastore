@@ -15,6 +15,8 @@ import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 import { productHref } from "@/app/utils/slug";
 import BlogPostGallery from "@/app/components/BlogPostGallery";
 import ProductCard from "@/app/components/ProductCard";
+import ShareButtons from "@/app/components/ShareButtons";
+import BlogInstagramPostGenerator from "@/app/components/BlogInstagramPostGenerator";
 
 // A writer's own title ("Dakshina Kali") often isn't what ranks best in
 // search -- meta_title/meta_description (migration 0067) let an admin set
@@ -136,6 +138,11 @@ export default async function BlogPostPage({
           )}
         </p>
       </header>
+
+      <div className="space-y-2 mb-8">
+        <ShareButtons title={post.title} message={`Check out "${post.title}" on the TOHFA blog`} />
+        <BlogInstagramPostGenerator post={{ slug: post.slug, title: post.title, excerpt: post.excerpt }} />
+      </div>
 
       <BlogPostGallery coverUrl={post.cover_image_url} images={post.images} title={post.title}>
         <div className="space-y-4 mb-10">

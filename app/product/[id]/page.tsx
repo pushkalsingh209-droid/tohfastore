@@ -496,7 +496,17 @@ export default async function ProductDetailPage({
                 <TrustBadges />
 
                 <WishlistButton product={product} />
-                <ShareButtons productName={product.name} price={product.price} />
+                <ShareButtons
+                  title={product.name || "this product"}
+                  message={`Check out ${product.name || "this product"}${
+                    // Same wording ShareButtons itself used to build inline --
+                    // price included when we have one, since "what's it cost"
+                    // is the first thing whoever receives this asks anyway.
+                    Number.isFinite(Number(product.price)) && Number(product.price) > 0
+                      ? ` for ₹${Number(product.price).toLocaleString("en-IN")}`
+                      : ""
+                  } on TOHFA`}
+                />
                 <InstagramPostGenerator product={{ id: product.id, name: product.name, price: product.price, category: product.category }} />
                 <InstagramReelGenerator product={{ id: product.id, name: product.name, price: product.price, category: product.category }} />
               </div>

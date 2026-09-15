@@ -12,6 +12,42 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Blog: share button + Instagram/Facebook post generator — 2026-09-15 IST
+- Owner: "there should be a shareable button for blog post to allow sharing of them..
+  also is it possible to somehow convert the blog posts to instagram or facebook mobile
+  first posts?"
+- **Share button.** Generalized the existing `ShareButtons.tsx` (previously
+  product-only, `productName`/`price` props) to take a plain `title`/`message` instead —
+  same native-share-sheet-with-wa.me-fallback-plus-copy-link mechanics, now usable for
+  any content. Product page's own call site updated to build its price-inclusive message
+  the same way it always did; zero behaviour change there. Added to `/blog/<slug>` right
+  under the byline.
+- **Instagram/Facebook post generator.** One square (1080&times;1080) branded image
+  serves both platforms — no separate Facebook variant needed. New
+  `GET /api/blog/instagram-post-image` closely mirrors the existing product version
+  (`/api/instagram-post-image`): same brand-card visual language (frame, corner badge,
+  bottom scrim, `BrandGlyph`), same cost-safety two-layer approach (long
+  `Cache-Control` + the image never loading until the panel is opened), same rate
+  limiting. Differences: addressed by `slug` not `id`, no price line, and — importantly
+  — only ever renders an **approved** post, so a pending/rejected post's slug (a real,
+  sometimes-guessable string) can never leak a shareable image before an admin approves
+  it. New `app/utils/blogInstagramCaption.ts` (pure, unit-tested, mirrors
+  `instagramCaption.ts`'s shape) builds a ready-to-paste first-person caption reusing the
+  site's existing `#TOHFACRAFTS` hashtag rather than inventing a new one. New
+  `BlogInstagramPostGenerator.tsx` — the same mobile-first bottom-sheet-on-phone /
+  centered-on-desktop modal as the product tool, just pointed at the blog's own route
+  and caption builder. **4 unit tests.**
+- Verified: `tsc` clean · `eslint` 0 new errors across all 8 changed/new files ·
+  `npm test` 412/412 (+4 new) · `next build` exit 0, both
+  `/api/blog/instagram-post-image` and the existing `/api/instagram-post-image` register.
+  **Live-tested against the real dev server and a real live post** ("Dakshina Kali"):
+  fetched the actual generated 1080&times;1080 PNG and visually confirmed the layout
+  (cover photo, TOHFA brand mark, "FROM THE BLOG" badge, title + `tohfaonline.com/blog`
+  in the bottom scrim, gold frame) — a real, correctly-composited branded image, not
+  just a 200 status. Confirmed an unknown/unapproved slug correctly 404s instead of
+  rendering anything. Confirmed the product page's own Share button still works
+  unchanged after the generalization. Not payment-path; no schema change.
+
 ### Blog: linked products (multi, searchable) + SEO enhancements — 2026-09-15 IST
 - Owner, in sequence: "In blog post there should be optional product details page link
   from tohfa which should be searchable" &rarr; "make option to add multiple product
