@@ -12,6 +12,39 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Fix: blog cover photo cropped + add a full-screen lightbox — 2026-09-15 IST
+- Owner tested the blog live and reported (with a screenshot): the cover photo on
+  `/blog/<slug>` was rendering cropped ("cut from top... in both desktop and mobile"),
+  and asked that clicking any photo (cover or gallery) pop it up full-screen so it's
+  always fully visible.
+- Root cause: the cover image used a fixed `aspect-[4/3] sm:aspect-video` box with
+  `object-cover` — correct for a uniform grid of thumbnails, wrong for a single hero
+  photo that could be any shape a submitter's phone camera produced (the reported photo
+  was a tall/portrait idol shot inside a wide 16:9 desktop box, so the top and bottom got
+  cropped off to fill it).
+- Fix: new `BlogPostGallery.tsx` (Client Component) replaces the inline cover/gallery
+  `<Image>` blocks on `/blog/[slug]`. The cover photo's container now sizes itself to
+  that exact photo's own aspect ratio (measured via `onLoad` &rarr;
+  `naturalWidth`/`naturalHeight`, capped at 75vh so an extreme portrait doesn't dominate
+  the page before its ratio is known) with `object-contain` as a backstop — nothing is
+  ever cropped, regardless of the photo's shape. Both the cover and every gallery photo
+  are now clickable, opening a full-screen lightbox (black backdrop, `object-contain`,
+  prev/next arrows + a counter when there's more than one photo, Escape/arrow-key
+  navigation, click-outside-image or the &times; to close). The small gallery grid
+  thumbnails themselves stay cropped to a uniform square (standard grid practice,
+  matching how every other thumbnail grid in this codebase works) — the lightbox is
+  where "fully visible" actually happens.
+- The `/blog` index grid's cards are unchanged (still cropped, uniform thumbnails) —
+  that wasn't part of the report and a grid of mismatched aspect ratios would look worse,
+  not better.
+- Verified: `tsc` clean · `eslint` 0 new errors · `npm test` 408/408 (no pure-logic module
+  touched) · `next build` exit 0. **Live-tested end-to-end**: uploaded a real portrait
+  (20&times;30) test photo, submitted and approved a real post, confirmed the rendered
+  page uses `object-contain` + a dynamic `aspect-ratio` (not `object-cover`) and the
+  click-to-expand button renders with the correct label — then deleted the test data.
+  The lightbox's own open/close interaction is client-side JS not exercisable via curl;
+  the owner should click through it once live. Not payment-path.
+
 ### Blog section: public submission + admin approval (new) — 2026-09-15 IST
 - Owner: "Create a section which should have blogs. These blogs can be submitted online
   with photos and on approval from admin panel can be posted. All features and final
