@@ -68,13 +68,22 @@ care, land behind tests, never "blind".
   reflected the same way a fresh publish would be.
 - Verified: `tsc` clean · `eslint` 0 new errors across all 10 changed/new files ·
   `npm test` 408/408 (unchanged — no pure-logic module touched) · `next build` exit 0,
-  all routes still register. Smoke-tested against the real dev server before the
-  migrations run: `/blog` and `/blog/submit` render without error. **Not yet
-  live-tested with the columns actually present** — owner needs to run both migrations
-  first, then this can be exercised end-to-end (submit with linked products, approve,
-  confirm the "Shop This Piece" section and SEO overrides render correctly).
-- Not payment-path. Real schema change (0066, 0067) — owner action required before this
-  is live, flagged above.
+  all routes still register.
+- **✅ Migrations 0066 and 0067 run by the owner 2026-09-15 — live, confirmed
+  end-to-end.** Submitted a real post through `/api/blog/submit` with two real linked
+  products (`product_ids` saved correctly), approved it with custom
+  `meta_title`/`meta_description` (the same DB write the admin PATCH route makes),
+  and confirmed the rendered `/blog/<slug>` page: the `<title>` tag and meta description
+  used the SEO overrides, the "Shop the Pieces in This Post" section rendered both real
+  products as working `ProductCard`s (real `/product/...` links + Add to Cart), the
+  Article JSON-LD carried `dateModified` and a `mentions` array with both products' real
+  URLs, and "More From the Blog" correctly listed the site's other two live posts — then
+  deleted the test post. **Bonus finding**: the owner had already independently used the
+  real admin panel to link 4 products and set SEO fields on a real post ("The Divine
+  Protector...") before this test even ran, confirming the feature already works through
+  the actual UI, not just the API directly.
+- Not payment-path. Real schema change (0066, 0067) — migrations run and confirmed live
+  above.
 
 ### ImageLightbox: swipe-to-navigate on mobile — 2026-09-15 IST
 - Owner: "when you expand the image in the lightbox is it possible for products with

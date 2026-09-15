@@ -1916,8 +1916,8 @@ tables/views) against <code>supabase/migrations/</code> to catch the next one be
 <tr><td>0063</td><td>add_gift_campaigns</td><td><strong>Gift With Purchase campaigns</strong> (IMPROVEMENTS.md #14a &mdash; wired into checkout as of PR 3, see &sect;checkout Flow 4 and the admin API table above). Two new tables: <code>gift_campaigns</code> (title, <code>gift_product_id</code>, <code>min_amount</code>, <code>max_redemptions</code>, a maintained <code>redeemed_count</code>, <code>starts_at</code>/<code>ends_at</code>) and <code>gift_campaign_claims</code> (a <code>held</code>/<code>consumed</code>/<code>released</code> hold ledger keyed by the same <code>checkout_token</code> <code>stock_reservations</code> uses &mdash; needed for the identical reason: a hold must survive the gap between order-creation and payment-capture, which a bare counter on <code>gift_campaigns</code> can't represent on its own). Two <code>SECURITY DEFINER</code> functions mirroring <code>reserve_stock</code>/<code>consume_reservation</code>'s row-locking style: <code>claim_gift_campaign_slot(campaign_id, token, ttl_seconds)</code> and <code>consume_gift_campaign_claim(token)</code> (the latter atomically flips a claim to <code>consumed</code> <em>and</em> increments the campaign's <code>redeemed_count</code> in one call). Both RLS-locked to service_role only, with the explicit post-revoke <code>grant &hellip; to service_role</code> (the 0041/0042/0043 grant gotcha). <strong>Deliberately a real table, not a <code>site_settings</code> JSON blob</strong> like <code>spend_tier_offer</code>/<code>featured_spotlight</code> &mdash; this feature needs a hard redemption cap enforced under concurrency (impossible to express safely against a JSON blob) and the owner wants multiple campaigns over time with visible history. <strong>Deliberately does not reuse <code>coupons.used_count</code>'s pattern</strong> &mdash; that increment was traced and confirmed to be a non-atomic, racy JS read-modify-write with no DB-level guard, not something to copy for a real concurrency cap. See <code>app/utils/giftCampaigns.ts</code> (pure, unit-tested) and the full design plan (referenced from IMPROVEMENTS.md) for PRs 2&ndash;4 (admin UI, checkout wiring, customer-facing banner). <strong>Owner: run <code>npm run gen:types</code> after applying this migration</strong>, before PR 2 needs typed queries against the two new tables.</td></tr>
 <tr><td>0064</td><td>add_custom_gift_to_campaigns</td><td><strong>Off-catalog gift support</strong> for Gift With Purchase campaigns (IMPROVEMENTS.md #14a follow-up &mdash; owner's own words: "we should be able to add gifts name from within the website or those not present in the website also... we can declare the value and may be optional pic"). <code>gift_campaigns.gift_product_id</code> is now nullable; three new columns &mdash; <code>custom_gift_name</code>, <code>custom_gift_value</code> (the admin-declared &ldquo;worth &#8377;X&rdquo; shown to shoppers, since there's no product row to price it from), <code>custom_gift_image_url</code> (optional) &mdash; hold the alternate path. A new check constraint, <code>gift_campaigns_gift_source_xor</code>, enforces exactly one gift source is ever set at the DB level, mirroring <code>sanitizeGiftCampaign()</code>'s own strict-write validation. <strong>Confirmed <code>claim_gift_campaign_slot</code>/<code>consume_gift_campaign_claim</code> (0063) needed zero changes</strong> &mdash; neither references <code>gift_product_id</code> at all, only <code>campaign_id</code>/<code>checkout_token</code>, so the redemption-cap mechanism was already fully product-agnostic. <strong>The one real risk</strong>, found during design and confirmed live: <code>reserve_stock</code> (0043) casts each item's id straight to <code>bigint</code> and would <em>throw</em> (not just fail) on a non-numeric placeholder id &mdash; fixed by excluding the off-catalog gift's sentinel line (<code>"gift-custom"</code>) from <code>reserve_stock</code>'s <code>p_items</code> in <code>/api/razorpay/route.ts</code>, verified live with reservations temporarily on (see the Change Log entry below for the full test sequence).</td></tr>
 <tr><td>0065</td><td>add_blog_posts</td><td><strong>Blog section</strong> (new, added 2026-09-15 &mdash; owner: "Create a section which should have blogs... submitted online with photos and on approval from admin panel can be posted"). New <code>blog_posts</code> table (see &sect;5 for the full column list) &mdash; public submit-with-photos at <code>/blog/submit</code>, admin-approve in a new Blog tab, live at <code>/blog/&lt;slug&gt;</code>. <strong>Run by the owner 2026-09-15 &mdash; live</strong>, confirmed with a full end-to-end test (upload &rarr; submit &rarr; approve &rarr; renders on <code>/blog</code> and <code>/blog/&lt;slug&gt;</code>), see the Change Log.</td></tr>
-<tr><td>0066</td><td>add_product_link_to_blog_posts</td><td><strong>Optional linked products on blog posts</strong> (owner: "there should be optional product details page link from tohfa which should be searchable", then "make option to add multiple product links... there may be multiple products from same type like Ganesha etc"). New <code>blog_posts.product_ids</code> (bigint[], default <code>{}</code>) &mdash; a plain array, same shape as that table's own <code>images</code> column, not a join table. <strong>Not yet run against production as of this migration's own commit</strong> &mdash; the feature gracefully shows no linked products anywhere until the owner runs it.</td></tr>
-<tr><td>0067</td><td>add_blog_seo_fields</td><td><strong>Admin-overridable SEO title/description for blog posts</strong> (owner: "add all those features in blog post which would be SEO friendly and SEO enhancing"). New <code>blog_posts.meta_title</code> / <code>meta_description</code> (both nullable) &mdash; blank falls back to the same auto-generated <code>&lt;title&gt;</code>/description the page already used. <strong>Not yet run against production as of this migration's own commit.</strong></td></tr>
+<tr><td>0066</td><td>add_product_link_to_blog_posts</td><td><strong>Optional linked products on blog posts</strong> (owner: "there should be optional product details page link from tohfa which should be searchable", then "make option to add multiple product links... there may be multiple products from same type like Ganesha etc"). New <code>blog_posts.product_ids</code> (bigint[], default <code>{}</code>) &mdash; a plain array, same shape as that table's own <code>images</code> column, not a join table. <strong>Run by the owner 2026-09-15 &mdash; live</strong>, confirmed end-to-end (see the Change Log).</td></tr>
+<tr><td>0067</td><td>add_blog_seo_fields</td><td><strong>Admin-overridable SEO title/description for blog posts</strong> (owner: "add all those features in blog post which would be SEO friendly and SEO enhancing"). New <code>blog_posts.meta_title</code> / <code>meta_description</code> (both nullable) &mdash; blank falls back to the same auto-generated <code>&lt;title&gt;</code>/description the page already used. <strong>Run by the owner 2026-09-15 &mdash; live</strong>, confirmed end-to-end (see the Change Log).</td></tr>
 </tbody></table></div>
 
 <p><strong><code>product_sales</code> drift check</strong> &mdash; the tally is only self-correcting for cancellations
@@ -3205,6 +3205,37 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-09-15<br>17:00</code></td>
+  <td><strong>Blog product links + SEO: migrations run, confirmed live end-to-end</strong><br>(owner: &ldquo;I ran the migration&rdquo;)</td>
+  <td>
+    Owner ran both <code>0066_add_product_link_to_blog_posts.sql</code> and
+    <code>0067_add_blog_seo_fields.sql</code>. Full live test: submitted a real post through
+    <code>/api/blog/submit</code> with two real linked products (<code>product_ids</code> saved
+    correctly), approved it with custom <code>meta_title</code>/<code>meta_description</code>, and
+    confirmed the rendered <code>/blog/&lt;slug&gt;</code>: the <code>&lt;title&gt;</code> tag and meta
+    description used the SEO overrides, &ldquo;Shop the Pieces in This Post&rdquo; rendered both products
+    as working <code>ProductCard</code>s (real <code>/product/...</code> links + Add to Cart), the
+    Article JSON-LD carried <code>dateModified</code> and a <code>mentions</code> array with both
+    products' real URLs, and &ldquo;More From the Blog&rdquo; correctly listed the site's other two live
+    posts &mdash; then deleted the test post.
+    <br><br>
+    <strong>Bonus finding:</strong> the owner had already independently used the real admin panel to
+    link 4 products and set SEO fields on a real post (&ldquo;The Divine Protector: Lightweight Brass
+    Durga Statue&rdquo;) before this test even ran &mdash; confirming the feature already works through
+    the actual admin UI, not just when driven directly through the API.
+    <br><br>
+    One false alarm during testing, not a real bug: <code>getApprovedBlogPosts()</code> briefly appeared
+    to return nothing on the very first request after a dev-server restart + cache clear (a Turbopack
+    warm-up/compile-timing artifact seen earlier this session too, not a caching or query bug) &mdash;
+    the very next request against the exact same code returned all 3 approved posts correctly, confirmed
+    with temporary debug logging before removing it again.
+  </td>
+  <td><em>none &mdash; docs-only confirmation, no source change</em><br><code>docs/HANDBOOK.html</code>,
+    <code>IMPROVEMENTS.md</code></td>
+  <td>Live end-to-end test against production, described above. Test data created and fully cleaned up
+    afterward. Not payment-path.</td>
+</tr>
+<tr>
   <td><code>2026-09-15<br>16:00</code></td>
   <td><strong>Blog: linked products (multi, searchable) + SEO enhancements</strong><br>(owner, in sequence: &ldquo;optional product details page link from tohfa which should be searchable&rdquo; &rarr; &ldquo;make option to add multiple product links... there may be multiple products from same type like Ganesha etc&rdquo; &rarr; &ldquo;option to edit the blog post from admin panel to add product links or anything related to that... add all those features in blog post which would be SEO friendly and SEO enhancing&rdquo;)</td>
   <td>
@@ -3248,10 +3279,9 @@ Newest first.</p>
     <code>IMPROVEMENTS.md</code></td>
   <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> 0 new errors across all 10 changed/new
     source files &middot; <code>npm test</code> 408 passed (unchanged &mdash; no pure-logic module
-    touched) &middot; <code>next build</code> exit 0, all routes still register. Smoke-tested against the
-    real dev server before either migration was run: <code>/blog</code> and <code>/blog/submit</code>
-    render without error. <strong>Not yet live-tested with the columns actually present</strong> &mdash;
-    owner needs to run both 0066 and 0067 first. Not payment-path.</td>
+    touched) &middot; <code>next build</code> exit 0, all routes still register. <strong>Owner ran both
+    migrations 2026-09-15; confirmed live end-to-end</strong> (see the follow-up Change Log row above).
+    Not payment-path.</td>
 </tr>
 <tr>
   <td><code>2026-09-15<br>15:00</code></td>
