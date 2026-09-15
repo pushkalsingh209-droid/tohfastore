@@ -10,6 +10,7 @@ import {
   type AdminOrder,
   type AdminReview,
   type AdminUgcSubmission,
+  type AdminBlogPost,
   type AdminCoupon,
   type AdminCategory,
   type AdminNamedOption,
@@ -34,6 +35,7 @@ const OrdersTab = dynamic(() => import("@/app/admin/tabs/OrdersTab"), { ssr: fal
 const OverviewTab = dynamic(() => import("@/app/admin/tabs/OverviewTab"), { ssr: false });
 const ProductsTab = dynamic(() => import("@/app/admin/tabs/ProductsTab"), { ssr: false });
 const SettingsTab = dynamic(() => import("@/app/admin/tabs/SettingsTab"), { ssr: false });
+const BlogTab = dynamic(() => import("@/app/admin/tabs/BlogTab"), { ssr: false });
 
 // All reads/writes below go through /api/admin/* route handlers (protected
 // by middleware.ts's password gate) instead of talking to Supabase directly
@@ -50,7 +52,7 @@ const SettingsTab = dynamic(() => import("@/app/admin/tabs/SettingsTab"), { ssr:
 // URL param that keeps them in sync -- so a shared/bookmarked/refreshed
 // admin link lands back on the same section instead of always resetting to
 // Overview.
-const ADMIN_TABS = ["overview", "products", "orders", "coupons", "settings", "reviews", "security"] as const;
+const ADMIN_TABS = ["overview", "products", "orders", "coupons", "settings", "reviews", "blog", "security"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 // #16 is done: all seven tab bodies now live in app/admin/tabs/. This
@@ -67,6 +69,7 @@ function AdminDashboard() {
   const [notificationLog, setNotificationLog] = useState<AdminNotificationLogEntry[]>([]);
   const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [ugcSubmissions, setUgcSubmissions] = useState<AdminUgcSubmission[]>([]);
+  const [blogPosts, setBlogPosts] = useState<AdminBlogPost[]>([]);
   const [coupons, setCoupons] = useState<AdminCoupon[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [colors, setColors] = useState<AdminNamedOption[]>([]);
@@ -130,12 +133,13 @@ function AdminDashboard() {
   // them in parallel instead of one after another.
   const fetchData = async () => {
     setLoadingOrders(true);
-    const [productsRes, ordersRes, notificationLogRes, reviewsRes, ugcRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes, loginAttemptsRes, backupCodesRes, chatLabelsRes, orderNotificationNumbersRes, giftCampaignsRes] = await Promise.allSettled([
+    const [productsRes, ordersRes, notificationLogRes, reviewsRes, ugcRes, blogRes, couponsRes, categoriesRes, settingsRes, leadsRes, analyticsRes, colorsRes, materialsRes, whatsappNumbersRes, enquiryAnalyticsRes, labelsRes, loginAttemptsRes, backupCodesRes, chatLabelsRes, orderNotificationNumbersRes, giftCampaignsRes] = await Promise.allSettled([
       apiRequest("/api/admin/products"),
       apiRequest("/api/admin/orders"),
       apiRequest("/api/admin/orders/notification-log"),
       apiRequest("/api/admin/reviews"),
       apiRequest("/api/admin/ugc"),
+      apiRequest("/api/admin/blog"),
       apiRequest("/api/admin/coupons"),
       apiRequest("/api/admin/categories"),
       apiRequest("/api/admin/settings"),
@@ -157,6 +161,7 @@ function AdminDashboard() {
     if (notificationLogRes.status === "fulfilled") setNotificationLog(notificationLogRes.value.log);
     if (reviewsRes.status === "fulfilled") setReviews(reviewsRes.value.reviews);
     if (ugcRes.status === "fulfilled") setUgcSubmissions(ugcRes.value.submissions);
+    if (blogRes.status === "fulfilled") setBlogPosts(blogRes.value.posts);
     if (couponsRes.status === "fulfilled") setCoupons(couponsRes.value.coupons);
     if (categoriesRes.status === "fulfilled") setCategories(categoriesRes.value.categories);
     if (settingsRes.status === "fulfilled") {
@@ -199,7 +204,7 @@ function AdminDashboard() {
   };
 
   return (
-    <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, ugcSubmissions, setUgcSubmissions, coupons, setCoupons, orders, setOrders, loadingOrders, notificationLog, setNotificationLog, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, abandonedCheckoutStale, reviewReminderStale, settings, setSettings, chatLabelPresets, setChatLabelPresets, products, setProducts, categories, setCategories, labels, setLabels, colors, setColors, materials, setMaterials, whatsappNumbers, setWhatsappNumbers, orderNotificationNumbers, setOrderNotificationNumbers, giftCampaigns, setGiftCampaigns, refetch: fetchData }}>
+    <AdminDataProvider value={{ loginAttempts, backupCodesRemaining, setBackupCodesRemaining, reviews, setReviews, ugcSubmissions, setUgcSubmissions, blogPosts, setBlogPosts, coupons, setCoupons, orders, setOrders, loadingOrders, notificationLog, setNotificationLog, analytics, enquiryAnalytics, leads, setLeads, keepaliveStale, abandonedCheckoutStale, reviewReminderStale, settings, setSettings, chatLabelPresets, setChatLabelPresets, products, setProducts, categories, setCategories, labels, setLabels, colors, setColors, materials, setMaterials, whatsappNumbers, setWhatsappNumbers, orderNotificationNumbers, setOrderNotificationNumbers, giftCampaigns, setGiftCampaigns, refetch: fetchData }}>
     <div className="bg-bg min-h-screen py-12">
       <div className="max-w-5xl mx-auto px-6 space-y-12">
 
@@ -225,6 +230,7 @@ function AdminDashboard() {
             { key: "coupons", label: "Coupons" },
             { key: "settings", label: "Settings" },
             { key: "reviews", label: "Reviews" },
+            { key: "blog", label: "Blog" },
             { key: "security", label: "Security" },
           ].map((tab) => (
             <button
@@ -253,6 +259,8 @@ function AdminDashboard() {
         {activeTab === "settings" && <SettingsTab />}
 
         {activeTab === "reviews" && <ReviewsTab />}
+
+        {activeTab === "blog" && <BlogTab />}
 
         {activeTab === "security" && <SecurityTab />}
 

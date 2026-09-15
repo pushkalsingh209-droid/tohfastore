@@ -25,7 +25,7 @@
 // instead of being cached here (see app/components/LiveStock.tsx).
 import { unstable_cache } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
-import { attachThumbUrls } from "@/app/utils/imageThumb";
+import { attachThumbUrls, getThumbUrl } from "@/app/utils/imageThumb";
 import { tallyUnitsSold } from "@/app/utils/orderTally";
 import { tallyViewedTogether } from "@/app/utils/viewedTogether";
 import { parseCodEnabled, parseCodFee, parseCodMaxItemPrice, parseCodMaxOrderTotal } from "@/app/utils/codSettings";
@@ -681,6 +681,87 @@ export async function getRatingSummaries(productIds: number[]): Promise<Record<n
     return aggregateRatings(data as RatingRow[]);
   } catch {
     return {};
+  }
+}
+
+// Blog section (migration 0065): publicly submitted articles, moderated in
+// the admin Blog tab before going live. Cached + revalidateTag("blog") on
+// every admin approve/edit/delete (see /api/admin/blog), same pattern as
+// products/reviews -- an approval shows up immediately rather than waiting
+// out the 24h safety-net window.
+export interface BlogPost {
+  id: number;
+  slug: string;
+  title: string;
+  author_name: string;
+  excerpt: string;
+  body: string;
+  cover_image_url: string;
+  thumb_url?: string;
+  images: string[];
+  category: string | null;
+  published_at: string | null;
+  created_at: string;
+}
+
+const BLOG_POST_COLUMNS =
+  "id, slug, title, author_name, excerpt, body, cover_image_url, images, category, published_at, created_at";
+
+export const getApprovedBlogPosts = unstable_cache(
+  async (): Promise<BlogPost[]> => {
+    try {
+      const { data, error } = await supabase
+        .from("blog_posts")
+        .select(BLOG_POST_COLUMNS)
+        .eq("approved", true)
+        .order("published_at", { ascending: false });
+      if (error || !data) return [];
+      return Promise.all(
+        data.map(async (post) => ({
+          ...post,
+          thumb_url: post.cover_image_url ? await getThumbUrl(post.cover_image_url) : undefined,
+        }))
+      );
+    } catch {
+      return [];
+    }
+  },
+  ["approved-blog-posts"],
+  { tags: ["blog"], revalidate: 86400 }
+);
+
+export const getBlogPostBySlug = unstable_cache(
+  async (slug: string): Promise<BlogPost | null> => {
+    try {
+      const { data, error } = await supabase
+        .from("blog_posts")
+        .select(BLOG_POST_COLUMNS)
+        .eq("slug", slug)
+        .eq("approved", true)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  },
+  ["blog-post-by-slug"],
+  { tags: ["blog"], revalidate: 86400 }
+);
+
+// Every approved slug, for sitemap.ts -- not cached (built once per sitemap
+// request, which is infrequent crawler/owner traffic, not a hot storefront
+// path worth a cache entry of its own).
+export async function getApprovedBlogSlugs(): Promise<{ slug: string; published_at: string | null }[]> {
+  try {
+    const { data, error } = await supabase
+      .from("blog_posts")
+      .select("slug, published_at")
+      .eq("approved", true);
+    if (error || !data) return [];
+    return data;
+  } catch {
+    return [];
   }
 }
 
