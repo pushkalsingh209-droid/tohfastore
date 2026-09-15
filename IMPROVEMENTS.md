@@ -12,6 +12,28 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### ImageLightbox: swipe-to-navigate on mobile — 2026-09-15 IST
+- Owner: "when you expand the image in the lightbox is it possible for products with
+  multiple images to allow users to navigate images in lightbox itself also? mobile
+  first" — navigation already worked (prev/next buttons + arrow-key/Escape support, both
+  from the same-day lightbox build), but tapping a small arrow button at the screen edge
+  isn't the natural mobile interaction; a phone visitor expects to swipe a full-screen
+  photo.
+- Added a left/right swipe gesture on `ImageLightbox.tsx` (`onTouchStart`/`onTouchEnd`
+  on the full-screen backdrop, a 50px horizontal-drag threshold) alongside the existing
+  buttons/keyboard nav, not replacing them — desktop mouse clicks and accessibility both
+  still work exactly as before. Relies on the standard mobile-browser behaviour that a
+  touchmove past its own internal threshold suppresses the synthetic click that would
+  otherwise follow `touchend`, so a swipe never also triggers the backdrop's
+  click-to-close.
+- Shared by both consumers automatically — `ProductGallery`'s detail view and
+  `BlogPostGallery` both render the same `ImageLightbox`, so this one change covers
+  swipe navigation on product photos and blog photos alike.
+- Verified: `tsc` clean · `eslint` 0 new errors · `npm test` 408/408 (unchanged) ·
+  `next build` exit 0. Smoke-tested against the real dev server (product page + blog
+  index both render without error) — the swipe gesture itself is a touch interaction,
+  not exercisable via curl; owner should confirm it live. Not payment-path.
+
 ### Product page: full-screen lightbox on click (matching the blog fix) — 2026-09-15 IST
 - Owner: "IN product details page also the images should pop up on click similarly to
   blog images so that users can view them properly and also mobile first" — a direct

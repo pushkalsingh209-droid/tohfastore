@@ -1,13 +1,23 @@
 // app/components/ImageLightbox.tsx
 // Full-screen photo viewer -- object-contain, so nothing is ever cropped,
-// with prev/next + Escape/arrow-key navigation and a counter. Extracted
-// from BlogPostGallery.tsx (2026-09-15) once ProductGallery needed the
-// identical viewer for the product detail page's own photos (owner:
-// "images should pop up on click similarly to blog images"), rather than
-// duplicating this ~80-line block a second time.
+// with prev/next buttons, Escape/arrow-key navigation, and (added
+// 2026-09-15, owner: "allow users to navigate images in lightbox itself
+// also... mobile first") a left/right swipe gesture -- the buttons alone
+// work but aren't the natural mobile interaction; a phone visitor expects
+// to swipe a full-screen photo, not hunt for a small arrow at the screen
+// edge. Extracted from BlogPostGallery.tsx (2026-09-15) once ProductGallery
+// needed the identical viewer for the product detail page's own photos,
+// rather than duplicating this ~80-line block a second time.
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
+
+// Minimum horizontal drag (px) before a touch gesture counts as a swipe
+// rather than a tap -- mobile browsers already suppress the synthetic
+// click that would otherwise fire after a touchmove past their own
+// (similar) internal threshold, so this mainly guards against a barely-
+// perceptible finger tremor being read as an intentional swipe.
+const SWIPE_THRESHOLD_PX = 50;
 
 export default function ImageLightbox({
   images,
@@ -34,10 +44,30 @@ export default function ImageLightbox({
     return () => window.removeEventListener("keydown", handleKey);
   }, [index, images.length, onClose, onNavigate]);
 
+  const touchStartX = useRef<number | null>(null);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const startX = touchStartX.current;
+    touchStartX.current = null;
+    if (startX === null || images.length <= 1) return;
+    const deltaX = e.changedTouches[0].clientX - startX;
+    if (deltaX > SWIPE_THRESHOLD_PX) {
+      onNavigate((index - 1 + images.length) % images.length); // swipe right -> previous
+    } else if (deltaX < -SWIPE_THRESHOLD_PX) {
+      onNavigate((index + 1) % images.length); // swipe left -> next
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95"
       onClick={onClose}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       <button
         type="button"

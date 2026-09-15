@@ -2689,7 +2689,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>AbandonedCartNudge</code>, <code>CookieConsent</code>, <code>InstallPrompt</code></li>
 <li><code>admin/ImageUploadField</code>, <code>admin/DownloadCsvButton</code></li>
 <li><code>admin/UgcVideoUploadField</code> &mdash; attaches a video to a UGC submission in the Reviews tab (IMPROVEMENTS.md #9, added 2026-09-13) via <code>/api/admin/ugc/upload-video</code>. Same paired URL-box + file-picker shape as <code>ImageUploadField</code>, but since this row has no surrounding form + Save button, <code>onChange</code> PATCHes the server immediately &mdash; so the manual URL box only commits on blur (not per keystroke); a completed upload still commits right away as a single final value. Local <code>draft</code> state re-syncs to the committed <code>value</code> prop via a render-time <code>prevValue</code> comparison, not an effect.</li>
-<li><code>BlogPhotoPicker</code> &mdash; a grid of upload slots backing <code>/blog/submit</code>'s cover photo (1 slot) and gallery (4 slots) fields (new, added 2026-09-15). Each empty slot is its own tap target rather than one shared &ldquo;add&rdquo; button re-triggering for every photo &mdash; a mobile-first call, since this form's realistic device is a phone. Compresses each photo in-browser (<code>compressImageFile</code>, the same helper <code>ImageUploadField</code> uses) before POSTing to <code>/api/blog/upload-photo</code>. <code>BlogSubmitForm</code> &mdash; the actual <code>/blog/submit</code> form (a Client Component so <code>page.tsx</code> above it can stay a Server Component exporting <code>noindex</code> metadata); single column, no multi-step wizard, mirrors <code>UgcSubmissionForm</code>'s status-state shape (idle/submitting/done/error). <code>BlogPostGallery</code> &mdash; renders <code>/blog/[slug]</code>'s cover photo + gallery grid and opens <code>ImageLightbox</code> (below) when either is clicked (added 2026-09-15, fixing an owner-reported crop bug: the cover photo now sizes its own container to that exact photo's measured aspect ratio, via <code>onLoad</code> &rarr; <code>naturalWidth</code>/<code>naturalHeight</code>, capped at 75vh, with <code>object-contain</code> as a backstop, so nothing is ever cropped regardless of a submitted photo's shape). The body paragraphs render as this component's <code>children</code> (server-rendered content passed through a client wrapper) so they land between the cover and the gallery, matching the page's original layout order. <code>ImageLightbox</code> &mdash; the shared full-screen photo viewer (black backdrop, <code>object-contain</code>, prev/next + a counter, Escape/arrow-key navigation, click-outside or &times; to close); extracted out of <code>BlogPostGallery</code> the same day once <code>ProductGallery</code>'s own detail view needed the identical viewer (owner: &ldquo;images should pop up on click similarly to blog images&rdquo;) rather than duplicating it.</li>
+<li><code>BlogPhotoPicker</code> &mdash; a grid of upload slots backing <code>/blog/submit</code>'s cover photo (1 slot) and gallery (4 slots) fields (new, added 2026-09-15). Each empty slot is its own tap target rather than one shared &ldquo;add&rdquo; button re-triggering for every photo &mdash; a mobile-first call, since this form's realistic device is a phone. Compresses each photo in-browser (<code>compressImageFile</code>, the same helper <code>ImageUploadField</code> uses) before POSTing to <code>/api/blog/upload-photo</code>. <code>BlogSubmitForm</code> &mdash; the actual <code>/blog/submit</code> form (a Client Component so <code>page.tsx</code> above it can stay a Server Component exporting <code>noindex</code> metadata); single column, no multi-step wizard, mirrors <code>UgcSubmissionForm</code>'s status-state shape (idle/submitting/done/error). <code>BlogPostGallery</code> &mdash; renders <code>/blog/[slug]</code>'s cover photo + gallery grid and opens <code>ImageLightbox</code> (below) when either is clicked (added 2026-09-15, fixing an owner-reported crop bug: the cover photo now sizes its own container to that exact photo's measured aspect ratio, via <code>onLoad</code> &rarr; <code>naturalWidth</code>/<code>naturalHeight</code>, capped at 75vh, with <code>object-contain</code> as a backstop, so nothing is ever cropped regardless of a submitted photo's shape). The body paragraphs render as this component's <code>children</code> (server-rendered content passed through a client wrapper) so they land between the cover and the gallery, matching the page's original layout order. <code>ImageLightbox</code> &mdash; the shared full-screen photo viewer (black backdrop, <code>object-contain</code>, prev/next + a counter, Escape/arrow-key navigation, click-outside or &times; to close, plus a left/right swipe gesture added the same day for mobile &mdash; a 50px horizontal-drag threshold on the backdrop's <code>onTouchStart</code>/<code>onTouchEnd</code>, alongside the buttons/keyboard nav rather than replacing them); extracted out of <code>BlogPostGallery</code> the same day once <code>ProductGallery</code>'s own detail view needed the identical viewer (owner: &ldquo;images should pop up on click similarly to blog images&rdquo;) rather than duplicating it. Shared by both consumers automatically, so the swipe gesture covers product-page and blog photos alike.</li>
 <li><code>admin/FinanceInsightsPanel</code>, <code>admin/InventoryInsightsPanel</code>, <code>admin/GroupStatsPanel</code></li>
 </ul>
 </div>
@@ -3196,6 +3196,32 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-15<br>15:00</code></td>
+  <td><strong>ImageLightbox: swipe-to-navigate on mobile</strong><br>(owner: &ldquo;when you expand the image in the lightbox is it possible for products with multiple images to allow users to navigate images in lightbox itself also? mobile first&rdquo;)</td>
+  <td>
+    Navigation already worked (prev/next buttons + arrow-key/Escape support, both from
+    the same-day lightbox build), but tapping a small arrow button at the screen edge
+    isn't the natural mobile interaction; a phone visitor expects to swipe a full-screen
+    photo. Added a left/right swipe gesture (<code>onTouchStart</code>/<code>onTouchEnd</code>
+    on the full-screen backdrop, a 50px horizontal-drag threshold) alongside the existing
+    buttons/keyboard nav, not replacing them &mdash; desktop mouse clicks and
+    accessibility both still work exactly as before. Relies on the standard
+    mobile-browser behaviour that a touchmove past its own internal threshold suppresses
+    the synthetic click that would otherwise follow <code>touchend</code>, so a swipe
+    never also triggers the backdrop's click-to-close. Shared by both consumers
+    automatically &mdash; <code>ProductGallery</code>'s detail view and
+    <code>BlogPostGallery</code> both render the same <code>ImageLightbox</code>, so this
+    one change covers swipe navigation on product photos and blog photos alike.
+  </td>
+  <td><em>edited:</em> <code>app/components/ImageLightbox.tsx</code>, <code>docs/HANDBOOK.html</code>,
+    <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> 0 new errors &middot;
+    <code>npm test</code> 408 passed (unchanged) &middot; <code>next build</code> exit 0.
+    Smoke-tested against the real dev server (product page + blog index both render
+    without error) &mdash; the swipe gesture itself is a touch interaction, not
+    exercisable via curl; owner should confirm it live. Not payment-path.</td>
+</tr>
 <tr>
   <td><code>2026-09-15<br>14:30</code></td>
   <td><strong>Product page: full-screen lightbox on click</strong><br>(owner: &ldquo;IN product details page also the images should pop up on click similarly to blog images so that users can view them properly and also mobile first&rdquo;)</td>
