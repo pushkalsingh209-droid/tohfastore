@@ -1994,6 +1994,7 @@ optimizer. (IMPROVEMENTS.md #9 is closed as won&rsquo;t-do.)</p>
 <tr><td><code>/blog</code></td><td>app/blog/page.tsx</td><td><code>force-dynamic</code> over <code>unstable_cache</code>'d reads, same reasoning as <code>/guides/[slug]</code></td><td>Blog index (new, added 2026-09-15) &mdash; approved posts only, newest by <code>published_at</code>. Mobile-first photo-led card grid (<code>grid-cols-1 sm:grid-cols-2 lg:grid-cols-3</code>), unlike <code>/guides</code>' plain-text cards, since every post has a real cover photo. <code>ItemList</code> JSON-LD. Links to <code>/blog/submit</code> at the bottom. Linked from the desktop nav and <code>PageNavLinks</code>' mobile menu.</td></tr>
 <tr><td><code>/blog/[slug]</code></td><td>app/blog/[slug]/page.tsx</td><td><code>force-dynamic</code>, same reasoning as above</td><td>One blog post. Narrow <code>max-w-2xl</code> reading column (prose, not a product grid like <code>/guides/[slug]</code>) &mdash; cover photo, body (paragraphs split on blank lines via <code>splitParagraphs</code>), any additional photos in a small grid, all rendered through <code>BlogPostGallery</code> (below). <code>Article</code> + <code>BreadcrumbList</code> JSON-LD. Unknown/unapproved slug &rarr; real 404 (<code>notFound()</code>), unlike <code>/guides/[slug]</code>'s soft-404 (a guide's own slugs are all hardcoded and known-good, so an unknown one there really is a broken link; a blog slug is user-submitted).</td></tr>
 <tr><td><code>/blog/submit</code></td><td>app/blog/submit/page.tsx (server, <code>noindex</code> metadata only) + app/components/BlogSubmitForm.tsx (client)</td><td>static shell, client form</td><td>Public submission form (new, added 2026-09-15) &mdash; no login, same posture as every other public form in this codebase. Single-column, mobile-first: title, name, optional email, optional category, optional excerpt, body (with a live character count), a <code>BlogPhotoPicker</code> cover-photo slot, and up to 4 more via a second picker. Posts to <code>/api/blog/submit</code>; always lands in the admin Blog tab's queue, never live until approved.</td></tr>
+<tr><td><code>/blog/rss.xml</code></td><td>app/blog/rss.xml/route.ts</td><td>route handler (XML, not a page)</td><td>Standard RSS 2.0 feed for the Blog section (new, added 2026-09-15) &mdash; the 20 most recent approved posts, re-shaped from the same <code>getApprovedBlogPosts()</code> the <code>/blog</code> index itself renders from (not a second source of truth), same escape/CDATA-helper pattern as <code>/api/google-merchant-feed</code>. <code>/blog</code>'s metadata advertises it via the standard <code>&lt;link rel="alternate" type="application/rss+xml"&gt;</code> tag (feed readers auto-discover this) plus a small text link at the bottom of the page. <code>Cache-Control: public, max-age=1800, s-maxage=3600, stale-while-revalidate=86400</code> (a feed reader polls on its own schedule, not per-visitor traffic).</td></tr>
 <tr><td><code>/wishlist</code></td><td>app/wishlist/page.tsx</td><td>client</td><td>localStorage-backed wishlist grid. &ldquo;Share Wishlist&rdquo;/&ldquo;Copy Link&rdquo; build a <code>/wishlist/shared?ids=&hellip;</code> link.</td></tr>
 <tr><td><code>/wishlist/shared</code></td><td>app/wishlist/shared/page.tsx</td><td><code>force-dynamic</code> over <code>unstable_cache</code>'d reads, same reasoning as <code>/spotlight</code></td><td>A read-only view of someone else's wishlist -- re-fetches live product data for the <code>?ids=</code> in the URL via <code>getProductsByIds</code> rather than trusting anything client-supplied; reuses <code>&lt;ProductCard&gt;</code> so Add to Cart / add to the viewer's own wishlist work right from here. <code>noindex</code> (one-off shared links, not meant for search discovery). Empty/all-hidden id list &rarr; a &ldquo;this link isn't showing anything&rdquo; panel, still 200. Its own <code>?ids=</code> parser is the shared <code>parseIdsParam</code> (added 2026-09-13, pulled out once <code>/compare</code> below needed the identical rule).</td></tr>
 <tr><td><code>/compare</code></td><td>app/compare/page.tsx</td><td><code>force-dynamic</code>, same reasoning as <code>/wishlist/shared</code></td><td>Product Comparison Tool (IMPROVEMENTS.md Tier 1 Marketing #5, added 2026-09-13) &mdash; <code>?ids=1,5,12</code>, exactly the backlog item's own spec'd route shape. Same &ldquo;re-fetch fresh data, never trust the client&rdquo; pattern as <code>/wishlist/shared</code>: <code>getProductsByIds</code> for the products (capped at <code>MAX_COMPARE_ITEMS</code> = 4, silently slicing a longer id list rather than erroring) + new <code>getRatingSummaries</code> for per-product review averages. Renders a side-by-side table (price, rating, category, stock, material, colour, weight, height, depth, breadth, Add to Cart) with the cheapest price and highest rating cell highlighted (<code>bestValueIndex</code>, <code>productComparison.ts</code> &mdash; a tie or an all-null row highlights nothing). Reuses <code>PriceDisplay</code>/<code>StockStatusBadge</code>/<code>AddToCartButton</code> as-is, no new purchase-path code. <code>noindex</code> (a working view, not meant for search discovery). Empty id list &rarr; a &ldquo;nothing to compare yet&rdquo; panel, still 200.</td></tr>
@@ -2525,7 +2526,11 @@ uncached endpoints, so the day-cached HTML can stand. The 24h TTL is only a back
 <ul class="tight">
   <li><strong>JSON-LD</strong> (all with <code>&lt;</code> escaped to its unicode form per Next&rsquo;s guide):
       <code>Organization</code> + <code>WebSite</code> in the root layout; <code>Product</code> +
-      <code>BreadcrumbList</code> on detail pages (incl. <code>aggregateRating</code>, and an <code>offers</code>
+      <code>BreadcrumbList</code> on detail pages (incl. <code>aggregateRating</code> and, since 2026-09-15,
+      up to <code>REVIEW_JSONLD_CAP</code> (10) individual <code>review</code> items alongside it &mdash;
+      rating/author/date/body, a representative sample rather than a popular product's full review
+      history; not required for the star-rating rich result (<code>aggregateRating</code> alone already
+      covers that) but can make a richer result eligible per Google's own docs, and an <code>offers</code>
       block with <code>InStock</code>/<code>OutOfStock</code>/<code>InStoreOnly</code> (0059 &mdash; the precise schema.org term for a product that exists and is purchasable but not online; more honest than <code>OutOfStock</code>, which would be a lie), <code>shippingDetails</code> = free
       (<code>&#8377;0</code>) across India, and <code>hasMerchantReturnPolicy</code> =
       <code>MerchantReturnNotPermitted</code> for <code>IN</code> &mdash; the last two are store-wide consts
@@ -2660,7 +2665,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>StorefrontPage</code> &mdash; shared home/category shell (RSC)</li>
 <li><code>CatalogSection</code> &mdash; grid + progressive reveal + batch live-stock fetch</li>
 <li><code>CatalogFilters</code>, <code>CatalogPagination</code></li>
-<li><code>ProductCard</code> (shows a &ldquo;New&rdquo; badge, bottom-left of the image, for a product created within the last 14 days -- <code>created_at</code> is only selected by the two queries that feed cards, <code>getCatalogPage</code>/<code>getSpotlightProducts</code>/<code>getProductsByIds</code>; resolved on mount, not during render, since <code>Date.now()</code> can't run in a render body; the back face also has a &ldquo;+ Add to Compare&rdquo;/&ldquo;&#10003; Added to Compare&rdquo; toggle, IMPROVEMENTS.md Tier 1 Marketing #5, added 2026-09-13, next to the spec details it's comparing), <code>ProductGallery</code> (auto flip/slide on every instance; <code>size="detail"</code> &mdash; the product page only, never a grid card &mdash; additionally gets prev/next arrows, a &ldquo;Hold&rdquo;/&ldquo;Resume&rdquo; button that sticks until pressed again (unlike the zoom-hover pause, it isn't cleared just by moving the pointer off the photo), and a top-centre dot-position indicator (added 2026-09-13; a pill-shaped active dot among smaller ones, swapped in 2026-09-13 for an earlier text &ldquo;2 / 5&rdquo; counter per owner preference), <code>PriceDisplay</code>, <code>TempleCardFrame</code></li>
+<li><code>ProductCard</code> (shows a &ldquo;New&rdquo; badge, bottom-left of the image, for a product created within the last 14 days -- <code>created_at</code> is only selected by the two queries that feed cards, <code>getCatalogPage</code>/<code>getSpotlightProducts</code>/<code>getProductsByIds</code>; resolved on mount, not during render, since <code>Date.now()</code> can't run in a render body; the back face also has a &ldquo;+ Add to Compare&rdquo;/&ldquo;&#10003; Added to Compare&rdquo; toggle, IMPROVEMENTS.md Tier 1 Marketing #5, added 2026-09-13, next to the spec details it's comparing), <code>ProductGallery</code> (auto flip/slide on every instance; <code>size="detail"</code> &mdash; the product page only, never a grid card &mdash; additionally gets prev/next arrows, a &ldquo;Hold&rdquo;/&ldquo;Resume&rdquo; button that sticks until pressed again (unlike the zoom-hover pause, it isn't cleared just by moving the pointer off the photo), a top-centre dot-position indicator (added 2026-09-13; a pill-shaped active dot among smaller ones, swapped in 2026-09-13 for an earlier text &ldquo;2 / 5&rdquo; counter per owner preference), and &mdash; <code>size="detail"</code> only, added 2026-09-15 &mdash; a plain click opens the current photo in a full-screen <code>ImageLightbox</code>; a card instance stays untouched since it sits inside <code>ProductCard</code>'s own <code>&lt;Link&gt;</code>, where a click should still navigate), <code>PriceDisplay</code>, <code>TempleCardFrame</code></li>
 <li><code>HeroProductRotator</code>, <code>CategorySlider</code>, <code>BestsellersStrip</code> (reused as-is, just a different <code>title</code>, for the product page's &ldquo;Often Viewed Together&rdquo; strip &mdash; fed by <code>getViewedTogether</code>, a <code>product_views</code> session-affinity signal distinct from &ldquo;Customers Also Bought&rdquo;'s order-history one)</li>
 <li><code>RecentlyViewedStrip</code>, <code>RecentViewersNote(Live)</code>, <code>RecordProductView</code></li>
 <li><code>LiveStock</code>, <code>StockStatusBadge</code> (shows &ldquo;Available on enquiry&rdquo; ahead of every stock state for an <code>enquire_only</code> piece), <code>NotifyWhenInStockButton</code> (never rendered for one &mdash; it is not coming back in stock, so the alert could never fire)</li>
@@ -2684,7 +2689,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <li><code>AbandonedCartNudge</code>, <code>CookieConsent</code>, <code>InstallPrompt</code></li>
 <li><code>admin/ImageUploadField</code>, <code>admin/DownloadCsvButton</code></li>
 <li><code>admin/UgcVideoUploadField</code> &mdash; attaches a video to a UGC submission in the Reviews tab (IMPROVEMENTS.md #9, added 2026-09-13) via <code>/api/admin/ugc/upload-video</code>. Same paired URL-box + file-picker shape as <code>ImageUploadField</code>, but since this row has no surrounding form + Save button, <code>onChange</code> PATCHes the server immediately &mdash; so the manual URL box only commits on blur (not per keystroke); a completed upload still commits right away as a single final value. Local <code>draft</code> state re-syncs to the committed <code>value</code> prop via a render-time <code>prevValue</code> comparison, not an effect.</li>
-<li><code>BlogPhotoPicker</code> &mdash; a grid of upload slots backing <code>/blog/submit</code>'s cover photo (1 slot) and gallery (4 slots) fields (new, added 2026-09-15). Each empty slot is its own tap target rather than one shared &ldquo;add&rdquo; button re-triggering for every photo &mdash; a mobile-first call, since this form's realistic device is a phone. Compresses each photo in-browser (<code>compressImageFile</code>, the same helper <code>ImageUploadField</code> uses) before POSTing to <code>/api/blog/upload-photo</code>. <code>BlogSubmitForm</code> &mdash; the actual <code>/blog/submit</code> form (a Client Component so <code>page.tsx</code> above it can stay a Server Component exporting <code>noindex</code> metadata); single column, no multi-step wizard, mirrors <code>UgcSubmissionForm</code>'s status-state shape (idle/submitting/done/error). <code>BlogPostGallery</code> &mdash; renders <code>/blog/[slug]</code>'s cover photo + gallery grid and the full-screen lightbox both open into (added 2026-09-15, fixing an owner-reported crop bug: the cover photo now sizes its own container to that exact photo's measured aspect ratio, via <code>onLoad</code> &rarr; <code>naturalWidth</code>/<code>naturalHeight</code>, capped at 75vh, with <code>object-contain</code> as a backstop, so nothing is ever cropped regardless of a submitted photo's shape; clicking the cover or any gallery photo opens a black-backdrop lightbox with prev/next + Escape/arrow-key navigation). The body paragraphs render as this component's <code>children</code> (server-rendered content passed through a client wrapper) so they land between the cover and the gallery, matching the page's original layout order.</li>
+<li><code>BlogPhotoPicker</code> &mdash; a grid of upload slots backing <code>/blog/submit</code>'s cover photo (1 slot) and gallery (4 slots) fields (new, added 2026-09-15). Each empty slot is its own tap target rather than one shared &ldquo;add&rdquo; button re-triggering for every photo &mdash; a mobile-first call, since this form's realistic device is a phone. Compresses each photo in-browser (<code>compressImageFile</code>, the same helper <code>ImageUploadField</code> uses) before POSTing to <code>/api/blog/upload-photo</code>. <code>BlogSubmitForm</code> &mdash; the actual <code>/blog/submit</code> form (a Client Component so <code>page.tsx</code> above it can stay a Server Component exporting <code>noindex</code> metadata); single column, no multi-step wizard, mirrors <code>UgcSubmissionForm</code>'s status-state shape (idle/submitting/done/error). <code>BlogPostGallery</code> &mdash; renders <code>/blog/[slug]</code>'s cover photo + gallery grid and opens <code>ImageLightbox</code> (below) when either is clicked (added 2026-09-15, fixing an owner-reported crop bug: the cover photo now sizes its own container to that exact photo's measured aspect ratio, via <code>onLoad</code> &rarr; <code>naturalWidth</code>/<code>naturalHeight</code>, capped at 75vh, with <code>object-contain</code> as a backstop, so nothing is ever cropped regardless of a submitted photo's shape). The body paragraphs render as this component's <code>children</code> (server-rendered content passed through a client wrapper) so they land between the cover and the gallery, matching the page's original layout order. <code>ImageLightbox</code> &mdash; the shared full-screen photo viewer (black backdrop, <code>object-contain</code>, prev/next + a counter, Escape/arrow-key navigation, click-outside or &times; to close); extracted out of <code>BlogPostGallery</code> the same day once <code>ProductGallery</code>'s own detail view needed the identical viewer (owner: &ldquo;images should pop up on click similarly to blog images&rdquo;) rather than duplicating it.</li>
 <li><code>admin/FinanceInsightsPanel</code>, <code>admin/InventoryInsightsPanel</code>, <code>admin/GroupStatsPanel</code></li>
 </ul>
 </div>
@@ -3191,6 +3196,79 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-15<br>14:30</code></td>
+  <td><strong>Product page: full-screen lightbox on click</strong><br>(owner: &ldquo;IN product details page also the images should pop up on click similarly to blog images so that users can view them properly and also mobile first&rdquo;)</td>
+  <td>
+    Direct follow-on from the same-day blog crop/lightbox fix. Extracted the lightbox out of
+    <code>BlogPostGallery.tsx</code> into a new, generic <code>app/components/ImageLightbox.tsx</code>
+    (images array, current index, alt, close/navigate callbacks) rather than writing the same ~80 lines
+    a second time &mdash; <code>BlogPostGallery</code> now just renders it, no behaviour change there.
+    <br><br>
+    Wired into <code>ProductGallery.tsx</code> (used by every product card <strong>and</strong> the
+    product detail page) as detail-view-only: a plain click opens the lightbox at whatever's currently
+    showing, but only when <code>size === "detail"</code>. A card instance
+    (grid/spotlight/wishlist/guides/compare) sits inside <code>ProductCard</code>'s own
+    <code>&lt;Link&gt;</code>, where a click should still navigate to the product page &mdash;
+    untouched. Confirmed safe to add without touching any existing interaction:
+    <code>ProductGallery</code> had no click handler of its own before this
+    (<code>zoomHandlers</code> is hover/touch-move/leave only), and the existing nav/filter/hold buttons
+    already <code>stopPropagation</code> their own clicks, so none of them can accidentally trigger it.
+    <br><br>
+    The lightbox's own prev/next now drives the gallery's real <code>currentIndex</code> (via
+    <code>onNavigate={setCurrentIndex}</code>), so closing it leaves the visible carousel on whatever
+    photo was last viewed full-screen. On mobile, a quick tap already fell through to a synthesized
+    click (none of the touch handlers call <code>preventDefault</code>), so no separate touch wiring was
+    needed &mdash; a quick tap opens the lightbox, a press-and-hold still zooms in place exactly as
+    before.
+  </td>
+  <td><em>new:</em> <code>app/components/ImageLightbox.tsx</code><br>
+    <em>edited:</em> <code>app/components/ProductGallery.tsx</code>, <code>app/components/BlogPostGallery.tsx</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> 0 new errors (4 pre-existing
+    <code>set-state-in-effect</code> warnings in <code>ProductGallery.tsx</code>, all on untouched lines,
+    confirmed via diff) &middot; <code>npm test</code> 408 passed (unchanged) &middot; <code>next build</code>
+    exit 0. Live-tested against the real dev server: the product detail page and a category grid both
+    render the gallery correctly, and the grid cards' <code>&lt;Link&gt;</code> wrapper markup is intact
+    (navigation unaffected). The click-to-open interaction itself is client-side JS, not exercisable via
+    curl &mdash; owner should confirm it live. Not payment-path.</td>
+</tr>
+<tr>
+  <td><code>2026-09-15<br>14:00</code></td>
+  <td><strong>SEO: individual Review JSON-LD + blog RSS feed</strong><br>(owner asked for SEO recommendations &ldquo;without compromising design and existing things&rdquo;; picked 3, built 2 &mdash; the 3rd, category-page Breadcrumb/ItemList schema, turned out to already exist)</td>
+  <td>
+    Recommended three items; the first (category page structured data) turned out to already be
+    implemented &mdash; a mis-diagnosis (grepped <code>app/collections/[category]/page.tsx</code> directly
+    and missed that the actual JSON-LD lives in the shared <code>StorefrontPage.tsx</code> it renders,
+    which already has both <code>ItemList</code> and <code>BreadcrumbList</code>). Caught before building
+    anything redundant.
+    <br><br>
+    <strong>Individual <code>Review</code> items on product JSON-LD.</strong> Already had
+    <code>aggregateRating</code>; now also up to <code>REVIEW_JSONLD_CAP</code> (10) individual
+    <code>Review</code> objects (rating, author name, date, body when left) alongside it &mdash; the exact
+    &ldquo;consider adding review items&rdquo; follow-up already flagged, unimplemented, on Tier 1
+    Marketing #4.
+    <br><br>
+    <strong>RSS feed for the Blog section.</strong> New <code>GET /blog/rss.xml</code>, standard RSS 2.0,
+    the 20 most recent approved posts, re-shaped from the same <code>getApprovedBlogPosts()</code> the
+    <code>/blog</code> index renders from &mdash; same escape/CDATA pattern as
+    <code>/api/google-merchant-feed</code>. <code>/blog</code>'s metadata now advertises it via the
+    standard <code>&lt;link rel="alternate"&gt;</code> tag, plus a small, low-key text link at the page
+    bottom (deliberately not a prominent button, so it doesn't compete with &ldquo;Submit a post&rdquo;).
+  </td>
+  <td><em>new:</em> <code>app/blog/rss.xml/route.ts</code><br>
+    <em>edited:</em> <code>app/product/[id]/page.tsx</code>, <code>app/blog/page.tsx</code>,
+    <code>docs/HANDBOOK.html</code>, <code>IMPROVEMENTS.md</code></td>
+  <td><code>tsc --noEmit</code> clean &middot; <code>eslint</code> 0 new errors across all 3 changed/new
+    files &middot; <code>npm test</code> 408 passed (unchanged &mdash; no pure-logic module touched)
+    &middot; <code>next build</code> exit 0, <code>/blog/rss.xml</code> registered. Live-tested against
+    the real dev server and production data: the RSS feed correctly picked up the real &ldquo;Dakshina
+    Kali&rdquo; post already live (valid XML, correct <code>application/rss+xml</code> content-type,
+    CDATA-escaped fields), the <code>&lt;link rel="alternate"&gt;</code> tag renders on <code>/blog</code>,
+    and a real product with an approved review (id 131) correctly emits both
+    <code>aggregateRating</code> and the new <code>review</code> array with real rating/author/date/body.
+    Not payment-path.</td>
+</tr>
 <tr>
   <td><code>2026-09-15<br>13:15</code></td>
   <td><strong>Fix: blog cover photo cropped + add a full-screen lightbox</strong><br>(owner tested live, with a screenshot: &ldquo;the image is cut from top and not visible fully both in desktop and mobile... The image should be visible completely... more images posted should popup to full screen in mobile and laptop on click&rdquo;)</td>

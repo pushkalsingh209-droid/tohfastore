@@ -17,7 +17,13 @@ import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 export const metadata: Metadata = {
   title: "Blog | TOHFA",
   description: "Stories, craft notes, and gifting ideas from TOHFA and the people who shop with us.",
-  alternates: { canonical: "/blog" },
+  alternates: {
+    canonical: "/blog",
+    // Feed readers/aggregators discover this via the standard
+    // <link rel="alternate" type="application/rss+xml"> tag Next emits
+    // from this -- see app/blog/rss.xml/route.ts (new, added 2026-09-15).
+    types: { "application/rss+xml": "/blog/rss.xml" },
+  },
   openGraph: {
     title: "TOHFA Blog",
     description: "Stories, craft notes, and gifting ideas from TOHFA and the people who shop with us.",
@@ -107,6 +113,11 @@ export default async function BlogIndexPage() {
         >
           Submit a post
         </Link>
+        <div className="mt-6">
+          <a href="/blog/rss.xml" className="text-[11px] text-faint hover:text-link transition">
+            RSS feed
+          </a>
+        </div>
       </div>
     </div>
   );

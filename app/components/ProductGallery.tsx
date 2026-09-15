@@ -5,6 +5,7 @@ import Image from "next/image";
 import { PHOTO_FILTER_PRESETS, DEFAULT_PHOTO_FILTER_INDEX, NORMAL_FILTER_INDEX } from "@/app/utils/photoFilters";
 import { useDefaultPhotoFilterIndex } from "@/app/context/PhotoFilterSettingContext";
 import { useLabelPhotoFilters } from "@/app/context/LabelPhotoFilterContext";
+import ImageLightbox from "@/app/components/ImageLightbox";
 
 interface ProductGalleryProps {
   images: string[];
@@ -68,6 +69,19 @@ export default function ProductGallery({
   useEffect(() => {
     heldRef.current = held;
   }, [held]);
+
+  // Full-screen viewer (added 2026-09-15, owner: "images should pop up on
+  // click similarly to blog images") -- detail-view only ("card" instances
+  // sit inside ProductCard's own <Link>, where a click should still
+  // navigate to the product page, not intercept it). Nothing else in this
+  // component listens for a plain click today (zoomHandlers is
+  // hover/touch-move/leave only, and the nav/filter/hold buttons all
+  // stopPropagation their own clicks -- see below), so this is safe to add
+  // without touching any existing interaction.
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  function handleGalleryClick() {
+    if (size === "detail") setLightboxOpen(true);
+  }
 
   const [isZooming, setIsZooming] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
@@ -499,8 +513,10 @@ export default function ProductGallery({
     // card still visibly flips every cycle while active).
     const backIndex = (currentIndex + 1) % gallery.length;
     return (
+      <>
       <div
         className={`w-full ${heightClass} bg-white relative overflow-hidden flip-perspective`}
+        onClick={handleGalleryClick}
         {...zoomHandlers}
       >
         <div className="gallery-zoom-image w-full h-full" style={zoomWrapperStyle}>
@@ -518,6 +534,16 @@ export default function ProductGallery({
         {filterButton}
         {navControls}
       </div>
+      {lightboxOpen && (
+        <ImageLightbox
+          images={gallery}
+          index={currentIndex}
+          alt={productName}
+          onClose={() => setLightboxOpen(false)}
+          onNavigate={setCurrentIndex}
+        />
+      )}
+      </>
     );
   }
 
@@ -533,8 +559,10 @@ export default function ProductGallery({
   const [firstSlotIndex, secondSlotIndex] =
     slideDirection === 1 ? [currentIndex, incomingIndex] : [prevIndex, currentIndex];
   return (
+    <>
     <div
       className={`w-full ${heightClass} bg-white relative overflow-hidden`}
+      onClick={handleGalleryClick}
       {...zoomHandlers}
     >
       <div className="gallery-zoom-image w-full h-full" style={zoomWrapperStyle}>
@@ -556,5 +584,15 @@ export default function ProductGallery({
       {filterButton}
       {navControls}
     </div>
+    {lightboxOpen && (
+      <ImageLightbox
+        images={gallery}
+        index={currentIndex}
+        alt={productName}
+        onClose={() => setLightboxOpen(false)}
+        onNavigate={setCurrentIndex}
+      />
+    )}
+    </>
   );
 }

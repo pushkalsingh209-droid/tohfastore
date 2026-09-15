@@ -12,6 +12,71 @@ care, land behind tests, never "blind".
 
 ## Done
 
+### Product page: full-screen lightbox on click (matching the blog fix) — 2026-09-15 IST
+- Owner: "IN product details page also the images should pop up on click similarly to
+  blog images so that users can view them properly and also mobile first" — a direct
+  follow-on from the same-day blog image-crop/lightbox fix.
+- Extracted the lightbox itself out of `BlogPostGallery.tsx` into a new, generic
+  `app/components/ImageLightbox.tsx` (images array, current index, alt, close/navigate
+  callbacks) rather than writing the same ~80 lines a second time — `BlogPostGallery`
+  now just renders it, no behaviour change there.
+- Wired it into `ProductGallery.tsx` (used by every product card **and** the product
+  detail page) as detail-view-only: a plain click on the photo opens the lightbox at
+  whatever's currently showing, but only when `size === "detail"`. A card instance
+  (grid/spotlight/wishlist/guides/compare) sits inside `ProductCard`'s own `<Link>`,
+  where a click should still navigate to the product page — untouched. Confirmed safe to
+  add without touching any existing interaction: `ProductGallery` had no click handler
+  of its own before this (`zoomHandlers` is hover/touch-move/leave only), and the
+  existing nav/filter/hold buttons already `stopPropagation` their own clicks, so none
+  of them can accidentally trigger it.
+- The lightbox's own prev/next now drives the gallery's real `currentIndex` (via
+  `onNavigate={setCurrentIndex}`), so closing it leaves the visible carousel on whatever
+  photo was last viewed full-screen, instead of snapping back to wherever the
+  auto-slide/flip loop happened to be.
+- On mobile, a quick tap already fell through to a synthesized click (none of the touch
+  handlers call `preventDefault`), so no separate touch wiring was needed — a quick tap
+  opens the lightbox, a press-and-hold still zooms in place exactly as before.
+- Verified: `tsc` clean · `eslint` 0 new errors (4 pre-existing `set-state-in-effect`
+  warnings in `ProductGallery.tsx`, all on untouched lines, confirmed via diff) ·
+  `npm test` 408/408 (unchanged) · `next build` exit 0. Live-tested against the real dev
+  server: product detail page and a category grid both render the gallery correctly, and
+  the grid cards' `<Link>` wrapper markup is intact (navigation unaffected). The
+  click-to-open interaction itself is client-side JS, not exercisable via curl — owner
+  should confirm it live. Not payment-path.
+
+### SEO: individual Review JSON-LD + blog RSS feed — 2026-09-15 IST
+- Owner asked for SEO recommendations "without compromising design and existing things"
+  while testing the blog. Recommended three items; **#1 (category page
+  BreadcrumbList/ItemList schema) turned out to already be implemented** — a mis-diagnosis
+  on my part (I'd grepped `app/collections/[category]/page.tsx` directly and missed that
+  the actual JSON-LD lives in the shared `StorefrontPage.tsx` it renders, which already
+  has both). Caught before building anything redundant; only #2 and #3 below actually
+  shipped.
+- **#2 — Individual `Review` items on product JSON-LD.** `app/product/[id]/page.tsx`'s
+  `productJsonLd` already had `aggregateRating`; now also includes up to
+  `REVIEW_JSONLD_CAP` (10) individual `Review` objects (rating, author name, date, and
+  body when the reviewer left one) alongside it — a representative sample, not every
+  review a popular product might accumulate. This was the exact "consider adding review
+  items to the JSON-LD" follow-up already flagged (unimplemented) on Tier 1 Marketing #4.
+  Not required for the star-rating rich result (`aggregateRating` alone already covers
+  that) but can make a richer result eligible per Google's own docs.
+- **#3 — RSS feed for the Blog section.** New `GET /blog/rss.xml`, standard RSS 2.0, the
+  20 most recent approved posts, re-shaped from the same `getApprovedBlogPosts()` the
+  `/blog` index itself renders from (not a second source of truth) — same
+  escape/CDATA-helper pattern as `/api/google-merchant-feed`. `/blog`'s metadata now
+  advertises it via the standard `<link rel="alternate" type="application/rss+xml">` tag
+  (feed readers auto-discover this), plus a small, low-key "RSS feed" text link at the
+  bottom of the page for human visibility — deliberately not a prominent button, so it
+  doesn't compete with "Submit a post".
+- Verified: `tsc` clean · `eslint` 0 new errors across all 3 changed/new files ·
+  `npm test` 408/408 (unchanged — no pure-logic module touched) · `next build` exit 0,
+  `/blog/rss.xml` registered. **Live-tested against the real dev server and production
+  data**: the RSS feed correctly picked up the real "Dakshina Kali" post already live
+  (valid XML, correct `application/rss+xml` content-type, CDATA-escaped fields), the
+  `<link rel="alternate">` tag renders on `/blog`, and a real product with an approved
+  review (id 131) correctly emits both `aggregateRating` and the new `review` array with
+  real rating/author/date/body. Not payment-path.
+
 ### Fix: blog cover photo cropped + add a full-screen lightbox — 2026-09-15 IST
 - Owner tested the blog live and reported (with a screenshot): the cover photo on
   `/blog/<slug>` was rendering cropped ("cut from top... in both desktop and mobile"),
@@ -2279,15 +2344,17 @@ care, land behind tests, never "blind".
    Easy to expand — one category entry in the map per 3–5 questions.
 
 4. **✅ Verify & enhance JSON-LD for Google Search** — *implemented (2026-09-11), confirmed
-   in Google's Rich Results Tester (2026-09-13).* Product JSON-LD already includes
-   `AggregateRating` when reviews exist (rating + count). Owner ran a real product page
-   through `https://search.google.com/test/rich-results`: "3 valid items detected" —
-   Product snippets, Merchant listings, and Breadcrumbs all valid and rich-results
-   eligible (each shows a non-critical warning, almost certainly the expected missing
-   `gtin`/`mpn` — handmade pieces never had one, same reasoning already in the Merchant
-   Center feed's `identifier_exists=no`). Consider adding review items to the JSON-LD
-   schema for Rich Snippets if Google starts indexing individual reviews — current
-   structure is already sufficient for star ratings.
+   in Google's Rich Results Tester (2026-09-13), individual reviews added (2026-09-15).*
+   Product JSON-LD includes `AggregateRating` when reviews exist, and (since 2026-09-15)
+   up to 10 individual `Review` items alongside it. Owner ran a real product page
+   (Lakshmi Ganesha, which had zero reviews at the time) through
+   `https://search.google.com/test/rich-results`: "3 valid items detected" — Product
+   snippets, Merchant listings, and Breadcrumbs all valid and rich-results eligible. The
+   2 non-critical warnings on that run ("Missing field 'review' (optional)", "Missing
+   field 'aggregateRating' (optional)") were exactly what's expected for a product with
+   no reviews yet — not a `gtin`/`mpn` issue as first guessed — and clear themselves once
+   a product has at least one approved review, which the JSON-LD now correctly reflects
+   via the new `review` array (see 2026-09-15's Done entry).
 
 5. **✅ Product Comparison Tool** — *implemented (2026-09-13).* `/compare?ids=1,5,12`,
    exactly the spec'd route shape. Zero schema change. See that date's Done entry.
