@@ -2643,7 +2643,7 @@ shims so call sites were untouched. <code>/api/settings</code>, <code>/api/categ
 <code>/api/labels</code> stay for their other callers (<code>SearchBar</code>, admin, &hellip;).</p>
 
 <h2 id="components">Component inventory</h2>
-<p><code>app/components/</code> (~60 files). Grouped by role:</p>
+<p><code>app/components/</code> (~70 files). Grouped by role:</p>
 <div class="grid2">
 <div>
 <h4>Layout / chrome</h4>
@@ -2921,7 +2921,7 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
 
 <h2 id="filemap">Directory map</h2>
 <pre><code>tohfastore/
-|- AGENTS.md / CLAUDE.md      "This is NOT the Next.js you know" + pointer to docs/ARCHITECTURE.html
+|- AGENTS.md / CLAUDE.md      "This is NOT the Next.js you know" + pointer to docs/HANDBOOK.html
 |- AGENT.md                  hard safety boundaries + refactor discipline
 |- IMPROVEMENTS.md           optimisation backlog (Done + Active)
 |- .github/workflows/ci.yml  tsc + npm test + next build on push/PR
@@ -2937,7 +2937,7 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
 |  |- loading.tsx / not-found.tsx
 |  |- sitemap.ts / robots.ts / manifest.ts / icon*.tsx / apple-*.tsx
 |  |- collections/[category]/page.tsx
-|  |- product/[id]/page.tsx  SSG+ISR(24h), canonical redirects, LiveStockProvider
+|  |- product/[id]/page.tsx  force-dynamic (SSR over unstable_cache), canonical redirects, LiveStockProvider
 |  |- catalogue|success|track|wishlist|about|contact|corporate|privacy|terms|refunds/page.tsx
 |  |- admin/page.tsx         client SPA shell (231 lines): auth gate + loadAll() + ?tab= sync + tab nav + AdminDataProvider
 |  |- admin/tabs/            all 8 tab bodies: Overview, Products, Orders, Coupons, Settings, Reviews, Blog, Security (#16 done; Blog added 2026-09-15)
@@ -2955,10 +2955,10 @@ OTPs going out) is visible immediately instead of via customer complaints.</p>
 |  |            chat-labels, whatsapp-numbers, whatsapp-numbers/reassign,
 |  |            order-notification-numbers, analytics, reports,
 |  |            whatsapp-enquiries, catalogue, upload, settings)
-|  |- components/            ~60 files (+ components/admin/*)
+|  |- components/            ~70 files (+ components/admin/*)
 |  |- context/              10 providers
 |  |- lib/supabase.ts        browser publishable client
-|  '- utils/                 ~47 modules (+ *.test.ts) - see §20; incl. stock.ts, apiError.ts
+|  '- utils/                 ~75 modules (+ *.test.ts) - see §20; incl. stock.ts, apiError.ts
 |- supabase/migrations/      0000 (reconstructed base) ... 0046 (hand-run SQL)
 |- scripts/                  migrate-product-images.mjs, cleanup-legacy-product-images.mjs
 |- public/                   icon.svg, logo-mark.png, ganesha.jpg, audio/welcome.mp3
@@ -2999,7 +2999,7 @@ side effects (WhatsApp / email / analytics) are <code>try/catch</code> + log, ne
 5xx bodies are generic via <code>serverErrorResponse</code>, 4xx messages are user-facing and fine;
 fail closed on missing security config;
 one shared constant over a &ldquo;keep in sync&rdquo; comment;
-<code>docs/ARCHITECTURE.html</code> (sections + a Change-log row) and the published artifact are updated
+<code>docs/HANDBOOK.html</code> (sections + a Change-log row) and the published artifact are updated
 <strong>before</strong> the batch is deployed &mdash; never after.</p>
 </div>
 
@@ -3206,6 +3206,23 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-29<br>12:00</code></td>
+  <td><strong>Docs: developer map + real README + stale-fact fixes</strong><br>(owner: &ldquo;refine or create documentation &hellip; precise &hellip; to scale, add features, fix bugs, change UI/UX&rdquo;)</td>
+  <td>
+    New <code>docs/DEVELOPER-MAP.md</code> &mdash; a short, greppable &ldquo;where do I change X?&rdquo; index
+    (UI/UX, catalogue, orders/payments, admin, infra), the mental model, condensed recipes and guardrails,
+    every file path verified to exist. <code>README.md</code> replaced (was create-next-app boilerplate) with
+    quick start, commands, CI/branch-protection note and a doc map. Fixed drift: CLAUDE.md/AGENTS.md said
+    &ldquo;40 migrations&rdquo; (now 0000&ndash;0067) and &ldquo;43 tests&rdquo; (now 412 across 34 files) and that
+    product pages are SSG (they are <code>force-dynamic</code>); handbook Directory map still pointed at
+    <code>docs/ARCHITECTURE.html</code> and called the product page SSG+ISR; component/util counts refreshed.
+    Docs only &mdash; no runtime code touched. Older Change-log rows that mention <code>docs/ARCHITECTURE.html</code>
+    are history and were left as written.
+  </td>
+  <td><code>README.md</code> &middot; <code>docs/DEVELOPER-MAP.md</code> &middot; <code>docs/HANDBOOK.html</code> &middot; <code>CLAUDE.md</code> &middot; <code>AGENTS.md</code></td>
+  <td>Every path in the map checked with <code>find</code>; <code>npm test</code> 412 passed / 1 skipped. No build needed (docs only). Handbook artifact <strong>not</strong> re-published yet.</td>
+</tr>
 <tr>
   <td><code>2026-09-15<br>18:00</code></td>
   <td><strong>Blog: share button + Instagram/Facebook post generator</strong><br>(owner: &ldquo;there should be a shareable button for blog post to allow sharing of them.. also is it possible to somehow convert the blog posts to instagram or facebook mobile first posts?&rdquo;)</td>

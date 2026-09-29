@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TOHFA — premium brass handicrafts store
 
-## Getting Started
+Single-store Indian e-commerce site. **Next.js 16 (App Router) · React 19 · TypeScript (strict) ·
+Tailwind v4 · Supabase (Postgres + Storage) · Razorpay · WhatsApp (MSG91 + Green API) · Vercel Hobby.**
 
-First, run the development server:
+> Next.js 16 differs from older versions. Read the relevant guide in
+> `node_modules/next/dist/docs/` before writing framework-level code.
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+# create .env.local — variable list: docs/HANDBOOK.html → Architecture → "Environment variables"
+npm run dev        # http://localhost:3000  (CSP is disabled in dev)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Task | Command |
+| --- | --- |
+| Typecheck | `npx tsc --noEmit` |
+| Unit tests (Vitest) | `npm test` — single file: `npx vitest run app/utils/<name>.test.ts` |
+| Production build | `npx next build` (route analysis + typecheck + SSG of product pages) |
+| Lint | `npm run lint` — has pre-existing debt; don't add new errors |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+CI (`.github/workflows/ci.yml`, check name `verify`) runs `tsc` + `npm test` + `next build`.
+`main` is branch-protected: work on a branch, open a PR, merge when `verify` is green.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Where to look
 
-## Learn More
+| I want to… | Read |
+| --- | --- |
+| **Find the file to change** for a feature, bug or UI tweak | [`docs/DEVELOPER-MAP.md`](docs/DEVELOPER-MAP.md) — start here |
+| Understand schema, RLS, every API route, checkout, caching (full reference + dated Change log) | `docs/HANDBOOK.html` (also served at `/handbook`) |
+| Know what I must not touch without sign-off (payments, RLS, paid services) | [`AGENT.md`](AGENT.md) |
+| Follow the working agreement (batch → verify → document → deploy) and code style | [`CLAUDE.md`](CLAUDE.md) |
+| See the optimisation backlog | [`IMPROVEMENTS.md`](IMPROVEMENTS.md) |
+| Read the design record for a specific subsystem | `docs/DESIGN-*.md` (theming, COD, stock reservation, checkout machine, admin split, bootstrap context) |
+| Run an audit or refactor | `.claude/skills/` (`audit-perf`, `audit-security`, `refactor`) |
 
-To learn more about Next.js, take a look at the following resources:
+`docs/ARCHITECTURE.html` is only a redirect stub to the handbook. `docs/PROJECT-STORY.html`,
+`ENGINEERING-OVERVIEW.html` and the `*-SUMMARY.md` files at the repo root are narrative/history,
+not the source of truth for how the code works today.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Repo at a glance
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/                 routes (App Router), components/, context/, utils/, admin/
+app/api/             Route Handlers (public, /api/admin/*, /api/cron/*)
+app/utils/           pure logic + server helpers, most with *.test.ts beside them
+proxy.ts             edge middleware: admin auth + CSRF guard + canonical redirects
+supabase/migrations/ hand-run, idempotent SQL (0000–0067)
+types/               db.ts (generated), tables.ts (Row/Insert/Update helpers)
+docs/                handbook + design records
+```
