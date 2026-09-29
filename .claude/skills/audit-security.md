@@ -74,13 +74,14 @@ payment-path items, anything 💰, anything needing a running app to prove.
 (no new errors). For RLS claims, state whether you actually ran the anon-key probe or
 only read the migrations.
 
-## 8. Document & recommend (mandatory close — docs gate the deploy)
+## 8. Docs sync & recommend (after the deploy — never a deploy gate)
 
-Do this *before* anything merges to `main` (see `CLAUDE.md` / `AGENT.md`).
+Do this *after* the code PR is merged, in a separate docs-only PR (see `CLAUDE.md` step 4).
+Never hold a deploy for it.
 
 - `docs/HANDBOOK.html`: affected sections + dated **Change log** row; check the §27
   playbook if a new kind of thing was added. Re-strip the skeleton, re-publish the
   artifact (`url`).
-- `IMPROVEMENTS.md`: shipped → Done; findings → Active with tier + 💰/⚠️ flags.
+- `IMPROVEMENTS.md`: shipped → top of `docs/IMPROVEMENTS-ARCHIVE.md`; findings → Active with tier + 💰/⚠️ flags.
 - End with a prioritised remediation list (severity × exploitability), deferred items and
   why, and any dependency upgrades to schedule.

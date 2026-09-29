@@ -76,17 +76,16 @@ trusting it. Don't present unverifiable payment-path changes as done.
 
 ## When you finish any batch
 
-Follow the SOP in `CLAUDE.md` → "batch → verify → document → deploy → recommend".
+Follow the SOP in `CLAUDE.md` → "batch → verify → deploy → docs sync → recommend".
 
 **One PR at a time.** Push a branch, wait for the owner to merge it, resync `main`, delete
 the branch — *then* start the next. Never open a second PR while one is pending: stacked
 branches all touch `IMPROVEMENTS.md` + the HANDBOOK.html Change log and conflict at the
 top of the same table. Ready work waits in a queue, not in a parallel branch.
 
-**The documentation step gates the deploy.** `docs/HANDBOOK.html` (affected sections
-+ a dated Change-log row), the re-published artifact, and `IMPROVEMENTS.md` are updated
-*before* the batch merges to `main` — never after, never "I'll document it later". A
-batch whose docs aren't current is not deployable. If a new kind of thing was added
-(route / migration / setting / notification / cron / admin tab), confirm its **§27
-playbook** in HANDBOOK.html still matches reality. Then re-verify the merged HEAD
-(`next build` + `npm test`) before pushing `main`.
+**Documentation never gates a deploy.** Code PRs carry code and tests only; the docs
+(`docs/HANDBOOK.html` sections + a dated Change-log row, `docs/DEVELOPER-MAP.md`, the
+re-published artifact, `IMPROVEMENTS.md` → archive) are synced afterwards in a separate
+docs-only PR — see step 4 of the working agreement in `CLAUDE.md`. No CI docs check, and an
+emergency fix ships first with nothing documented. Before merging, re-verify the merged
+HEAD (`next build` + `npm test`) as usual.

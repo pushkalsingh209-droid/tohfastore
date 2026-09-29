@@ -56,13 +56,13 @@ running app to verify.
 static/dynamic split and SSG count to the pre-change build) · `npx eslint <changed>` (no
 new errors).
 
-## 5. Document & recommend (mandatory close — docs gate the deploy)
+## 5. Docs sync & recommend (after the deploy — never a deploy gate)
 
-Do this *before* anything merges to `main`; a batch whose docs aren't current is not
-deployable (see `CLAUDE.md` / `AGENT.md`).
+Do this *after* the code PR is merged, in a separate docs-only PR (see `CLAUDE.md` step 4).
+Never hold a deploy for it.
 
 - Update `docs/HANDBOOK.html`: affected sections + a dated row in the **Change Log** tab (IST
   time, files, verification); if a new kind of thing was added, check its §27 playbook.
   Re-strip the skeleton and re-publish the artifact (pass its `url`).
-- Update `IMPROVEMENTS.md`: shipped → Done; new findings → Active with tier + flags.
+- Update `IMPROVEMENTS.md`: shipped → top of `docs/IMPROVEMENTS-ARCHIVE.md`; new findings → Active with tier + flags.
 - End with a prioritised "what next" list, including everything deferred and why.
