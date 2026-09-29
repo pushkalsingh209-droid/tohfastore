@@ -85,7 +85,7 @@ This is the standing SOP for any multi-change piece of work (the audit/refactor 
    (`https://claude.ai/code/artifact/7aa7da6c-f415-4e08-a840-669955210d9d`, pass as
    `url`) — `docs/HANDBOOK.html` is already in publish-ready form (its own `<title>` +
    `<style>` at the top, content directly, no `<!doctype>`/`<head>`/`<body>` wrapper), so
-   there is no skeleton to strip. Move shipped items to Done in `IMPROVEMENTS.md`.
+   there is no skeleton to strip. Move shipped items from `IMPROVEMENTS.md` to the top of `docs/IMPROVEMENTS-ARCHIVE.md`.
    **Never deploy a batch whose docs aren't already updated.** If token budget is too low
    to document properly, stop
    before deploying and say exactly what's undocumented.
