@@ -12,8 +12,8 @@ TOHFA — a single-store Indian e-commerce site (premium brass handicrafts + adj
 categories). Next.js 16 App Router · React 19 · TypeScript (strict) · Supabase
 (Postgres + Storage) · Razorpay payments · WhatsApp via Green API · Vercel (Hobby).
 
-**Read `docs/HANDBOOK.html` before any architectural change.** It is the full
-reference — schema + all 40 migrations, RLS model, every API route, checkout/payments,
+**Start with `docs/DEVELOPER-MAP.md` ("where do I change X?"), then read `docs/HANDBOOK.html` before any architectural change.** It is the full
+reference — schema + all migrations (0000–0067), RLS model, every API route, checkout/payments,
 caching strategy, admin panel, WhatsApp integration, gotchas, and a dated **Change log**.
 
 ## Commands
@@ -21,9 +21,9 @@ caching strategy, admin panel, WhatsApp integration, gotchas, and a dated **Chan
 | Task | Command |
 | --- | --- |
 | Dev server | `npm run dev` (http://localhost:3000, CSP disabled in dev) |
-| Production build | `npx next build` (route analysis + typecheck; ~2–4 min; SSGs 156 product pages) |
+| Production build | `npx next build` (route analysis + typecheck; ~2–4 min; product pages are force-dynamic, not prerendered) |
 | Typecheck only | `npx tsc --noEmit` |
-| Unit tests | `npm test` (Vitest; 43 tests — money math, signatures, TOTP, backup codes, client-IP) |
+| Unit tests | `npm test` (Vitest; ~410 tests across 34 files — money math, signatures, TOTP, checkout reducer, RLS probes, notifications…) |
 | Single test file | `npx vitest run app/utils/<name>.test.ts` |
 | Lint | `npm run lint` — **known to be non-clean** (pre-existing `no-explicit-any` /
   `set-state-in-effect` debt). Next 16 does **not** run ESLint during `next build`, so
