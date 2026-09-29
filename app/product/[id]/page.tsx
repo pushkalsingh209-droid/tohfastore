@@ -169,8 +169,16 @@ export async function generateMetadata({
     product.description?.slice(0, 155) ||
     `${product.name} — premium brass handicraft from TOHFA.`;
 
+  // Category in the title gives the page a keyword beyond the (often terse)
+  // product name -- "Lord Krishna | Idols | TOHFA" reads as a brass idol
+  // page in a results list, "Lord Krishna | TOHFA" doesn't. Skipped when the
+  // name already contains the category word, to avoid "Diya ... | Diyas".
+  const categoryInTitle =
+    product.category && !product.name.toLowerCase().includes(product.category.toLowerCase().replace(/s$/, ""))
+      ? ` | ${product.category}`
+      : "";
   return {
-    title: `${product.name} | TOHFA`,
+    title: `${product.name}${categoryInTitle} | TOHFA`,
     description,
     alternates: { canonical: productHref(product) },
     openGraph: {

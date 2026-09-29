@@ -8,7 +8,7 @@ import { GIFT_GUIDES } from "@/app/utils/giftGuides";
 const SITE_URL = "https://tohfaonline.com";
 
 const STATIC_PAGES = [
-  "", "/about", "/contact", "/privacy", "/terms", "/refunds", "/faq", "/wishlist", "/spotlight", "/refer",
+  "", "/about", "/contact", "/corporate", "/catalogue", "/privacy", "/terms", "/refunds", "/faq", "/spotlight",
   "/guides", ...GIFT_GUIDES.map((g) => `/guides/${g.slug}`),
   "/blog",
 ];
