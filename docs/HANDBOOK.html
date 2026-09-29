@@ -1110,8 +1110,8 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
     by rate, split by whether the buyer is in Uttarakhand), and <em>GST by state</em> for GSTR-1. Cancelled
     orders show in the Orders sheet but are left out of the GST totals. Then: revenue, average order value,
     repeat-purchase rate, monthly trend. Enquiry analytics (WhatsApp
-    "check availability" clicks by category / product / source). Recent leads. And <strong>three heartbeat
-    cards</strong> &mdash; keepalive, Green API session, abandoned-checkout cron. Green is healthy; amber
+    "check availability" clicks by category / product / source). Recent leads. And <strong>four heartbeat
+    cards</strong> &mdash; keepalive, Green API session, abandoned-checkout cron, review-reminder cron. Green is healthy; amber
     means that signal has gone stale (a dead scheduler, or the Green API instance dropped its session).
     A <strong>Documentation</strong> card (added 2026-09-01, grown as <code>/story</code>, <code>/engineering</code>,
     then <code>/handbook</code> shipped) links out to three references &mdash; the Engineering
@@ -1161,6 +1161,16 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
     <div class="note"><b>After refunding a test order</b>
     Set its status to <strong>Cancelled</strong>. A cancelled order is excluded from analytics, bestsellers,
     and the units-sold tally &mdash; so your real numbers stay clean.</div>
+    <div class="note"><b>Record an off-site sale (Manual order panel, top of the tab)</b>
+    For a sale closed outside the website &mdash; a WhatsApp chat ending in a payment link, a phone order,
+    a walk-in. Pick products + quantities, enter the customer's name and 10-digit mobile (email optional),
+    choose <strong>manual</strong> or <strong>COD</strong>, and optionally the <strong>amount actually
+    collected</strong>. It goes through the same fulfilment path as a website order, so stock drops, the
+    units-sold tally moves and the GST report shows real taxable value &mdash; without it such a sale lands
+    with an empty item list and zero taxable supply. Prices always come from the database (you choose products,
+    not prices). An amount <em>below</em> the items total is recorded as a discount; an amount <em>above</em> is
+    refused as a probable typo. Hidden products can be recorded (the sale already happened). &ldquo;Notify
+    customer&rdquo; is off unless you tick it.</div>
   </div>
 
   <div class="card">
@@ -1233,6 +1243,18 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
     photos/testimonials collected on the product page: <strong>Approve</strong> marks one safe to show,
     then <strong>Feature</strong> is what actually puts it on that product's page (only featured ones
     render there); <strong>Reject</strong> deletes permanently, same as a review.</p>
+  </div>
+
+  <div class="card">
+    <h4>Blog</h4>
+    <p>Posts are submitted by visitors at <code>/blog/submit</code> and are <strong>invisible until you approve
+    them</strong>. The tab has a <strong>Pending</strong> queue and a <strong>Live</strong> list. Expand a row to
+    edit the title, excerpt, category and body, attach <strong>linked products</strong> (searchable; shown with
+    the post), and optionally override the <strong>SEO title / meta description</strong> (blank = the defaults:
+    &ldquo;&lt;title&gt; | TOHFA Blog&rdquo; and the excerpt). <strong>Approve</strong> publishes it at
+    <code>/blog/&lt;slug&gt;</code> (and the RSS feed); <strong>Unpublish</strong> takes a live post down;
+    <strong>Reject</strong> (pending) / <strong>Delete</strong> (live) removes it permanently. Each live post page
+    also has a share button and an Instagram/Facebook post generator (caption + image) for promoting it.</p>
   </div>
 
   <div class="card">
@@ -2783,10 +2805,9 @@ same bearer auth. It recomputes the units-sold tally from every non-cancelled or
 drift from <code>product_sales</code>, and (with <code>?heal=1</code>) writes the corrected values back.</p>
 <p><code>/api/cron/review-reminder</code> is a <strong>fourth</strong> external-only route, same reasoning &mdash;
 once a day. WhatsApps a customer whose order's Delivered notify went out 7&ndash;30 days ago and hasn't been
-reminded before (migration 0052's <code>review_reminders_sent</code>, one row per order ever). <strong>Ships with
-no admin-visible heartbeat card</strong> (unlike the three above) &mdash; it does stamp
-<code>site_settings.last_review_reminder_run_at</code>, so wiring up a fourth Overview card later is cheap, just not
-done in the same batch as the route itself.</p>
+reminded before (migration 0052's <code>review_reminders_sent</code>, one row per order ever). It stamps
+<code>site_settings.last_review_reminder_run_at</code> and the Overview tab has a fourth heartbeat card for it
+(amber once the stamp is &gt; 30 h old, computed in <code>loadAll()</code> in <code>app/admin/page.tsx</code>).</p>
 </div>
 <p><code>/api/keepalive</code> stamps <code>site_settings.last_keepalive_at</code> on each run; the admin
 <strong>Overview</strong> tab reads it back and shows an amber &ldquo;Check&rdquo; badge once it is &gt; 90 min
@@ -3206,6 +3227,16 @@ Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-29<br>13:00</code></td>
+  <td><strong>Docs: owner-guide audit</strong></td>
+  <td>Audited the Admin &amp; Owner Guide against the admin UI and code. Found two undocumented features: the
+    <strong>Blog</strong> tab (moderation, linked products, SEO overrides, unpublish) and the Orders tab&rsquo;s
+    <strong>Manual order</strong> panel (off-site sales via <code>/api/admin/orders/manual</code>). Added both.
+    Corrected the Overview heartbeat cards (four, not three &mdash; review-reminder has had a card) and the cron section that said it had none. The settings table and runbook were read but not re-verified line by line against every code path.</td>
+  <td><code>docs/HANDBOOK.html</code></td>
+  <td>Read <code>BlogTab.tsx</code>, <code>ManualOrderPanel.tsx</code>, <code>api/admin/orders/manual/route.ts</code>; docs only, no build needed.</td>
+</tr>
 <tr>
   <td><code>2026-09-29<br>12:00</code></td>
   <td><strong>Docs: developer map + real README + stale-fact fixes</strong><br>(owner: &ldquo;refine or create documentation &hellip; precise &hellip; to scale, add features, fix bugs, change UI/UX&rdquo;)</td>
