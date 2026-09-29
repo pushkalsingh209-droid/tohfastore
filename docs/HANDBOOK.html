@@ -3228,6 +3228,13 @@ Newest first.</p>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
 <tr>
+  <td><code>2026-09-30<br>&mdash;</code></td>
+  <td><strong>Docs: archive shipped backlog items + tidy repo root</strong></td>
+  <td>Moved the 2,200-line &ldquo;Done&rdquo; section of <code>IMPROVEMENTS.md</code> (258&nbsp;KB &rarr; 77&nbsp;KB) verbatim into <code>docs/IMPROVEMENTS-ARCHIVE.md</code>; new Done entries now go at the top of the archive. Moved the three root-level <code>*-SUMMARY.md</code> history files into <code>docs/history/</code>. Updated the pointers in <code>CLAUDE.md</code> and <code>README.md</code>. Docs only.</td>
+  <td><code>IMPROVEMENTS.md</code> &middot; <code>docs/IMPROVEMENTS-ARCHIVE.md</code> (new) &middot; <code>docs/history/*</code> &middot; <code>CLAUDE.md</code> &middot; <code>README.md</code> &middot; <code>docs/HANDBOOK.html</code></td>
+  <td>Line counts checked; only reference to a moved file was inside the moved file itself. No build needed. Handbook artifact not re-published for this docs-only batch.</td>
+</tr>
+<tr>
   <td><code>2026-09-29<br>13:00</code></td>
   <td><strong>Docs: owner-guide audit</strong></td>
   <td>Audited the Admin &amp; Owner Guide against the admin UI and code. Found two undocumented features: the

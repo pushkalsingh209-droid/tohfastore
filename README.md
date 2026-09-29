@@ -32,12 +32,12 @@ CI (`.github/workflows/ci.yml`, check name `verify`) runs `tsc` + `npm test` + `
 | Understand schema, RLS, every API route, checkout, caching (full reference + dated Change log) | `docs/HANDBOOK.html` (also served at `/handbook`) |
 | Know what I must not touch without sign-off (payments, RLS, paid services) | [`AGENT.md`](AGENT.md) |
 | Follow the working agreement (batch → verify → document → deploy) and code style | [`CLAUDE.md`](CLAUDE.md) |
-| See the optimisation backlog | [`IMPROVEMENTS.md`](IMPROVEMENTS.md) |
+| See the optimisation backlog (active) / what already shipped | [`IMPROVEMENTS.md`](IMPROVEMENTS.md) / [`docs/IMPROVEMENTS-ARCHIVE.md`](docs/IMPROVEMENTS-ARCHIVE.md) |
 | Read the design record for a specific subsystem | `docs/DESIGN-*.md` (theming, COD, stock reservation, checkout machine, admin split, bootstrap context) |
 | Run an audit or refactor | `.claude/skills/` (`audit-perf`, `audit-security`, `refactor`) |
 
-`docs/ARCHITECTURE.html` is only a redirect stub to the handbook. `docs/PROJECT-STORY.html`,
-`ENGINEERING-OVERVIEW.html` and the `*-SUMMARY.md` files at the repo root are narrative/history,
+`docs/ARCHITECTURE.html` is only a redirect stub to the handbook. `docs/history/` holds old implementation summaries. `docs/PROJECT-STORY.html`,
+`ENGINEERING-OVERVIEW.html` and `docs/history/` are narrative/history,
 not the source of truth for how the code works today.
 
 ## Repo at a glance
