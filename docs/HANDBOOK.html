@@ -511,8 +511,8 @@
   &amp;&amp; git pull</code>, delete the branch, then start the next. <code>main</code> is branch-protected;
   a direct push is rejected and CI's <code>verify</code> check (<code>tsc</code> + <code>npm test</code> +
   <code>next build</code>) must pass. Documentation (this handbook's <strong>Architecture</strong> +
-  <strong>Change Log</strong> tabs &mdash; affected sections + a dated Change-log row) is updated
-  <em>before</em> the merge, never after. Full detail on the <strong>Developer Guide</strong> tab.</p>
+  <strong>Change Log</strong> tabs &mdash; affected sections + a dated Change-log row) is synced
+  <em>after</em> the deploy in a separate docs-only PR &mdash; it never gates a deploy. Full detail on the <strong>Developer Guide</strong> tab.</p>
 
   <div class="note"><b>Cost / liability guardrail</b>
   Nothing that incurs a paid service or plan, and nothing that changes the payment / order / webhook path in
@@ -938,15 +938,15 @@ docs/                        HANDBOOK.html (this -- the full reference; also ser
     <li><b>Verify.</b> <code>npx next build</code> (exit 0), <code>npx tsc --noEmit</code>, <code>npm test</code>,
     <code>npx eslint &lt;changed&gt;</code> (no new errors vs. the 0-error / 28-warning baseline). Report the
     real results. A payment-path change with no live Razorpay is a <em>proposal</em>, not done.</li>
-    <li><b>Document &mdash; this GATES the deploy.</b> Before merging: update this handbook &mdash; the
-    affected part of the <strong>Architecture</strong> tab, a new dated row at the top of the
-    <strong>Change Log</strong> tab (date/time IST, files touched, how verified), and any flow or guide that
-    changed. Re-publish the artifact. Move shipped
-    items to Done in <code>IMPROVEMENTS.md</code>.</li>
-    <li><b>Deploy</b> (only on the owner's word, only after step 3). <code>main</code> is branch-protected
+    <li><b>Deploy</b> (only on the owner's word). <code>main</code> is branch-protected
     &mdash; push the branch, open a PR, wait for the <code>verify</code> check (CI: <code>tsc</code> +
     <code>npm test</code> + <code>next build</code>), re-verify the merged HEAD, merge. Then sync main and
-    delete the branch.</li>
+    delete the branch. Code PRs carry code and tests only &mdash; documentation never gates or rides along
+    with a deploy, and an emergency fix ships with nothing documented.</li>
+    <li><b>Docs sync &mdash; after the deploy, separate docs-only PR</b> (internal step, not a gate): the affected
+    part of the <strong>Architecture</strong> tab, a dated row at the top of the <strong>Change Log</strong> tab,
+    <code>docs/DEVELOPER-MAP.md</code>, shipped items to the top of <code>docs/IMPROVEMENTS-ARCHIVE.md</code>,
+    then re-publish the artifact.</li>
     <li><b>Recommend.</b> End with a short prioritised "what next" &mdash; new issues, deferrals, follow-ups.
     Durable ones go into <code>IMPROVEMENTS.md</code>.</li>
   </ol>
@@ -3020,8 +3020,8 @@ side effects (WhatsApp / email / analytics) are <code>try/catch</code> + log, ne
 5xx bodies are generic via <code>serverErrorResponse</code>, 4xx messages are user-facing and fine;
 fail closed on missing security config;
 one shared constant over a &ldquo;keep in sync&rdquo; comment;
-<code>docs/HANDBOOK.html</code> (sections + a Change-log row) and the published artifact are updated
-<strong>before</strong> the batch is deployed &mdash; never after.</p>
+<code>docs/HANDBOOK.html</code> (sections + a Change-log row) and the published artifact are synced
+<strong>after</strong> the deploy, in a separate docs-only PR &mdash; documentation never gates or rides along with a deploy.</p>
 </div>
 
 <h3>Add a migration</h3>
@@ -3181,7 +3181,7 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
       order (fail closed).</li>
 </ul>
 
-<h3>Every batch, before deploy</h3>
+<h3>Every batch: ship, then sync the docs</h3>
 <ol class="steps">
   <li>Group related changes; keep the diff surgical. <strong>One PR open at a time</strong> &mdash; merge and
       resync <code>main</code> before branching the next batch; stacked branches collide in
@@ -3189,25 +3189,26 @@ one shared constant over a &ldquo;keep in sync&rdquo; comment;
   <li>Verify: <code>npx next build</code> (exit 0), <code>npx tsc --noEmit</code>, <code>npm test</code>,
       <code>npx eslint &lt;changed&gt;</code> (no <em>new</em> errors vs. the pre-existing baseline). Report the
       real output.</li>
-  <li><strong>Update the docs &mdash; this gates the deploy.</strong> Edit the affected &sect; sections
-      <em>and</em> add a dated Change-log row (IST time, files, how verified). Re-publish the handbook
-      artifact (<code>https://claude.ai/code/artifact/7aa7da6c-f415-4e08-a840-669955210d9d</code>, pass as
-      <code>url</code>) &mdash; this file is already in publish-ready form (its own <code>&lt;title&gt;</code>
-      + <code>&lt;style&gt;</code> at the top, content directly, no
-      <code>&lt;!doctype&gt;</code>/<code>&lt;head&gt;</code>/<code>&lt;body&gt;</code> wrapper), so there is
-      no skeleton to strip. Move shipped items to Done in <code>IMPROVEMENTS.md</code>.</li>
-  <li>Only then ship. <code>main</code> is branch-protected &mdash; a direct <code>git push origin main</code> is
+  <li>Ship. <code>main</code> is branch-protected &mdash; a direct <code>git push origin main</code> is
       rejected (<code>GH013 &hellip; Required status check "verify"</code>). Push the branch, open a PR, wait for
       the <code>verify</code> check green, re-verify the merged HEAD (<code>next build</code> + <code>npm test</code>),
       then merge the PR. Vercel deploys from the merge commit. (<code>gh</code> is not installed in the working
-      environment &mdash; push the branch and have the owner merge, or hit the API with a token.)</li>
+      environment &mdash; push the branch and have the owner merge, or hit the API with a token.) Code PRs carry
+      code and tests only; no docs edits, and no docs check in CI. An emergency fix ships with nothing documented.</li>
+  <li><strong>Docs sync &mdash; after the deploy, in a separate docs-only PR</strong> (an internal step, not a gate; several
+      shipped changes can be batched). Edit the affected &sect; sections, add a dated Change-log row (IST time, files,
+      how verified), move shipped items from <code>IMPROVEMENTS.md</code> to the top of
+      <code>docs/IMPROVEMENTS-ARCHIVE.md</code>, and keep <code>docs/DEVELOPER-MAP.md</code> current. Re-publish the
+      handbook artifact (<code>https://claude.ai/code/artifact/7aa7da6c-f415-4e08-a840-669955210d9d</code>, pass as
+      <code>url</code>) &mdash; the file is already in publish-ready form (no doctype/head/body wrapper).
+      A docs PR never holds up a pending code change.</li>
   <li>End with a short prioritised &ldquo;what next&rdquo; list; feed anything durable into
       <code>IMPROVEMENTS.md</code>.</li>
 </ol>
 
 <footer class="end">
 End of reference. When you change the schema, a route contract, the caching strategy, or the checkout flow, update
-the matching section here <strong>in the same batch, before it deploys</strong>. This file is fully self-contained
+the matching section here <strong>afterwards, in a docs-only PR (never as a deploy gate)</strong>. This file is fully self-contained
 &mdash; no CDN, no scripts, no external assets.
 </footer>
 </div>
@@ -3221,12 +3222,19 @@ the matching section here <strong>in the same batch, before it deploys</strong>.
   <span style="font-family:var(--font-mono);font-size:15px;color:var(--accent)">&#9633;&nbsp;&nbsp;</span>Change log
 </h2>
 <p>Every batch of code changes is recorded here with a timestamp, the files touched, and how it was verified.
-<strong>Updating this file (the affected sections + a new row here) and re-publishing the artifact is a
-precondition for deploying the batch &mdash; done before the merge to <code>main</code>, never after.</strong>
+<strong>This file is synced after a batch is deployed, in a separate docs-only PR &mdash; it is never a
+precondition for a deploy, so an emergency fix can ship first.</strong>
 Newest first.</p>
 <div class="x"><table>
 <thead><tr><th style="white-space:nowrap">When (IST)</th><th>Batch</th><th>Changes</th><th>Files</th><th>Verified</th></tr></thead>
 <tbody>
+<tr>
+  <td><code>2026-09-30<br>&mdash;</code></td>
+  <td><strong>Process: docs no longer gate deploys</strong><br>(owner: don&rsquo;t disturb deployment; no docs or docs checks in code PRs; keep docs current through an internal process instead)</td>
+  <td>Working agreement changed from <em>batch&rarr;verify&rarr;document&rarr;deploy</em> to <em>batch&rarr;verify&rarr;deploy&rarr;docs sync&rarr;recommend</em>. Code PRs carry code and tests only; no CI docs check exists or is planned; an emergency fix ships with nothing documented. Docs are synced afterwards as an internal step in a separate docs-only PR that never holds up a code change. Reworded in <code>CLAUDE.md</code>, <code>AGENT.md</code>, the three <code>.claude/skills/</code> SOPs and this handbook (Overview, Developer Guide, &sect;27 playbook, Change Log intro, footer).</td>
+  <td><code>CLAUDE.md</code> &middot; <code>AGENT.md</code> &middot; <code>.claude/skills/*.md</code> &middot; <code>docs/HANDBOOK.html</code></td>
+  <td>Docs/process only; no code, CI or deploy configuration touched. Older Change-log rows that say docs &ldquo;gate the deploy&rdquo; are history.</td>
+</tr>
 <tr>
   <td><code>2026-09-30<br>&mdash;</code></td>
   <td><strong>Docs: archive shipped backlog items + tidy repo root</strong></td>

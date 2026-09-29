@@ -50,15 +50,16 @@ No dev server / no live Supabase-Razorpay-Green API ⇒ the change is a **propos
 present the diff, the call-site list, and exactly what a human must exercise before
 trusting it (which page, which admin action, which webhook). Don't mark it done.
 
-## 5. Document & recommend (mandatory close — docs gate the deploy)
+## 5. Docs sync & recommend (after the deploy — never a deploy gate)
 
-Do this *before* anything merges to `main` (see `CLAUDE.md` / `AGENT.md`).
+Do this *after* the code PR is merged, in a separate docs-only PR (see `CLAUDE.md` step 4).
+Never hold a deploy for it.
 
 - `docs/HANDBOOK.html`: update any section the structure change affects (file map,
   utils table, module names, §27 playbooks) + a dated row in the **Change Log** tab (IST time,
   files, how verified). Re-strip the skeleton and re-publish the artifact (pass its
   `url`).
-- `IMPROVEMENTS.md`: shipped item → Done; any new duplication/complexity you noticed →
+- `IMPROVEMENTS.md`: shipped item → top of `docs/IMPROVEMENTS-ARCHIVE.md`; any new duplication/complexity you noticed →
   Active.
 - End with a short prioritised list: the next safe refactor, anything you had to leave
   because quirks differed, anything that wants a running app.
