@@ -65,12 +65,17 @@ export async function getStorefrontMetadata(category: string): Promise<Metadata>
   const images = [categoryImage ? { url: categoryImage } : DEFAULT_OG_IMAGE];
 
   if (!content) {
+    // A category with no hand-written copy (a newly added one) still gets its
+    // own title/description rather than the homepage's -- a duplicate of the
+    // homepage's title on every such collection page competes with it in
+    // search. Written copy in categoryContent.ts is better; this is the floor.
+    const title = `${category} -- Handcrafted Collection | TOHFA`;
+    const description = `Shop TOHFA's ${category} collection -- handcrafted pieces for the home, puja and gifting.`;
     return {
-      title: "TOHFA | Crafted Traditions, Timeless Gifts",
-      description:
-        "Exquisite handcrafted brass decor, vintage utensils, and premium corporate gifting items -- plus pocket temples, pan stands, board games, polyresin decor, and UV resin earrings.",
+      title,
+      description,
       alternates: { canonical },
-      openGraph: { images },
+      openGraph: { title, description, images },
     };
   }
 

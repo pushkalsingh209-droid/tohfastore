@@ -18,6 +18,60 @@ export interface CategoryContent {
 }
 
 export const CATEGORY_CONTENT: Record<string, CategoryContent> = {
+  Idols: {
+    heading: "Brass Idols",
+    tagline: "Lightweight Brass Deity Statues",
+    intro:
+      "Ganesha, Lakshmi, Durga, Kali, Krishna, Hanuman, Kuber and more -- lightweight brass idols with fine hand-finished detail, from compact 2-inch pieces for a desk or car to large statement idols for the puja room.",
+    metaTitle: "Brass Idols -- Ganesha, Lakshmi, Durga, Krishna & More | TOHFA",
+    metaDescription:
+      "Shop lightweight brass idols for the home mandir and gifting -- Ganesha, Lakshmi, Durga, Kali, Krishna, Hanuman and more, in sizes from 2 inches up.",
+  },
+  Diyas: {
+    heading: "Brass Diyas",
+    tagline: "Peacock, Elephant & Gajraj Diyas",
+    intro:
+      "Handcrafted brass diyas in peacock, elephant, turtle and gajraj designs -- small enough for the daily puja thali, finished well enough to gift at Diwali.",
+    metaTitle: "Brass Diyas -- Peacock, Elephant & Gajraj Designs | TOHFA",
+    metaDescription:
+      "Shop handcrafted brass diyas in peacock, elephant, turtle and gajraj designs -- for daily puja, Diwali and gifting.",
+  },
+  Lamps: {
+    heading: "Brass Lamps",
+    tagline: "Premium Brass Puja Lamps",
+    intro:
+      "Tall premium brass lamps, around 11-12 inches, with peacock and traditional designs -- a centrepiece for the puja room or a substantial gift.",
+    metaTitle: "Premium Brass Lamps for Puja & Gifting | TOHFA",
+    metaDescription:
+      "Shop premium brass puja lamps, 11-12 inches tall, in peacock and traditional designs -- a centrepiece for the mandir or a gift that lasts.",
+  },
+  Lotas: {
+    heading: "Brass Lotas",
+    tagline: "Ashtlakshmi Lotas",
+    intro:
+      "Ashtlakshmi lotas in lightweight brass -- the eight forms of Lakshmi worked into the vessel -- in small, medium and large sizes for puja, Griha Pravesh and gifting.",
+    metaTitle: "Ashtlakshmi Brass Lotas -- Small, Medium & Large | TOHFA",
+    metaDescription:
+      "Shop Ashtlakshmi lotas in lightweight brass, in small, medium and large sizes -- for puja, housewarming and gifting.",
+  },
+  Gifts: {
+    heading: "Brass Gifts",
+    tagline: "Statues, Bells & Décor to Give",
+    intro:
+      "Giftable brass pieces -- Radha Krishna, Natraj, Lakshmi Ganesha Saraswati panels, Kamdhenu, bells, camels and elephants -- chosen for housewarmings, weddings and festivals.",
+    metaTitle: "Brass Gifts -- Statues, Bells & Décor for Every Occasion | TOHFA",
+    metaDescription:
+      "Shop giftable brass statues, bells and decor -- Radha Krishna, Natraj, Lakshmi Ganesha Saraswati and more -- for housewarmings, weddings and festivals.",
+  },
+  "Wall Hanging": {
+    heading: "Wall Hangings",
+    tagline: "Lakshmi Ganesha Saraswati Wall Hangings",
+    intro:
+      "Brass wall hangings featuring Lakshmi, Ganesha and Saraswati -- an auspicious focal point for an entrance, living room or puja wall.",
+    metaTitle: "Brass Wall Hangings -- Lakshmi Ganesha Saraswati | TOHFA",
+    metaDescription:
+      "Shop brass wall hangings of Lakshmi, Ganesha and Saraswati -- an auspicious focal point for the entrance, living room or puja wall.",
+  },
   "Pocket Temples": {
     heading: "Pocket Temples",
     tagline: "Foldable Deity Photo Frames",
