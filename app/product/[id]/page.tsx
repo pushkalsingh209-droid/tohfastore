@@ -267,6 +267,14 @@ export default async function ProductDetailPage({
         image: getProductGallery(product).length > 0 ? getProductGallery(product) : undefined,
         sku: String(product.id),
         category: product.category || undefined,
+        // Only emitted when the admin has filled them in (undefined drops the
+        // key from the JSON) -- never guessed, so the markup can't claim a
+        // material or weight the product page doesn't also state.
+        material: product.material?.trim() || undefined,
+        weight:
+          Number(product.weight_g) > 0
+            ? { "@type": "QuantitativeValue", value: Number(product.weight_g), unitCode: "GRM" }
+            : undefined,
         brand: { "@type": "Brand", name: "TOHFA" },
         ...(reviews.length > 0
           ? {
