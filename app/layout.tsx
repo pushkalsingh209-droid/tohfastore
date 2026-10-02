@@ -41,9 +41,21 @@ export const metadata: Metadata = {
   // openGraph (a product photo, a category's representative product) --
   // without this, sharing the homepage or a static page like /about on
   // WhatsApp showed no preview thumbnail at all.
+  // Lets Google show large image previews and full snippets for product
+  // and blog pages (the product photo is the main thing a shopper clicks on
+  // in results). These are the permissive defaults Google already assumes
+  // for most pages -- stating them explicitly guards against a stricter
+  // default, and a page that sets its own `robots` (e.g. /compare noindex)
+  // still overrides this.
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
+  },
   openGraph: {
     siteName: "TOHFA",
     type: "website",
+    locale: "en_IN",
     images: [DEFAULT_OG_IMAGE],
   },
   appleWebApp: {
