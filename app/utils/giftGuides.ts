@@ -231,6 +231,62 @@ export const GIFT_GUIDES: GiftGuide[] = [
       { category: "Gifts", heading: "Brass Gifts", blurb: "Statues and décor pieces chosen for giving." },
     ],
   },
+  {
+    slug: "car-dashboard-deity-gifts",
+    eyebrow: "Guide",
+    title: "Car Dashboard Deity Ideas: Pocket Temples & Pan Frames",
+    metaTitle: "Car Dashboard Deity Frames & Pocket Temples — Gift Ideas | TOHFA",
+    metaDescription:
+      "Compact deity frames for the car dashboard: foldable pocket temples and gold or silver pan-shaped photo frames — Ganesha, Hanuman, Durga, Sai and more.",
+    intro:
+      "Many drivers keep a small deity on the dashboard for a safe journey. The pieces below are made for exactly that — compact, light and easy to place.",
+    body: [
+      "A foldable pocket temple closes flat and slips into a bag or glove box, then opens into a small altar. A pan-shaped frame, in a gold or silver finish, stands on the dashboard or a desk. Ganesha, Hanuman, Durga, Sai and Lakshmi are the most requested forms.",
+      "Both make easy gifts for someone buying a first car, starting a new job or beginning a long journey. All in stock and shipped across India with a GST invoice.",
+    ],
+    sections: [
+      { category: "Pocket Temples", heading: "Foldable Pocket Temples", blurb: "Folds flat for the bag or glove box, opens into a small altar." },
+      { category: "Pan Stands", heading: "Pan-Leaf Deity Frames", blurb: "Gold and silver finish frames for the dashboard or a desk." },
+    ],
+  },
+  {
+    slug: "return-gifts-under-1000",
+    eyebrow: "Gift Guide",
+    title: "Return Gift Ideas Under ₹1000",
+    metaTitle: "Return Gift Ideas Under ₹1000 — Deity Frames & Pocket Temples | TOHFA",
+    metaDescription:
+      "Traditional return gifts at a modest budget: pan-shaped deity frames, foldable pocket temples and small Ganesha figures — meaningful gifts you can give in numbers.",
+    intro:
+      "A good return gift is small, meaningful and easy to give in numbers. These are priced for exactly that, without feeling like an afterthought.",
+    body: [
+      "Deity frames and pocket temples are a traditional choice for a housewarming, a wedding, a puja or a festival gathering: they pack flat, arrive undamaged and are used every day. A small Ganesha figure is a classic add-on.",
+      "All in stock and shipped across India with a GST invoice. For larger orders, see our corporate and bulk gifting page.",
+    ],
+    sections: [
+      { category: "Pan Stands", heading: "Pan-Leaf Deity Frames", blurb: "Gold and silver finish frames — a considered gift at a small price." },
+      { category: "Pocket Temples", heading: "Pocket Temples", blurb: "Foldable and light — easy to wrap and post in numbers." },
+      { category: "Polyresin", heading: "Small Polyresin Figures", blurb: "A compact figure to round out a gift set." },
+    ],
+  },
+  {
+    slug: "compact-puja-mandir-for-small-spaces",
+    eyebrow: "Guide",
+    title: "A Compact Puja Mandir for Small Homes and Rented Flats",
+    metaTitle: "Compact Puja Mandir for Small Homes & Flats — Pocket Temples & Diyas | TOHFA",
+    metaDescription:
+      "Setting up a small puja corner in a flat or hostel: foldable pocket temples, pan-shaped deity frames and brass diyas that fit a shelf or a desk.",
+    intro:
+      "A mandir does not need a room. A shelf, a lit diya and a deity you love is a complete place of worship.",
+    body: [
+      "For a rented flat, a hostel room or a work desk, start small: a foldable pocket temple of your chosen deity, a pan-shaped frame beside it and a brass diya for the evening. Everything packs away when you move and unfolds again in the next home.",
+      "All in stock and shipped across India with a GST invoice. When you have the space, a brass idol and lamp can take their place beside it.",
+    ],
+    sections: [
+      { category: "Pocket Temples", heading: "Pocket Temples", blurb: "A complete small altar that folds flat." },
+      { category: "Pan Stands", heading: "Pan-Leaf Deity Frames", blurb: "A deity portrait for a shelf or desk." },
+      { category: "Diyas", heading: "Brass Diyas", blurb: "The evening lamp for a small puja corner." },
+    ],
+  },
 ];
 
 export function findGiftGuide(slug: string): GiftGuide | undefined {
