@@ -132,6 +132,10 @@ export default function ProductGallery({
   const filterPausedRef = useRef(false);
 
   const gallery = images.length > 0 ? images : [];
+  // Distinct alt per photo (the first keeps the plain name): identical alt
+  // text on every angle of one product reads as repetition to image search
+  // and to screen-reader users, and tells neither what the extra shot adds.
+  const altFor = (i: number) => (i === 0 ? productName : `${productName} - photo ${i + 1}`);
   const hasMultiple = gallery.length > 1;
 
   useEffect(() => {
@@ -522,11 +526,11 @@ export default function ProductGallery({
         <div className="gallery-zoom-image w-full h-full" style={zoomWrapperStyle}>
           <div className={`flip-card-inner ${isFlipped ? "is-flipped" : ""} ${flip3dLive ? "flip-3d-live" : ""}`}>
             <div className="flip-face">
-              <Image src={gallery[currentIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} priority={priority} />
+              <Image src={gallery[currentIndex]} alt={altFor(currentIndex)} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} priority={priority} />
             </div>
             <div className="flip-face flip-face-back">
               {everActivated && (
-                <Image src={gallery[backIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
+                <Image src={gallery[backIndex]} alt={altFor(backIndex)} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
               )}
             </div>
           </div>
@@ -574,10 +578,10 @@ export default function ProductGallery({
           }}
         >
           <div className="gallery-slide-item relative">
-            <Image src={gallery[firstSlotIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
+            <Image src={gallery[firstSlotIndex]} alt={altFor(firstSlotIndex)} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
           </div>
           <div className="gallery-slide-item relative">
-            <Image src={gallery[secondSlotIndex]} alt={productName} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
+            <Image src={gallery[secondSlotIndex]} alt={altFor(secondSlotIndex)} fill sizes={imageSizes} className={objectFitClass} style={{ filter: currentFilter.css }} />
           </div>
         </div>
       </div>

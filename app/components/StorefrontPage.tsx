@@ -16,6 +16,8 @@ import ExitIntentPopup from "@/app/components/ExitIntentPopup";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
 import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
 import { getCategoryContent } from "@/app/utils/categoryContent";
+import { getCategoryFaqs } from "@/app/utils/categoryFaqs";
+import CategoryFaqSection from "@/app/components/CategoryFaqSection";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
 import {
   getCatalogPage,
@@ -347,6 +349,17 @@ export default async function StorefrontPage({
             revealBatchSize={siteSettings.catalogRevealBatchSize}
           />
         </div>
+
+        {/* Category FAQs (already shown on product pages) -- real, crawlable
+            answers on the page that targets the category's own search terms.
+            No FAQPage JSON-LD on purpose: Google limits FAQ rich results to
+            authoritative government/health sites, so the markup would add
+            nothing for a store. */}
+        {category && getCategoryFaqs(category).length > 0 && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10">
+            <CategoryFaqSection category={category} faqs={getCategoryFaqs(category)} />
+          </div>
+        )}
 
         {bestsellers.length > 0 && <BestsellersStrip items={bestsellers} />}
 

@@ -418,7 +418,10 @@ export default async function ProductDetailPage({
             <div className="md:w-1/2 rounded-lg overflow-hidden border border-border shadow-sm bg-white">
               <ProductGallery
                 images={getProductGallery(product)}
-                productName={product.name}
+                // Name plus material (else category) for the image alt text --
+                // "Lord Krishna (Lightweight Brass)" says more to image search
+                // than the terse name alone. Used only for alt/lightbox labels.
+                productName={`${product.name.trim()}${product.material?.trim() || product.category ? ` (${product.material?.trim() || product.category})` : ""}`}
                 active={true}
                 zoomable={true}
                 size="detail"
