@@ -67,7 +67,9 @@ export default async function BlogPostPage({
 
   const articleJsonLd = {
     "@context": "https://schema.org",
-    "@type": "Article",
+    // BlogPosting is the more specific schema.org subtype of Article for a
+    // /blog post (guides under /guides stay plain Article).
+    "@type": "BlogPosting",
     headline: post.title,
     description: post.excerpt,
     image: [post.cover_image_url],
