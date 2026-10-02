@@ -129,7 +129,9 @@ export const CATEGORY_FAQS: Record<string, CategoryFaqItem[]> = {
         "The resin itself is hypoallergenic. Earring posts vary by design. If you have sensitive ears, please check individual product details for post materials (stainless steel, surgical, etc.).",
     },
   ],
-  "Polyresin Collectibles": [
+  // Keyed to the exact category name in Supabase ("Polyresin"); this was
+  // "Polyresin Collectibles", which never matched, so the FAQ never rendered.
+  Polyresin: [
     {
       question: "What is polyresin?",
       answer:
@@ -144,6 +146,71 @@ export const CATEGORY_FAQS: Record<string, CategoryFaqItem[]> = {
       question: "Are these collectible pieces valuable?",
       answer:
         "Our polyresin collectibles are valued for their craftsmanship, artistry, and uniqueness. They make wonderful display pieces and conversation starters in homes and offices.",
+    },
+  ],
+  Lotas: [
+    {
+      question: "What is an Ashtlakshmi lota?",
+      answer:
+        "An Ashtlakshmi lota has the eight forms of Goddess Lakshmi worked into the vessel. It is used for holding water in puja, for the kalash at Griha Pravesh, and is a popular auspicious gift.",
+    },
+    {
+      question: "How do I clean and polish a brass lota?",
+      answer:
+        "Rub with a paste of lemon juice and salt (or tamarind and water), rinse well and dry with a soft cloth. Brass takes on a warm patina with age and can always be polished back to a shine.",
+    },
+    {
+      question: "Can I drink water from a brass lota?",
+      answer:
+        "Brass lotas are traditionally used in puja. For daily drinking, keep the inside clean and bright, and follow the care guidance for the specific piece you buy.",
+    },
+  ],
+  Gifts: [
+    {
+      question: "Which brass gift suits a housewarming or wedding?",
+      answer:
+        "Radha Krishna, Lakshmi Ganesha Saraswati panels and Kamdhenu pieces are traditional auspicious choices for a new home or wedding. Our gift guides list ideas by occasion.",
+    },
+    {
+      question: "Do you offer gifting in bulk?",
+      answer:
+        "Yes. For staff, client or wedding gifting in numbers, see our corporate gifting page or contact us on WhatsApp for bulk pricing.",
+    },
+  ],
+  "Wall Hanging": [
+    {
+      question: "Where should I hang a Lakshmi Ganesha Saraswati wall hanging?",
+      answer:
+        "Traditionally near the entrance, in the living room, or on the puja wall, at about eye level. Choose a clean, uncluttered wall.",
+    },
+    {
+      question: "How do I care for a brass wall hanging?",
+      answer:
+        "Dust with a soft dry cloth. To restore shine, wipe gently with a lemon-and-salt paste, rinse and dry thoroughly. Keep away from damp walls.",
+    },
+  ],
+  "Pan Stands": [
+    {
+      question: "What is a pan stand photo frame?",
+      answer:
+        "A gold- or silver-plated photo frame cut in the traditional pan (betel leaf) shape, for keeping a favourite deity's photo on a shelf, altar or office desk.",
+    },
+    {
+      question: "Does the photo come with the frame?",
+      answer:
+        "Please check the individual product page for what is included, or message us on WhatsApp before ordering.",
+    },
+  ],
+  Misc: [
+    {
+      question: "What chess sets do you have?",
+      answer:
+        "Sleek modern aluminium sets and classic weighted brass sets. Each product page lists the size and finish.",
+    },
+    {
+      question: "Are the brass chess pieces weighted?",
+      answer:
+        "Classic brass pieces are heavier than plastic or wood for a stable, premium feel. See the individual listing for dimensions and weight.",
     },
   ],
 };

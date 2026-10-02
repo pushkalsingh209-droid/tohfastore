@@ -173,8 +173,28 @@ export default async function StorefrontPage({
       }
     : null;
 
+  // Tells Google this URL is a category listing page (not a product or an
+  // article); the ItemList above is the list itself. Category pages only --
+  // the homepage is not a collection.
+  const collectionJsonLd = category
+    ? {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: categoryContent?.heading || category,
+        description: categoryContent?.metaDescription || undefined,
+        url: `https://tohfaonline.com${categoryHref(category)}`,
+        isPartOf: { "@type": "WebSite", name: "TOHFA", url: "https://tohfaonline.com" },
+      }
+    : null;
+
   return (
     <div className="bg-bg min-h-screen flex flex-col justify-between transition-colors">
+      {collectionJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+        />
+      )}
       {/* Structured data so search engines can read the current listing as a
           proper product list, not just a page of text/images. */}
       <script

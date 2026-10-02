@@ -14,23 +14,12 @@ const STATIC_PAGES = [
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // No lastModified on static pages: `new Date()` would claim every page
+  // changed at every crawl, and Google stops trusting <lastmod> from a site
+  // that does that. Omitting it is valid; an honest date or none. (Google
+  // also ignores changeFrequency/priority, so those are not emitted.)
   const staticEntries: MetadataRoute.Sitemap = STATIC_PAGES.map((path) => ({
     url: `${SITE_URL}${path}`,
-    lastModified: new Date(),
-    changeFrequency: path === "" ? "daily" : "monthly",
-    priority: path === "" ? 1 : 0.5,
-  }));
-
-  // One URL per category so each gets crawled and indexed on its own --
-  // every admin-managed category, not just the ones with hand-written SEO
-  // copy (see categoryContent.ts), since every category still has its own
-  // real /collections/<slug> URL.
-  const allCategoryNames = await getAllCategoryNames();
-  const categoryEntries: MetadataRoute.Sitemap = allCategoryNames.map((name) => ({
-    url: `${SITE_URL}${categoryHref(name)}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly",
-    priority: 0.7,
   }));
 
   const blogSlugs = await getApprovedBlogSlugs();
@@ -45,25 +34,39 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return {
       url: `${SITE_URL}/blog/${post.slug}`,
       lastModified,
-      changeFrequency: "monthly",
-      priority: 0.5,
     };
   });
 
   let productEntries: MetadataRoute.Sitemap = [];
+  // Newest product per category, used as that category page's lastmod (the
+  // page's content changes when a product is added to it). products has no
+  // updated_at column, so created_at is the only honest timestamp available.
+  const newestByCategory = new Map<string, Date>();
   try {
-    const { data, error } = await supabase.from("products").select("id, name, created_at").eq("hidden", false);
+    const { data, error } = await supabase.from("products").select("id, name, category, created_at").eq("hidden", false);
     if (!error && data) {
-      productEntries = data.map((product) => ({
-        url: `${SITE_URL}${productHref(product)}`,
-        lastModified: product.created_at ? new Date(product.created_at) : new Date(),
-        changeFrequency: "weekly",
-        priority: 0.8,
-      }));
+      productEntries = data.map((product) => {
+        const created = product.created_at ? new Date(product.created_at) : undefined;
+        if (created && product.category) {
+          const prev = newestByCategory.get(product.category);
+          if (!prev || created > prev) newestByCategory.set(product.category, created);
+        }
+        return { url: `${SITE_URL}${productHref(product)}`, lastModified: created };
+      });
     }
   } catch (err) {
     console.error("Failed to build product sitemap entries:", err);
   }
+
+  // One URL per category so each gets crawled and indexed on its own --
+  // every admin-managed category, not just the ones with hand-written SEO
+  // copy (see categoryContent.ts), since every category still has its own
+  // real /collections/<slug> URL.
+  const allCategoryNames = await getAllCategoryNames();
+  const categoryEntries: MetadataRoute.Sitemap = allCategoryNames.map((name) => ({
+    url: `${SITE_URL}${categoryHref(name)}`,
+    lastModified: newestByCategory.get(name),
+  }));
 
   return [...staticEntries, ...categoryEntries, ...productEntries, ...blogEntries];
 }
