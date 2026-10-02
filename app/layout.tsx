@@ -119,7 +119,7 @@ export default async function RootLayout({
   // GET /api/settings) -- see docs/DESIGN-bootstrap-context.md (#11).
   const bootstrap = await getBootstrapData();
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en-IN" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ResourceHints />

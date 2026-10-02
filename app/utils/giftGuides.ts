@@ -189,6 +189,48 @@ export const GIFT_GUIDES: GiftGuide[] = [
       { category: "Pocket Temples", heading: "Pocket Temples", blurb: "A compact mandir for a small space or a desk." },
     ],
   },
+  {
+    slug: "navratri-durga-puja-gifts",
+    eyebrow: "Gift Guide",
+    title: "Navratri & Durga Puja Gift Ideas",
+    metaTitle: "Navratri & Durga Puja Gifts — Brass Durga Idols, Diyas & Lamps | TOHFA",
+    metaDescription:
+      "Navratri and Durga Puja gift ideas: handcrafted brass Durga and Kali idols, diyas, oil lamps and lotas — auspicious gifts for the nine nights and Dussehra.",
+    intro:
+      "For Navratri the gift that fits is something that joins the puja itself — a brass Durga idol for the mandir, a lamp for the nine nights, a lota for the kalash.",
+    body: [
+      "Navratri is a festival of daily ritual, so the most useful gifts are the ones used every evening: a diya or oil lamp that stays lit through the nine nights, a lota for the kalash sthapana, and for the home mandir a brass Durga or Kali idol with fine hand-finished detail. Brass lasts for decades and polishes back to a shine each year.",
+      "All in stock and shipped across India with a GST invoice. Gifting to a large family or an office? The pocket temples and diyas are the easiest to give in numbers; see our corporate gifting page for bulk orders.",
+    ],
+    sections: [
+      { category: "Idols", heading: "Brass Idols", blurb: "Durga, Kali, Lakshmi and more — the centrepiece for the nine nights." },
+      { category: "Diyas", heading: "Diyas", blurb: "Brass diyas for the daily aarti through Navratri." },
+      { category: "Lamps", heading: "Oil Lamps", blurb: "Taller lamps for the prayer corner, lit morning and evening." },
+      { category: "Lotas", heading: "Brass Lotas", blurb: "For the kalash and the daily pooja thali." },
+      { category: "Pocket Temples", heading: "Pocket Temples", blurb: "Foldable deity frames — easy to wrap, easy to give in numbers." },
+    ],
+  },
+  {
+    slug: "dhanteras-gifts",
+    eyebrow: "Gift Guide",
+    title: "Dhanteras Gift Ideas",
+    metaTitle: "Dhanteras Gift Ideas — Brass Lakshmi Idols, Lotas & Diyas | TOHFA",
+    metaDescription:
+      "Dhanteras gift ideas: brass Lakshmi and Ganesh idols, lotas, diyas and lamps — a lasting metal gift for the day tradition says to bring something new home.",
+    intro:
+      "Dhanteras is the day families traditionally bring home something new in metal — which makes brass, with its own long-standing place in the home, a natural choice.",
+    body: [
+      "A small brass Lakshmi or Ganesh idol is the classic Dhanteras purchase for the Diwali puja; a lota or a pair of diyas is the smaller, always-welcome alternative. Unlike a one-season decoration, each one stays in use year after year and can be polished back to a shine.",
+      "All in stock and shipped across India with a GST invoice.",
+    ],
+    sections: [
+      { category: "Idols", heading: "Brass Idols", blurb: "Lakshmi and Ganesh — the pair most households install for Diwali puja." },
+      { category: "Lotas", heading: "Brass Lotas", blurb: "A small, useful brass piece that belongs on the pooja thali." },
+      { category: "Diyas", heading: "Diyas", blurb: "Brass diyas for Dhanteras evening and the days that follow." },
+      { category: "Lamps", heading: "Oil Lamps", blurb: "A standing lamp for the puja room." },
+      { category: "Gifts", heading: "Brass Gifts", blurb: "Statues and décor pieces chosen for giving." },
+    ],
+  },
 ];
 
 export function findGiftGuide(slug: string): GiftGuide | undefined {

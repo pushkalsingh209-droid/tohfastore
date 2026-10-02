@@ -261,7 +261,10 @@ export default async function ProductDetailPage({
         "@type": "Product",
         name: product.name,
         description: product.description || undefined,
-        image: product.image_url ? [product.image_url] : undefined,
+        // Every gallery photo, not just the lead one -- Google Shopping and
+        // image search use the extra angles, and it is the same list the
+        // on-page gallery renders, so no new data to keep in sync.
+        image: getProductGallery(product).length > 0 ? getProductGallery(product) : undefined,
         sku: String(product.id),
         category: product.category || undefined,
         brand: { "@type": "Brand", name: "TOHFA" },
@@ -295,6 +298,9 @@ export default async function ProductDetailPage({
           url: `https://tohfaonline.com${productHref(product)}`,
           priceCurrency: "INR",
           price: Number(product.price),
+          // Everything sold here is new; Merchant listings flag a missing
+          // itemCondition as a recommended-field warning.
+          itemCondition: "https://schema.org/NewCondition",
           // InStoreOnly is the precise schema.org term for a product that
           // exists and is purchasable, just not online -- more honest than
           // OutOfStock (which would be a lie) and better for the free
