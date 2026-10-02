@@ -71,6 +71,8 @@ export default function ContactUsPage() {
               </h3>
               <p className="text-fg font-light leading-relaxed text-xs sm:text-sm">
                 TOHFA,<br />
+                85/25-1, Teg Bahadur Rd, near Fountain Chowk,<br />
+                Sector 4, Dalanwala,<br />
                 Dehradun, Uttarakhand,<br />
                 India - 248001
               </p>
