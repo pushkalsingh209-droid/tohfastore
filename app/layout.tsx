@@ -98,6 +98,26 @@ const organizationJsonLd = {
   name: "TOHFA",
   url: SITE_URL,
   logo: `${SITE_URL}/logo-mark.png`,
+  // Same address and number as the Contact page and the Google Business
+  // listing -- structured data must match what a visitor can see on the
+  // site, so change all three together. Organization (not Store/
+  // LocalBusiness) on purpose: that type implies walk-in retail hours,
+  // which this markup doesn't claim.
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "85/25-1, Teg Bahadur Rd, near Fountain Chowk, Sector 4, Dalanwala",
+    addressLocality: "Dehradun",
+    addressRegion: "Uttarakhand",
+    postalCode: "248001",
+    addressCountry: "IN",
+  },
+  contactPoint: {
+    "@type": "ContactPoint",
+    telephone: "+91-6302672351",
+    contactType: "customer service",
+    areaServed: "IN",
+    availableLanguage: ["en", "hi"],
+  },
   sameAs: [
     "https://www.instagram.com/tohfaforu/",
     "https://www.facebook.com/profile.php?id=61574670900294",
