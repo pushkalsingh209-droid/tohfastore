@@ -14,7 +14,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import ProductCard from "@/app/components/ProductCard";
-import { getCatalogPage } from "@/app/utils/storeQueries";
+import { getCatalogPage, getCategoryImage } from "@/app/utils/storeQueries";
 import { categoryHref } from "@/app/utils/slug";
 import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 import { GIFT_GUIDES, findGiftGuide } from "@/app/utils/giftGuides";
@@ -31,6 +31,10 @@ export async function generateMetadata({
   const { slug } = await params;
   const guide = findGiftGuide(slug);
   if (!guide) return { title: "Gift Guide Not Found | TOHFA" };
+  // First section's category photo (already Data-Cached, so no extra DB cost)
+  // instead of the generic logo -- a shared guide link then previews with a
+  // real product. Falls through to the default when that category is empty.
+  const photo = await getCategoryImage(guide.sections[0]?.category ?? "");
   return {
     title: guide.metaTitle,
     description: guide.metaDescription,
@@ -39,7 +43,7 @@ export async function generateMetadata({
       title: guide.title,
       description: guide.metaDescription,
       url: `https://tohfaonline.com/guides/${guide.slug}`,
-      images: [DEFAULT_OG_IMAGE],
+      images: [photo ? { url: photo, alt: guide.title } : DEFAULT_OG_IMAGE],
     },
   };
 }
