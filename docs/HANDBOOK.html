@@ -3230,6 +3230,13 @@ Newest first.</p>
 <tbody>
 <tr>
   <td><code>2026-10-04<br>&mdash;</code></td>
+  <td><strong>Blog seeding: 32 festival posts, inserted pending</strong><br>(owner: &ldquo;blog posts&hellip; Diwali, Dussehra&hellip;&rdquo;, then more on Diwali gifts/celebrations, Karva Chauth, Bhai Dooj, winter festivals)</td>
+  <td>Content only, <strong>no code change</strong>. Inserted 32 posts straight into <code>blog_posts</code> (ids 38&ndash;69) with the service-role client, all <code>approved=false</code> so each is reviewed and approved in the admin Blog tab (approving also runs <code>revalidateTag("blog")</code>; a bare DB insert would otherwise take up to the 24&nbsp;h cache TTL to show). Author &ldquo;TOHFA&rdquo;, categories Festivals / Care / Traditions, each with <code>meta_title</code>/<code>meta_description</code>, an excerpt, and 6 linked in-stock products (cover = first linked product&rsquo;s photo, gallery = the next three). Topics: Diwali (five days, Lakshmi Puja, gifts by budget/family/business, etiquette, regional customs, eco, care/storage), Navratri/Dussehra, Dhanteras, Karva Chauth, Bhai Dooj, Lohri/Sankranti/Pongal, Maha Shivratri, Holi, Tulsi Vivah/Dev Diwali, wedding season, New Year. Purely unrelated-keyword posts were declined (search-spam risk). Drafts were not committed to the repo.</td>
+  <td>Live <code>blog_posts</code> table (service role); no repo files</td>
+  <td>Dry-run validated every row against the submit route&rsquo;s limits (title, body, excerpt, meta lengths), slug uniqueness and that each linked product exists, is visible, in stock and has an image, before insert. <strong>Not verified</strong>: rendered pages (they were pending), and the factual accuracy of the festival copy beyond the author&rsquo;s review; the owner is to read each before approving.</td>
+</tr>
+<tr>
+  <td><code>2026-10-04<br>&mdash;</code></td>
   <td><strong>SEO batch 3: six more gift guides (PR #176)</strong><br>(owner: &ldquo;yes&rdquo; to drafting more occasion guides)</td>
   <td>Added six hand-written guides to <code>GIFT_GUIDES</code> (13 &rarr; 19; sitemap and <code>/guides</code> index pick them up automatically): <code>janmashtami-gifts</code>, <code>anniversary-gifts</code>, <code>gifts-for-parents</code>, <code>griha-pravesh-gifts</code> (complements, and links to, the housewarming guide), <code>chess-set-gifts</code> (Misc + Board Games) and <code>buddha-decor-gifts</code> (Polyresin + Gifts). Copy only claims what <code>categoryContent.ts</code> says is stocked; Karva Chauth and Raksha Bandhan were deliberately not written because the catalogue has no matching items. Sections stay live (<code>getCatalogPage</code>), so an empty category drops off the page.</td>
   <td><code>app/utils/giftGuides.ts</code></td>
