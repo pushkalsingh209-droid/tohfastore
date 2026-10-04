@@ -292,3 +292,20 @@ export const GIFT_GUIDES: GiftGuide[] = [
 export function findGiftGuide(slug: string): GiftGuide | undefined {
   return GIFT_GUIDES.find((g) => g.slug === slug);
 }
+
+// Guides that feature a category, most relevant first. "Most relevant" =
+// the guide where that category is the lead section (it is that guide's
+// centrepiece) before guides where it is a supporting section. Used to link
+// product/category pages to the guides, so crawlers (and shoppers) can reach
+// the guides from the pages that actually rank, not only the nav.
+export function guidesForCategory(category: string, limit = 3): GiftGuide[] {
+  if (!category) return [];
+  const lead: GiftGuide[] = [];
+  const supporting: GiftGuide[] = [];
+  for (const g of GIFT_GUIDES) {
+    const idx = g.sections.findIndex((s) => s.category === category);
+    if (idx === 0) lead.push(g);
+    else if (idx > 0) supporting.push(g);
+  }
+  return [...lead, ...supporting].slice(0, limit);
+}

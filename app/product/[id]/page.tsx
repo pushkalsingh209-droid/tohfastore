@@ -13,6 +13,7 @@ import ShareButtons from "@/app/components/ShareButtons";
 import InstagramPostGenerator from "@/app/components/InstagramPostGenerator";
 import InstagramReelGenerator from "@/app/components/InstagramReelGenerator";
 import ReviewForm from "@/app/components/ReviewForm";
+import RelatedGuides from "@/app/components/RelatedGuides";
 import CategoryFaqSection from "@/app/components/CategoryFaqSection";
 import SocialProofBadge from "@/app/components/SocialProofBadge";
 import UgcSubmissionForm from "@/app/components/UgcSubmissionForm";
@@ -590,6 +591,7 @@ export default async function ProductDetailPage({
               faqs={getCategoryFaqs(product.category)}
             />
           )}
+          {product.category && <RelatedGuides category={product.category} />}
           </>
         )}
       </div>
