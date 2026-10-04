@@ -287,6 +287,122 @@ export const GIFT_GUIDES: GiftGuide[] = [
       { category: "Diyas", heading: "Brass Diyas", blurb: "The evening lamp for a small puja corner." },
     ],
   },
+  {
+    slug: "janmashtami-gifts",
+    eyebrow: "Gift Guide",
+    title: "Janmashtami Gift Ideas",
+    metaTitle: "Janmashtami Gift Ideas — Brass Krishna Idols & Radha Krishna | TOHFA",
+    metaDescription:
+      "Janmashtami gift ideas: handcrafted brass Krishna idols, Radha Krishna pieces, diyas and pocket temples for the festival and for a home mandir that lasts years.",
+    intro:
+      "For Janmashtami the gift that fits is one that joins the celebration — a brass Krishna for the mandir, a Radha Krishna piece for the family room, a diya for the midnight aarti.",
+    body: [
+      "Janmashtami is a night of decoration and devotion, and a brass idol suits it: it takes a garland and a polish well, and it stays in the home long after the festival. A Krishna idol is the natural centrepiece; a Radha Krishna piece from our giftable range is the warmer choice for a couple or a family.",
+      "Everything below is in stock and ships across India with a GST invoice. For a small, easy-to-post second gift, a foldable pocket temple or a pair of diyas wraps well.",
+    ],
+    sections: [
+      { category: "Idols", heading: "Brass Krishna & Deity Idols", blurb: "Lord Krishna and other deities — the centrepiece for the festival mandir." },
+      { category: "Gifts", heading: "Radha Krishna & Giftable Brass", blurb: "Radha Krishna and other statues chosen for giving." },
+      { category: "Diyas", heading: "Diyas", blurb: "For the midnight aarti and the evenings after." },
+      { category: "Pocket Temples", heading: "Pocket Temples", blurb: "A compact second gift that folds flat and posts easily." },
+    ],
+  },
+  {
+    slug: "anniversary-gifts",
+    eyebrow: "Gift Guide",
+    title: "Anniversary Gift Ideas in Brass",
+    metaTitle: "Anniversary Gift Ideas — Radha Krishna & Brass Gifts | TOHFA",
+    metaDescription:
+      "Anniversary gift ideas that last: handcrafted brass Radha Krishna pieces, idols, wall hangings and lamps — a traditional keepsake for a couple's home.",
+    intro:
+      "An anniversary gift that lasts is one the couple can place in their home and see every day — a brass Radha Krishna, a Lakshmi Ganesh panel for the entrance, a lamp for the prayer corner.",
+    body: [
+      "Brass ages well: it deepens in colour over the years and polishes back whenever you like, which suits a milestone gift better than something that dates. For parents or older relatives celebrating an anniversary, a brass idol or wall hanging for the mandir is usually the most welcome pick; for a younger couple, a Radha Krishna piece or a pair of diyas reads as thoughtful without being formal.",
+      "All handcrafted, in stock and shipped across India with a GST invoice.",
+    ],
+    sections: [
+      { category: "Gifts", heading: "Radha Krishna & Giftable Brass", blurb: "Statues and décor pieces chosen for giving." },
+      { category: "Idols", heading: "Brass Idols", blurb: "Lakshmi, Ganesha and other deities for the couple's mandir." },
+      { category: "Wall Hanging", heading: "Wall Hangings", blurb: "Lakshmi, Ganesha and Saraswati panels for an entrance or living room." },
+      { category: "Lamps", heading: "Oil Lamps", blurb: "A tall brass lamp as a lasting keepsake." },
+    ],
+  },
+  {
+    slug: "gifts-for-parents",
+    eyebrow: "Gift Guide",
+    title: "Gifts for Parents",
+    metaTitle: "Gifts for Parents — Brass Idols, Lamps & Pocket Temples | TOHFA",
+    metaDescription:
+      "Gift ideas for parents who value tradition: handcrafted brass idols, oil lamps, wall hangings and foldable pocket temples for their mandir. Easy to use, built to last.",
+    intro:
+      "For parents, the most-used gifts tend to be the ones that go to the mandir — something they will light, place or fold open every day.",
+    body: [
+      "A brass idol or a tall oil lamp is a safe choice for a parent who already has a puja corner; a wall hanging works for one who is redecorating. If they travel or live apart from you, a foldable pocket temple is light enough to send and compact enough to carry.",
+      "Handcrafted brass needs little care beyond an occasional polish. Everything below is in stock and ships across India with a GST invoice.",
+    ],
+    sections: [
+      { category: "Idols", heading: "Brass Idols", blurb: "A deity for the home mandir, in sizes from compact to statement." },
+      { category: "Lamps", heading: "Oil Lamps", blurb: "Tall lamps for the prayer corner, lit morning and evening." },
+      { category: "Wall Hanging", heading: "Wall Hangings", blurb: "An auspicious focal point for the puja wall." },
+      { category: "Pocket Temples", heading: "Pocket Temples", blurb: "Foldable and travel-friendly for parents on the move." },
+    ],
+  },
+  {
+    slug: "griha-pravesh-gifts",
+    eyebrow: "Gift Guide",
+    title: "Griha Pravesh Gift Ideas",
+    metaTitle: "Griha Pravesh Gift Ideas — Ashtlakshmi Lotas, Idols & Lamps | TOHFA",
+    metaDescription:
+      "Griha Pravesh gift ideas: brass Ashtlakshmi lotas, Lakshmi and Ganesha idols, oil lamps and wall hangings — auspicious pieces for a new home's first puja.",
+    intro:
+      "A Griha Pravesh gift is something the family can use in the first puja itself — a lota for the kalash, a lamp to light, an idol for the new mandir.",
+    body: [
+      "The housewarming ceremony is built around a few brass pieces, which makes them the right gifts for it. Our Ashtlakshmi lotas come in small, medium and large sizes and suit the kalash; an oil lamp is lit during the ceremony; and a Lakshmi or Ganesha idol or wall hanging gives the new home its first auspicious focal point.",
+      "Looking for something more general for a new home? See our housewarming gift guide. Everything here is in stock and ships across India with a GST invoice.",
+    ],
+    sections: [
+      { category: "Lotas", heading: "Ashtlakshmi Lotas", blurb: "For the kalash and the first puja in the new home." },
+      { category: "Lamps", heading: "Oil Lamps", blurb: "To be lit on the first evening." },
+      { category: "Idols", heading: "Brass Idols", blurb: "Lakshmi and Ganesha for the new mandir." },
+      { category: "Wall Hanging", heading: "Wall Hangings", blurb: "An auspicious piece for the entrance or puja wall." },
+    ],
+  },
+  {
+    slug: "chess-set-gifts",
+    eyebrow: "Gift Guide",
+    title: "Chess Sets as Gifts",
+    metaTitle: "Chess Set Gifts — Brass & Aluminium Chess Sets | TOHFA",
+    metaDescription:
+      "Chess sets worth gifting: classic weighted brass pieces and sleek aluminium sets, plus Harry Potter Wizard Chess and premium board games for players and collectors.",
+    intro:
+      "A good chess set is one of the few gifts that is both a game and a display piece — useful to a player, handsome to everyone else.",
+    body: [
+      "Our chess line spans sleek modern aluminium sets and classic weighted brass pieces, so there is something for a minimalist shelf and for a traditional study. For a fan of a particular world or a collector, the board-game range includes themed sets such as Harry Potter Wizard Chess.",
+      "All in stock and shipped across India with a GST invoice.",
+    ],
+    sections: [
+      { category: "Misc", heading: "Brass & Aluminium Chess Sets", blurb: "Weighted brass or sleek aluminium, for players and collectors." },
+      { category: "Board Games", heading: "Premium Board Games", blurb: "Themed and award-winning games to go with the chess set." },
+    ],
+  },
+  {
+    slug: "buddha-decor-gifts",
+    eyebrow: "Gift Guide",
+    title: "Buddha & Polyresin Decor Gifts",
+    metaTitle: "Buddha Statues & Polyresin Decor Gifts | TOHFA",
+    metaDescription:
+      "Buddha statues and polyresin decor gifts: finely finished Buddhas, animal pairs and figure sets — a lightweight, durable alternative to brass for homes and offices.",
+    intro:
+      "Polyresin is the practical way to gift a statue — the fine detailing of a cast figure, without the weight, for a shelf, a desk or an entrance table.",
+    body: [
+      "A Buddha is a calm, widely welcome gift for a home or office, and the lighter weight of polyresin makes it easy to post and to place on a high shelf. Animal pairs and figure sets suit a more decorative brief, and they pair naturally with a brass wall hanging if you want a mix of materials.",
+      "All in stock and shipped across India with a GST invoice.",
+    ],
+    sections: [
+      { category: "Polyresin", heading: "Polyresin Buddhas & Figures", blurb: "Finely finished statues and sets, lightweight and durable." },
+      { category: "Gifts", heading: "Brass Gifts", blurb: "A brass piece to pair with the polyresin décor." },
+    ],
+  },
 ];
 
 export function findGiftGuide(slug: string): GiftGuide | undefined {
