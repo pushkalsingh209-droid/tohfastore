@@ -5,7 +5,7 @@
 // truncates it. Limits are Google's approximate display widths; the
 // description cap is generous because Google rewrites rather than rejects.
 import { describe, it, expect } from "vitest";
-import { GIFT_GUIDES } from "@/app/utils/giftGuides";
+import { GIFT_GUIDES, guidesForCategory } from "@/app/utils/giftGuides";
 import { CATEGORY_CONTENT } from "@/app/utils/categoryContent";
 
 const TITLE_MAX = 70;
@@ -39,5 +39,17 @@ describe("SEO copy", () => {
   it("has unique guide slugs", () => {
     const slugs = GIFT_GUIDES.map((g) => g.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
+  });
+
+  it("guidesForCategory ranks lead-section guides first and respects the limit", () => {
+    const idols = guidesForCategory("Idols", 20);
+    expect(idols.length).toBeGreaterThan(1);
+    const firstSupportingAt = idols.findIndex((g) => g.sections[0].category !== "Idols");
+    if (firstSupportingAt !== -1) {
+      expect(idols.slice(firstSupportingAt).every((g) => g.sections[0].category !== "Idols")).toBe(true);
+    }
+    expect(guidesForCategory("Idols", 2)).toHaveLength(2);
+    expect(guidesForCategory("No Such Category")).toEqual([]);
+    expect(guidesForCategory("")).toEqual([]);
   });
 });

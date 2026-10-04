@@ -17,6 +17,7 @@ import Breadcrumbs from "@/app/components/Breadcrumbs";
 import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
 import { getCategoryContent } from "@/app/utils/categoryContent";
 import { getCategoryFaqs } from "@/app/utils/categoryFaqs";
+import RelatedGuides from "@/app/components/RelatedGuides";
 import CategoryFaqSection from "@/app/components/CategoryFaqSection";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
 import {
@@ -358,6 +359,12 @@ export default async function StorefrontPage({
         {category && getCategoryFaqs(category).length > 0 && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10">
             <CategoryFaqSection category={category} faqs={getCategoryFaqs(category)} />
+          </div>
+        )}
+
+        {category && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10">
+            <RelatedGuides category={category} />
           </div>
         )}
 
