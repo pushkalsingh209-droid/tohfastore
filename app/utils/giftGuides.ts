@@ -99,7 +99,7 @@ export const GIFT_GUIDES: GiftGuide[] = [
     title: "Corporate Gifting Guide",
     metaTitle: "Corporate Gift Ideas in Brass — Bulk Orders | TOHFA",
     metaDescription:
-      "Corporate gift ideas that hold up at scale: brass idols, pocket temples and pan-stand deity frames for clients, staff and Diwali hampers — with GST invoicing and bulk pricing.",
+      "Corporate gift ideas that hold up at scale: brass idols, pocket temples and deity frames for clients, staff and Diwali hampers, with GST invoicing and bulk pricing.",
     intro:
       "A corporate gift has to work at volume without looking like it was bought at volume — brass does that better than most categories we've tried.",
     body: [
@@ -272,7 +272,7 @@ export const GIFT_GUIDES: GiftGuide[] = [
     slug: "compact-puja-mandir-for-small-spaces",
     eyebrow: "Guide",
     title: "A Compact Puja Mandir for Small Homes and Rented Flats",
-    metaTitle: "Compact Puja Mandir for Small Homes & Flats — Pocket Temples & Diyas | TOHFA",
+    metaTitle: "Compact Puja Mandir for Small Homes & Flats — Pocket Temples | TOHFA",
     metaDescription:
       "Setting up a small puja corner in a flat or hostel: foldable pocket temples, pan-shaped deity frames and brass diyas that fit a shelf or a desk.",
     intro:
