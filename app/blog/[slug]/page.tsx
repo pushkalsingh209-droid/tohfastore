@@ -31,6 +31,10 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
   if (!post) return { title: "Post Not Found | TOHFA" };
+  // unstable_cache can hand back an entry written before migration 0068 (up to
+  // 24h after a deploy), which has no `keywords` field -- default it here, at the
+  // read site, instead of crashing the whole post page on `.length`.
+  const keywords = post.keywords ?? [];
   const title = post.meta_title || `${post.title} | TOHFA Blog`;
   const description = post.meta_description || post.excerpt;
   return {
@@ -39,7 +43,7 @@ export async function generateMetadata({
     // Google ignores <meta keywords>, but Bing and some other crawlers still
     // read it and it costs nothing; the on-page keyword block below is what
     // carries the real signal for readers and for sharing.
-    ...(post.keywords.length > 0 ? { keywords: post.keywords } : {}),
+    ...(keywords.length > 0 ? { keywords: keywords } : {}),
     alternates: { canonical: `/blog/${post.slug}` },
     openGraph: {
       title,
@@ -58,6 +62,7 @@ export default async function BlogPostPage({
   const { slug } = await params;
   const [post, allPosts] = await Promise.all([getBlogPostBySlug(slug), getApprovedBlogPosts()]);
   if (!post) notFound();
+  const keywords = post.keywords ?? []; // see generateMetadata: stale cache entries lack it
 
   const paragraphs = splitParagraphs(post.body);
 
@@ -86,7 +91,7 @@ export default async function BlogPostPage({
     isPartOf: { "@type": "WebSite", name: "TOHFA", url: "https://tohfaonline.com" },
     publisher: { "@type": "Organization", name: "TOHFA" },
     mainEntityOfPage: `https://tohfaonline.com/blog/${post.slug}`,
-    ...(post.keywords.length > 0 ? { keywords: post.keywords.join(", ") } : {}),
+    ...(keywords.length > 0 ? { keywords: keywords.join(", ") } : {}),
     // Connects this Article to the real Product entities it references
     // (each product page already carries its own full schema.org Product
     // markup) -- only present when the post has linked products.
@@ -148,7 +153,7 @@ export default async function BlogPostPage({
 
       <div className="space-y-2 mb-8">
         <ShareButtons title={post.title} message={`Check out "${post.title}" on the TOHFA blog`} />
-        <BlogInstagramPostGenerator post={{ slug: post.slug, title: post.title, excerpt: post.excerpt, keywords: post.keywords }} />
+        <BlogInstagramPostGenerator post={{ slug: post.slug, title: post.title, excerpt: post.excerpt, keywords: keywords }} />
       </div>
 
       <BlogPostGallery coverUrl={post.cover_image_url} images={post.images} title={post.title}>
@@ -161,11 +166,11 @@ export default async function BlogPostPage({
         </div>
       </BlogPostGallery>
 
-      {post.keywords.length > 0 && (
+      {keywords.length > 0 && (
         <div className="mb-10 -mt-4">
           <p className="text-[10px] uppercase tracking-wider font-semibold text-faint mb-2">Keywords</p>
           <ul className="flex flex-wrap gap-2 mb-3">
-            {post.keywords.map((keyword) => (
+            {keywords.map((keyword) => (
               <li
                 key={keyword}
                 className="text-xs text-muted bg-surface-2 border border-border rounded-full px-3 py-1"
@@ -175,7 +180,7 @@ export default async function BlogPostPage({
             ))}
           </ul>
           <p className="text-xs text-faint leading-relaxed break-words">
-            {keywordsToHashtags(post.keywords).join(" ")}
+            {keywordsToHashtags(keywords).join(" ")}
           </p>
         </div>
       )}
