@@ -11,6 +11,7 @@ import { apiRequest } from "@/app/admin/lib/apiRequest";
 import { useAdminData, type AdminBlogPost } from "@/app/admin/AdminDataContext";
 import ProductPicker from "@/app/components/ProductPicker";
 import type { SearchableProduct } from "@/app/utils/searchProducts";
+import { normalizeKeywords, keywordsToHashtags, MAX_KEYWORDS } from "@/app/utils/blogContent";
 
 function BlogPostRow({
   post,
@@ -30,6 +31,9 @@ function BlogPostRow({
   const [body, setBody] = useState(post.body);
   const [metaTitle, setMetaTitle] = useState(post.meta_title || "");
   const [metaDescription, setMetaDescription] = useState(post.meta_description || "");
+  // Edited as one comma-separated string (typing "brass idols, " mid-edit
+  // must not be eaten by per-keystroke normalising); cleaned on save.
+  const [keywordsText, setKeywordsText] = useState((post.keywords || []).join(", "));
   // Resolved once from the post's own product_ids against the admin's
   // already-loaded product list -- a stale id (since hidden/deleted) just
   // silently drops out of this list rather than showing a broken chip.
@@ -41,6 +45,7 @@ function BlogPostRow({
   const [saving, setSaving] = useState(false);
 
   const linkedProductIds = linkedProducts.map((p) => Number(p.id));
+  const keywords = normalizeKeywords(keywordsText);
   const dirty =
     title !== post.title ||
     excerpt !== post.excerpt ||
@@ -48,6 +53,7 @@ function BlogPostRow({
     body !== post.body ||
     metaTitle !== (post.meta_title || "") ||
     metaDescription !== (post.meta_description || "") ||
+    keywords.join("|") !== (post.keywords || []).join("|") ||
     linkedProductIds.join(",") !== post.product_ids.join(",");
 
   async function handleSave(approve?: boolean) {
@@ -63,6 +69,7 @@ function BlogPostRow({
           meta_title: metaTitle,
           meta_description: metaDescription,
           product_ids: linkedProductIds,
+          keywords,
         },
         approve
       );
@@ -180,6 +187,23 @@ function BlogPostRow({
             onChange={setLinkedProducts}
             label="Linked products (optional)"
           />
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider font-semibold text-faint mb-1">
+              Keywords (comma separated, shown under the post -- aim for 5-8, max {MAX_KEYWORDS})
+            </label>
+            <input
+              type="text"
+              value={keywordsText}
+              onChange={(e) => setKeywordsText(e.target.value)}
+              placeholder="brass idols, Lakshmi Ganesha, diwali gifts"
+              className="w-full px-3 py-2 rounded border border-border-strong text-sm focus:outline-none focus:border-accent bg-surface-2"
+            />
+            {keywords.length > 0 && (
+              <p className="text-faint text-[11px] mt-1 break-words">
+                Hashtags: {keywordsToHashtags(keywords).join(" ")}
+              </p>
+            )}
+          </div>
           <div className="border-t border-border pt-3 space-y-3">
             <p className="text-[10px] uppercase tracking-wider font-semibold text-faint">
               SEO overrides (optional -- blank uses the title/excerpt above)

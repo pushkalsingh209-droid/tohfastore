@@ -59,6 +59,7 @@ export interface AdminBlogPost {
   images: string[];
   category?: string | null;
   product_ids: number[];
+  keywords?: string[];
   meta_title?: string | null;
   meta_description?: string | null;
   approved: boolean;

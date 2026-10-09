@@ -1,5 +1,76 @@
 import { describe, it, expect } from "vitest";
-import { splitParagraphs, deriveExcerpt } from "./blogContent";
+import {
+  splitParagraphs,
+  deriveExcerpt,
+  normalizeKeywords,
+  keywordToHashtag,
+  keywordsToHashtags,
+  MAX_KEYWORDS,
+  KEYWORD_MAX_LENGTH,
+} from "./blogContent";
+
+describe("normalizeKeywords", () => {
+  it("splits comma and newline separated text and trims", () => {
+    expect(normalizeKeywords(" brass idols , Lakshmi Ganesha\ndiwali gifts ")).toEqual([
+      "brass idols",
+      "Lakshmi Ganesha",
+      "diwali gifts",
+    ]);
+  });
+
+  it("accepts an array and drops non-strings", () => {
+    expect(normalizeKeywords(["a", 3, null, "b"])).toEqual(["a", "b"]);
+  });
+
+  it("strips a leading # and collapses inner whitespace", () => {
+    expect(normalizeKeywords("#BrassIdols, ##  pocket   temple")).toEqual(["BrassIdols", "pocket temple"]);
+  });
+
+  it("de-duplicates case-insensitively, keeping the first spelling", () => {
+    expect(normalizeKeywords("Brass Idols, brass idols, BRASS IDOLS")).toEqual(["Brass Idols"]);
+  });
+
+  it("drops empties", () => {
+    expect(normalizeKeywords(" , ,\n#, a")).toEqual(["a"]);
+  });
+
+  it("caps the count and the per-keyword length", () => {
+    const many = Array.from({ length: 30 }, (_, i) => `kw${i}`).join(",");
+    expect(normalizeKeywords(many)).toHaveLength(MAX_KEYWORDS);
+    expect(normalizeKeywords("x".repeat(100))[0]).toHaveLength(KEYWORD_MAX_LENGTH);
+  });
+
+  it("returns [] for non-string/array input", () => {
+    expect(normalizeKeywords(undefined)).toEqual([]);
+    expect(normalizeKeywords(42)).toEqual([]);
+  });
+});
+
+describe("keywordToHashtag", () => {
+  it("camel-joins words", () => {
+    expect(keywordToHashtag("Lakshmi Ganesha")).toBe("#LakshmiGanesha");
+    expect(keywordToHashtag("diwali gifts")).toBe("#DiwaliGifts");
+  });
+
+  it("preserves acronyms and strips punctuation", () => {
+    expect(keywordToHashtag("TOHFA crafts!")).toBe("#TOHFACrafts");
+    expect(keywordToHashtag("gifts under ₹1,000")).toBe("#GiftsUnder1000");
+  });
+
+  it("keeps non-Latin letters", () => {
+    expect(keywordToHashtag("दिवाली गिफ्ट")).toBe("#दिवालीगिफ्ट");
+  });
+
+  it("returns null when nothing usable remains", () => {
+    expect(keywordToHashtag("!!! ---")).toBeNull();
+  });
+});
+
+describe("keywordsToHashtags", () => {
+  it("dedupes colliding hashtags and skips unusable ones", () => {
+    expect(keywordsToHashtags(["brass idols", "Brass-Idols", "???", "diya"])).toEqual(["#BrassIdols", "#Diya"]);
+  });
+});
 
 describe("splitParagraphs", () => {
   it("splits on a blank line", () => {

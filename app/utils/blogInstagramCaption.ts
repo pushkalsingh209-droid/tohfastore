@@ -5,6 +5,8 @@
 // but for an article rather than something for sale (no price line, no
 // "shop here"). Pure and deterministic, computed client-side straight from
 // the post data already on the page.
+import { keywordsToHashtags } from "./blogContent";
+
 const SITE_URL = "https://tohfaonline.com";
 const INSTAGRAM_HANDLE = "@tohfaforu";
 // #TOHFACRAFTS is the site's existing UGC/blog hashtag (see the
@@ -12,11 +14,16 @@ const INSTAGRAM_HANDLE = "@tohfaforu";
 // a second one for the same kind of content.
 const HASHTAGS = ["#TOHFA", "#TOHFACRAFTS", "#Blog"];
 const EXCERPT_MAX_LENGTH = 120;
+// The post's own keyword hashtags go after the fixed brand ones; capped so a
+// caption stays readable (Instagram allows 30, but a wall of tags looks spammy).
+const MAX_POST_HASHTAGS = 8;
 
 export interface BlogInstagramCaptionPost {
   slug: string;
   title: string;
   excerpt?: string | null;
+  // Optional (migration 0068) -- posts without keywords get the fixed set only.
+  keywords?: string[] | null;
 }
 
 function truncate(text: string, maxLength: number): string {
@@ -26,6 +33,10 @@ function truncate(text: string, maxLength: number): string {
 }
 
 export function buildBlogInstagramCaption(post: BlogInstagramCaptionPost): string {
+  const brandLower = new Set(HASHTAGS.map((h) => h.toLowerCase()));
+  const postTags = keywordsToHashtags(post.keywords ?? [])
+    .filter((h) => !brandLower.has(h.toLowerCase()))
+    .slice(0, MAX_POST_HASHTAGS);
   const link = `${SITE_URL}/blog/${post.slug}`;
   const lines = [
     `📖 New on the ${INSTAGRAM_HANDLE} blog: "${post.title}"`,
@@ -33,7 +44,7 @@ export function buildBlogInstagramCaption(post: BlogInstagramCaptionPost): strin
     "",
     `Read it here: ${link}`,
     "",
-    HASHTAGS.join(" "),
+    [...HASHTAGS, ...postTags].join(" "),
   ];
   return lines.join("\n");
 }
