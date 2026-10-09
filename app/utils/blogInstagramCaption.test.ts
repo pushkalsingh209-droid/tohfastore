@@ -34,4 +34,20 @@ describe("buildBlogInstagramCaption", () => {
     const post = { slug: "dakshina-kali", title: "Dakshina Kali", excerpt: "A short excerpt." };
     expect(buildBlogInstagramCaption(post)).toBe(buildBlogInstagramCaption(post));
   });
+
+  it("appends hashtags derived from the post's keywords after the brand ones", () => {
+    const caption = buildBlogInstagramCaption({
+      slug: "x",
+      title: "X",
+      keywords: ["brass idols", "Lakshmi Ganesha", "tohfa"],
+    });
+    const tagLine = caption.split("\n").at(-1)!;
+    expect(tagLine).toBe("#TOHFA #TOHFACRAFTS #Blog #BrassIdols #LakshmiGanesha");
+  });
+
+  it("caps the per-post hashtags at 8", () => {
+    const keywords = Array.from({ length: 12 }, (_, i) => `tag${i}`);
+    const tagLine = buildBlogInstagramCaption({ slug: "x", title: "X", keywords }).split("\n").at(-1)!;
+    expect(tagLine.split(" ")).toHaveLength(3 + 8);
+  });
 });

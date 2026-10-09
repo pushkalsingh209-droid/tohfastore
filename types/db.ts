@@ -95,6 +95,7 @@ export type Database = {
           excerpt: string
           id: number
           images: string[]
+          keywords: string[]
           meta_description: string | null
           meta_title: string | null
           moderated_at: string | null
@@ -114,6 +115,7 @@ export type Database = {
           excerpt: string
           id?: never
           images?: string[]
+          keywords?: string[]
           meta_description?: string | null
           meta_title?: string | null
           moderated_at?: string | null
@@ -133,6 +135,7 @@ export type Database = {
           excerpt?: string
           id?: never
           images?: string[]
+          keywords?: string[]
           meta_description?: string | null
           meta_title?: string | null
           moderated_at?: string | null

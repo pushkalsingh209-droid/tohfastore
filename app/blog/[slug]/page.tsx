@@ -10,7 +10,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getBlogPostBySlug, getApprovedBlogPosts } from "@/app/utils/storeQueries";
-import { splitParagraphs } from "@/app/utils/blogContent";
+import { splitParagraphs, keywordsToHashtags } from "@/app/utils/blogContent";
 import { DEFAULT_OG_IMAGE } from "@/app/utils/seo";
 import { productHref } from "@/app/utils/slug";
 import BlogPostGallery from "@/app/components/BlogPostGallery";
@@ -36,6 +36,10 @@ export async function generateMetadata({
   return {
     title,
     description,
+    // Google ignores <meta keywords>, but Bing and some other crawlers still
+    // read it and it costs nothing; the on-page keyword block below is what
+    // carries the real signal for readers and for sharing.
+    ...(post.keywords.length > 0 ? { keywords: post.keywords } : {}),
     alternates: { canonical: `/blog/${post.slug}` },
     openGraph: {
       title,
@@ -82,6 +86,7 @@ export default async function BlogPostPage({
     isPartOf: { "@type": "WebSite", name: "TOHFA", url: "https://tohfaonline.com" },
     publisher: { "@type": "Organization", name: "TOHFA" },
     mainEntityOfPage: `https://tohfaonline.com/blog/${post.slug}`,
+    ...(post.keywords.length > 0 ? { keywords: post.keywords.join(", ") } : {}),
     // Connects this Article to the real Product entities it references
     // (each product page already carries its own full schema.org Product
     // markup) -- only present when the post has linked products.
@@ -143,7 +148,7 @@ export default async function BlogPostPage({
 
       <div className="space-y-2 mb-8">
         <ShareButtons title={post.title} message={`Check out "${post.title}" on the TOHFA blog`} />
-        <BlogInstagramPostGenerator post={{ slug: post.slug, title: post.title, excerpt: post.excerpt }} />
+        <BlogInstagramPostGenerator post={{ slug: post.slug, title: post.title, excerpt: post.excerpt, keywords: post.keywords }} />
       </div>
 
       <BlogPostGallery coverUrl={post.cover_image_url} images={post.images} title={post.title}>
@@ -155,6 +160,25 @@ export default async function BlogPostPage({
           ))}
         </div>
       </BlogPostGallery>
+
+      {post.keywords.length > 0 && (
+        <div className="mb-10 -mt-4">
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-faint mb-2">Keywords</p>
+          <ul className="flex flex-wrap gap-2 mb-3">
+            {post.keywords.map((keyword) => (
+              <li
+                key={keyword}
+                className="text-xs text-muted bg-surface-2 border border-border rounded-full px-3 py-1"
+              >
+                {keyword}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-faint leading-relaxed break-words">
+            {keywordsToHashtags(post.keywords).join(" ")}
+          </p>
+        </div>
+      )}
 
       {post.linkedProducts && post.linkedProducts.length > 0 && (
         <div className="mb-10 border-t border-border pt-10">

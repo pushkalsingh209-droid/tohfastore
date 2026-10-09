@@ -701,6 +701,9 @@ export interface BlogPost {
   images: string[];
   category: string | null;
   product_ids: number[];
+  // Keyword phrases shown under the post (migration 0068); hashtags are
+  // derived from these, not stored. Empty = no keywords block.
+  keywords: string[];
   // Only resolved by getBlogPostBySlug (the detail page's own "shop these
   // pieces" section) -- the index doesn't need full product rows for every
   // card's linked products, just the post's own cover/excerpt.
@@ -716,7 +719,7 @@ export interface BlogPost {
 }
 
 const BLOG_POST_COLUMNS =
-  "id, slug, title, author_name, excerpt, body, cover_image_url, images, category, product_ids, meta_title, meta_description, published_at, created_at, moderated_at";
+  "id, slug, title, author_name, excerpt, body, cover_image_url, images, category, product_ids, keywords, meta_title, meta_description, published_at, created_at, moderated_at";
 
 export const getApprovedBlogPosts = unstable_cache(
   async (): Promise<BlogPost[]> => {

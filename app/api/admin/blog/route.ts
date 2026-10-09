@@ -11,6 +11,7 @@ import { serverErrorResponse } from "@/app/utils/apiError";
 import { revalidateTag } from "next/cache";
 import { supabaseAdmin as supabase } from "@/app/utils/supabaseAdmin";
 import { MAX_LINKED_PRODUCTS } from "@/app/utils/searchProducts";
+import { normalizeKeywords } from "@/app/utils/blogContent";
 
 export async function GET() {
   const { data, error } = await supabase
@@ -36,6 +37,7 @@ interface BlogPostUpdate {
   body?: string;
   category?: string | null;
   product_ids?: number[];
+  keywords?: string[];
   meta_title?: string | null;
   meta_description?: string | null;
   approved?: boolean;
@@ -71,6 +73,11 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: `SEO description is too long (max ${META_DESCRIPTION_MAX}).` }, { status: 400 });
       }
       update.meta_description = raw.meta_description.trim() || null;
+    }
+    // Accepts the admin's comma-separated text or an array; normalizeKeywords
+    // does the trimming / de-duping / caps, so an empty string clears them.
+    if (typeof raw.keywords === "string" || Array.isArray(raw.keywords)) {
+      update.keywords = normalizeKeywords(raw.keywords);
     }
     if (Array.isArray(raw.product_ids)) {
       const productIds = raw.product_ids.map(Number).filter((n: number) => Number.isFinite(n) && n > 0);
