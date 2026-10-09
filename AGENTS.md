@@ -6,7 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Architecture reference
 
-For "which file do I change?" start with `docs/DEVELOPER-MAP.md`. `docs/HANDBOOK.html` is a full codebase reference — database schema and all migrations (0000–0067), RLS model, every API route, the checkout/payments flow, caching strategy, admin panel, WhatsApp integration, known gotchas, and a dated **Change log**. Read it before making architectural changes. After each batch of changes, update the matching sections **and add a dated Change-log row**, then re-publish the artifact.
+For "which file do I change?" start with `docs/DEVELOPER-MAP.md`. `docs/HANDBOOK.html` is a full codebase reference — database schema and all migrations (0000–0068), RLS model, every API route, the checkout/payments flow, caching strategy, admin panel, WhatsApp integration, known gotchas, and a dated **Change log**. Read it before making architectural changes. After each batch of changes, update the matching sections **and add a dated Change-log row**, then re-publish the artifact.
 
 ## Companion docs
 

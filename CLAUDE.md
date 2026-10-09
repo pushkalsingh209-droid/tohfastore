@@ -13,7 +13,7 @@ categories). Next.js 16 App Router · React 19 · TypeScript (strict) · Supabas
 (Postgres + Storage) · Razorpay payments · WhatsApp via Green API · Vercel (Hobby).
 
 **Start with `docs/DEVELOPER-MAP.md` ("where do I change X?"), then read `docs/HANDBOOK.html` before any architectural change.** It is the full
-reference — schema + all migrations (0000–0067), RLS model, every API route, checkout/payments,
+reference — schema + all migrations (0000–0068), RLS model, every API route, checkout/payments,
 caching strategy, admin panel, WhatsApp integration, gotchas, and a dated **Change log**.
 
 ## Commands
