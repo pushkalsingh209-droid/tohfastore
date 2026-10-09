@@ -6,7 +6,7 @@ Task-oriented index into the codebase. It answers *which file* and *which invari
 in the same PR (see [Keeping this current](#keeping-this-current)).
 
 Last verified against the repo: **2026-09-29** (`main` @ 5a4b4c0; 412 tests passing;
-migrations 0000–0067).
+migrations 0000–0068).
 
 ---
 
@@ -48,7 +48,7 @@ Browser ──> Server Components ──> app/utils/storeQueries.ts ──> unst
 | Cart drawer | `components/CartDrawer.tsx` (lazy via `LazyCartDrawer.tsx`), `context/CartContext.tsx` | Cart persists in `localStorage.tohfa_cart`; `addToCart` clamps to stock. |
 | Checkout steps / copy | `components/checkout/CheckoutSheet.tsx` (owns field values + payment), `steps/{ContactStep,DeliveryStep,ReviewStep,PhoneVerification}.tsx`, `CheckoutGateSheets.tsx`, `Stepper.tsx` | Step/phase logic is a pure reducer in `useCheckoutMachine.ts` (unit-tested). Copy/layout changes are safe; anything that changes *what is sent to* the server is payment-path (§4). |
 | Static pages | `app/{about,contact,corporate,faq,privacy,terms,refunds,story,refer,track,success,wishlist,compare,spotlight}/` | `story`, `engineering`, `handbook` are `route.ts` files serving HTML from `docs/`. |
-| Guides / blog | `app/guides/**` + `utils/giftGuides.ts`, `utils/categoryContent.ts`, `categoryFaqs.ts`; `app/blog/**` + `utils/blogContent.ts`, `BlogSubmitForm.tsx` | Blog posts are user-submitted then admin-approved (Admin → Blog tab). |
+| Guides / blog | `app/guides/**` + `utils/giftGuides.ts`, `utils/categoryContent.ts`, `categoryFaqs.ts`; `app/blog/**` + `utils/blogContent.ts`, `BlogSubmitForm.tsx` | Blog posts are user-submitted then admin-approved (Admin → Blog tab). Body is **plain text** (no markdown). Keywords (`blog_posts.keywords`) are edited in that tab; hashtags are derived in `utils/blogContent.ts`. |
 | Images, fonts, icons | `next.config.ts` (`images.unoptimized: true` — a deliberate cost setting; `remotePatterns`), `app/icon*.tsx`, `apple-*`, `manifest.ts`, `utils/productImages.ts`, `imageThumb.ts` | Fonts: Geist via `next/font` in `layout.tsx`. |
 | Loading messages, popups, banners | `utils/loadingMessages.ts`, `WelcomeGaneshaPopup.tsx`, `ExitIntentPopup.tsx`, `PromoBanner.tsx`, `SpendOfferBanner.tsx`, `GiftCampaignBanner.tsx`, `CookieConsent.tsx`, `InstallPrompt.tsx` | Most are toggled by `site_settings` (see §3 "Add a site setting"). |
 | Mobile / accessibility | Tailwind mobile-first classes in each component; skip-link + focus styles in `layout.tsx` / `globals.css` | Admin tab bar is mobile-first (wraps 3 per row) in `app/admin/page.tsx`. |

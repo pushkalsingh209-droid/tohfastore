@@ -47,7 +47,7 @@ app/                 routes (App Router), components/, context/, utils/, admin/
 app/api/             Route Handlers (public, /api/admin/*, /api/cron/*)
 app/utils/           pure logic + server helpers, most with *.test.ts beside them
 proxy.ts             edge middleware: admin auth + CSRF guard + canonical redirects
-supabase/migrations/ hand-run, idempotent SQL (0000–0067)
+supabase/migrations/ hand-run, idempotent SQL (0000–0068)
 types/               db.ts (generated), tables.ts (Row/Insert/Update helpers)
 docs/                handbook + design records
 ```
