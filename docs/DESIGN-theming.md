@@ -163,3 +163,14 @@ one PR open at a time.
 - `catalogueGenerator.ts` (PDF) has its own inline style object — out of scope.
 - Meta `themeColor` in `layout.tsx` (browser chrome colour) — set it from the active
   theme's `--bg` in PR 7, or leave the light/dark pair as-is.
+
+## Accessibility guardrails (2026-10-29)
+
+- `app/utils/themeContrast.test.ts` asserts WCAG AA (4.5:1) for fg/muted/faint on bg and
+  surface, link on bg and surface, accent-fg on accent, and success/danger on surface, for
+  every theme. A new palette must pass it. Borders are intentionally not asserted.
+- Dark themes declare `color-scheme: dark`; `@media (prefers-contrast: more)` promotes
+  `--faint` and `--border` one step.
+- `ThemeColorSync` keeps `meta[name=theme-color]` on the active `--surface` (this supersedes
+  the "leave the light/dark pair" note above for post-hydration; the static pair still applies
+  before JS runs).
