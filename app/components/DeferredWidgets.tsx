@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { usePathname } from "next/navigation";
+import ThemeColorSync from "@/app/components/ThemeColorSync";
 
 // None of these need to be in the initial JS bundle -- each only acts after
 // a delay, a browser event, or a scroll/localStorage check, never before
@@ -26,6 +27,7 @@ export default function DeferredWidgets() {
 
   return (
     <>
+      <ThemeColorSync />
       <CookieConsent />
       <InstallPrompt />
       <AbandonedCartNudge />
