@@ -313,6 +313,8 @@ export const getPublicSettingsMap = unstable_cache(
           // opts in.
           "newsletter_popup_enabled",
           "newsletter_popup_offer_text",
+          // Seasonal page glow, owner-toggled (unset -> off).
+          "festive_glow_enabled",
         ]);
       if (error || !data) return {};
       const map: RawSettings = {};
@@ -414,6 +416,7 @@ export interface BootstrapData {
   categoryWhatsappNumbers: Record<string, string>;
   cod: { enabled: boolean; fee: number; maxItemPrice: number; maxOrderTotal: number; disabledCategories: string[] };
   newsletterPopup: ReturnType<typeof parseNewsletterPopupSettings>;
+  festiveGlow: boolean;
 }
 
 // One server-side read of everything the storefront's client contexts used
@@ -448,6 +451,7 @@ export async function getBootstrapData(): Promise<BootstrapData> {
       disabledCategories: codDisabledCategories,
     },
     newsletterPopup: parseNewsletterPopupSettings(rawSettings),
+    festiveGlow: rawSettings.festive_glow_enabled === "1",
   };
 }
 

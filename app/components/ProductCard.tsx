@@ -163,7 +163,7 @@ export default function ProductCard({
             category. Opposite corner from the wishlist heart so neither
             overlaps the other. */}
         {product.label && (
-          <span className="absolute top-2 left-2 z-10 bg-accent/90 text-white text-[9px] uppercase tracking-wider font-bold px-2 py-1 rounded shadow-sm pointer-events-none">
+          <span className="badge-brass absolute top-2 left-2 z-10 pointer-events-none">
             {product.label}
           </span>
         )}
@@ -181,7 +181,7 @@ export default function ProductCard({
           className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-surface/90 shadow-sm flex items-center justify-center hover:scale-110 transition"
         >
           <svg
-            className={`w-4 h-4 transition ${isWishlisted(product.id) ? "fill-rose-600 text-rose-600" : "fill-none text-faint"}`}
+            className={`w-4 h-4 transition ${isWishlisted(product.id) ? "heart-pop fill-rose-600 text-rose-600" : "fill-none text-faint"}`}
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth="2"
@@ -193,7 +193,7 @@ export default function ProductCard({
         {/* Opposite corner from the label badge (top-left) and the
             wishlist heart (top-right) so neither ever collides with this. */}
         {isNewArrival && (
-          <span className="absolute bottom-2 left-2 z-10 bg-success/90 text-white text-[9px] uppercase tracking-wider font-bold px-2 py-1 rounded shadow-sm pointer-events-none">
+          <span className="badge-brass badge-brass--new absolute bottom-2 left-2 z-10 pointer-events-none">
             New
           </span>
         )}

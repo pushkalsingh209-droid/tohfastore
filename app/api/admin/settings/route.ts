@@ -341,6 +341,11 @@ export async function PATCH(req: Request) {
     // Homepage exit-intent popup (IMPROVEMENTS.md #10). Ships OFF -- a new
     // customer-facing popup is a product/brand call the owner opts into,
     // not one that starts nagging visitors the moment this deploys.
+    // Seasonal page glow (globals.css html[data-festive]). Purely visual,
+    // ships OFF; the owner switches it on for festival weeks.
+    if (body.festive_glow_enabled !== undefined) {
+      updates.push({ key: "festive_glow_enabled", value: body.festive_glow_enabled ? "1" : "0" });
+    }
     if (body.newsletter_popup_enabled !== undefined) {
       updates.push({ key: "newsletter_popup_enabled", value: body.newsletter_popup_enabled ? "1" : "0" });
     }
