@@ -61,15 +61,16 @@
 /* --- light default / sand : today's light palette, exact --- */
 :root,
 :root[data-theme="sand"] {
+  color-scheme: light; /* the other light themes inherit this */
   --bg: #fff0cf;
   --surface: #ffffff;
   --surface-2: #fafaf9;
   --fg: #292524;
   --muted: #57534e;
-  --faint: #78716c;
+  --faint: #736c68;
   --border: #e7e5e4;
   --border-strong: #d6d3d1;
-  --accent: #b45309;
+  --accent: #b25209;
   --accent-fg: #ffffff;
   --link: var(--accent);
   --link-hover: var(--accent-hover);
@@ -79,6 +80,7 @@
 
 /* --- ink : today's dark palette, exact (accent text brighter than fills) --- */
 :root[data-theme="ink"] {
+  color-scheme: dark; /* native controls + scrollbars follow the theme */
   --bg: #0c0a09;
   --surface: #1c1917;
   --surface-2: #292524;
@@ -97,6 +99,7 @@
 
 /* --- dusk : deep indigo / plum, warm-gold accent --- */
 :root[data-theme="dusk"] {
+  color-scheme: dark; /* native controls + scrollbars follow the theme */
   --bg: #14121c;
   --surface: #1e1b2e;
   --surface-2: #2a2640;
@@ -120,10 +123,10 @@
   --surface-2: #f0e6cf;
   --fg: #2e2416;
   --muted: #6b5d42;
-  --faint: #94856a;
+  --faint: #766a55;
   --border: #e2d4b5;
   --border-strong: #ceba8f;
-  --accent: #9a6a2f;
+  --accent: #8e622b;
   --accent-fg: #ffffff;
   --link: var(--accent);
   --link-hover: var(--accent-hover);
@@ -138,7 +141,7 @@
   --surface-2: #e8ede1;
   --fg: #23291f;
   --muted: #556050;
-  --faint: #7d8874;
+  --faint: #697261;
   --border: #dde3d5;
   --border-strong: #c3ccb8;
   --accent: #2f6b3d;
@@ -156,10 +159,10 @@
   --surface-2: #f6e3db;
   --fg: #2c211d;
   --muted: #6d5750;
-  --faint: #997c73;
+  --faint: #826962;
   --border: #ecd8d0;
   --border-strong: #d9b8ab;
-  --accent: #b3532f;
+  --accent: #b1522f;
   --accent-fg: #ffffff;
   --link: var(--accent);
   --link-hover: var(--accent-hover);
@@ -169,12 +172,13 @@
 
 /* --- midnight : near-black, cyan accent --- */
 :root[data-theme="midnight"] {
+  color-scheme: dark; /* native controls + scrollbars follow the theme */
   --bg: #0a0e12;
   --surface: #131a21;
   --surface-2: #1e2830;
   --fg: #dfe8ee;
   --muted: #a3b3bf;
-  --faint: #6f818e;
+  --faint: #728490;
   --border: #1e2830;
   --border-strong: #33434f;
   --accent: #22d3ee;
@@ -192,10 +196,10 @@
   --surface-2: #ffe9c4;
   --fg: #33230d;
   --muted: #7a5a2c;
-  --faint: #a07d47;
+  --faint: #886a3c;
   --border: #f5ddb0;
   --border-strong: #e6c07f;
-  --accent: #e0620d;
+  --accent: #ba510b;
   --accent-fg: #ffffff;
   --link: var(--accent);
   --link-hover: var(--accent-hover);
@@ -210,7 +214,7 @@
   --surface-2: #e2e8ee;
   --fg: #1e252c;
   --muted: #556069;
-  --faint: #7a8791;
+  --faint: #646f77;
   --border: #d5dde3;
   --border-strong: #b8c3cc;
   --accent: #3b6ea5;
@@ -223,12 +227,13 @@
 
 /* --- peacock : teal-navy, jewel-green accent --- */
 :root[data-theme="peacock"] {
+  color-scheme: dark; /* native controls + scrollbars follow the theme */
   --bg: #0b1418;
   --surface: #122229;
   --surface-2: #1c3138;
   --fg: #e0efe8;
   --muted: #a1b8b0;
-  --faint: #6e857d;
+  --faint: #778c85;
   --border: #1c3138;
   --border-strong: #2f4a52;
   --accent: #2bb8a0;
@@ -237,6 +242,17 @@
   --link-hover: var(--accent-hover);
   --success: #34d399;
   --danger: #fb7185;
+}
+
+/* Increased-contrast preference: promote the two weakest text/outline tokens
+   one step on every theme (faint -> muted, hairline border -> strong border).
+   Same specificity as the theme blocks and placed after them, so it wins
+   without !important; both targets are primitives every theme defines. */
+@media (prefers-contrast: more) {
+  :root[data-theme] {
+    --faint: var(--muted);
+    --border: var(--border-strong);
+  }
 }
 
 @theme inline {

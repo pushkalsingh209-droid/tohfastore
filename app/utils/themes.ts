@@ -31,14 +31,14 @@ export interface Theme {
 // `swatch` is the theme's accent (the dot in the picker), except `ink` shows
 // its brighter `--link` value. Order here is the order shown in the menu.
 export const THEMES: readonly Theme[] = [
-  { slug: "sand", name: "Sand", emoji: "☀️", swatch: "#b45309", isDark: false },
+  { slug: "sand", name: "Sand", emoji: "☀️", swatch: "#b25209", isDark: false },
   { slug: "ink", name: "Ink", emoji: "🌙", swatch: "#f59e0b", isDark: true },
   { slug: "dusk", name: "Dusk", emoji: "🌆", swatch: "#f0b45c", isDark: true },
-  { slug: "brass", name: "Brass", emoji: "🔔", swatch: "#9a6a2f", isDark: false },
+  { slug: "brass", name: "Brass", emoji: "🔔", swatch: "#8e622b", isDark: false },
   { slug: "forest", name: "Forest", emoji: "🌿", swatch: "#2f6b3d", isDark: false },
-  { slug: "rose", name: "Rose", emoji: "🌸", swatch: "#b3532f", isDark: false },
+  { slug: "rose", name: "Rose", emoji: "🌸", swatch: "#b1522f", isDark: false },
   { slug: "midnight", name: "Midnight", emoji: "🌌", swatch: "#22d3ee", isDark: true },
-  { slug: "marigold", name: "Marigold", emoji: "🪔", swatch: "#e0620d", isDark: false },
+  { slug: "marigold", name: "Marigold", emoji: "🪔", swatch: "#ba510b", isDark: false },
   { slug: "slate", name: "Slate", emoji: "🪨", swatch: "#3b6ea5", isDark: false },
   { slug: "peacock", name: "Peacock", emoji: "🦚", swatch: "#2bb8a0", isDark: true },
 ] as const;
