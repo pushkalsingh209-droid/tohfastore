@@ -12,6 +12,7 @@ import TestimonialsStrip from "@/app/components/TestimonialsStrip";
 import HeroProductRotator from "@/app/components/HeroProductRotator";
 import PromoBanner from "@/app/components/PromoBanner";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
+import OrnamentDivider from "@/app/components/OrnamentDivider";
 import ExitIntentPopup from "@/app/components/LazyExitIntentPopup";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
 import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
@@ -221,13 +222,13 @@ export default async function StorefrontPage({
             this exact hero's own rail. Decision + alternatives considered:
             docs/category-hero-decision.html (2026-09-11). */}
         {!category && (
-          <section className="bg-gradient-to-r from-stone-900 via-amber-900 to-[#3d1113] text-white relative overflow-hidden">
+          <section className="hero-glow bg-gradient-to-r from-stone-900 via-amber-900 to-[#3d1113] text-white relative overflow-hidden">
             <div className="max-w-7xl mx-auto px-6 py-16 md:py-24 relative z-10 grid md:grid-cols-2 gap-10 md:gap-16 items-center">
               <div className="text-center md:text-left hero-fade-up">
                 <span className="text-footer-accent uppercase tracking-[0.3em] text-xs font-semibold block mb-3">
                   Timeless Indian Craftsmanship
                 </span>
-                <h1 className="text-4xl md:text-5xl font-serif mb-6 leading-tight">
+                <h1 className="t-display font-serif mb-6">
                   Handcrafted Brass, and Everything Around It
                 </h1>
                 <p className="text-white/80 text-base md:text-lg font-light max-w-xl mx-auto md:mx-0 mb-8">
@@ -320,7 +321,7 @@ export default async function StorefrontPage({
           <div className="bg-surface-2 border-b border-border">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
               <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: categoryContent?.heading || category }]} />
-              <h1 className="mt-2 text-xl sm:text-2xl md:text-3xl font-serif text-fg leading-tight">
+              <h1 className="mt-2 t-title font-serif text-fg">
                 {categoryContent ? categoryContent.heading : category}
               </h1>
               {categoryContent && (
@@ -368,9 +369,19 @@ export default async function StorefrontPage({
           </div>
         )}
 
-        {bestsellers.length > 0 && <BestsellersStrip items={bestsellers} />}
+        {bestsellers.length > 0 && (
+          <>
+            <OrnamentDivider />
+            <BestsellersStrip items={bestsellers} />
+          </>
+        )}
 
-        {testimonials.length > 0 && <TestimonialsStrip items={testimonials} />}
+        {testimonials.length > 0 && (
+          <>
+            <OrnamentDivider />
+            <TestimonialsStrip items={testimonials} />
+          </>
+        )}
 
         <RecentlyViewedStrip />
       </div>

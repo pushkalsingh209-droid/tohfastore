@@ -20,7 +20,7 @@ export default function WishlistButton({ product }: { product: StoreProduct }) {
       }`}
     >
       <svg
-        className={`w-4 h-4 ${wishlisted ? "fill-rose-600 text-rose-600" : "fill-none text-faint"}`}
+        className={`w-4 h-4 ${wishlisted ? "heart-pop fill-rose-600 text-rose-600" : "fill-none text-faint"}`}
         viewBox="0 0 24 24"
         stroke="currentColor"
         strokeWidth="2"

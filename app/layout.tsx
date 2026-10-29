@@ -1,6 +1,7 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import { Playfair_Display, Manrope } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
@@ -132,6 +133,16 @@ const websiteJsonLd = {
   url: SITE_URL,
 };
 
+// Self-hosted by next/font at build time (served from our own origin, so the
+// existing CSP `font-src 'self'` covers it and there is no runtime request to
+// Google). Both are variable fonts -> one file each, no per-weight downloads.
+// Before this the body was hard-set to Arial and every `font-serif` /
+// `font-mono` class (~390 uses) fell through to the visitor's system font.
+// display: "swap" + next/font's automatic size-adjusted fallback keep the
+// swap from shifting layout.
+const displayFont = Playfair_Display({ subsets: ["latin"], variable: "--font-display", display: "swap" });
+const bodyFont = Manrope({ subsets: ["latin"], variable: "--font-body", display: "swap" });
+
 // Runs before paint so the page never flashes the wrong theme: reads the
 // saved preference (migrating the old 'light'/'dark' values to the new
 // theme slugs), or falls back to the OS-level preference on first visit,
@@ -151,7 +162,15 @@ export default async function RootLayout({
   // GET /api/settings) -- see docs/DESIGN-bootstrap-context.md (#11).
   const bootstrap = await getBootstrapData();
   return (
-    <html lang="en-IN" suppressHydrationWarning>
+    <html
+      lang="en-IN"
+      suppressHydrationWarning
+      className={`${displayFont.variable} ${bodyFont.variable}`}
+      // Owner-toggled seasonal warmth (Settings -> festive glow); styled in
+      // globals.css. Server-rendered from the cached bootstrap read, so it
+      // costs no extra query and no client flash.
+      data-festive={bootstrap.festiveGlow ? "1" : undefined}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ResourceHints />
@@ -211,7 +230,7 @@ export default async function RootLayout({
           <LazyCartDrawer />
 
           {/* Storefront Global Structural Footer */}
-          <footer className="bg-footer-bg text-footer-fg py-12 border-t-4 border-accent">
+          <footer className="site-footer bg-footer-bg text-footer-fg py-12 border-t-4 border-accent">
             <div className="max-w-7xl mx-auto px-6 text-center text-sm">
               <p className="font-serif text-footer-accent text-lg mb-1 tracking-wider">Tohfa Premium Handicrafts</p>
               <p className="italic text-footer-accent/80 text-xs mb-3">Crafted Traditions. Timeless Gifts.</p>

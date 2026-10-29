@@ -20,7 +20,7 @@ import type { StoreProduct } from "@/app/types/product";
 export default function StickyAddToCartBar({ product }: { product: StoreProduct }) {
   return (
     <LiveStockProvider productId={product.id} initialInventory={Number(product.inventory) || 0}>
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-border shadow-[0_-4px_12px_rgba(0,0,0,0.08)] print:hidden">
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface/90 supports-[backdrop-filter]:backdrop-blur-md border-t border-accent-soft-border shadow-[0_-4px_12px_rgba(0,0,0,0.08)] print:hidden">
         <div className="pt-1.5 pb-1 border-b border-border">
           <TrustBadges compact />
         </div>

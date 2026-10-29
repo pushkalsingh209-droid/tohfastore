@@ -258,8 +258,30 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Faces are loaded by next/font in layout.tsx (--font-display = Playfair
+     Display, --font-body = Manrope). The old --font-geist-* vars were never
+     defined, so every font-serif / font-mono / font-sans use was resolving to
+     a system font. font-mono is deliberately the body face + tabular numerals
+     (see ".font-mono" below): ~230 uses are prices and small caps labels, which
+     read as a typewriter in a real monospace. */
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: var(--font-display), Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* One elevation + corner system for every shadow and rounded utility, so
+     cards, buttons, inputs and sheets share the same softness. Shadows are
+     tinted from the theme's own ink (--fg) instead of flat black, and radii
+     scale with a per-theme --radius-scale (1 by default; see the appended
+     "Visual polish" block). */
+  --shadow-sm: 0 1px 2px color-mix(in oklab, var(--fg) 9%, transparent), 0 1px 3px color-mix(in oklab, var(--fg) 6%, transparent);
+  --shadow-md: 0 2px 4px color-mix(in oklab, var(--fg) 7%, transparent), 0 6px 14px color-mix(in oklab, var(--fg) 10%, transparent);
+  --shadow-lg: 0 4px 8px color-mix(in oklab, var(--fg) 7%, transparent), 0 14px 30px color-mix(in oklab, var(--fg) 13%, transparent);
+  --shadow-xl: 0 8px 16px color-mix(in oklab, var(--fg) 8%, transparent), 0 24px 48px color-mix(in oklab, var(--fg) 16%, transparent);
+  --radius-sm: calc(0.25rem * var(--radius-scale, 1));
+  --radius-md: calc(0.375rem * var(--radius-scale, 1));
+  --radius-lg: calc(0.5rem * var(--radius-scale, 1));
+  --radius-xl: calc(0.75rem * var(--radius-scale, 1));
+  --radius-2xl: calc(1rem * var(--radius-scale, 1));
 
   /* Semantic theme tokens -> Tailwind colour utilities (bg-surface, text-fg,
      border-border, text-link, bg-accent, ...). Tailwind v4 only emits a
@@ -306,7 +328,9 @@ html {
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.6;
+  background-image: var(--grain, none);
   overflow-x: hidden;
   max-width: 100%;
 }
@@ -760,4 +784,203 @@ body {
   .offer-ticker-seq[aria-hidden="true"] {
     display: none;
   }
+}
+
+
+/* ============================================================
+   Visual polish (2026-10-29). Everything below is presentation only: no
+   layout-affecting JS, and every animation is finite or hover/press-driven
+   (nothing loops forever under the fold, except the skeleton sweep which only
+   exists while a loading screen is showing) and is switched off under
+   prefers-reduced-motion at the end of this block.
+   ============================================================ */
+
+/* --- Corner softness per theme (the Tailwind radius utilities read this) --- */
+:root { --radius-scale: 1; }
+:root[data-theme="slate"] { --radius-scale: 0.6; }   /* crisp, editorial */
+:root[data-theme="brass"] { --radius-scale: 0.85; }
+:root[data-theme="rose"]  { --radius-scale: 1.35; }  /* soft, rounder */
+
+/* --- Paper grain on the page background (light themes only) ---------------
+   A 160px SVG-noise tile rasterised once and tiled by the background itself:
+   no extra layer, no request, no per-scroll cost. Dark themes opt out. */
+:root {
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.1'/%3E%3C/svg%3E");
+}
+:root[data-theme="ink"],
+:root[data-theme="dusk"],
+:root[data-theme="midnight"],
+:root[data-theme="peacock"] { --grain: none; }
+
+/* --- Fluid type scale ------------------------------------------------------
+   Opt-in classes for the few display-size headings; ordinary text keeps its
+   Tailwind sizes. text-wrap keeps headings from ending on a single orphan. */
+:root {
+  --step-display: clamp(2.25rem, 1.55rem + 3vw, 3.5rem);
+  --step-title: clamp(1.5rem, 1.2rem + 1.4vw, 2.25rem);
+  --step-lead: clamp(1.0625rem, 1rem + 0.4vw, 1.25rem);
+}
+.t-display { font-size: var(--step-display); line-height: 1.1; letter-spacing: -0.015em; text-wrap: balance; }
+.t-title   { font-size: var(--step-title);   line-height: 1.2; letter-spacing: -0.01em;  text-wrap: balance; }
+.t-lead    { font-size: var(--step-lead);    line-height: 1.55; text-wrap: pretty; }
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+
+/* Real numerals for the ~230 font-mono uses (prices, counts, small labels). */
+.font-mono { font-variant-numeric: tabular-nums lining-nums; }
+
+/* --- Price: raised small rupee sign + "Save" chip --------------------------- */
+.rupee {
+  font-size: 0.68em;
+  vertical-align: 0.22em;
+  margin-right: 0.06em;
+  font-weight: 600;
+  opacity: 0.9;
+}
+.price-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  color: var(--success);
+  background: var(--success-soft);
+  border: 1px solid var(--success-border);
+}
+
+/* --- Brass badge: one ornamental pill for Label / New -------------------- */
+.badge-brass {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: var(--accent-fg);
+  background: linear-gradient(160deg, var(--accent), color-mix(in oklab, var(--accent), #000 16%));
+  border: 1px solid color-mix(in oklab, var(--accent), #fff 42%);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), var(--shadow-sm);
+}
+.badge-brass--new {
+  color: #fff;
+  background: linear-gradient(160deg, color-mix(in oklab, var(--success), #000 45%), color-mix(in oklab, var(--success), #000 62%));
+  border-color: color-mix(in oklab, var(--success), #fff 35%);
+}
+
+/* --- Product cards: gentle lift (hover devices only) ----------------------- */
+@media (hover: hover) and (pointer: fine) {
+  .card-lift { transition: translate 0.25s ease; }
+  .card-lift:hover { translate: 0 -3px; }
+}
+
+/* --- Image placeholder: brief shimmer wash behind a loading photo + fade-in.
+   Finite on purpose (4 passes, ~5s): an endless animation under every card
+   on a long grid would be a permanent paint cost. */
+@keyframes img-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@keyframes img-in { from { opacity: 0; } to { opacity: 1; } }
+.gallery-zoom-image {
+  background-image: linear-gradient(110deg, var(--surface-2) 30%, color-mix(in oklab, var(--surface-2), #fff 55%) 50%, var(--surface-2) 70%);
+  background-size: 220% 100%;
+  animation: img-shimmer 1.3s linear 4;
+}
+.gallery-zoom-image img { animation: img-in 0.35s ease-out; }
+
+/* --- Press feedback on every button ('scale' is its own property, so it
+   composes with Tailwind's translate/rotate and needs no transition). */
+button:not(:disabled):active { scale: 0.97; }
+
+/* --- Wishlist heart pop ----------------------------------------------------- */
+@keyframes heart-pop { 0% { transform: scale(0.6); } 55% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.heart-pop { animation: heart-pop 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+
+/* --- Ornamental section divider (see OrnamentDivider.tsx) ------------------ */
+.ornament-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem;
+  color: var(--accent);
+}
+.ornament-divider::before,
+.ornament-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--accent) 55%, transparent));
+}
+.ornament-divider::after { transform: scaleX(-1); }
+
+/* --- Footer: gold hairline + faint jali lattice ------------------------------ */
+.site-footer { position: relative; }
+.site-footer::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--footer-accent), transparent);
+}
+.site-footer {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cpath d='M24 4l20 20-20 20L4 24z M24 14l10 10-10 10-10-10z' fill='none' stroke='%23ffffff' stroke-opacity='.045' stroke-width='1'/%3E%3C/svg%3E");
+}
+
+/* --- Hero: warm radial glow behind the content -------------------------------- */
+.hero-glow::after {
+  content: "";
+  position: absolute;
+  inset: -20% -10%;
+  pointer-events: none;
+  background: radial-gradient(55% 55% at 72% 42%, color-mix(in oklab, var(--footer-accent) 26%, transparent), transparent 70%);
+}
+
+/* --- Skeleton loaders (Skeleton.tsx) -------------------------------------------- */
+@keyframes skeleton-sweep { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+.skeleton {
+  border-radius: var(--radius-md);
+  background-color: var(--surface-2);
+  background-image: linear-gradient(100deg, transparent 30%, color-mix(in oklab, var(--surface), transparent 30%) 50%, transparent 70%);
+  background-size: 220% 100%;
+  animation: skeleton-sweep 1.4s linear infinite;
+}
+
+/* --- Festive glow (owner toggle -> <html data-festive>) -------------------------- */
+html[data-festive] body {
+  background-image:
+    radial-gradient(120% 55% at 50% -8%, color-mix(in oklab, #e0620d 17%, transparent), transparent 62%),
+    var(--grain, none);
+  background-repeat: no-repeat, repeat;
+}
+html[data-festive] header.sticky::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 3px;
+  background: repeating-linear-gradient(90deg, #e0620d 0 14px, #f59e0b 14px 28px, #b91c1c 28px 42px);
+  pointer-events: none;
+}
+
+/* --- Page-to-page crossfade (hard navigations in supporting browsers; a no-op
+   elsewhere). Short, so it never feels like a delay. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation-duration: 0.18s; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-zoom-image,
+  .gallery-zoom-image img,
+  .heart-pop,
+  .skeleton { animation: none; }
+  .card-lift { transition: none; }
+  .card-lift:hover { translate: none; }
+  button:not(:disabled):active { scale: none; }
 }

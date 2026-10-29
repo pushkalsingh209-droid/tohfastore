@@ -620,6 +620,18 @@ export default function SettingsTab() {
     }
   };
 
+  const handleUpdateFestiveGlow = async (enabled: boolean) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ festive_glow_enabled: enabled }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: unknown) {
+      alert(`Could not update festive glow: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   const handleUpdateNewsletterPopupOfferText = async (value: string) => {
     try {
       const result = await apiRequest("/api/admin/settings", {
@@ -1349,6 +1361,27 @@ export default function SettingsTab() {
           never advertises a code that&rsquo;s expired or doesn&rsquo;t exist.
         </p>
       </div>
+    </div>
+
+    {/* SECTION D.0.16: FESTIVE GLOW (visual only) */}
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Festive Glow</h2>
+        <p className="text-faint text-xs mt-1">
+          A purely visual seasonal touch for festival weeks &mdash; a warm marigold glow behind the
+          page and a garland-coloured line under the header. It changes no prices, offers or
+          behaviour, and adapts to whichever colour theme the visitor picked. Ships off.
+        </p>
+      </div>
+      <label className="flex items-center gap-2 text-sm text-muted font-medium">
+        <input
+          type="checkbox"
+          checked={settings.festive_glow_enabled === "1"}
+          onChange={(e) => handleUpdateFestiveGlow(e.target.checked)}
+          className="accent-[var(--accent)]"
+        />
+        Show the festive glow
+      </label>
     </div>
 
     {/* SECTION D.0.2: SPEND & SAVE OFFER */}
