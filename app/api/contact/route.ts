@@ -2,12 +2,24 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { serverErrorResponse } from "@/app/utils/apiError";
+import { isRateLimited, recordRateLimitEvent } from "@/app/utils/rateLimit";
+import { getClientIp } from "@/app/utils/clientIp";
+
+const RATE_LIMIT_BUCKET = "contact-form";
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const RATE_LIMIT_MAX_ATTEMPTS = 5;
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CONTACT_INBOX = "contact@tohfaonline.com";
 
 export async function POST(req: Request) {
   try {
+    // Public endpoint, per-IP cap (app/utils/rateLimit.ts) -- each accepted send spends Resend free-tier quota (100/day).
+    const ip = getClientIp(req);
+    if (await isRateLimited(RATE_LIMIT_BUCKET, ip, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_ATTEMPTS)) {
+      return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
+    }
+    await recordRateLimitEvent(RATE_LIMIT_BUCKET, ip);
     const body = await req.json();
     const name = String(body.name || "").trim();
     const email = String(body.email || "").trim();
