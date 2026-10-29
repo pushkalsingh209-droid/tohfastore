@@ -90,6 +90,24 @@ export async function GET(req: Request) {
     console.error("Abandoned-checkout cron: stock_reservations trim failed:", trimErr);
   }
 
+  // Same hygiene for gift_campaign_claims (0063): drop 'released' rows and
+  // 'held' rows a day past expiry. 'consumed' rows are deliberately kept --
+  // they're the per-campaign redemption history, and the table is tiny
+  // (bounded by campaign slot caps) so there's nothing to gain from
+  // deleting them. Best-effort, correctness never depends on this.
+  let giftClaimsTrimmed = 0;
+  try {
+    const staleBefore = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+    const { data: trimmedClaims } = await supabase
+      .from("gift_campaign_claims")
+      .delete()
+      .or(`status.eq.released,and(status.eq.held,expires_at.lt.${staleBefore})`)
+      .select("id");
+    giftClaimsTrimmed = trimmedClaims?.length ?? 0;
+  } catch (trimErr) {
+    console.error("Abandoned-checkout cron: gift_campaign_claims trim failed:", trimErr);
+  }
+
   // Heartbeat: stamp the last run so the admin Overview can flag a dead
   // external scheduler (this route isn't on Vercel cron -- Hobby 2-cap --
   // so nothing else proves it's being hit). Same pattern as
@@ -110,5 +128,6 @@ export async function GET(req: Request) {
     alreadyOrdered,
     failed,
     reservationsTrimmed,
+    giftClaimsTrimmed,
   });
 }

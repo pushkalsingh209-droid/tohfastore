@@ -12,7 +12,7 @@ import TestimonialsStrip from "@/app/components/TestimonialsStrip";
 import HeroProductRotator from "@/app/components/HeroProductRotator";
 import PromoBanner from "@/app/components/PromoBanner";
 import RecentlyViewedStrip from "@/app/components/RecentlyViewedStrip";
-import ExitIntentPopup from "@/app/components/ExitIntentPopup";
+import ExitIntentPopup from "@/app/components/LazyExitIntentPopup";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
 import { PAGE_SIZE_OPTIONS } from "@/app/utils/pagination";
 import { getCategoryContent } from "@/app/utils/categoryContent";
