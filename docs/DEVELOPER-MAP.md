@@ -6,7 +6,7 @@ Task-oriented index into the codebase. It answers *which file* and *which invari
 in the same PR (see [Keeping this current](#keeping-this-current)).
 
 Last verified against the repo: **2026-09-29** (`main` @ 5a4b4c0; 412 tests passing;
-migrations 0000–0068).
+migrations 0000–0069).
 
 ---
 
@@ -63,6 +63,7 @@ Browser ──> Server Components ──> app/utils/storeQueries.ts ──> unst
 | GST maths | `utils/gst.ts` (+ `gst.test.ts`) — money maths, payment-path adjacent |
 | Coupons | `utils/coupons.ts` (+ test), `api/coupons/{validate,public}`, admin `tabs/CouponsTab.tsx`; referral coupons `utils/referralCoupon.ts` |
 | Stock thresholds / reservations | `utils/stock.ts` (constants), `utils/reservation.ts`, `docs/DESIGN-stock-reservation.md`; RPCs `reserve_stock`, `consume_reservation`, `decrement_inventory` |
+| Pause online sales (vacation / one category / one product) | Admin → Settings "Vacation Mode" (`site_settings.store_enquiry_mode`), per-category **Selling / Enquiry only** (`categories.enquire_only`, 0069), per-product toggle (`products.enquire_only`, 0059). Rule: `utils/enquiryMode.ts`; DB reads: `utils/enquiryOverlayDb.ts`; enforced live in `api/razorpay` + `api/orders/cod`, displayed via the readers in `storeQueries.ts` + the product page. It is an **overlay** — never bulk-write `products.enquire_only` to pause (can't be undone cleanly). |
 | Search, compare, bundles, recommendations | `utils/searchProducts.ts`, `productComparison.ts`, `bundleRecommendations.ts`, `api/{bundle,cart}-suggestions` |
 
 ### Orders, payments, notifications
@@ -100,7 +101,7 @@ Browser ──> Server Components ──> app/utils/storeQueries.ts ──> unst
 
 ## 3. Recipes (short form — full versions in Handbook → *Extending the system — playbooks*)
 
-**Add a migration.** Next number, e.g. `0068_short_name.sql`. Fully idempotent (`add column if not
+**Add a migration.** Next number, e.g. `0070_short_name.sql`. Fully idempotent (`add column if not
 exists`, `create table if not exists`, `insert … on conflict do nothing`). New table ⇒
 `enable row level security` and **no** anon policy. New RPC called from the server ⇒
 `revoke … from public, anon, authenticated` **then** `grant execute … to service_role`. Run by
