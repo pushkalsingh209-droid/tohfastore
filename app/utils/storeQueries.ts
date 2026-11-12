@@ -48,6 +48,8 @@ import {
 } from "@/app/utils/bootstrapSettings";
 import { parseFeaturedSpotlight, FEATURED_SPOTLIGHT_KEY } from "@/app/utils/featuredSpotlight";
 import { aggregateRatings, type RatingRow, type RatingSummary } from "@/app/utils/productComparison";
+import { applyEnquiryOverlay } from "@/app/utils/enquiryMode";
+import { readEnquiryOverlayForDisplay } from "@/app/utils/enquiryOverlayDb";
 
 // PostgREST's "in"/"not.in" list literal: comma-separated, with any value
 // containing a comma or quote wrapped in double quotes (quotes doubled).
@@ -561,8 +563,12 @@ export const getCatalogPage = unstable_cache(
         console.error("Supabase catalog read exception:", error.message);
         return { products: [], count: totalCount, page };
       }
-      const [withThumbs, soldCounts] = await Promise.all([attachThumbUrls(data || []), getSoldCounts()]);
-      const products = withThumbs.map((p) => ({ ...p, sold_count: soldCounts[String(p.id)] || 0 }));
+      const [withThumbs, soldCounts, overlay] = await Promise.all([
+        attachThumbUrls(data || []),
+        getSoldCounts(),
+        readEnquiryOverlayForDisplay(),
+      ]);
+      const products = applyEnquiryOverlay(withThumbs, overlay).map((p) => ({ ...p, sold_count: soldCounts[String(p.id)] || 0 }));
       return { products, count: totalCount, page };
     } catch (err) {
       console.error("Failed to compile database records:", err);
@@ -596,7 +602,7 @@ export const getSpotlightProducts = unstable_cache(
         .order("spotlight_order", { ascending: true, nullsFirst: false })
         .order("id", { ascending: true });
       if (error || !data) return [];
-      return attachThumbUrls(data);
+      return applyEnquiryOverlay(await attachThumbUrls(data), await readEnquiryOverlayForDisplay());
     } catch {
       return [];
     }
@@ -658,7 +664,7 @@ const getProductsByIdsCached = unstable_cache(
         .in("id", ids)
         .eq("hidden", false);
       if (error || !data) return [];
-      return attachThumbUrls(data);
+      return applyEnquiryOverlay(await attachThumbUrls(data), await readEnquiryOverlayForDisplay());
     } catch {
       return [];
     }
