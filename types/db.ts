@@ -152,6 +152,7 @@ export type Database = {
           created_at: string
           default_page_size: number | null
           discount_percent: number | null
+          enquire_only: boolean
           gst_rate: number
           id: number
           name: string
@@ -163,6 +164,7 @@ export type Database = {
           created_at?: string
           default_page_size?: number | null
           discount_percent?: number | null
+          enquire_only?: boolean
           gst_rate?: number
           id?: never
           name: string
@@ -174,6 +176,7 @@ export type Database = {
           created_at?: string
           default_page_size?: number | null
           discount_percent?: number | null
+          enquire_only?: boolean
           gst_rate?: number
           id?: never
           name?: string

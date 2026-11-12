@@ -143,6 +143,8 @@ export interface AdminCategory {
   whatsapp_number?: string | null;
   /** Whole-category Cash on Delivery block (0057). */
   cod_disabled?: boolean;
+  /** Pause online sales for the whole category (0069). */
+  enquire_only?: boolean;
 }
 export interface AdminLabel {
   id: number;

@@ -78,7 +78,7 @@ function parseCategoryPageSize(value: unknown): number | null | undefined {
 
 export async function PATCH(req: Request) {
   try {
-    const { id, show_on_home, gst_rate, default_page_size, discount_percent, whatsapp_number, cod_disabled } = await req.json();
+    const { id, show_on_home, gst_rate, default_page_size, discount_percent, whatsapp_number, cod_disabled, enquire_only } = await req.json();
     if (!id) return NextResponse.json({ error: "Missing category id." }, { status: 400 });
 
     const updates: Update<"categories"> = {};
@@ -86,6 +86,10 @@ export async function PATCH(req: Request) {
     // Whole-category COD block (0057) -- the coarse half of the eligibility
     // rule, e.g. all Board Games, which ship badly.
     if (typeof cod_disabled === "boolean") updates.cod_disabled = cod_disabled;
+    // Pause online sales for the whole category (0069) -- e.g. owner away.
+    // An overlay on top of products.enquire_only, never written onto the
+    // products, so switching it off restores each product's own flag.
+    if (typeof enquire_only === "boolean") updates.enquire_only = enquire_only;
     // Sourced from a <select> over the managed whatsapp_numbers list (same
     // pattern as products.whatsapp_number), never free text -- so a plain
     // trim-or-null is enough, no format validation needed here.
@@ -119,6 +123,9 @@ export async function PATCH(req: Request) {
     if (error) return serverErrorResponse("admin categories", error);
 
     revalidateTag("categories", "max");
+    // The storefront product readers bake the enquire_only overlay in and are
+    // tagged "products" (not "categories"), so they need refreshing too.
+    if (typeof enquire_only === "boolean") revalidateTag("products", "max");
     return NextResponse.json({ category: data?.[0] });
   } catch (err) {
     return serverErrorResponse("admin categories", err);

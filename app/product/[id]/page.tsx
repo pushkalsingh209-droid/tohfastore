@@ -33,6 +33,8 @@ import { getProductWhatsappLink, resolveProductWhatsappNumber } from "@/app/util
 import WhatsappEnquiryLink from "@/app/components/WhatsappEnquiryLink";
 import { getCategorySliderItems } from "@/app/utils/categorySliderItems";
 import { getRelatedProducts, getViewedTogether, getProductUnitSettings, getDefaultWhatsappNumber, getCategoryWhatsappNumberMap, getSoldCounts, get30DayPurchaseCount } from "@/app/utils/storeQueries";
+import { applyEnquiryOverlay } from "@/app/utils/enquiryMode";
+import { readEnquiryOverlayForDisplay } from "@/app/utils/enquiryOverlayDb";
 import { getThumbUrl } from "@/app/utils/imageThumb";
 import { formatProductDimensionsLine } from "@/app/utils/productDimensions";
 import { formatProductAttributesLine } from "@/app/utils/productAttributes";
@@ -116,11 +118,15 @@ const getProduct = cache(
         // alongside the sold-count lookup (independent of each other) --
         // sequentially awaiting both here would chain two network round
         // trips into one when there's no reason they can't overlap.
-        const [thumb_url, soldCounts] = await Promise.all([
+        const [thumb_url, soldCounts, overlay] = await Promise.all([
           data.image_url ? getThumbUrl(data.image_url) : Promise.resolve(undefined),
           getSoldCounts(),
+          readEnquiryOverlayForDisplay(),
         ]);
-        return { ...data, name: data.name, price: data.price, thumb_url, sold_count: soldCounts[String(data.id)] || 0 };
+        // Category / store-wide "pause online sales" (0069) resolved into
+        // the same enquire_only flag the page already branches on.
+        const [resolved] = applyEnquiryOverlay([data], overlay);
+        return { ...resolved, name: data.name, price: data.price, thumb_url, sold_count: soldCounts[String(data.id)] || 0 };
       } catch (err) {
         console.error("Failed to load product:", err);
         return null;

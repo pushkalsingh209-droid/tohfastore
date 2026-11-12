@@ -21,6 +21,8 @@ import { calculateOrderGstBreakdown, GST_RATE } from "@/app/utils/gst";
 import { isVerificationTokenValid, normalizePhoneForRecord } from "@/app/utils/whatsappOtp";
 import { serverErrorResponse } from "@/app/utils/apiError";
 import { repriceCart, type RepriceProduct } from "@/app/utils/repricing";
+import { applyEnquiryOverlay } from "@/app/utils/enquiryMode";
+import { readEnquiryOverlay } from "@/app/utils/enquiryOverlayDb";
 import { RESERVATION_TTL_SECONDS, STOCK_RESERVATIONS_ENABLED_KEY } from "@/app/utils/stock";
 import {
   COD_ENABLED_KEY,
@@ -158,7 +160,12 @@ export async function POST(req: Request) {
       }
     }
 
-    const repriced = repriceCart(items, (dbProducts ?? []) as RepriceProduct[], categoryGstRates, GST_RATE * 100);
+    // Category / store-wide "pause online sales" (0069) -- read live and
+    // folded into enquire_only so repriceCart rejects it like a per-product
+    // flag. Throws on a DB error -> generic 500 (fail closed): better a
+    // failed checkout than an order the owner has switched off.
+    const sellable = applyEnquiryOverlay((dbProducts ?? []) as RepriceProduct[], await readEnquiryOverlay());
+    const repriced = repriceCart(items, sellable, categoryGstRates, GST_RATE * 100);
     if (!repriced.ok) {
       return NextResponse.json({ error: repriced.error }, { status: repriced.status });
     }

@@ -31,6 +31,7 @@ import {
   validateCodMaxOrderTotal,
 } from "@/app/utils/codSettings";
 import { MAX_NEWSLETTER_OFFER_TEXT_LENGTH } from "@/app/utils/bootstrapSettings";
+import { STORE_ENQUIRY_MODE_KEY } from "@/app/utils/enquiryMode";
 
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 500;
@@ -346,6 +347,11 @@ export async function PATCH(req: Request) {
     if (body.festive_glow_enabled !== undefined) {
       updates.push({ key: "festive_glow_enabled", value: body.festive_glow_enabled ? "1" : "0" });
     }
+    // Store-wide "pause online sales" (owner away). Every product reads as
+    // enquiry-only and checkout rejects it server-side. Ships OFF.
+    if (body.store_enquiry_mode !== undefined) {
+      updates.push({ key: STORE_ENQUIRY_MODE_KEY, value: body.store_enquiry_mode ? "1" : "0" });
+    }
     if (body.newsletter_popup_enabled !== undefined) {
       updates.push({ key: "newsletter_popup_enabled", value: body.newsletter_popup_enabled ? "1" : "0" });
     }
@@ -373,6 +379,8 @@ export async function PATCH(req: Request) {
     if (error) return serverErrorResponse("admin settings", error);
 
     revalidateTag("site-settings", "max");
+    // Storefront product readers bake the store-wide overlay in (see categories route).
+    if (body.store_enquiry_mode !== undefined) revalidateTag("products", "max");
 
     const settings: Record<string, string> = {};
     for (const u of updates) settings[u.key] = u.value;

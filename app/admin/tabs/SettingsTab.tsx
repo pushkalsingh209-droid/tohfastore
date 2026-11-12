@@ -772,6 +772,33 @@ export default function SettingsTab() {
     }
   };
 
+  // Pause online sales for a whole category (0069) -- an overlay, so
+  // switching it back off restores each product's own enquire_only flag.
+  const handleToggleCategoryEnquiry = async (categoryId: number, enquireOnly: boolean) => {
+    try {
+      await apiRequest("/api/admin/categories", {
+        method: "PATCH",
+        body: JSON.stringify({ id: categoryId, enquire_only: enquireOnly }),
+      });
+      setCategories(categories.map((c) => (c.id === categoryId ? { ...c, enquire_only: enquireOnly } : c)));
+    } catch (err: unknown) {
+      alert(`Could not update category: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Store-wide "pause online sales" (owner away).
+  const handleUpdateStoreEnquiryMode = async (enabled: boolean) => {
+    try {
+      const result = await apiRequest("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ store_enquiry_mode: enabled }),
+      });
+      setSettings((prev) => ({ ...prev, ...result.settings }));
+    } catch (err: unknown) {
+      alert(`Could not update vacation mode: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   const handleUpdateCodMaxItemPrice = async (value: string) => {
     try {
       const result = await apiRequest("/api/admin/settings", {
@@ -1361,6 +1388,30 @@ export default function SettingsTab() {
           never advertises a code that&rsquo;s expired or doesn&rsquo;t exist.
         </p>
       </div>
+    </div>
+
+    {/* SECTION D.0.17: VACATION MODE / PAUSE ONLINE SALES */}
+    <div className="bg-surface border border-border rounded-lg shadow-sm p-8">
+      <div className="border-b border-border pb-4 mb-6">
+        <h2 className="text-xl font-serif text-fg">Vacation Mode &mdash; Pause Online Orders</h2>
+        <p className="text-faint text-xs mt-1">
+          While on, <strong>every</strong> product shows &ldquo;Enquire to Buy&rdquo; (shoppers send you a
+          WhatsApp enquiry instead) and checkout refuses online and Cash on Delivery orders on the server, so
+          nothing can be bought even from an old cart or a saved link. Your products&rsquo; own settings are
+          not changed &mdash; switching this off puts the shop back exactly as it was. To pause only some
+          products, use the &ldquo;Selling / Enquiry only&rdquo; button on a category below, or the per-product
+          toggle in the Products tab. Orders you record yourself in the Orders tab still work.
+        </p>
+      </div>
+      <label className="flex items-center gap-2 text-sm text-muted font-medium">
+        <input
+          type="checkbox"
+          checked={settings.store_enquiry_mode === "1"}
+          onChange={(e) => handleUpdateStoreEnquiryMode(e.target.checked)}
+          className="accent-[var(--accent)]"
+        />
+        Pause all online orders (enquiry only)
+      </label>
     </div>
 
     {/* SECTION D.0.16: FESTIVE GLOW (visual only) */}
@@ -2444,6 +2495,18 @@ export default function SettingsTab() {
                     <option key={n.id} value={n.phone_number}>{n.label ? `${n.label} — ` : ""}+{n.phone_number}</option>
                   ))}
                 </select>
+                <button
+                  type="button"
+                  onClick={() => handleToggleCategoryEnquiry(cat.id, !cat.enquire_only)}
+                  title="Pause online orders for every product in this category: they show 'Enquire to Buy' and checkout refuses them. Switch back to restore. Individual products keep their own enquiry-only setting either way."
+                  className={`px-3 py-1.5 rounded text-[11px] uppercase font-semibold border transition ${
+                    cat.enquire_only
+                      ? "border-danger bg-danger-soft text-danger"
+                      : "border-border-strong text-faint hover:bg-surface-2"
+                  }`}
+                >
+                  {cat.enquire_only ? "Enquiry only" : "Selling"}
+                </button>
                 <button
                   type="button"
                   onClick={() => handleToggleCategoryCod(cat.id, !cat.cod_disabled)}
